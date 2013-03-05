@@ -6,25 +6,30 @@ import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 import warnings
+import re
+import os
+import dateutil.parser
 
 class backgroundModel(object):
     def __init__(self,  verbose=False):
         self.startDate = 0
         self.endDate = 0
-        self.path = 0
+        self.rootPath = 0
         self.nightPaths = 0
         self.dayPaths = 0
         self.verbose = verbose
+        self.modelDay = []
+        self.modelNight = []
         
     def setData(self, startDate,  endDate):
         self.startDate = startDate
         self.endDate = endDate
         
-    def setPath(self,  path):
-        self.path = path
+    def setPath(self,  rootPath):
+        self.rootPath = rootPath
         
-    def getVideoPaths(self, path, start, end,  sampleSize=200):        
-        self.path = path
+    def getVideoPaths(self, rootPath, start, end,  sampleSize=200):        
+        self.rootPath = rootPath
         self.startDate = start
         self.endDate = end
         
@@ -46,7 +51,7 @@ class backgroundModel(object):
         return mean
         
         
-    def createModelFromListMedian(self, pathList,  sampleSize=200):
+    def createModelFromListMedian(self, pathList,  sampleSize=20):
         if sampleSize > 255:
             warnings.warn("createModelFromListMedian: sampleSize has to be between 0..255", RuntimeWarning)
             sampleSize = 255
@@ -76,18 +81,58 @@ class backgroundModel(object):
             print "processing frame {0} of video {1}".format(frameNo,  file)
         
         vs = VideoStream(file, frame_mode='L')            
-#        return vs.get_frame_no(frameNo).ndarray()       
         return vs.next().ndarray()
                 
-    def createNightModel(self, sampleSize=200):
+    def createNightModel(self, sampleSize=20):
         if self.verbose:
             print "creating night model.."
         self.modelNight = self.createModelFromListMedian(self.nightPaths, sampleSize)
         
-    def createDayModel(self, sampleSize=200):
+    def createDayModel(self, sampleSize=20):
         if self.verbose:
             print "creating day model.."
         self.modelDay = self.createModelFromListMedian(self.dayPaths,  sampleSize)
+    
+    def saveModels(self, path=''):
+        if path == '':
+            path = self.rootPath
+        
+        if self.modelDay != []:
+            plt.imsave(fname=root + "backgroundModel_day_" + 
+                       start.isoformat() + "--" + end.isoformat(), 
+                       arr=self.modelDay, cmap=mpl.cm.gray)
+        
+        if self.modelNight != []:
+            plt.imsave(fname=root + "backgroundModel_night_" + 
+                       start.isoformat() + "--" + end.isoformat(), 
+                       arr=self.modelNight, cmap=mpl.cm.gray)
+                       
+    def loadModel(self, path):
+        img = plt.imread(path)
+        
+        names = re.split("[_]",  os.path.basename(path))
+        
+        if len(names) < 3:
+            warnings.warn("model filename does not contain model information." + 
+                          " Setting image both modelDay and modelNight", 
+                          RuntimeWarning)
+            self.modelDay = img
+            self.modelNight = img
+            return
+        
+        print names
+        
+        data = re.split("--",  re.split("[.]", names[2])[0])
+        
+        self.startDate = dateutil.parser.parse(data[0])
+        self.endDate = dateutil.parser.parse(data[1])
+        
+        if names[0] == "backgroundModel" and names[1] == "day":
+            self.modelDay = img
+            
+        if names[0] == "backgroundModel" and names[1] == "night":
+            self.modelNight = img
+        
 
 if __name__ == "__main__":
     bgModel = backgroundModel(verbose=True)
@@ -107,10 +152,6 @@ if __name__ == "__main__":
     plt.imshow(bgModel.modelNight)
     plt.show()
     
-    plt.imsave(fname=root + "dayModel_" + start.isoformat() + "--" + end.isoformat(), 
-               arr=bgModel.modelDay, cmap=mpl.cm.gray)
-               
-    plt.imsave(fname=root + "nightModel_" + start.isoformat() + "--" + end.isoformat(), 
-               arr=bgModel.modelNight,  cmap=mpl.cm.gray)
+    bgModel.saveModels()
     
     
