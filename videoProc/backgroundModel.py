@@ -22,7 +22,7 @@ class backgroundModel(object):
     def setPath(self,  path):
         self.path = path
         
-    def getVideoPaths(self, path, start, end):        
+    def getVideoPaths(self, path, start, end,  sampleSize=200):        
         self.path = path
         self.startDate = start
         self.endDate = end
@@ -45,42 +45,47 @@ class backgroundModel(object):
         return mean
         
         
-    def createModelFromListMedian(self, pathList, sampleSize=200):
+    def createModelFromListMedian(self, pathList,  sampleSize=200):
         if sampleSize > 255:
             warnings.warn("createModelFromListMedian: sampleSize has to be between 0..255", RuntimeWarning)
             sampleSize = 255
         
         refFrame = np.float32(self.getRandomFrame(pathList))
-        files = self.createRandomFileList(pathList, sampleSize)
         
-        median = np.zeros([refFrame.shape[0], 
+        medianSumTbl = np.zeros([refFrame.shape[0], 
                            refFrame.shape[1], 
                            255],  dtype=np.uint8)
         
         for i in range(sampleSize):
             frame = self.getRandomFrame(pathList)
             
-            for k in range(median.shape[0]):
-                for m in range(median.shape[1]):
-                    median[k, m, frame[k, m]] += 1
+            for k in range(medianSumTbl.shape[0]):
+                for m in range(medianSumTbl.shape[1]):
+                    medianSumTbl[k, m, frame[k, m]] += 1
                     
-        valueMean = sum(median,  axis=2)
-        "TODO: correct this value-mean calculation it has to be weighted by the idnex"
-        out = zeros(refFrame.shape,  dtype=np.uint8)        
+        ## accumulate mean values and calculate expected mean value
+        valueMean = np.zeros(refFrame.shape)
+        for i in range(255):
+            valueMean += medianSumTbl[:, :, i] * i
+            
+        valueMean /= 2
         
-        for k in range(median.shape[0]):
-            for m in range(median.shape[1]):                
+        out = np.zeros(refFrame.shape,  dtype=np.uint8)        
+        
+        ## find value that represents the median
+        for k in range(medianSumTbl.shape[0]):
+            for m in range(medianSumTbl.shape[1]):                
                 if self.verbose:
                     print "determining median of pixel {0} {1}".format(k, m)
                 
                 accValue = 0
                 for i in range(255):
-                    accValue += median[k, m, i]
+                    accValue += medianSumTbl[k, m, i]
                     if accValue >= valueMean[k, m] / 2:
-                        out = i
+                        out[k, m] = i
                         break;
             
-            
+        return out
         
         
     def getRandomFrame(self, pathList):
@@ -94,11 +99,11 @@ class backgroundModel(object):
 #        return vs.get_frame_no(frameNo).ndarray()       
         return vs.next().ndarray()
                 
-    def createNightModel(self):
-        self.modelNight = self.createModelFromList(self.nightPaths)
+    def createNightModel(self, sampleSize=200):
+        self.modelNight = self.createModelFromListMedian(self.nightPaths, sampleSize)
         
-    def createDayModel(self):
-        self.modelDay = self.createModelFromList(self.dayPaths)
+    def createDayModel(self, sampleSize=200):
+        self.modelDay = self.createModelFromListMedian(self.dayPaths,  sampleSize)
 
 if __name__ == "__main__":
     bgModel = backgroundModel(verbose=True)
@@ -108,7 +113,7 @@ if __name__ == "__main__":
     
     bgModel.getVideoPaths("/run/media/peter/Elements/peter/data/",  start,  end)
     
-    bgModel.createDayModel()
+    bgModel.createDayModel(3)
     
 #    bgModel.createNightModel()
     
