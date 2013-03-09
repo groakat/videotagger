@@ -2,6 +2,8 @@ from os import path
 import os
 import re
 import datetime as dt
+import random
+from ffvideo import VideoStream
 
 class videoExplorer(object):
     """
@@ -10,13 +12,14 @@ class videoExplorer(object):
     Allows to filter video files in a root folder to be retrieved by date
 
     """
-    def __init__(self):
+    def __init__(self,  verbose=False):
         self.rootPath = "/run/media/peter/Elements/peter/data/"
         self.start = 0
         self.end = 0
         self.fileList = []
         self.nightList = []
         self.dayList = []
+        self.verbose = verbose
         
     def setTimeRange(self,  start,  end):
         """
@@ -29,7 +32,7 @@ class videoExplorer(object):
         self.end = end
         
     def setRootPath(self,  root):
-        this.rootPath = root
+        self.rootPath = root
         
     def parseFiles(self):
         """
@@ -70,7 +73,7 @@ class videoExplorer(object):
         
         for vid in self.fileList:
             hour = vid[0].hour
-            if hour >= 10 and hour < 22:
+            if hour >= 10 and hour < 23:
                 self.dayList.append(vid)
     
     def filterNightVideos(self):
@@ -82,7 +85,7 @@ class videoExplorer(object):
         
         for vid in self.fileList:
             hour = vid[0].hour
-            if hour < 10 or hour >= 22:
+            if hour < 10 or hour >= 23:
                 self.nightList.append(vid)
                 
     def getPathsOfList(self,  list):
@@ -128,6 +131,64 @@ class videoExplorer(object):
         
         return out 
         
+                
+    def getRandomFrame(self, pathList,  info=False, frameMode='L'):
+        """
+            returns the first frame from a random video of the list
+            
+            INPUT:
+                pathList    <List of Strings>   paths to video files
+                info        bool                return frame and filename
+                frameMode  String              'RGB': color representation
+                                                'L':   gray-scale representation
+                                                'F':   ???
+                
+            OUT:
+                frame       <ndarray>           decoded video frame
+        """
+        file = pathList[random.randint(0,  len(pathList))]            
+        frameNo = random.randint(0,  1600)
+        
+        if self.verbose:
+            print "processing frame {0} of video {1}".format(frameNo,  file)
+        
+        vs = VideoStream(file, frame_mode=frameMode)  
+        
+        frame = vs.next().ndarray()
+        
+        if info:
+            return [frame, file]
+        else:
+            return frame
+                
+    def getFrame(self, file, frameNo=0, info=False, frameMode='L'):
+        """
+            returns the given frame from a given video
+            
+            INPUT:
+                file        String              path to video file
+                frameNo     int                 frame number to be returned
+                info        bool                return frame and filename
+                frameMode  String              'RGB': color representation
+                                                'L':   gray-scale representation
+                                                'F':   ???
+                                                
+                
+            OUT:
+                frame       <ndarray>           decoded video frame
+        """
+        
+        if self.verbose:
+            print "processing frame {0} of video {1}".format(frameNo,  file)
+        
+        vs = VideoStream(file, frame_mode=frameMode)  
+        
+        frame = vs.get_frame_no(frameNo).ndarray()
+        
+        if info:
+            return [frame, file]
+        else:
+            return frame
         
         
 

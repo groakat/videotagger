@@ -1,7 +1,5 @@
 from pyTools.system.videoExplorer import videoExplorer
-from ffvideo import VideoStream
 import datetime as dt
-import random
 import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib as mpl
@@ -11,7 +9,7 @@ import os
 import dateutil.parser
 
 class backgroundModel(object):
-    def __init__(self,  verbose=False):
+    def __init__(self,  verbose=False, gray=True):
         self.startDate = 0
         self.endDate = 0
         self.rootPath = 0
@@ -20,6 +18,7 @@ class backgroundModel(object):
         self.verbose = verbose
         self.modelDay = []
         self.modelNight = []
+        self.grayMode = gray
         
     def setData(self, startDate,  endDate):
         self.startDate = startDate
@@ -33,7 +32,7 @@ class backgroundModel(object):
         self.startDate = start
         self.endDate = end
         
-        self.vE = videoExplorer()
+        self.vE = videoExplorer(verbose=self.verbose)
         self.vE.setTimeRange(self.startDate,  self.endDate)
         
         self.vE.parseFiles()
@@ -42,11 +41,11 @@ class backgroundModel(object):
         self.nightPaths = self.vE.getPathsOfList(self.vE.nightList)
         
     def createModelFromListMean(self, pathList, sampleSize=200):
-        mean = np.float32(self.getRandomFrame(pathList))
+        mean = np.float32(self.vE.getRandomFrame(pathList))
         for i in range(2, sampleSize + 1):     
             if self.verbose:
                 print "sample no. {0}".format(i - 1)
-            frame = self.getRandomFrame(pathList)            
+            frame = self.vE.getRandomFrame(pathList)            
             mean += (frame - mean) / i            
         return mean
         
@@ -58,6 +57,14 @@ class backgroundModel(object):
         
         refFrame = self.getRandomFrame(pathList)
         
+        
+        if sampleSize > len(pathList):
+            stepSize = 1
+            sampleSize = len(pathList)
+        else:
+            stepSize = len(pathList) / sampleSize
+            
+        
         frameBuffer = np.empty([refFrame.shape[0],  
                                 refFrame.shape[1],  sampleSize],
                                 dtype=np.uint8)
@@ -65,33 +72,40 @@ class backgroundModel(object):
         frameBuffer[:, :, 0] = refFrame
         
         for i in range(1, sampleSize):
-            frame = self.getRandomFrame(pathList)
+            frame = self.getFrame(pathList[stepSize * i], 0)
             frameBuffer[:, :, i] = frame
         
         medianImage = np.median(frameBuffer, axis=2)
         
         return medianImage
         
+    def getRandomFrame(self, pathList,  info=False):
+        if self.grayMode == True:
+            fM = 'L'
+        else:
+            fM = 'RGB'
         
-    def getRandomFrame(self, pathList):
-        file = pathList[random.randint(0,  len(pathList))]            
-        frameNo = random.randint(0,  1600)
+        return self.vE.getRandomFrame(pathList, frameMode=fM, info=info)
         
-        if self.verbose:
-            print "processing frame {0} of video {1}".format(frameNo,  file)
+    def getFrame(self, path,  info=False):
+        if self.grayMode == True:
+            fM = 'L'
+        else:
+            fM = 'RGB'
         
-        vs = VideoStream(file, frame_mode='L')            
-        return vs.next().ndarray()
-                
+        return self.vE.getFrame(path, frameMode=fM, info=info)
+                        
     def createNightModel(self, sampleSize=20):
         if self.verbose:
             print "creating night model.."
-        self.modelNight = self.createModelFromListMedian(self.nightPaths, sampleSize)
+        self.modelNight = self.createModelFromListMedian(self.nightPaths, 
+                                                         sampleSize)
         
     def createDayModel(self, sampleSize=20):
         if self.verbose:
             print "creating day model.."
-        self.modelDay = self.createModelFromListMedian(self.dayPaths,  sampleSize)
+        self.modelDay = self.createModelFromListMedian(self.dayPaths,  
+                                                       sampleSize)
     
     def saveModels(self, path=''):
         if path == '':
@@ -119,19 +133,17 @@ class backgroundModel(object):
             self.modelDay = img
             self.modelNight = img
             return
-        
-        print names
-        
+                
         data = re.split("--",  re.split("[.]", names[2])[0])
         
         self.startDate = dateutil.parser.parse(data[0])
         self.endDate = dateutil.parser.parse(data[1])
         
         if names[0] == "backgroundModel" and names[1] == "day":
-            self.modelDay = img
+            self.modelDay = img[:, :, 1]
             
         if names[0] == "backgroundModel" and names[1] == "night":
-            self.modelNight = img
+            self.modelNight = img[:, :, 1]
         
 
 if __name__ == "__main__":
@@ -152,6 +164,4 @@ if __name__ == "__main__":
     plt.imshow(bgModel.modelNight)
     plt.show()
     
-    bgModel.saveModels()
-    
-    
+    bgModel.saveModels()    
