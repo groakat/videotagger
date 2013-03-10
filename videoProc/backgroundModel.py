@@ -7,9 +7,23 @@ import warnings
 import re
 import os
 import dateutil.parser
+from skimage.color import *
 
 class backgroundModel(object):
-    def __init__(self,  verbose=False, gray=True):
+    colorModeLst = [['gray', rgb2gray ], 
+                       ['rgb',  lambda x: x], 
+                       ['hsv',  rgb2hsv], 
+                       ['lab',  rgb2lab], 
+                       ['xyz',  rgb2xyz]]
+    
+    
+    def __init__(self,  verbose=False, colorMode='gray'):
+        """
+            INPUT:
+            verbose     bool        switch verbosity
+            colorMode   String      get available colourModes with 
+                                    getcolorModes()
+        """
         self.startDate = 0
         self.endDate = 0
         self.rootPath = 0
@@ -18,7 +32,8 @@ class backgroundModel(object):
         self.verbose = verbose
         self.modelDay = []
         self.modelNight = []
-        self.grayMode = gray
+                
+        self.colorIdx = self.getcolorModes().index(colorMode)
         
     def setData(self, startDate,  endDate):
         self.startDate = startDate
@@ -64,23 +79,42 @@ class backgroundModel(object):
         else:
             stepSize = len(pathList) / sampleSize
             
+        ## framebuffer a list with one element per dimension of reference image
+        if len(refFrame.shape) > 2:
+            frameBuffer = [None] * refFrame.shape[2]
+            
+            for i in range(len(frameBuffer)):
+                frameBuffer[i] = np.empty([ refFrame.shape[0],  
+                                            refFrame.shape[1],  sampleSize],
+                                            dtype=np.uint8)
+                frameBuffer[i][:, :, 0] = refFrame[:, :, i]
+            
+            for s in range(1, sampleSize):
+                frame = self.getFrame(pathList[stepSize * s], 0)
+                for i in range(len(frameBuffer)):
+                    frameBuffer[i][:, :, s] = frame[:, :, i]
+            
+            medianImage = np.zeros(refFrame.shape,  np.uint8)
+            
+            for i in range(len(frameBuffer)):
+                medianImage[:, :, i] = np.median(frameBuffer[i], axis=2)
+            
+        else:
+            frameBuffer = np.empty([ refFrame.shape[0],  
+                                            refFrame.shape[1],  sampleSize],
+                                            dtype=np.uint8)
+            frameBuffer[:, :, 0] = refFrame
         
-        frameBuffer = np.empty([refFrame.shape[0],  
-                                refFrame.shape[1],  sampleSize],
-                                dtype=np.uint8)
-                                
-        frameBuffer[:, :, 0] = refFrame
-        
-        for i in range(1, sampleSize):
-            frame = self.getFrame(pathList[stepSize * i], 0)
-            frameBuffer[:, :, i] = frame
-        
-        medianImage = np.median(frameBuffer, axis=2)
-        
+            for s in range(1, sampleSize):
+                frame = self.getFrame(pathList[stepSize * s], 0)
+                frameBuffer[:, :, s] = frame
+            
+            medianImage = np.median(frameBuffer, axis=2)
+                
         return medianImage
         
     def getRandomFrame(self, pathList,  info=False):
-        if self.grayMode == True:
+        if self.colorModeLst[self.colorIdx][0] == 'gray':
             fM = 'L'
         else:
             fM = 'RGB'
@@ -88,7 +122,7 @@ class backgroundModel(object):
         return self.vE.getRandomFrame(pathList, frameMode=fM, info=info)
         
     def getFrame(self, path,  info=False):
-        if self.grayMode == True:
+        if self.colorModeLst[self.colorIdx][0] == 'gray':
             fM = 'L'
         else:
             fM = 'RGB'
@@ -145,6 +179,11 @@ class backgroundModel(object):
         if names[0] == "backgroundModel" and names[1] == "night":
             self.modelNight = img[:, :, 1]
         
+    def getcolorModes(self):
+        """
+            returns available colour spaces
+        """
+        return [row[0] for row in self.colorModeLst]
 
 if __name__ == "__main__":
     bgModel = backgroundModel(verbose=True)
