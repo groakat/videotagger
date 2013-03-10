@@ -5,8 +5,13 @@
     http://stackoverflow.com/questions/5836560/color-values-in-imshow-for-matplotlib
 """
 from matplotlib import pyplot as plt
+from matplotlib.pyplot import *
 import numpy as np
 import matplotlib.image as mpimg
+from copy import *
+from matplotlib.offsetbox import TextArea, DrawingArea, OffsetImage, \
+     AnnotationBbox
+import matplotlib as mpl
 
 class imgViewer(object):
     def show(self,  img):
@@ -16,6 +21,71 @@ class imgViewer(object):
         
         self.handler = EventHandler(self)        
         plt.show()     
+        
+        
+    def showPatch(self, img, center, size, patch_zoom=0.2, offsetX=0, offsetY=0.5, fig=None, no=0):
+        if fig == None:
+            fig, tmp = subplots()
+            
+        ## create artifical border around the image to display 
+        ## patchbox uncroped inline
+        #border = fig.add_axes([0 + offsetX, 0 + offsetY, 1, 2.0])
+        #border.axis('off')
+        
+        ## axis for image
+        ax = fig.add_axes([offsetX,offsetY, 0.5, 1])
+        
+        im = ax.imshow(img)
+        ax.axis('off')
+        
+        # conversion from numpy order to tuple order
+        a = copy(center[0])
+        center[0] = copy(center[1])
+        center[1] = copy(a)
+        
+        ## create frame around patch
+        xy = copy(center)
+        xy[0] -= size[0]/2
+        xy[1] -= size[1]/2
+            
+        rect = mpl.patches.Rectangle(xy,size[0], size[1])
+        rect.set_fill(False)
+        
+        ax.add_patch(rect)
+           
+        ## display patch with zoom
+        if xy[0] < 0:
+            xy[0] = 0
+        if xy[1] < 0:
+            xy[1] = 0
+            
+        h = xy[1]+size[1]
+        if  h > img.shape[0]:
+            h = img.shape[0]
+            
+        w = xy[0]+size[0]
+        if  w > img.shape[1]:
+            w = img.shape[1]
+                
+        patch = img[xy[1]:h, xy[0]:w]
+
+        norm = mpl.colors.Normalize(vmin=np.min(img), vmax=np.max(img))
+        imagebox = OffsetImage(patch, zoom=patch_zoom, norm=norm)
+
+        ab = AnnotationBbox(imagebox, center,
+                            xybox=(1.6, img.shape[0]-size[0]-30),
+                            xycoords='data',
+                            boxcoords=("axes fraction", "data"),#"offset points",
+                            pad=0.5,
+                            arrowprops=dict(arrowstyle="->",
+                                            connectionstyle="angle,angleA=0,angleB=90,rad=3")
+                            )
+        
+        ax.add_artist(ab)   
+        
+        cax = fig.add_axes([0.4 + offsetX, 1, 0.02, 0.4])
+        plt.colorbar(im, cax=cax)
+ 
 
 class EventHandler:
     def __init__(self,  iV):
