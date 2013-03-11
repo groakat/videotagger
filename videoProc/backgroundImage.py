@@ -1,31 +1,20 @@
 import numpy as np
 
-class backgroundImage(object):
-    def __init__(self, img):
-        self.setImage(img)
-        self.resetShiftList()
-        
-    def setImage(self, img):
-        if img.dtype.kind in ('u'):
-            self.bgImg = np.int16(img)
-        else:
-            self.bgImg = img
-        
-        self.dtype = self.bgImg.dtype
+class backgroundImage(np.ndarray):
+    __array_priority__ = 100
+    
+    def __new__(cls,  img):
+        obj = np.asarray(img).view(cls)
+        obj.shiftList = []
+        return obj
         
     def resetShiftList(self):
         self.shiftList = []
-            
-    def __sub__(self,  other):
-        return self.substractImg(other)
-        
-    def __rsub__(self,  other):
-        raise ValueError("function not implemented")
         
     def subtractImg(self, img, offsetX=0, offsetY=0):
         diff = np.subtract(*self.alignImgPair([offsetX,  offsetY], 
                                               img, 
-                                              self.bgImg))
+                                              self))
         
         if len(diff.shape) == 3:
             return np.sum(diff, axis=2)
@@ -34,7 +23,7 @@ class backgroundImage(object):
             
     def subtractImgPadding(self, img, shift=[0, 0]):
         self.shiftList.append(shift)
-        diff = np.subtract(*self.alignImgPairPadding(shift, img, self.bgImg))
+        diff = np.subtract(*self.alignImgPairPadding(shift, img, self))
         
         if len(diff.shape) == 3:
             return np.sum(diff, axis=2)
@@ -42,7 +31,7 @@ class backgroundImage(object):
             return diff 
         
     def getValidROI(self,  reset=False):
-        ret = self.getValidSlices(self.shiftList, self.bgImg.shape)
+        ret = self.getValidSlices(self.shiftList, self.shape)
         if reset:
             self.resetShiftList()
         return ret
@@ -163,7 +152,7 @@ if __name__ == "__main__":
     plt.imshow(diff)
     plt.show()
     
-    ## substraction with padded border
+    ## subtraction with padded border
     shift = [-10,  -5]
     bgImg = backgroundImage(grayLena)
     diff = bgImg.subtractImgPadding(grayLena, shift)    
@@ -191,9 +180,8 @@ if __name__ == "__main__":
     plt.show()
     
     ## overloaded - operator
-    #diff1 = grayLena - bgImg
-    #diff2 = bgImg - grayLena
+    diff1 = grayLena - bgImg
+    diff2 = bgImg - grayLena
     
-    #print not np.any(((diff == diff1) == (diff == diff2)) != True)
-    
+    print "finished backgroundImage example"   
     
