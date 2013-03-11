@@ -1,4 +1,5 @@
 from pyTools.system.videoExplorer import videoExplorer
+from pyTools.videoProc.backgroundImage import *
 import datetime as dt
 import numpy as np
 from matplotlib import pyplot as plt
@@ -132,14 +133,16 @@ class backgroundModel(object):
     def createNightModel(self, sampleSize=20):
         if self.verbose:
             print "creating night model.."
-        self.modelNight = self.createModelFromListMedian(self.nightPaths, 
-                                                         sampleSize)
+        self.modelNight = backgroundImage(
+                                self.createModelFromListMedian(self.nightPaths, 
+                                                         sampleSize))
         
     def createDayModel(self, sampleSize=20):
         if self.verbose:
             print "creating day model.."
-        self.modelDay = self.createModelFromListMedian(self.dayPaths,  
-                                                       sampleSize)
+        self.modelDay = backgroundImage(
+                                self.createModelFromListMedian(self.dayPaths,  
+                                                       sampleSize))
     
     def saveModels(self, path=''):
         if path == '':
