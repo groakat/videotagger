@@ -55,20 +55,7 @@ class imgViewer(object):
            
         ## display patch with zoom
         if patch == None:
-            if xy[0] < 0:
-                xy[0] = 0
-            if xy[1] < 0:
-                xy[1] = 0
-                
-            h = xy[1]+patchSize[1]
-            if  h > img.shape[0]:
-                h = img.shape[0]
-                
-            w = xy[0]+patchSize[0]
-            if  w > img.shape[1]:
-                w = img.shape[1]
-                    
-            patch = img[xy[1]:h, xy[0]:w]
+            patch = self.extractPatch(img, center, patchSize)
 
         norm = mpl.colors.Normalize(vmin=np.min(img), vmax=np.max(img))
         imagebox = OffsetImage(patch, zoom=patch_zoom, norm=norm)
@@ -86,6 +73,35 @@ class imgViewer(object):
         
         cax = fig.add_axes([0.4 + offsetX, 1, 0.02, 0.4])
         plt.colorbar(im, cax=cax)
+        
+    @staticmethod
+    def extractPatch(img, center, patchSize):
+        """
+            Extracts savely a patch from an image. The patch is centered around 
+            center and has height/ width as specified in patchSize
+            Input:
+                img         <ndarray>                   image
+                center      [int, int]                  center position of patch
+                patchSize   [int, int]                  size of patch
+        """
+        xy = copy(center)
+        xy[0] -= patchSize[0]/2
+        xy[1] -= patchSize[1]/2
+        
+        if xy[0] < 0:
+            xy[0] = 0
+        if xy[1] < 0:
+            xy[1] = 0
+            
+        h = xy[1]+patchSize[1]
+        if  h > img.shape[0]:
+            h = img.shape[0]
+            
+        w = xy[0]+patchSize[0]
+        if  w > img.shape[1]:
+            w = img.shape[1]
+                
+        return img[xy[1]:h, xy[0]:w]
  
 
 class EventHandler:
