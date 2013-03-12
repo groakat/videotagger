@@ -56,7 +56,7 @@ class Vials(object):
                             'roi':[int,int]         vial region of interests
                             'patch':<np.ndarray>    image of patch
                             'center':[int,int]      center of patch wrt roi
-                            'windowSize':[int,int]  windowSize for frame in roi
+                            'patchSize':[int,int]   size of patch frame in roi
         """
         iV = imgViewer()
         figure = plt.figure(figsize=(11,7))
@@ -68,7 +68,7 @@ class Vials(object):
             #diffMin = np.unravel_index(np.argmin(vDiff), vDiff.shape)
             fig = iV.showPatch(vialImg, 
                                     center=vial.get('center'), 
-                                    size=vial.get('windowSize'), 
+                                    patchSize=vial.get('patchSize'), 
                                     patch_zoom=2, 
                                     fig=figure,  
                                     offsetX=0.4 * i, 
@@ -89,8 +89,8 @@ if __name__ == "__main__":
     v = Vials()
     
     v1 = {  'roi':[0, 100], 'patch':lena[10:20, 10:20], 
-            'windowSize':[10, 10],  'center':[15, 15]}
+            'patchSize':[10, 10],  'center':[15, 15]}
     v2 = {  'roi':[150, 250], 'patch':lena[10:40, 50:150], 
-            'windowSize':[10, 10],  'center':[15, 15]}
+            'patchSize':[10, 10],  'center':[15, 15]}
     
     v.plotVialWithPatch(lena, [v1, v2])

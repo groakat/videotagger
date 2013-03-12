@@ -23,7 +23,7 @@ class imgViewer(object):
         plt.show()     
         
         
-    def showPatch(self, img, center, size, patch_zoom=0.2, offsetX=0, offsetY=0.5, fig=None, no=0, patch=None):
+    def showPatch(self, img, center, patchSize, patch_zoom=0.2, offsetX=0, offsetY=0.5, fig=None, no=0, patch=None):
         if fig == None:
             fig, tmp = subplots()
             
@@ -45,10 +45,10 @@ class imgViewer(object):
         
         ## create frame around patch
         xy = copy(center)
-        xy[0] -= size[0]/2
-        xy[1] -= size[1]/2
+        xy[0] -= patchSize[0]/2
+        xy[1] -= patchSize[1]/2
             
-        rect = mpl.patches.Rectangle(xy,size[0], size[1])
+        rect = mpl.patches.Rectangle(xy,patchSize[0], patchSize[1])
         rect.set_fill(False)
         
         ax.add_patch(rect)
@@ -60,11 +60,11 @@ class imgViewer(object):
             if xy[1] < 0:
                 xy[1] = 0
                 
-            h = xy[1]+size[1]
+            h = xy[1]+patchSize[1]
             if  h > img.shape[0]:
                 h = img.shape[0]
                 
-            w = xy[0]+size[0]
+            w = xy[0]+patchSize[0]
             if  w > img.shape[1]:
                 w = img.shape[1]
                     
@@ -74,7 +74,7 @@ class imgViewer(object):
         imagebox = OffsetImage(patch, zoom=patch_zoom, norm=norm)
 
         ab = AnnotationBbox(imagebox, center,
-                            xybox=(1.6, img.shape[0]-size[0]-30),
+                            xybox=(1.6, img.shape[0]-patchSize[0]-30),
                             xycoords='data',
                             boxcoords=("axes fraction", "data"),#"offset points",
                             pad=0.5,
