@@ -4,7 +4,10 @@ class backgroundImage(np.ndarray):
     __array_priority__ = 100
     
     def __new__(cls,  img):
-        obj = np.asarray(img).view(cls)
+        if img.dtype.kind in ('u'): 
+            obj = np.asarray(img, dtype=np.int16).view(cls)
+        else: 
+            obj = np.asarray(img).view(cls)        
         obj.shiftList = []
         return obj
         
