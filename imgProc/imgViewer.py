@@ -23,7 +23,7 @@ class imgViewer(object):
         plt.show()     
         
         
-    def showPatch(self, img, center, size, patch_zoom=0.2, offsetX=0, offsetY=0.5, fig=None, no=0):
+    def showPatch(self, img, center, size, patch_zoom=0.2, offsetX=0, offsetY=0.5, fig=None, no=0, patch=None):
         if fig == None:
             fig, tmp = subplots()
             
@@ -54,20 +54,21 @@ class imgViewer(object):
         ax.add_patch(rect)
            
         ## display patch with zoom
-        if xy[0] < 0:
-            xy[0] = 0
-        if xy[1] < 0:
-            xy[1] = 0
-            
-        h = xy[1]+size[1]
-        if  h > img.shape[0]:
-            h = img.shape[0]
-            
-        w = xy[0]+size[0]
-        if  w > img.shape[1]:
-            w = img.shape[1]
+        if patch == None:
+            if xy[0] < 0:
+                xy[0] = 0
+            if xy[1] < 0:
+                xy[1] = 0
                 
-        patch = img[xy[1]:h, xy[0]:w]
+            h = xy[1]+size[1]
+            if  h > img.shape[0]:
+                h = img.shape[0]
+                
+            w = xy[0]+size[0]
+            if  w > img.shape[1]:
+                w = img.shape[1]
+                    
+            patch = img[xy[1]:h, xy[0]:w]
 
         norm = mpl.colors.Normalize(vmin=np.min(img), vmax=np.max(img))
         imagebox = OffsetImage(patch, zoom=patch_zoom, norm=norm)
@@ -111,10 +112,10 @@ class EventHandler:
 
 
 if __name__ == "__main__":
-    img = mpimg.imread('stinkbug.png')
-    
-#    img = np.random.rand(10,10)*255
+    from skimage import data
+    lena = data.lena()
     
     imView = imgViewer()
     
-    imView.show(img)
+    imView.show(lena)
+    imView.showPatch(lena, [200, 50], [50, 50], 2)

@@ -3,7 +3,7 @@ from pyTools.imgProc.imgViewer import *
 import matplotlib.pyplot as plt
 
 class Vials(object):
-    def __init__(self,  rois):
+    def __init__(self,  rois=None):
         """
             INPUT:
                 rois    2D-list of int      list of x begining and ends of
@@ -43,3 +43,54 @@ class Vials(object):
         ax.axis('off')
         plt.show()
         plt.draw()
+    
+    @staticmethod
+    def plotVialWithPatch(img,  vials):
+        """
+            Input:
+                img     <np.ndarray>        image that is displayed underneath
+                vials   <list of dictionary>    patches that are displayed
+                                                see next line for dictionary
+                                                definition
+                        dictionary:         
+                            'roi':[int,int]         vial region of interests
+                            'patch':<np.ndarray>    image of patch
+                            'center':[int,int]      center of patch wrt roi
+                            'windowSize':[int,int]  windowSize for frame in roi
+        """
+        iV = imgViewer()
+        figure = plt.figure(figsize=(11,7))
+        i = 0
+        for vial in vials:            
+            roi = vial.get('roi')
+            vialImg = img[:, roi[0]:roi[1]]
+                        
+            #diffMin = np.unravel_index(np.argmin(vDiff), vDiff.shape)
+            fig = iV.showPatch(vialImg, 
+                                    center=vial.get('center'), 
+                                    size=vial.get('windowSize'), 
+                                    patch_zoom=2, 
+                                    fig=figure,  
+                                    offsetX=0.4 * i, 
+                                    patch=vial.get('patch'))
+            i += 1
+        
+        #border.axis('off')
+        ax = figure.add_axes([0.4 * (i+1), 0.3, 0.2, -0.02])
+        ax.axis('off')
+        plt.show()
+        plt.draw()
+
+
+if __name__ == "__main__":
+    from skimage import data
+    lena = data.lena()
+    
+    v = Vials()
+    
+    v1 = {  'roi':[0, 100], 'patch':lena[10:20, 10:20], 
+            'windowSize':[10, 10],  'center':[15, 15]}
+    v2 = {  'roi':[150, 250], 'patch':lena[10:40, 50:150], 
+            'windowSize':[10, 10],  'center':[15, 15]}
+    
+    v.plotVialWithPatch(lena, [v1, v2])
