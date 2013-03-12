@@ -64,7 +64,7 @@ class Vials(object):
         for vial in vials:            
             roi = vial.get('roi')
             vialImg = img[:, roi[0]:roi[1]]
-                        
+            
             #diffMin = np.unravel_index(np.argmin(vDiff), vDiff.shape)
             fig = iV.showPatch(vialImg, 
                                     center=vial.get('center'), 
