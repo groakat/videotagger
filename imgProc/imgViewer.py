@@ -27,8 +27,8 @@ class imgViewer(object):
         if fig == None:
             fig, tmp = subplots()
             
-        ## create artifical border around the image to display 
-        ## patchbox uncroped inline
+        ## create artificial border around the image to display 
+        ## patchbox uncropped inline
         #border = fig.add_axes([0 + offsetX, 0 + offsetY, 1, 2.0])
         #border.axis('off')
         

@@ -29,13 +29,14 @@ class Vials(object):
     def plotVialMin(self,  diff,  windowSize=[60, 60]):
         #figure, border = plt.subplots()
         figure = plt.figure(figsize=(11,7))
+        diffMin = [None] * len(self.rois)
         for i in range(len(self.rois)):
             
             vial = self.rois[i]
             vDiff = diff[:, vial[0]:vial[1]]
                         
-            diffMin = np.unravel_index(np.argmin(vDiff), vDiff.shape)
-            fig = self.iV.showPatch(vDiff, np.asarray(diffMin), windowSize, 2, 
+            diffMin[i] = np.unravel_index(np.argmin(vDiff), vDiff.shape)
+            fig = self.iV.showPatch(vDiff, np.asarray(diffMin[i]), windowSize, 2, 
                             fig=figure,  offsetX=0.4 * i)
         
         #border.axis('off')
@@ -43,6 +44,8 @@ class Vials(object):
         ax.axis('off')
         plt.show()
         plt.draw()
+        
+        return diffMin
     
     @staticmethod
     def plotVialWithPatch(img,  vials):

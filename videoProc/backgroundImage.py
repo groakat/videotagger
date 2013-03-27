@@ -85,18 +85,21 @@ class backgroundImage(np.ndarray):
                                                 - backgroundSubstractionWeaver
                                                 - backgroundSubstractionWeaverF
         """
-        if func == self.backgroundSubstractionStack:
-            self.createBackgroundStack()
+        if func == self.backgroundSubtractionStack:
+            if self.bgStack == []:
+                self.createBackgroundStack()
             self.subtractStackFunc = \
-                lambda img: self.backgroundSubstractionStack(img, self.bgStack)
+                lambda img: self.backgroundSubtractionStack(img, self.bgStack)
                 
         elif func == self.backgroundSubtractionWeaver:
-            self.createBackgroundStack()
+            if self.bgStack == []:
+                self.createBackgroundStack()
             self.subtractStackFunc = \
                 lambda img: self.backgroundSubtractionWeaver(img, self.bgStack)
                 
         elif func == self.backgroundSubtractionWeaverF:
-            self.createBackgroundStack(fortranStyle=True)
+            if self.bgStackF == []:
+                self.createBackgroundStack(fortranStyle=True)
             self.subtractStackFunc = \
                lambda img: self.backgroundSubtractionWeaverF(img, self.bgStackF)
                
@@ -227,7 +230,7 @@ class backgroundImage(np.ndarray):
         return rngX,  rngY
     
     @staticmethod
-    def backgroundSubstractionShiftsNaive(img, bgImg, rngX=range(-2, 3), 
+    def backgroundSubtractionShiftsNaive(img, bgImg, rngX=range(-2, 3), 
                                             rngY=range(-2, 3)):
         """
             Naive background subtraction employing shifts of background to 
@@ -302,7 +305,7 @@ class backgroundImage(np.ndarray):
         return bgStack
     
     @staticmethod
-    def backgroundSubstractionStack(img, bgStack):
+    def backgroundSubtractionStack(img, bgStack):
         """
             simple function to operate on precomputed background stacks 
             
@@ -630,12 +633,12 @@ class backgroundImage(np.ndarray):
         sumT = 0
         for i in range(10):
             t = time()
-            diffImgNaive = self.backgroundSubstractionShiftsNaive(img, self)
+            diffImgNaive = self.backgroundSubtractionShiftsNaive(img, self)
             sumT += time() - t
         print 'naive implementation of background subtraction using shifts', sumT / i
 
         sumT = 0
-        bgFunc = self.backgroundSubstractionStack
+        bgFunc = self.backgroundSubtractionStack
         self.configureStackSubtraction(bgFunc)
         # make sure it is comiled
         diffImgFast = self.subtractStack(img)
@@ -649,7 +652,7 @@ class backgroundImage(np.ndarray):
         bgFunc = self.backgroundSubtractionWeaver
         self.configureStackSubtraction(bgFunc)
         # make sure it is comiled
-        diffImgFast = self.subtractStack(img)
+        diffImgFaster = self.subtractStack(img)
         for i in range(10):
             t = time()
             diffImgFaster = self.subtractStack(img)
@@ -660,7 +663,7 @@ class backgroundImage(np.ndarray):
         bgFunc = self.backgroundSubtractionWeaverF
         self.configureStackSubtraction(bgFunc)     
         # make sure it is comiled
-        diffImgFast = self.subtractStack(img)       
+        diffImgFastest = self.subtractStack(img)       
         for i in range(10):
             t = time()
             diffImgFastest = self.subtractStack(img)
