@@ -35,3 +35,16 @@ nosetests.xml
  
 # trac
 trac/*
+
+# test files
+sandbox/*
+
+# python environment files
+startEnv
+pyToolsEnv/*
+
+# bin files
+libs/*
+
+# IPython notebooks
+*.ipynb

@@ -1,0 +1,5 @@
+. ../startEnv
+
+firefox&
+ipython notebook --no-browser
+
