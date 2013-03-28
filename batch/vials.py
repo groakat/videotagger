@@ -26,6 +26,15 @@ class Vials(object):
             args[key] = img[vial[0]:vial[1]]            
             funct(**args)
             
+    def getVialMin(self, diff):
+        diffMin = [None] * len(self.rois)
+        for i in range(len(self.rois)):            
+            vial = self.rois[i]
+            vDiff = diff[:, vial[0]:vial[1]]                        
+            diffMin[i] = np.unravel_index(np.argmin(vDiff), vDiff.shape)      
+            
+        return diffMin
+        
     def plotVialMin(self,  diff,  windowSize=[60, 60]):
         #figure, border = plt.subplots()
         figure = plt.figure(figsize=(11,7))

@@ -146,7 +146,7 @@ class videoExplorer(object):
             OUT:
                 frame       <ndarray>           decoded video frame
         """
-        file = pathList[random.randint(0,  len(pathList))]            
+        file = pathList[random.randint(0,  len(pathList) - 1)]            
         frameNo = random.randint(0,  1600)
         
         if self.verbose:

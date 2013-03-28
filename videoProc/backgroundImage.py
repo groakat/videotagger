@@ -105,7 +105,15 @@ class backgroundImage(np.ndarray):
                
         else:
             raise ValueError("func is not a background subtraction function" + 
-                                "involving bgStack. Use help for more info")                                
+                                "involving bgStack. Use help for more info")  
+    
+    def configureStackSubtractionCustom(self, func, fortranStyle=False):
+        if fortranStyle:
+            self.subtractStackFunc = \
+               lambda img: func(img, self.bgStackF)
+        else:
+            self.subtractStackFunc = \
+               lambda img: func(img, self.bgStack)
         
         
     def subtractStack(self, img):
@@ -416,7 +424,7 @@ class backgroundImage(np.ndarray):
         return diff
     
     @staticmethod
-    def backgroundSubtractionWeaverF(img, bgStackF, test=False):
+    def backgroundSubtractionWeaverF(img, bgStackF, test=False, vSkip = 3, hSkip = 3):
         """
             background subtraction using C++ code works on _fortran style_ 
             background stacks, 
@@ -445,16 +453,23 @@ class backgroundImage(np.ndarray):
         bg1 = bgStackF[1]
         bg2 = bgStackF[2]
         
-        
         subtractionCode = \
         """
         // subtraction on all color layers 
         short val = 0;
         short val2 = 0;
-        int shifts = 25;    
-        for (int k = 0; k < Nbg0[0]; k+=2){    
-            if (k % 1080 == 0){
-                k += 1080;
+        int shifts = Nbg0[1];
+        """
+        subtractionCode += \
+        "for (int k = 0; k < Nbg0[0]; k+={0}){{".format(hSkip+1)
+        subtractionCode += \
+        """
+            if (k % 1920 == 0){
+        """
+        subtractionCode += \
+                "k += 1920 * {0};".format(vSkip+1)
+        subtractionCode += \
+        """
             }
             int pos = k * shifts;
             short img0 = im0[k];
@@ -462,151 +477,18 @@ class backgroundImage(np.ndarray):
             short img2 = im2[k];
 
             val = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]); 
-
+        """
+        for i in range(bg0.shape[1]):
+            subtractionCode +=\
+        """
             pos++;
             val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
             if (val2 > val){
                 val = val2;
             }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
-            pos++;
-            val2 = (img0 - bg0[pos]) + (img1 - bg1[pos]) + (img2 - bg2[pos]);                
-            if (val2 > val){
-                val = val2;
-            }
-
+        """
+        subtractionCode += \
+        """
             diff[k] = val;
         }
         """
@@ -689,6 +571,8 @@ class backgroundImage(np.ndarray):
         print 'Difference in the result of backgroundSubtractionWeaverF and naive shift implementation', np.sum(np.abs((diffImgNaive - diffImgFastest).flatten()))
         
         return [diffImgNaive, diffImgFast, diffImgFaster, diffImgFastest]
+    
+    
         
         
             
