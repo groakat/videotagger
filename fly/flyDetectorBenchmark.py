@@ -132,24 +132,24 @@ if __name__ == "__main__":
                                                                 frameMode='RGB')
     benchmarkFlyDetectors(bgModel.modelNight, testImg)
     
-    ## run full comparison
-    print("run comparison for all videos in path. Can take very long...")
-    res = []
-    for f in vE.nightList:
-        testImg = vE.getFrame(f[1], info=True, frameMode='RGB')
-        res.append(compareFlyDetectors(bgModel.modelNight, testImg))
+    ### run full comparison
+    #print("run comparison for all videos in path. Can take very long...")
+    #res = []
+    #for f in vE.nightList:
+        #testImg = vE.getFrame(f[1], info=True, frameMode='RGB')
+        #res.append(compareFlyDetectors(bgModel.modelNight, testImg))
         
-    ## extract locations of largest disagreement
-    b = []
-    for i in res:
-        b.append(i[1])
+    ### extract locations of largest disagreement
+    #b = []
+    #for i in res:
+        #b.append(i[1])
         
-    c = np.asarray(b)
-    sortedErrors = np.argsort(np.max(np.max(np.abs(c), axis=1), axis=1))
+    #c = np.asarray(b)
+    #sortedErrors = np.argsort(np.max(np.max(np.abs(c), axis=1), axis=1))
     
-    ## show largest disagreements
-    for i in range(1,10):
-        print res[sortedErrors[-i]]
-        testImg = vE.getFrame(res[sortedErrors[-i]][0], info=True, frameMode='RGB')
-        showFlyDetectors(bgModel.modelNight, testImg)           
+    ### show largest disagreements
+    #for i in range(1,10):
+        #print res[sortedErrors[-i]]
+        #testImg = vE.getFrame(res[sortedErrors[-i]][0], info=True, frameMode='RGB')
+        #showFlyDetectors(bgModel.modelNight, testImg)           
     

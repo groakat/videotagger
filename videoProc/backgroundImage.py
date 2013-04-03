@@ -63,7 +63,7 @@ class backgroundImage(np.ndarray):
             if type(self.bgStackF) is list:
                 for i in range(len(self.bgStackF)):
                     self.bgStackF[i] = self.bgStackF[i].reshape(
-                                                (self.bgStack[i].shape[1], -1),
+                                                (self.bgStackF[i].shape[1], -1),
                                                 order='F')
             else:
                 self.bgStackF = self.bgStackF.reshape(
@@ -109,9 +109,13 @@ class backgroundImage(np.ndarray):
     
     def configureStackSubtractionCustom(self, func, fortranStyle=False):
         if fortranStyle:
+            if self.bgStackF == []:
+                self.createBackgroundStack(fortranStyle=True)
             self.subtractStackFunc = \
                lambda img: func(img, self.bgStackF)
         else:
+            if self.bgStack == []:
+                self.createBackgroundStack()
             self.subtractStackFunc = \
                lambda img: func(img, self.bgStack)
         
