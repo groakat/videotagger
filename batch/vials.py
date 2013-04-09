@@ -2,6 +2,7 @@ import numpy as np
 from pyTools.imgProc.imgViewer import *
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from pyTools.libs.fspecial import *
 
 shiftColor = {'red':   ((0.0, 0.0, 0.0),
                         (0.5, 0.0, 0.1),
@@ -16,7 +17,7 @@ shiftColor = {'red':   ((0.0, 0.0, 0.0),
              }  
 
 class Vials(object):
-    def __init__(self,  rois=None):
+    def __init__(self,  rois=None, gaussWeight=1000, sigma=10):
         """
             INPUT:
                 rois    2D-list of int      list of x begining and ends of
@@ -25,8 +26,9 @@ class Vials(object):
         self.rois = rois
         self.iV = imgViewer()
         distMat = self.generateDistanceMat([65, 65])
-        self.mask = [distMat[0] * self.generateParabola(), 
-                     distMat[1] * self.generateParabola()]
+        gaussKernel = fspecial('gaussian', N=66, Sigma=sigma) * gaussWeight
+        self.mask = [distMat[0] * self.generateParabola() * gaussKernel, 
+                     distMat[1] * self.generateParabola() * gaussKernel]
         self.maskFlip = [self.mask[0], np.flipud(-self.mask[1])]
         
     def batchProcessImage(self,  img,  funct,  args):
@@ -83,14 +85,21 @@ class Vials(object):
         
         return diffMin
     
-    def localizeFly(self, img, diffImg, startPos, plotIterations=False):
+    def getFlyPositions(self, diffImg):
+        initPos = self.getVialMinGlobal(diffImg)
+        pos = []
+        for p in initPos:
+            pos.append(self.localizeFly(diffImg, p))            
+        return pos
+    
+    def localizeFly(self, diffImg, startPos, img=None, plotIterations=False):
         if startPos[0] < 500:
-            return self.meanShiftMin(img, diffImg, self.maskFlip, startPos, 
-                                     N=30, plotIterations=plotIterations,
+            return self.meanShiftMin(diffImg, self.maskFlip, startPos, img=img,
+                                     N=20, plotIterations=plotIterations,
                                      viewer=self.iV)
         else:    
-            return self.meanShiftMin(img, diffImg, self.mask, startPos, N=30,
-                                plotIterations=plotIterations,
+            return self.meanShiftMin(diffImg, self.mask, startPos, N=20, 
+                                plotIterations=plotIterations, img=img,
                                 viewer=self.iV)
     
     @staticmethod
@@ -179,7 +188,7 @@ class Vials(object):
         return [horMat, vertMat]
     
     @staticmethod
-    def generateParabola(power=2, size=[65,65], xoffsetFact=0.6, width=60):
+    def generateParabola(power=2, size=[65,65], xoffsetFact=0.7, width=60):
         """
             generates matrix of 1s in the area of the given
             parabola
@@ -202,8 +211,8 @@ class Vials(object):
         return a
     
     @staticmethod
-    def meanShiftMin(img, diffImg, mask, startPos, viewer, N=15, plotIterations=False, 
-                     patchSize=[65,65]):
+    def meanShiftMin(diffImg, mask, startPos, viewer, img=None, N=15,
+                        plotIterations=False, patchSize=[65,65]):
         """
             fast optimization function that find a minimum within a 
             given patch
@@ -230,6 +239,9 @@ class Vials(object):
         pos = startPos
         
         if plotIterations:
+            if img == None:
+                raise ValueError("img cannot be None if plotIterations = True")
+            
             colMap = LinearSegmentedColormap("BlueRed", shiftColor, N=N)
             
             patchImg = viewer.extractPatch(img[0], np.asarray(pos), patchSize)
@@ -247,7 +259,7 @@ class Vials(object):
             
         
         for i in range(N):
-            patchImg = viewer.extractPatch(img[0], np.asarray(pos), patchSize)
+            #patchImg = viewer.extractPatch(img[0], np.asarray(pos), patchSize)
             patchDiff = viewer.extractPatch(diffImg, np.asarray(pos), patchSize)
         
             a = np.abs(patchDiff.clip(-np.Inf, 0)) * mask[0]
