@@ -4,6 +4,7 @@ import re
 import datetime as dt
 import random
 from ffvideo import VideoStream
+import ffvideo
 
 class videoExplorer(object):
     """
@@ -20,6 +21,7 @@ class videoExplorer(object):
         self.nightList = []
         self.dayList = []
         self.verbose = verbose
+        self.vs = None
         
     def setTimeRange(self,  start,  end):
         """
@@ -147,14 +149,14 @@ class videoExplorer(object):
                 frame       <ndarray>           decoded video frame
         """
         file = pathList[random.randint(0,  len(pathList) - 1)]            
-        frameNo = random.randint(0,  1600)
+        frameNo = random.randint(0,  1600 - 1)
         
         if self.verbose:
             print "processing frame {0} of video {1}".format(frameNo,  file)
         
-        vs = VideoStream(file, frame_mode=frameMode)  
+        self.vs = VideoStream(file, frame_mode=frameMode)  
         
-        frame = vs.next().ndarray()
+        frame = self.vs.next().ndarray()
         
         if info:
             return [frame, file]
@@ -181,15 +183,61 @@ class videoExplorer(object):
         if self.verbose:
             print "processing frame {0} of video {1}".format(frameNo,  file)
         
-        vs = VideoStream(file, frame_mode=frameMode)  
+        self.vs = VideoStream(file, frame_mode=frameMode)  
         
-        frame = vs.get_frame_no(frameNo).ndarray()
+        frame = self.vs.get_frame_no(frameNo).ndarray()
         
         if info:
             return [frame, file]
         else:
             return frame
+                
+    def next(self):
+        """
+            returns next frame in opened video file
+            Call getFrame() or getRandomFrame() first
+            
+            INPUT:
+                info        bool                return frame and filename
+        """
         
+        if self.vs is None:
+            raise AttributeError("no video stream defined. (It might be that" +\
+                                 " the last frame was captured before)")
+        
+        try:
+            frame = self.vs.next().ndarray()
+        except ffvideo.NoMoreData:
+            self.vs = None
+            frame = None
+            raise StopIteration
+            
+        return frame
+        
+    
+    def setVideoStream(self, file,  info=False, frameMode='L'):
+        """
+            returns the first frame from a random video of the list
+            
+            INPUT:
+                pathList    <List of Strings>   paths to video files
+                info        bool                return frame and filename
+                frameMode  String              'RGB': color representation
+                                                'L':   gray-scale representation
+                                                'F':   ???
+                
+            OUT:
+                frame       <ndarray>           decoded video frame
+        """       
+        frameNo = random.randint(0,  1600 - 1)
+        
+        if self.verbose:
+            print "processing frame {0} of video {1}".format(frameNo,  file)
+        
+        self.vs = VideoStream(file, frame_mode=frameMode)  
+        
+    def __iter__(self):
+        return self
         
 
 if __name__ == "__main__":
@@ -207,5 +255,10 @@ if __name__ == "__main__":
     vE.filterDayVideos();
 #    print vE.dayList
     
-    print vE.getPathsOfList(vE.dayList)
+    print vE.getPathsOfList(vE.dayList)[0]
+    
+    # iterate through all frames of a video file
+    vE.setVideoStream(vE.getPathsOfList(vE.dayList)[0])
+    for frame in vE:
+        print frame
     
