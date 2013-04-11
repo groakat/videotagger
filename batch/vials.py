@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from pyTools.libs.fspecial import *
 
+import subprocess
+
 shiftColor = {'red':   ((0.0, 0.0, 0.0),
                         (0.5, 0.0, 0.1),
                         (1.0, 1.0, 1.0)),
@@ -85,22 +87,35 @@ class Vials(object):
         
         return diffMin
     
-    def getFlyPositions(self, diffImg):
+    def getFlyPositions(self, diffImg, img=None, debug=False):
+        if debug:
+            plotIt = True
+            retIt = True
+        else:
+            plotIt = False
+            retIt = False
+            
         initPos = self.getVialMinGlobal(diffImg)
         pos = []
         for p in initPos:
-            pos.append(self.localizeFly(diffImg, p))            
+            pos.append(self.localizeFly(diffImg, p, img=img, 
+                                        plotIterations=plotIt, retIt=retIt))            
         return pos
     
-    def localizeFly(self, diffImg, startPos, img=None, plotIterations=False):
+    def localizeFly(self, diffImg, startPos, img=None, plotIterations=False,
+                    retIt=False):
         if startPos[0] < 500:
             return self.meanShiftMin(diffImg, self.maskFlip, startPos, img=img,
-                                     N=20, plotIterations=plotIterations,
-                                     viewer=self.iV)
+                                     N=20, plotIterations=plotIterations, 
+                                     retIt=retIt, viewer=self.iV)
         else:    
             return self.meanShiftMin(diffImg, self.mask, startPos, N=20, 
                                 plotIterations=plotIterations, img=img,
-                                viewer=self.iV)
+                                retIt=retIt, viewer=self.iV)
+                                
+    def extractPatches(pathList):
+        return Null
+        
     
     @staticmethod
     def plotVialWithPatch(img,  vials):
@@ -212,7 +227,7 @@ class Vials(object):
     
     @staticmethod
     def meanShiftMin(diffImg, mask, startPos, viewer, img=None, N=15,
-                        plotIterations=False, patchSize=[65,65]):
+                        plotIterations=False, retIt=False, patchSize=[65,65]):
         """
             fast optimization function that find a minimum within a 
             given patch
@@ -230,11 +245,16 @@ class Vials(object):
                                             the optimization
                 N           int             number of iterations
                 plotIterations boolean      if True, iterations will be plotted
+                retIt       boolean         if True, iterations will be returned
+                                            as numpy arrays (images)
                 patchSize   [int, int]      size of patch
                 viewer      imageViewer     any instance of an imageViewer object
         """
         if (np.mod(patchSize, 2) == [0,0]).all():
             raise ValueError("size has to be odd")
+        
+        if retIt:
+            plotIterations = True
 
         pos = startPos
         
@@ -244,16 +264,19 @@ class Vials(object):
             
             colMap = LinearSegmentedColormap("BlueRed", shiftColor, N=N)
             
-            patchImg = viewer.extractPatch(img[0], np.asarray(pos), patchSize)
+            patchImg = viewer.extractPatch(img, np.asarray(pos), patchSize)
             patchDiff = viewer.extractPatch(diffImg, np.asarray(pos), patchSize)
         
-            fig1, (ax1, ax2) = plt.subplots(nrows=2)
+            fig1 = plt.figure()
+            #fig1, (ax1, ax2) = plt.subplots(nrows=2)
+            ax1 = fig1.add_subplot(221)
+            ax2 = fig1.add_subplot(222)
             fig1.set_size_inches(18.5,10.5)
             
             ax1.imshow(np.abs(patchDiff.clip(-np.Inf, 0)), 
                        interpolation='nearest')
             
-            diffFig = plt.figure()
+            #diffFig = plt.figure()
             ax2.imshow(patchImg, interpolation='nearest')
             ax2.plot([patchDiff.shape[0] /2], [patchDiff.shape[1]/2], 'bo')
             
@@ -277,9 +300,143 @@ class Vials(object):
                 ax2.plot([patchDiff.shape[1] /2 - (startPos[1] - pos[1])], 
                          [patchDiff.shape[0] /2 - (startPos[0] - pos[0])], 'o',
                          color=colMap(i))            
-                print pos
+                #print pos
                 
-        return pos
+        if not retIt:
+            return pos
+        else:
+            #figImg = viewer.fig2np(fig1)
+            #plt.close(1)
+            return [pos, fig1]
+    
+    @staticmethod
+    def extractPatchesFromListDebug(fileList, baseSaveDir, bgImg, vE, viewer,
+                                    vial, delTmpImg=False):
+        # build a rectangle in axes coords
+        left, width = .25, .5
+        bottom, height = .25, .5
+        right = left + width
+        top = bottom + height
+        
+        bgFunc = bgImg.backgroundSubtractionWeaverF
+        bgImg.configureStackSubtraction(bgFunc)
+        
+        accPos = []
+        for f in fileList:
+            print f
+            vE.setVideoStream(f, info=True, frameMode='RGB')
+            cnt = 0
+            for frame in vE: 
+                diffImg = bgImg.subtractStack(frame)    
+                pos = vial.getFlyPositions(diffImg, img=frame, debug=True)        
+                baseName = baseSaveDir + os.path.basename(f).strip('.mp4') + '.v{0}.{1:05d}.png'
+                
+                for patchNo in range(len(pos)):
+                    patch = viewer.extractPatch(frame, np.asarray(pos[patchNo][0]), [64, 64])
+                    filename = baseName.format(patchNo, cnt)
+                    #imsave(filename, patch)
+                    fig = pos[patchNo][1]
+                    ax3 = fig.add_subplot(223)
+                    ax3.imshow(patch, interpolation='nearest')
+                    ax4 = fig.add_subplot(224)
+                    ax4.text(0.5*(left+right), 0.5*(bottom+top), '{0}'.format(cnt),
+                            horizontalalignment='center',
+                            verticalalignment='center',
+                            fontsize=20, color='red',
+                            transform=ax4.transAxes)
+                    imsave(filename, viewer.fig2np(fig))
+                    plt.close(fig)
+                                    
+                baseName = baseSaveDir + os.path.basename(f).strip('.mp4') + '.{0}{1}{2}'
+                fl = open(baseName.format('', '', 'pos'), 'w')
+                fl.write('{0}'.format(pos))
+                fl.close()
+                
+                cnt += 1
+            
+            accPos.append([f, pos])
+                        
+            baseName = baseSaveDir + os.path.basename(f).strip('.mp4')# + '.{0}{1}.{2:05d}{3}'
+            ffmpegCmd = "ffmpeg -y -i {0}.v{1}.%05d.png -c:v libx264 -preset veryslow -qp 0 -r 30 {0}.v{1}.mp4"
+            for patchNo in range(len(pos)):
+                p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo)
+                                    , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                output = p.communicate()[0]
+            
+            print("processed ", f)
+            
+        
+        fl = open(baseSaveDir + '/all.pos', 'w')
+        fl.write('{0}'.format(accPos))
+        fl.close()
+        
+        if delTmpImg:
+            baseName = baseSaveDir + os.path.basename(f[1]).strip('.mp4') + '.v*.*.png'
+            for filePath in glob.glob(baseName):
+                if os.path.isfile(filePath):
+                    os.remove(filePath)
+    
+    @staticmethod
+    def extractPatchesFromList(fileList, baseSaveDir, bgImg, bgImg, vE, viewer,
+                                    vial, fps=30, delTmpImg=True):
+        # build a rectangle in axes coords
+        left, width = .25, .5
+        bottom, height = .25, .5
+        right = left + width
+        top = bottom + height
+        
+        bgFunc = bgImg.backgroundSubtractionWeaverF
+        bgImg.configureStackSubtraction(bgFunc)
+        
+        accPos = []
+        for f in fileList:
+            # extract patches around flies for each frame
+            patchPaths = []
+            vE.setVideoStream(f, info=True, frameMode='RGB')
+            cnt = 0
+            for frame in vE: 
+                diffImg = bgImg.subtractStack(frame)    
+                pos = vial.getFlyPositions(diffImg, img=frame, debug=False)        
+                baseName = baseSaveDir + os.path.basename(f).strip('.mp4') + \
+                                                            '.v{0}.{1:05d}.png'
+                
+                for patchNo in range(len(pos)):
+                    patch = viewer.extractPatch(frame, np.asarray(pos[patchNo]),
+                                                [64, 64])
+                    filename = baseName.format(patchNo, cnt)
+                    imsave(filename, patch)
+                    patchPaths.append(filename)
+                                    
+                baseName = baseSaveDir + os.path.basename(f).strip('.mp4') + \
+                                                                    '.{0}{1}{2}'
+                fl = open(baseName.format('', '', 'pos'), 'w')
+                fl.write('{0}'.format(pos))
+                fl.close()
+                
+                cnt += 1
+            
+            accPos.append([f, pos])
+            
+            # use ffmpeg to render frames into videos
+            baseName = baseSaveDir + os.path.basename(f).strip('.mp4')
+            ffmpegCmd = "ffmpeg -y -i {0}.v{1}.%05d.png -c:v libx264 -preset veryslow -qp 0 -r {0} {1}.v{2}.mp4"
+            for patchNo in range(len(pos)):
+                p = subprocess.Popen(ffmpegCmd.format(fps, baseName, patchNo),
+                                    shell=True, stdout=subprocess.PIPE, 
+                                    stderr=subprocess.STDOUT)
+                output = p.communicate()[0]
+                
+            # delete images of frames
+            if delTmpImg:
+                for filePath in patchPaths:
+                    os.remove(filePath)                    
+            
+            print("processed ", f)
+            
+        
+        fl = open(baseSaveDir + '/all.pos', 'w')
+        fl.write('{0}'.format(accPos))
+        fl.close()
 
 if __name__ == "__main__":
     from skimage import data
