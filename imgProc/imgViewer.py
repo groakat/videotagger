@@ -85,7 +85,7 @@ class imgViewer(object):
                 center      [int, int]                  center position of patch
                 patchSize   [int, int]                  size of patch
         """
-        xy = copy(center)
+        xy = np.round(copy(center))
         xy[0] -= patchSize[0]/2
         xy[1] -= patchSize[1]/2
         
@@ -103,6 +103,18 @@ class imgViewer(object):
             w = img.shape[1]
                 
         return img[xy[0]:h, xy[1]:w]
+    
+    @staticmethod
+    def fig2np(fig):
+        # If we haven't already shown or saved the plot, then we need to
+        # draw the figure first...
+        fig.canvas.draw()
+
+        # Now we can save it to a numpy array.
+        data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+        data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        
+        return data
  
 
 class EventHandler:
