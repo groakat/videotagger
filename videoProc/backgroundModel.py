@@ -33,6 +33,8 @@ class backgroundModel(object):
         self.verbose = verbose
         self.modelDay = []
         self.modelNight = []
+        
+        self.bgModelList = [None]*2      # [bgImg, startTime, endTime]
                 
         self.colorIdx = self.getcolorModes().index(colorMode)
         
@@ -48,7 +50,7 @@ class backgroundModel(object):
         self.startDate = start
         self.endDate = end
         
-        self.vE = videoExplorer(verbose=self.verbose)
+        self.vE = videoExplorer(verbose=self.verbose, rootPath=rootPath)
         self.vE.setTimeRange(self.startDate,  self.endDate)
         
         self.vE.parseFiles()
@@ -136,6 +138,13 @@ class backgroundModel(object):
         self.modelNight = backgroundImage(
                                 self.createModelFromListMedian(self.nightPaths, 
                                                          sampleSize))
+        times = [a.time() for a in self.vE.getDatesOfList(self.vE.nightList)]
+        # get beginning and end of time range (inverted to dayModel, because
+        # the night range starts in the evening and ends in the morning
+        startTime = max([i for i in times if i < dt.time(12)])
+        endTime = min([i for i in times if i > dt.time(12)])
+        
+        self.bgModelList[1] = [self.modelNight, startTime, endTime]
         
     def createDayModel(self, sampleSize=20):
         if self.verbose:
@@ -143,6 +152,24 @@ class backgroundModel(object):
         self.modelDay = backgroundImage(
                                 self.createModelFromListMedian(self.dayPaths,  
                                                        sampleSize))
+        times = [a.time() for a in self.vE.getDatesOfList(self.vE.dayList)]
+        startTime = min(times)
+        endTime = max(times)
+        self.bgModelList[0] = [self.modelDay, startTime, endTime]
+        
+    def getBgImg(self, time, debug=False):
+        if debug:
+            print time
+        if time >= self.bgModelList[0][1] and time <= self.bgModelList[0][2]:
+            if debug:
+                print "choose day model"
+            return self.bgModelList[0][0]
+        elif time <= self.bgModelList[1][1] or time >= self.bgModelList[1][2]:
+            if debug:
+                print "choose night model"
+            return self.bgModelList[1][0]
+        else:
+            raise ValueError("given time not covered by computed background Models")
     
     def saveModels(self, path=''):
         if path == '':

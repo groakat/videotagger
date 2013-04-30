@@ -85,6 +85,13 @@ class imgViewer(object):
                 center      [int, int]                  center position of patch
                 patchSize   [int, int]                  size of patch
         """
+        
+        rngX, rngY = imgViewer.getValidPatchRange(img, center, patchSize)
+        
+        return img[rngX, rngY]
+    
+    @staticmethod
+    def getValidPatchRange(img, center, patchSize):        
         xy = np.round(copy(center))
         xy[0] -= patchSize[0]/2
         xy[1] -= patchSize[1]/2
@@ -101,8 +108,9 @@ class imgViewer(object):
         w = xy[1]+patchSize[1]
         if  w > img.shape[1]:
             w = img.shape[1]
+            
+        return slice(xy[0],h), slice(xy[1],w)
                 
-        return img[xy[0]:h, xy[1]:w]
     
     @staticmethod
     def fig2np(fig):
@@ -115,6 +123,31 @@ class imgViewer(object):
         data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
         
         return data
+    
+    @staticmethod
+    def createSuppressionMask(frame, center, patchSize):
+        """
+            creates a boolean mask with a "window" of the given patch size 
+            around the center
+            
+            Args:   
+                frame (ndarray):
+                            input image, used for size reference only
+                center (int, int):
+                            center of the window
+                patchSize [int, int]:
+                            size of the patch
+                            
+            Returns:
+                ndarray (boolean): mask
+                    
+        """
+        mask = np.ones((frame.shape[0], frame.shape[1]), dtype=np.bool)
+        rngX, rngY = imgViewer.getValidPatchRange(mask, center, patchSize)
+        # erase patch around fly
+        mask[rngX, rngY] = 0
+        
+        return mask
  
 
 class EventHandler:

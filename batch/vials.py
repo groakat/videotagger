@@ -1,8 +1,11 @@
 import numpy as np
 from pyTools.imgProc.imgViewer import *
+from pyTools.libs.fspecial import *
+from pyTools.system.videoExplorer import *
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-from pyTools.libs.fspecial import *
+import datetime
+import warnings
 
 import subprocess
 
@@ -19,19 +22,45 @@ shiftColor = {'red':   ((0.0, 0.0, 0.0),
              }  
 
 class Vials(object):
-    def __init__(self,  rois=None, gaussWeight=1000, sigma=10):
+    def __init__(self,  rois=None, gaussWeight=1000, sigma=10, xoffsetFact=0.7, 
+                updateLimit = 5000, clfyFunc=None, acceptPosFunc=None):
         """
-            INPUT:
+            Args:
                 rois    2D-list of int      list of x begining and ends of
                                             region of interests for each vial
+                updateLimit (int):
+                                number of frames until the background model gets
+                                updated
+                                -1 for no update
         """
         self.rois = rois
         self.iV = imgViewer()
         distMat = self.generateDistanceMat([65, 65])
         gaussKernel = fspecial('gaussian', N=66, Sigma=sigma) * gaussWeight
-        self.mask = [distMat[0] * self.generateParabola() * gaussKernel, 
-                     distMat[1] * self.generateParabola() * gaussKernel]
+        self.mask = [distMat[0] * self.generateParabola(xoffsetFact=xoffsetFact) * gaussKernel, 
+                     distMat[1] * self.generateParabola(xoffsetFact=xoffsetFact) * gaussKernel]
         self.maskFlip = [self.mask[0], np.flipud(-self.mask[1])]
+        self.update = None          # image that contains updated background
+        self.updateLimit = updateLimit   # how often getFlyPositions has to get 
+                                    # called before update gets uploaded to
+                                    # the background image
+        self.updateCnt = 0          # counter for the updateLimit        
+        if rois is not None:
+            self.wasUpdated = [False] * len(rois)
+        else:
+            self.wasUpdated = None  # boolean list that contains True or False
+                                    # for each roi in rois
+                                    # has to be reset when update is used the 
+                                    # first time
+                               
+        self.baseSaveDir = None
+        self.currentFile = None
+        
+        self.clfyFunc = clfyFunc    # used in getFlyPositions to determine if
+                                    # detected fly should be used for an
+                                    # update of the background
+                                    
+        self.acceptPosFunc = acceptPosFunc # used in localize fly
         
     def batchProcessImage(self,  img,  funct,  args):
         """
@@ -87,7 +116,15 @@ class Vials(object):
         
         return diffMin
     
-    def getFlyPositions(self, diffImg, img=None, debug=False):
+    def getFlyPositions(self, frame, bgImg, img=None, debug=False,
+                        clfyFunc=None, patchSize=[64,64]):
+        if clfyFunc is None:
+            if self.clfyFunc is not None:
+                clfyFunc = self.clfyFunc
+            else:
+                clfyFunc = lambda patch: np.min(patch.flatten()) < -250
+        
+        diffImg = bgImg.subtractStack(frame)
         if debug:
             plotIt = True
             retIt = True
@@ -97,13 +134,65 @@ class Vials(object):
             
         initPos = self.getVialMinGlobal(diffImg)
         pos = []
-        for p in initPos:
-            pos.append(self.localizeFly(diffImg, p, img=img, 
-                                        plotIterations=plotIt, retIt=retIt))            
-        return pos
+        for i in range(len(initPos)):
+            p = initPos[i]
+            if self.acceptPosFunc is None:
+                actPos = self.localizeFly(diffImg, p, img=img, 
+                                        plotIterations=plotIt, retIt=retIt)
+            else:
+                actPos = self.acceptPosFunc(self, diffImg, p, i, img=img, 
+                                        plotIterations=plotIt, retIt=retIt)
+                                  
+            if debug:
+                pos.append(actPos[0])   
+            else:
+                pos.append(actPos)
+                
+            if self.updateLimit == -1:
+                # do not update the background model at all
+                continue
+            
+            if self.wasUpdated[i]:
+                # if there is already a new update, do not bother to compute
+                # everything again
+                continue
+            
+            patch = self.iV.extractPatch(diffImg, 
+                            [pos[i][0], pos[i][1]], patchSize)
+            
+            if clfyFunc(patch):
+                #print("getFlyPositions - minVal", minVal)
+                self.updateBackgroundMask(frame, bgImg, i, pos[i], [300, 100])
+        
+        self.updateCnt += 1
+        if self.updateCnt >= self.updateLimit:
+            self.updateCnt = 0
+            if self.update is not None:
+                bgImg.updateBackgroundModel(self.update)
+                print "update backgroundmodel"
+                
+                if self.baseSaveDir is not None:                
+                    bgFilename = os.path.basename(self.currentFile).strip('.mp4')
+                    bgFilename = self.baseSaveDir + '/' + bgFilename
+                    bgFilename += '-bg-{0}-{1}-{2}-{3}.png'
+                    plt.imsave(bgFilename.format(self.wasUpdated[0],
+                                                 self.wasUpdated[1],
+                                                 self.wasUpdated[2],
+                                                 self.wasUpdated[3]),
+                                self.update)
+                
+                self.update = None
+                
+            self.wasUpdated = [False] * len(self.rois)
+        
+        if not debug:
+            return pos
+        else:
+            return pos, diffImg
     
     def localizeFly(self, diffImg, startPos, img=None, plotIterations=False,
                     retIt=False):
+        
         if startPos[0] < 500:
             return self.meanShiftMin(diffImg, self.maskFlip, startPos, img=img,
                                      N=20, plotIterations=plotIterations, 
@@ -113,9 +202,55 @@ class Vials(object):
                                 plotIterations=plotIterations, img=img,
                                 retIt=retIt, viewer=self.iV)
                                 
-    def extractPatches(pathList):
-        return Null
+    def extractPatches(self, pathList, bgModel, baseSaveDir='/tmp/'):
+        self.baseSaveDir = baseSaveDir
+        for p in pathList:
+            bgImg = bgModel.getBgImg(p[0].time(), debug=True)
+            self.extractPatchesFromList([p[1]], baseSaveDir, bgImg, self)
+            
+    def updateBackgroundMask(self, frame, bgImg, vialNo, center, patchSize):
+        mask = self.createBackgroundUpdateMask(frame, vialNo, center, patchSize)
+        if self.update == None:            
+            self.update = bgImg.createUpdatedBgImg(frame, mask)
+            self.wasUpdated = [False] * len(self.rois)
+            self.wasUpdated[vialNo] = True
+        else:
+            if self.wasUpdated[vialNo] is not True:
+                self.update[mask == 1] = frame[mask == 1]
+                self.wasUpdated[vialNo] = True        
         
+        print("vials.updateBackgroundMask:", self.updateCnt, self.updateLimit, vialNo, center)            
+        
+    
+    def createBackgroundUpdateMask(self, frame, vialNo, center, patchSize):
+        """
+            Creates a mask to cut the frame without the defined path
+            
+            Args:
+                frame (ndimage):  
+                                frame shape will be used as reference for mask
+                vialNo (int):     
+                                index for vial rois
+                center (int, int): 
+                                center of patch
+                patchSize [int, int]:
+                                size of patch
+                                
+            Returns:
+                boolean mask
+        """
+        mask = np.ones((frame.shape[0], frame.shape[1]), dtype=np.bool)
+        vialRng = slice(self.rois[vialNo][0], self.rois[vialNo][1])
+        rngX, rngY = self.iV.getValidPatchRange(mask, center, patchSize)
+        
+        # erase everything outside of the vial
+        mask[:, 0:vialRng.start] = 0
+        mask[:, vialRng.stop :] = 0
+        
+        # erase patch around fly
+        mask[rngX, rngY] = 0
+        
+        return mask
     
     @staticmethod
     def plotVialWithPatch(img,  vials):
@@ -171,9 +306,9 @@ class Vials(object):
         patchesImg = []
         patchesDiff = []
         for pos in minPos:
-            patchesImg.append(viewer.extractPatch(img[0], 
+            patchesImg.append(imgViewer.extractPatch(img[0], 
                                                   np.asarray(pos), [65, 65]))
-            patchesDiff.append(viewer.extractPatch(diffImgTest, 
+            patchesDiff.append(imgViewer.extractPatch(diffImgTest, 
                                                   np.asarray(pos), [65, 65]))
         
         return patchesImg, patchesDiff
@@ -284,6 +419,10 @@ class Vials(object):
         for i in range(N):
             #patchImg = viewer.extractPatch(img[0], np.asarray(pos), patchSize)
             patchDiff = viewer.extractPatch(diffImg, np.asarray(pos), patchSize)
+            
+            if (np.asarray(patchDiff.shape) != patchSize).any():
+                warnings.warn("vials.meanShiftMin: detected position outside of image!")
+                break
         
             a = np.abs(patchDiff.clip(-np.Inf, 0)) * mask[0]
             b = np.abs(patchDiff.clip(-np.Inf, 0)) * mask[1]
@@ -327,8 +466,8 @@ class Vials(object):
             vE.setVideoStream(f, info=True, frameMode='RGB')
             cnt = 0
             for frame in vE: 
-                diffImg = bgImg.subtractStack(frame)    
-                pos = vial.getFlyPositions(diffImg, img=frame, debug=True)        
+                #diffImg = bgImg.subtractStack(frame)    
+                pos = vial.getFlyPositions(frame, bgImg, img=frame, debug=True)        
                 baseName = baseSaveDir + os.path.basename(f).strip('.mp4') + '.v{0}.{1:05d}.png'
                 
                 for patchNo in range(len(pos)):
@@ -377,8 +516,8 @@ class Vials(object):
                     os.remove(filePath)
     
     @staticmethod
-    def extractPatchesFromList(fileList, baseSaveDir, bgImg, bgImg, vE, viewer,
-                                    vial, fps=30, delTmpImg=True):
+    def extractPatchesFromList(fileList, baseSaveDir, bgImg, vial, fps=30, 
+                                 tmpBaseSaveDir='/tmp/', delTmpImg=True):
         # build a rectangle in axes coords
         left, width = .25, .5
         bottom, height = .25, .5
@@ -388,16 +527,22 @@ class Vials(object):
         bgFunc = bgImg.backgroundSubtractionWeaverF
         bgImg.configureStackSubtraction(bgFunc)
         
-        accPos = []
+        
+        viewer = imgViewer()
+        vE = videoExplorer()
+        
         for f in fileList:
             # extract patches around flies for each frame
             patchPaths = []
+            accPos = []
+            
+            vial.currentFile = f
             vE.setVideoStream(f, info=True, frameMode='RGB')
             cnt = 0
             for frame in vE: 
-                diffImg = bgImg.subtractStack(frame)    
-                pos = vial.getFlyPositions(diffImg, img=frame, debug=False)        
-                baseName = baseSaveDir + os.path.basename(f).strip('.mp4') + \
+                #diffImg = bgImg.subtractStack(frame)    
+                pos = vial.getFlyPositions(frame, bgImg, img=frame, debug=False)        
+                baseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4') + \
                                                             '.v{0}.{1:05d}.png'
                 
                 for patchNo in range(len(pos)):
@@ -407,21 +552,22 @@ class Vials(object):
                     imsave(filename, patch)
                     patchPaths.append(filename)
                                     
-                baseName = baseSaveDir + os.path.basename(f).strip('.mp4') + \
+                baseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4') + \
                                                                     '.{0}{1}{2}'
-                fl = open(baseName.format('', '', 'pos'), 'w')
-                fl.write('{0}'.format(pos))
-                fl.close()
+                #fl = open(baseName.format('', '', 'pos'), 'w')
+                #fl.write('{0}'.format(pos))
+                #fl.close()
                 
                 cnt += 1
             
-            accPos.append([f, pos])
+                accPos.append(pos)
             
             # use ffmpeg to render frames into videos
+            tmpBaseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4')
             baseName = baseSaveDir + os.path.basename(f).strip('.mp4')
-            ffmpegCmd = "ffmpeg -y -i {0}.v{1}.%05d.png -c:v libx264 -preset veryslow -qp 0 -r {0} {1}.v{2}.mp4"
+            ffmpegCmd = "ffmpeg -y -i {3}.v{1}.%05d.png -c:v libx264 -preset veryslow -qp 0 -r {2} {0}.v{1}.mp4"
             for patchNo in range(len(pos)):
-                p = subprocess.Popen(ffmpegCmd.format(fps, baseName, patchNo),
+                p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName),
                                     shell=True, stdout=subprocess.PIPE, 
                                     stderr=subprocess.STDOUT)
                 output = p.communicate()[0]
@@ -431,22 +577,78 @@ class Vials(object):
                 for filePath in patchPaths:
                     os.remove(filePath)                    
             
+            fl = open(baseSaveDir + os.path.basename(f).strip('.mp4') + '.pos', 'w')
+            fl.write('{0}'.format(accPos))
+            fl.close()
+            
             print("processed ", f)
             
         
-        fl = open(baseSaveDir + '/all.pos', 'w')
-        fl.write('{0}'.format(accPos))
-        fl.close()
 
 if __name__ == "__main__":
-    from skimage import data
-    lena = data.lena()
+#    from skimage import data
+#    lena = data.lena()
+#    
+#    v = Vials()
+#    
+#    v1 = {  'roi':[0, 100], 'patch':lena[10:20, 10:20], 
+#            'patchSize':[10, 10],  'center':[15, 15]}
+#    v2 = {  'roi':[150, 250], 'patch':lena[10:40, 50:150], 
+#            'patchSize':[10, 10],  'center':[15, 15]}
+#    
+#    v.plotVialWithPatch(lena, [v1, v2])
+
     
-    v = Vials()
+    import sys
+    sys.path.append('/home/peter/code/pyTools/')
+
+    import numpy as np
+    from pyTools.system.videoExplorer import *
+    from pyTools.videoProc.backgroundModel import *
+    from pyTools.imgProc.imgViewer import *
+    from time import time
+
+
+    vE = videoExplorer()
+    bgModel = backgroundModel(verbose=True, colorMode='rgb')
+    viewer = imgViewer()
+    roi = [[350, 660], [661, 960], [971, 1260], [1270, 1600]]
+    vial = Vials(roi, gaussWeight=3000, sigma=15)
     
-    v1 = {  'roi':[0, 100], 'patch':lena[10:20, 10:20], 
-            'patchSize':[10, 10],  'center':[15, 15]}
-    v2 = {  'roi':[150, 250], 'patch':lena[10:40, 50:150], 
-            'patchSize':[10, 10],  'center':[15, 15]}
+    import datetime as dt
+    start = dt.datetime(2013, 02, 19)
+    end = dt.datetime(2013, 02, 21)
+    rootPath = "/run/media/peter/Elements/peter/data/box1.0/"
+    vE.setTimeRange(start, end)
+    vE.setRootPath(rootPath)
+    vE.parseFiles()
+
+    bgModel.getVideoPaths(rootPath, start,  end)
+    bgModel.createDayModel(sampleSize=5)
+    bgModel.createNightModel(sampleSize=10)
+
+    testImg = vE.getRandomFrame(vE.getPathsOfList(vE.nightList), info=True, frameMode='RGB')
     
-    v.plotVialWithPatch(lena, [v1, v2])
+    testImg = vE.getRandomFrame(vE.getPathsOfList(vE.nightList), info=True, frameMode='RGB')
+    bgImg = bgModel.modelNight
+    img = testImg
+    bgFunc = bgModel.modelNight.backgroundSubtractionWeaverF
+    bgModel.modelNight.configureStackSubtraction(bgFunc)
+
+    imgList = []
+    diffImgList = []
+    posList = []
+    for i in range(50):
+        figure(figsize=(20,20))
+        filename = vE.nightList[i][1]
+        testImg = vE.getFrame(filename, frameNo=0, info=False, frameMode='RGB')
+        [testPos, diffImg] = vial.getFlyPositions(testImg, bgImg, img=testImg, debug=True)
+        
+        print(diffImg[testPos[0][0], testPos[0][1]], diffImg[testPos[1][0], testPos[1][1]], 
+              diffImg[testPos[2][0], testPos[2][1]], diffImg[testPos[3][0], testPos[3][1]])
+        
+        imgList.append(testImg)
+        diffImgList.append(diffImg)
+        posList.append(testPos)
+        
+        title(filename)

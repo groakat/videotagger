@@ -13,8 +13,8 @@ class videoExplorer(object):
     Allows to filter video files in a root folder to be retrieved by date
 
     """
-    def __init__(self,  verbose=False):
-        self.rootPath = "/run/media/peter/Elements/peter/data/"
+    def __init__(self,  verbose=False, rootPath="/run/media/peter/Elements/peter/data/"):
+        self.rootPath = rootPath
         self.start = 0
         self.end = 0
         self.fileList = []
@@ -100,8 +100,16 @@ class videoExplorer(object):
             
         return out
                 
+    def getDatesOfList(self,  list):
+        """
+            returns a list of pure datetime without the corresponding paths
+        """
+        out = [item[0] for item in list]
+            
+        return out
+                
         
-    def fileName2DateTime(self,  fn):
+    def fileName2DateTime(self,  fn, ending="mp4"):
         """
             converts filename of video file to python datetime object
             
@@ -117,7 +125,7 @@ class videoExplorer(object):
         date = re.split("[-]", parts[0])
         time = re.split("[-]", parts[1])
         
-        if parts[-1] != "mp4":
+        if parts[-1] != ending:
             return -1        
         
         if len(date) != 3:
@@ -130,7 +138,7 @@ class videoExplorer(object):
         
         out = dt.datetime(int(date[0]), int(date[1]), int(date[2]), 
                           int(time[0]), int(time[1]), int(time[2]))
-        
+                          
         return out 
         
                 

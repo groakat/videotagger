@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.weave as weave
+from copy import copy
 
 class backgroundImage(np.ndarray):
     __array_priority__ = 100
@@ -10,9 +11,11 @@ class backgroundImage(np.ndarray):
         else: 
             obj = np.asarray(img).view(cls)        
         obj.shiftList = []
-        obj.bgStack = []
         obj.bgStackF = []
         obj.subtractStackFunc = 0
+        obj.fortranStyle = False
+        obj.stackIdx = 0
+        obj.bgStack = backgroundImage.calculateBackgroundStack(obj)
         
         return obj
         
@@ -57,9 +60,13 @@ class backgroundImage(np.ndarray):
             self.resetShiftList()
         return ret
     
-    def createBackgroundStack(self, fortranStyle=False):
+    def createBackgroundStack(self, fortranStyle=False, new=True):
+        self.fortranStyle = fortranStyle
+        if new:
+            self.bgStack = self.calculateBackgroundStack(self)
+        
         if(fortranStyle):
-            self.bgStackF = self.calculateBackgroundStack(self)
+            self.bgStackF = copy(self.bgStack)
             if type(self.bgStackF) is list:
                 for i in range(len(self.bgStackF)):
                     self.bgStackF[i] = self.bgStackF[i].reshape(
@@ -69,8 +76,11 @@ class backgroundImage(np.ndarray):
                 self.bgStackF = self.bgStackF.reshape(
                                                     (self.bgStack.shape[1], -1),
                                                     order='F')                
-        else:
-            self.bgStack = self.calculateBackgroundStack(self)
+        #else:
+            #self.bgStack = self.calculateBackgroundStack(self)
+            
+    def updateBackgroundStack(self):
+        self.createBackgroundStack(self.fortranStyle, new=False)
         
     def configureStackSubtraction(self, func):
         """
@@ -134,6 +144,53 @@ class backgroundImage(np.ndarray):
         else:
             raise RuntimeError("configureStackSubtraction() was not called" + 
                                 "before calling this function")
+                                
+    def createUpdatedBgImg(self, frame, mask):
+        """
+            replace frame where mask == False with the backgroundImage
+            
+            Args:
+                frame (ndarray):    input image
+                mask (ndarray):     boolean mask
+                
+            Returns:
+                ndarray:
+                    updated frame
+        """
+        update = np.zeros(tuple(frame.shape), dtype=np.uint8)
+        
+        if len(update.shape) > 2:
+            for i in range(update.shape[2]):
+                update[:,:,i] = self.bgStack[i][self.stackIdx, :].reshape(tuple(mask.shape))
+        else:
+            update[:,:] = self.bgStack[self.stackIdx, :].reshape(tuple(mask.shape))            
+        
+        update[mask == 1] = frame[mask == 1]
+        
+        return update
+    
+    def updateBackgroundModel(self, update, level=-1):
+        """
+            inserts update into the existing background models
+            
+            Args:
+                update (ndarray):
+                            image that is to be inserted into the background 
+                            model
+                level (int):
+                            position (in the background stack) where the image
+                            is to be inserted. If level=-1, the backgroundImage
+                            object will manage the level by itself, by iterating
+                            trough the stack
+        """
+        if level == -1:
+            level = self.stackIdx
+            self.stackIdx = (self.stackIdx + 1) % self.bgStack[0].shape[0]
+        
+        for i in range(self.shape[2]):
+            self.bgStack[i][level, :] = np.int16(update[:,:,i].flatten())
+        self.updateBackgroundStack()
+    
     
     @staticmethod
     def alignImgPair(shift, img, bg):      
