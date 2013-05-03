@@ -1,4 +1,17 @@
+"""
+.. module:: vials
+   :platform: Unix, Windows
+   :synopsis: This class is used to batch-process videos to retrieve fly positions 
+        for each vial. 
+
+.. moduleauthor:: Peter Rennert <p.rennert@cs.ucl.ac.uk>
+
+
+"""
+
+
 import numpy as np
+import png
 from pyTools.imgProc.imgViewer import *
 from pyTools.libs.fspecial import *
 from pyTools.system.videoExplorer import *
@@ -6,7 +19,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import datetime
 import warnings
-
+import pyTools.libs.tifffile as tf
 import subprocess
 
 shiftColor = {'red':   ((0.0, 0.0, 0.0),
@@ -22,16 +35,81 @@ shiftColor = {'red':   ((0.0, 0.0, 0.0),
              }  
 
 class Vials(object):
+    """
+        Vials class
+        
+        This class is used to batch-process videos to retrieve fly positions 
+        for each vial.        
+    """
     def __init__(self,  rois=None, gaussWeight=1000, sigma=10, xoffsetFact=0.7, 
                 updateLimit = 5000, clfyFunc=None, acceptPosFunc=None):
         """
-            Args:
-                rois    2D-list of int      list of x begining and ends of
-                                            region of interests for each vial
-                updateLimit (int):
+        
+        Args:            
+            rois (2D-list of int):      
+                                        list of x begining and ends of
+                                        region of interests for each vial
+            
+            **Settings for distance matrix**
+            
+            This parameters control the bias of the distance matrix.
+            The distance matrix is masked by a parabola and weigthed by a
+            Gaussian kernel.
+            
+            The idea behind this concept is, that flies as well as their 
+            shadows generate large responses in the difference image. 
+            Therefore the search for the fly center (meanshiftMin) has to
+            be biased towards away from the expected location of the shadows
+            
+            gaussWeight (int):  
+                                multiplier used to give weighting of distance
+                                matrix for mean-shift proper values (if this
+                                value is too low, the mean-shift will converge
+                                very slow, if too high the mean shift will 
+                                constantly overshoot). To set this value is 
+                                *tricky*. Try to generate the mask (see code)
+                                by your self, until it gives you sensible
+                                values.
+            sigma (int):        
+                                Sigma for the gaussian weighting on the 
+                                distance matrix (used in mean-shift-min)
+            xoffsetFact(int):   
+                                vertical shift of mask of distance matrix
+                                
+            **Settings for the update procedure**
+            
+            The background will be updated constantly within a certain time
+            interval. Within each interval the first reliable fly position
+            in each vial is used to update the background model with the 
+            current image (exclusive the fly)
+                                
+            updateLimit (int):
                                 number of frames until the background model gets
-                                updated
-                                -1 for no update
+                                updated.-1 for no update
+                                
+            clfyFunc (function):
+                                function that is used to decide whether a 
+                                fly position is reliable or not.
+                                
+                                - Input: This function takes an np.ndarray
+                                - Return: This function has to return a bool
+                                
+                                have a look at :func:`checkIfPatchShowsFly`
+                                for an example that could be used (has to
+                                be wrapped into a lambda function)
+                                
+            acceptPosFunc (function):
+                                if an alternative way than simply accepting
+                                the strongest response from the background 
+                                subtration should be used for determining
+                                the position of the fly in a vial.
+                                Exmaple: :func:`Vials.acceptPosFunc` does
+                                maximum supression if response is not high
+                                enough and the extracted patch cannot be
+                                classified as fly.
+                                
+                                - Input: please refer to :func:`Vials.acceptPosFunc`
+                                - Output: [int, int]
         """
         self.rois = rois
         self.iV = imgViewer()
@@ -64,12 +142,18 @@ class Vials(object):
         
     def batchProcessImage(self,  img,  funct,  args):
         """
+            **Warning:** this function does not work
+        
             processes function for each vial
-            INPUT:
-                img     <numpy.array>       image that is going to be processed
-                funct   <function handle>   function that is batch processed
-                args    <dictionary>        function arguments 
-                                            pass "vial" as argument for image
+            
+            Args:
+                img (numpy.array):       
+                                    image that is going to be processed
+                funct (function):   
+                                    function that is batch processed
+                args (dictionary):
+                                    function arguments pass "vial" as argument 
+                                    for image
         """
         key = args.keys()[args.values().index('vial')]
         for vial in self.rois:
@@ -77,6 +161,21 @@ class Vials(object):
             funct(**args)
             
     def getVialMin(self, diff):
+        """
+        Returns the minimum in diff(Image) for each vial. The returned 
+        coordinates are with respect to the *vial* origin
+        
+        Args:        
+            diff (ndarray):
+                                    difference image 
+                                            
+        Returns:        
+            List of [int, int] containing the [x,y] coordinates of the minimum
+            in each vial        
+            
+        .. seealso::
+            :func:`getVialMinGlobal`
+        """        
         diffMin = [None] * len(self.rois)
         for i in range(len(self.rois)):            
             vial = self.rois[i]
@@ -86,6 +185,21 @@ class Vials(object):
         return diffMin
     
     def getVialMinGlobal(self, diff):
+        """
+        Returns the minimum in diff(Image) for each vial. The returned 
+        coordinates are with respect to the *image* origin
+        
+        Args:        
+            diff (ndarray):
+                                    difference image 
+                                            
+        Returns:        
+            List of [int, int] containing the [x,y] coordinates of the minimum
+            in each vial        
+            
+        .. seealso::
+            :func:`getVialMin`
+        """
         diffMin = [None] * len(self.rois)
         for i in range(len(self.rois)):            
             vial = self.rois[i]
@@ -96,6 +210,18 @@ class Vials(object):
         return diffMin
         
     def plotVialMin(self,  diff,  windowSize=[60, 60]):
+        """
+        Plots the vial minimum (strongest response from the difference image)
+        in the context of the original difference image. The patches of the 
+        given window size are slightly zoomed.
+        
+        Args:
+            diff (np.ndarray):
+                                    any numpy image 
+            windowSize ([int, int]):
+                                    size of patches that are getting 
+                                    extracted and shown        
+        """
         #figure, border = plt.subplots()
         figure = plt.figure(figsize=(11,7))
         diffMin = [None] * len(self.rois)
@@ -118,6 +244,49 @@ class Vials(object):
     
     def getFlyPositions(self, frame, bgImg, img=None, debug=False,
                         clfyFunc=None, patchSize=[64,64]):
+        """
+        Returns positions of flies within all vials.
+        
+        This function searches for the fly positions as well as it manages the
+        update of the background.
+        
+        Args:
+            frame (np.ndarray):
+                                image on which the flies are searched in
+            bgImg (pyTools.videoProc.backgroundImage):
+                                background image for background subtraction
+            patchSize ([int, int]):
+                                size of extracted patch                                
+            clfyFunc (function):
+                                function that is used to decide whether a 
+                                fly position is reliable or not.
+                                
+                                - Input: This function takes an np.ndarray
+                                - Return: This function has to return a bool
+                                
+                                have a look at :func:`checkIfPatchShowsFly`
+                                for an example that could be used (has to
+                                be wrapped into a lambda function)
+            
+            **Debug options**
+            
+            img (np.ndarray):
+                                original image (same as frame argument), for
+                                backward compability
+            debug (bool):
+                                if True vial minima, as well as the meanshiftMin
+                                procedure will be plotted for each vial
+                                (very slow)
+                                
+        Returns:
+            pos: 
+                list of [int, int] the [x,y] position of the flies
+            
+            [pos, img]:
+                if debug==True, it also returns the difference image from the 
+                background subtraction:            
+        
+        """
         if clfyFunc is None:
             if self.clfyFunc is not None:
                 clfyFunc = self.clfyFunc
@@ -192,7 +361,44 @@ class Vials(object):
     
     def localizeFly(self, diffImg, startPos, img=None, plotIterations=False,
                     retIt=False):
+        """        
+        returns fly center given an intial start position. The function ensures 
+        to correct for shadows occuring at the bottom and the top of the vial
+        correctly by using a seperate mask for each case.
         
+        The function employs :func:`meanShiftMin`, an iterative mean-shift 
+        inspired method to find the center of the response in the difference
+        image
+        
+        Args:
+            diffImg (np.ndarray):
+                                difference image
+            startPos ([int, int]):
+                                Intital position of optimization procedure. (see
+                                also :func:`getVialMinGlobal`)
+            
+            **Debug options**
+            
+            img (np.ndarray):
+                                original image, used for plotting the optimzation
+                                steps. Needs to be given if plotIterations=True
+            plotIterations (bool):
+                                if True, :func:`meanShiftMin` will plot its 
+                                iterations
+            retIt (bool):
+                                if True, :func:`meanShiftMin` iterations will
+                                be returned as list (see :func:`meanShiftMin`)
+                                
+        Returns:
+            list([int, int]):
+                the [x,y] positions for each vial
+            
+            list of positions of each iteration:
+                if retIt == True               
+                
+        .. seealso::
+            :func:`meanShiftMin`, :func:`getVialMinGlobal`
+        """
         if startPos[0] < 500:
             return self.meanShiftMin(diffImg, self.maskFlip, startPos, img=img,
                                      N=20, plotIterations=plotIterations, 
@@ -203,12 +409,61 @@ class Vials(object):
                                 retIt=retIt, viewer=self.iV)
                                 
     def extractPatches(self, pathList, bgModel, baseSaveDir='/tmp/'):
+        """
+        extracts all fly locations from all videos in the path list and saves
+        them as individual videos (centered around the flies) and position files
+        in the given directory.
+        
+        It automatically chooses the right background model based on the time
+        the video was captured.
+        
+        Args:
+            pathList (list([datetime, string])):
+                                list of videos that should be processed. The 
+                                pathList can be generated with the methods of 
+                                :mod:`pyTools.system.videoExplorer`
+                                
+                                - datetime: datetime object representing the 
+                                            capture time of the video
+                                - string:   path to video
+                            
+            bgModel (:class:`pyTools.videoProc.backgroundModel`):
+                                model holding background images for different
+                                times (currently just day and night)
+            baseSaveDir (string):
+                                folder that will hold the new video data
+        
+        """
         self.baseSaveDir = baseSaveDir
         for p in pathList:
             bgImg = bgModel.getBgImg(p[0].time(), debug=True)
             self.extractPatchesFromList([p[1]], baseSaveDir, bgImg, self)
             
     def updateBackgroundMask(self, frame, bgImg, vialNo, center, patchSize):
+        """
+        updates mask of background model. It will mask the area of the given
+        vial exclusive the given patch size around the center (fly)
+        
+        The method manages updates done previously for other vials so that the 
+        background model can be efficiently updated once.
+                
+        Args:
+            frame (np.ndarray):
+                                image (current frame)
+            bgImg (:class:`pyTools.videoProc.backgroundModel`):
+                                background image that will be updated
+            vialNo (int):   
+                                number of vial to update
+            center ([int, int]):
+                                center around patch (fly location)
+            patchSize ([int, int]):
+                                area around center that is excluded from the 
+                                update (*make it generous, consider shadows*)
+                                
+        .. seealso::
+            :func:`pyTools.videoProc.backgroundModel.createUpdatedBgImg`
+        
+        """
         mask = self.createBackgroundUpdateMask(frame, vialNo, center, patchSize)
         if self.update == None:            
             self.update = bgImg.createUpdatedBgImg(frame, mask)
@@ -233,7 +488,7 @@ class Vials(object):
                                 index for vial rois
                 center (int, int): 
                                 center of patch
-                patchSize [int, int]:
+                patchSize ([int, int]):
                                 size of patch
                                 
             Returns:
@@ -255,16 +510,22 @@ class Vials(object):
     @staticmethod
     def plotVialWithPatch(img,  vials):
         """
-            Input:
-                img     <np.ndarray>        image that is displayed underneath
-                vials   <list of dictionary>    patches that are displayed
-                                                see next line for dictionary
-                                                definition
-                        dictionary:         
-                            'roi':[int,int]         vial region of interests
-                            'patch':<np.ndarray>    image of patch
-                            'center':[int,int]      center of patch wrt roi
-                            'patchSize':[int,int]   size of patch frame in roi
+        Plots (and highlights) given areas in vials.
+        
+        Can be used to viualize fly detections.
+        
+        Args:
+            img (np.ndarray):
+                                image that is displayed underneath
+            vials (list of dictionary):
+                                patches that are displayed
+                                (see next line for dictionary defintion)                    
+                        *dictionary*:         
+                                        
+                        - 'roi':([int,int])         vial region of interests
+                        - 'patch':(np.ndarray)      image of patch
+                        - 'center':([int,int])      center of patch wrt roi
+                        - 'patchSize':([int,int])   size of patch frame in roi
         """
         iV = imgViewer()
         figure = plt.figure(figsize=(11,7))
@@ -292,8 +553,23 @@ class Vials(object):
     @staticmethod
     def getFlyPatches(bgImg, img, vial):  
         """
-            returns patches around minimums in each vial
-            returns patch of image and difference image
+        Test function that extracts patches around the maxima responses of 
+        background subtraction for each vial. No post processing is performed. 
+        I.e. *no :func:`meanShiftMin` is used` to get fly center
+        
+        Args:
+            bgImg (pyTools.videoProc.backgroundImage):
+                                background image
+            img (np.ndarray):
+                                image / frame
+            vial (pyTools.batch.vials.Vials):
+                                vials object
+                                
+        Return:
+            patchesImg, patchesDiff:
+            
+                - image patch (of size [65,65]) around minimums in each vial
+                - difference image patch (of size [65,65]) around minimums in each vial
         """
         bgFunc = bgModel.modelNight.backgroundSubtractionWeaverF
         bgModel.modelNight.configureStackSubtraction(bgFunc)
@@ -316,10 +592,10 @@ class Vials(object):
     @staticmethod
     def generateDistanceMat(size=[65,65]):
         """
-            generates a distance matrix of given size
-            A distance matrix is a matrix with each coefficient
-            being the distance from the patch center along either
-            the horizontal or vertical axis
+        generates a distance matrix of given size
+        A distance matrix is a matrix with each coefficient
+        being the distance from the patch center along either
+        the horizontal or vertical axis
         """
         if (np.mod(size, 2) == [0,0]).all():
             raise ValueError("size has to be odd")
@@ -339,18 +615,23 @@ class Vials(object):
     
     @staticmethod
     def generateParabola(power=2, size=[65,65], xoffsetFact=0.7, width=60):
-        """
-            generates matrix of 1s in the area of the given
-            parabola
-
-                (1/ width) * x ^ power
+        r"""
+        generates matrix of 1s in the area of the given
+        parabola
         
-            INPUT:
-                power     int        power of parabola function
-                size      [int, int] size of patch
-                xoffset   [0..1]     vertical offset of parabola
-                                    in per cent
-                width     float      denominator of factor before
+        The parabola is generated with the formula: 
+        :math:`\frac{1}{\text{width}}x^{\text{power}}` and shifted vertically
+        by the xoffset.
+        
+        Args:
+            power (int):
+                                    power of parabola function
+            size ([int, int]):
+                                    size of patch
+            xoffset (float: 0..1):
+                                    vertical offset of parabola in per cent
+            width (float):  
+                                    denominator of factor before
         """
         a = np.zeros(tuple(size))
         for r in range(a.shape[0]):
@@ -364,26 +645,43 @@ class Vials(object):
     def meanShiftMin(diffImg, mask, startPos, viewer, img=None, N=15,
                         plotIterations=False, retIt=False, patchSize=[65,65]):
         """
-            fast optimization function that find a minimum within a 
-            given patch
+        fast optimization function that find a minimum within a 
+        given patch
 
-            diffImg will be used for the search and all values greater 
-            than 0 will be clipped (minimization will be only done on
-            negative values)
+        diffImg will be used for the search and all values greater 
+        than 0 will be clipped (minimization will be only done on
+        negative values)
 
-            INPUT:
-                img          np.array       image
-                diffImg      np.array       difference image
-                                            (where min is searched for)
-                mask                        weighting mask
-                startPos    [float, float]  initialization position for
-                                            the optimization
-                N           int             number of iterations
-                plotIterations boolean      if True, iterations will be plotted
-                retIt       boolean         if True, iterations will be returned
-                                            as numpy arrays (images)
-                patchSize   [int, int]      size of patch
-                viewer      imageViewer     any instance of an imageViewer object
+        Args:
+            img  (np.ndarray):
+                                image
+            diffImg (np.array):
+                                difference image (where min is searched for)
+            mask (np.ndarray/binary):
+                                weighting mask
+            startPos ([float, float]):
+                                initialization position for the optimization
+            viewer (imageViewer):
+                                any instance of an imageViewer object
+            N  (int):
+                                number of iterations
+            patchSize ([int, int]):
+                                size of patch
+                            
+            **Debug options**
+            
+            plotIterations (bool):
+                                if True, iterations will be plotted
+            retIt (boolean):
+                                if True, iterations will be returned
+                                as numpy arrays (images)
+        
+        Returns:
+            pos (list([float],[float]))
+            
+            [pos, fig1]:
+                if retIt == True, position as well as a figure with a plot 
+                of the optimization steps
         """
         if (np.mod(patchSize, 2) == [0,0]).all():
             raise ValueError("size has to be odd")
@@ -415,6 +713,7 @@ class Vials(object):
             ax2.imshow(patchImg, interpolation='nearest')
             ax2.plot([patchDiff.shape[0] /2], [patchDiff.shape[1]/2], 'bo')
             
+        patchPixNo = np.prod(patchSize)
         
         for i in range(N):
             #patchImg = viewer.extractPatch(img[0], np.asarray(pos), patchSize)
@@ -427,8 +726,8 @@ class Vials(object):
             a = np.abs(patchDiff.clip(-np.Inf, 0)) * mask[0]
             b = np.abs(patchDiff.clip(-np.Inf, 0)) * mask[1]
         
-            horShift = np.sum(a.flatten()) / np.prod(a.shape)
-            vertShift =  np.sum(b.flatten()) / np.prod(b.shape)
+            horShift = np.sum(a.flatten()) / patchPixNo
+            vertShift =  np.sum(b.flatten()) / patchPixNo#np.prod(b.shape)
             
             pos = [pos[0] + vertShift, pos[1] + horShift]
             
@@ -451,6 +750,13 @@ class Vials(object):
     @staticmethod
     def extractPatchesFromListDebug(fileList, baseSaveDir, bgImg, vE, viewer,
                                     vial, delTmpImg=False):
+        """
+        .. deprecated::  0.1.a1
+            recent changes from :func:`extractPatchesFromList` were not updated
+            in here
+            
+            use :func:`extractPatchesFromList` only
+        """
         # build a rectangle in axes coords
         left, width = .25, .5
         bottom, height = .25, .5
@@ -517,7 +823,38 @@ class Vials(object):
     
     @staticmethod
     def extractPatchesFromList(fileList, baseSaveDir, bgImg, vial, fps=30, 
-                                 tmpBaseSaveDir='/tmp/', delTmpImg=True):
+                                 tmpBaseSaveDir='/tmp/', delTmpImg=True, 
+                                 patchSize=[64, 64]):
+        """
+        extracts patches from a given list of files and encodes the patches
+        in two versions ("lossless" mp4 and FFV1 (avi)) in the given folder.
+        Furthermore this function saves a simple string version of the 
+        positions from where the patches were extracted from in a file with
+        the ending .pos
+        
+        Args:
+            fileList (list(string)):
+                                list of paths to videos
+            baseSaveDir (string):
+                                path to a directory that serves root for 
+                                extracted videos
+            bgImg (pyTools.videoProc.backgroundImage):
+                                background image
+            vial (pyTools.batch.vials.Vial):
+                                vials object
+            fps (int):
+                                framerate for the output video
+            tmpBaseSaveDir (string):
+                                path to directory where patches will be saved
+                                temporary 
+            delTmpImg (bool):
+                                if True temporary patch images will be deleted
+            patchSize ([int, int]):
+                                size of patches (area around detected location 
+                                that is copied into the patches)
+            
+        
+        """
         # build a rectangle in axes coords
         left, width = .25, .5
         bottom, height = .25, .5
@@ -531,6 +868,8 @@ class Vials(object):
         viewer = imgViewer()
         vE = videoExplorer()
         
+        pW = png.Writer(height=patchSize[0],width=patchSize[1], compression=0)
+        
         for f in fileList:
             # extract patches around flies for each frame
             patchPaths = []
@@ -543,13 +882,18 @@ class Vials(object):
                 #diffImg = bgImg.subtractStack(frame)    
                 pos = vial.getFlyPositions(frame, bgImg, img=frame, debug=False)        
                 baseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4') + \
-                                                            '.v{0}.{1:05d}.png'
+                                                            '.v{0}.{1:05d}.tif'
                 
                 for patchNo in range(len(pos)):
                     patch = viewer.extractPatch(frame, np.asarray(pos[patchNo]),
-                                                [64, 64])
+                                                patchSize)
                     filename = baseName.format(patchNo, cnt)
-                    imsave(filename, patch)
+                    #imsave(filename, patch)
+                    
+                    #pngf = open(filename, 'wb')
+                    #pW.write_array(pngf, patch.flatten())
+                    #pngf.close()                                       
+                    tf.imsave(filename, patch)
                     patchPaths.append(filename)
                                     
                 baseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4') + \
@@ -565,8 +909,23 @@ class Vials(object):
             # use ffmpeg to render frames into videos
             tmpBaseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4')
             baseName = baseSaveDir + os.path.basename(f).strip('.mp4')
-            ffmpegCmd = "ffmpeg -y -i {3}.v{1}.%05d.png -c:v libx264 -preset veryslow -qp 0 -r {2} {0}.v{1}.mp4"
+            
+            # render images as avi for complete losslessness
+            # ffmpeg -y -f image2 -r 29.97 -i /tmp/2013-02-19.00-01-00.v0.%05d.png -vcodec ffv1 -sameq /tmp/test.avi
+            ffmpegCmd = "ffmpeg -y -f image2 -r {2} -i {3}.v{1}.%05d.tif -vcodec ffv1 -sameq -r {2} {0}.v{1}.avi"
+            
             for patchNo in range(len(pos)):
+                print(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName))
+                p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName),
+                                    shell=True, stdout=subprocess.PIPE, 
+                                    stderr=subprocess.STDOUT)
+                output = p.communicate()[0]
+            
+            # render images as mp4 for very fast playback
+            #ffmpeg -y -f image2 -r 29.97 -i 2013-02-19.00-00-00.v0.%05d.tif -c:v libx264 -preset faster -qp 0 test.mp4
+            ffmpegCmd = "ffmpeg -y -i {3}.v{1}.%05d.tif -c:v libx264 -preset faster -qp 0 -r {2} {0}.v{1}.mp4"
+            for patchNo in range(len(pos)):
+                print(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName))
                 p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName),
                                     shell=True, stdout=subprocess.PIPE, 
                                     stderr=subprocess.STDOUT)
@@ -583,7 +942,39 @@ class Vials(object):
             
             print("processed ", f)
             
+    @staticmethod
+    def checkIfPatchShowsFly(patch, classifier, flyClass=1, debug=False):
+        """
+        Example definition of a clfyFunc (optional parameter in Vials.__init__)
         
+        Args:
+            patch (np.ndarray):
+                                patch that is checked 
+            classifier (sklearn classifier):
+                                classifier that classifies a fly 
+            flyClass (int):
+                                class label representing a fly
+            debug (bool):
+                                printing out log data
+        """
+        if np.min(patch[30:35,30:35].flatten()) < -150:
+            hog = computeHog(patch)
+            clas = classifier.predict(hog)
+            if  int(clas[0]) == flyClass:
+                return True
+            elif debug:
+                print clas
+                print "patch passed threshold, but classifier rejected it!"
+        
+        return False
+        
+import pyTools.libs.faceparts.vanillaHogUtils as vanHog
+from skimage.color import rgb2gray
+import skimage.transform
+
+def computeHog(patch):
+    a = list(skimage.transform.pyramid_gaussian(patch, sigma=2, max_layer=1))
+    return vanHog.hog(a[1], 9,3, 360, [0, 64, 0, 64])
 
 if __name__ == "__main__":
 #    from skimage import data

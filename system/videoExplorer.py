@@ -253,8 +253,9 @@ if __name__ == "__main__":
     
     start = dt.datetime(2013, 02, 19, 16)
     end = dt.datetime(2013, 02, 19,  17)
-        
+       
     vE.setTimeRange(start, end)
+    
     
     vE.parseFiles()
     
