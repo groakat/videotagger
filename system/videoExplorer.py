@@ -294,8 +294,44 @@ class videoExplorer(object):
         
     def __iter__(self):
         return self
-        
+    
+    @staticmethod
+    def splitFolders(path):
+		"""
+		splits path into its folders and returns them 
+		in a list. 
 
+		.. note::
+			Last entry of the returned list will be the
+			basename of the path if applicable
+
+		Args:
+			path (string):
+							path to split
+
+		Returns:
+			folders (list of strings):
+							list of folders in path
+							
+		Source:
+			http://stackoverflow.com/questions/3167154/how-to-split-a-dos-path-into-its-components-in-python
+		"""
+		folders=[]
+		while 1:
+			path,folder=os.path.split(path)
+
+			if folder!="":
+				folders.append(folder)
+			else:
+				if path!="":
+					folders.append(path)
+
+				break
+
+		folders.reverse()
+
+		return folders
+    
 if __name__ == "__main__":
     vE = videoExplorer()
     

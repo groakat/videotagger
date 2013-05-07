@@ -347,14 +347,18 @@ class Vials(object):
                 print "update backgroundmodel"
                 
                 if self.baseSaveDir is not None:                
-                    bgFilename = os.path.basename(self.currentFile).strip('.mp4')
-                    bgFilename = self.baseSaveDir + '/' + bgFilename
+                    bgFilename = os.path.basename(self.currentFile).strip('.mp4')                    
+                    baseFolder = constructSaveDir(self.baseSaveDir, 
+                                                  self.currentFile)    
+                    bgFilename = baseFolder + '/' + bgFilename
                     bgFilename += '-bg-{0}-{1}-{2}-{3}.png'
                     plt.imsave(bgFilename.format(self.wasUpdated[0],
                                                  self.wasUpdated[1],
                                                  self.wasUpdated[2],
                                                  self.wasUpdated[3]),
                                 self.update)
+                                
+                    print("bgFilename", bgFilename)
                 
                 self.update = None
                 
@@ -916,7 +920,9 @@ class Vials(object):
             
             # use ffmpeg to render frames into videos
             tmpBaseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4')
-            baseName = baseSaveDir + os.path.basename(f).strip('.mp4')
+                        
+            baseFolder = constructSaveDir(baseSaveDir, f)    
+            baseName =  baseFolder + os.path.basename(f).strip('.mp4')
             
             # render images as avi for complete losslessness
             # ffmpeg -y -f image2 -r 29.97 -i /tmp/2013-02-19.00-01-00.v0.%05d.png -vcodec ffv1 -sameq /tmp/test.avi
@@ -944,7 +950,7 @@ class Vials(object):
                 for filePath in patchPaths:
                     os.remove(filePath)                    
             
-            fl = open(baseSaveDir + os.path.basename(f).strip('.mp4') + '.pos', 'w')
+            fl = open(baseFolder + os.path.basename(f).strip('.mp4') + '.pos', 'w')
             fl.write('{0}'.format(accPos))
             fl.close()
             
@@ -1054,7 +1060,15 @@ class Vials(object):
 
         # return default position
         return [33, 33]
+
+def constructSaveDir(baseSaveDir, filename):    
+    folders = videoExplorer.splitFolders(filename)
+    baseFolder = baseSaveDir + folders[-3] + "/" + folders[-2] + "/"
     
+    if not os.path.exists(baseFolder):
+        os.makedirs(baseFolder)
+        
+    return baseFolder
 
 import pyTools.libs.faceparts.vanillaHogUtils as vanHog
 from skimage.color import rgb2gray
