@@ -346,30 +346,12 @@ class Vials(object):
                 else:
                     # make sure that old update image is written at this frame
                     # (with the old content of course)
+                    print("background changed, write update")
                     self.updateCnt = self.updateLimit
         
         self.updateCnt += 1
         if self.updateCnt >= self.updateLimit:
-            self.updateCnt = 0
-            if self.update is not None:
-                bgImg.updateBackgroundModel(self.update)
-                print "update backgroundmodel"
-                
-                if self.baseSaveDir is not None:                
-                    bgFilename = os.path.basename(self.currentFile).strip('.mp4')                    
-                    baseFolder = constructSaveDir(self.baseSaveDir, 
-                                                  self.currentFile)    
-                    bgFilename = baseFolder + '/' + bgFilename
-                    bgFilename += '-bg-{0}-{1}-{2}-{3}.png'
-                    plt.imsave(bgFilename.format(self.wasUpdated[0],
-                                                 self.wasUpdated[1],
-                                                 self.wasUpdated[2],
-                                                 self.wasUpdated[3]),
-                                self.update)
-                
-                self.update = None
-                
-            self.wasUpdated = [False] * len(self.rois)
+            self.updateBackgroundModel()
         
         if not debug:
             return pos
@@ -525,6 +507,29 @@ class Vials(object):
         mask[rngX, rngY] = 0
         
         return mask
+        
+        
+    def updateBackgroundModel(self):
+        self.updateCnt = 0
+        if self.update is not None:
+            self.currentBgImg.updateBackgroundModel(self.update)
+            print "update backgroundmodel"
+            
+            if self.baseSaveDir is not None:                
+                bgFilename = os.path.basename(self.currentFile).strip('.mp4')                    
+                baseFolder = constructSaveDir(self.baseSaveDir, 
+                                              self.currentFile)    
+                bgFilename = baseFolder + '/' + bgFilename
+                bgFilename += '-bg-{0}-{1}-{2}-{3}.png'
+                plt.imsave(bgFilename.format(self.wasUpdated[0],
+                                             self.wasUpdated[1],
+                                             self.wasUpdated[2],
+                                             self.wasUpdated[3]),
+                            self.update)
+            
+            self.update = None
+            
+        self.wasUpdated = [False] * len(self.rois)
     
     @staticmethod
     def plotVialWithPatch(img,  vials):
@@ -921,7 +926,8 @@ class Vials(object):
             # TODO
             if bgImg is not bgModel.getBgImg(frame, debug=True):
                 print("background model changed this minute. DO SOMETHING")
-            
+                vial.updateBackgroundModel()
+                
             # use ffmpeg to render frames into videos
             tmpBaseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4')
                         
