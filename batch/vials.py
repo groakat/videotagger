@@ -146,6 +146,9 @@ class Vials(object):
         self.acceptPosFunc = acceptPosFunc # used in replacement for localizeFly
         self.acceptPosFuncArgs = acceptPosFuncArgs # additional arguments
         
+        self.bgModel = None         # will be set in extractPatches
+        self.currentBgImg = None
+        
     def batchProcessImage(self,  img,  funct,  args):
         """
             **Warning:** this function does not work
@@ -337,7 +340,13 @@ class Vials(object):
             
             if clfyFunc(patch):
                 #print("getFlyPositions - minVal", minVal)
-                self.updateBackgroundMask(frame, bgImg, i, pos[i], [300, 100])
+                if self.currentBgImg is self.bgModel.getBgImg(frame,debug=True):
+                    self.updateBackgroundMask(frame, bgImg, i, pos[i], 
+                                              [300, 100])
+                else:
+                    # make sure that old update image is written at this frame
+                    # (with the old content of course)
+                    self.updateCnt = self.updateLimit
         
         self.updateCnt += 1
         if self.updateCnt >= self.updateLimit:
@@ -357,8 +366,6 @@ class Vials(object):
                                                  self.wasUpdated[2],
                                                  self.wasUpdated[3]),
                                 self.update)
-                                
-                    print("bgFilename", bgFilename)
                 
                 self.update = None
                 
@@ -445,9 +452,11 @@ class Vials(object):
         
         """
         self.baseSaveDir = baseSaveDir
+        self.bgModel = bgModel
+        
         for p in pathList:
-            bgImg = bgModel.getBgImg(p[0].time(), debug=True)
-            self.extractPatchesFromList([p[1]], baseSaveDir, bgImg, self)
+            #bgImg = bgModel.getBgImg(p[0].time(), debug=True)
+            self.extractPatchesFromList([p[1]], baseSaveDir, bgModel, self)
             
     def updateBackgroundMask(self, frame, bgImg, vialNo, center, patchSize):
         """
@@ -834,7 +843,7 @@ class Vials(object):
                     os.remove(filePath)
     
     @staticmethod
-    def extractPatchesFromList(fileList, baseSaveDir, bgImg, vial, fps=30, 
+    def extractPatchesFromList(fileList, baseSaveDir, bgModel, vial, fps=30, 
                                  tmpBaseSaveDir='/tmp/', delTmpImg=True, 
                                  patchSize=[64, 64]):
         """
@@ -867,20 +876,8 @@ class Vials(object):
             
         
         """
-        # build a rectangle in axes coords
-        left, width = .25, .5
-        bottom, height = .25, .5
-        right = left + width
-        top = bottom + height
-        
-        bgFunc = bgImg.backgroundSubtractionWeaverF
-        bgImg.configureStackSubtraction(bgFunc)
-        
-        
         viewer = imgViewer()
         vE = videoExplorer()
-        
-        pW = png.Writer(height=patchSize[0],width=patchSize[1], compression=0)
         
         for f in fileList:
             # extract patches around flies for each frame
@@ -890,8 +887,15 @@ class Vials(object):
             vial.currentFile = f
             vE.setVideoStream(f, info=True, frameMode='RGB')
             cnt = 0
-            for frame in vE: 
-                #diffImg = bgImg.subtractStack(frame)    
+            for frame in vE:                 
+                if cnt == 0:
+                    # select correct background model
+                    bgImg = bgModel.getBgImg(frame, debug=True)
+                    if bgImg is not vial.currentBgImg:
+                        bgFunc = bgImg.backgroundSubtractionWeaverF
+                        bgImg.configureStackSubtraction(bgFunc)
+                        vial.currentBgImg = bgImg
+                  
                 pos = vial.getFlyPositions(frame, bgImg, img=frame, debug=False)        
                 baseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4') + \
                                                             '.v{0}.{1:05d}.tif'
@@ -900,23 +904,23 @@ class Vials(object):
                     patch = viewer.extractPatch(frame, np.asarray(pos[patchNo]),
                                                 patchSize)
                     filename = baseName.format(patchNo, cnt)
-                    #imsave(filename, patch)
-                    
-                    #pngf = open(filename, 'wb')
-                    #pW.write_array(pngf, patch.flatten())
-                    #pngf.close()                                       
+                                         
                     tf.imsave(filename, patch)
                     patchPaths.append(filename)
                                     
                 baseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4') + \
                                                                     '.{0}{1}{2}'
-                #fl = open(baseName.format('', '', 'pos'), 'w')
-                #fl.write('{0}'.format(pos))
-                #fl.close()
                 
                 cnt += 1
             
                 accPos.append(pos)
+            
+            # at the last frame check if this background model is the same
+            # as for the first frame. If not, probably a day/night switch 
+            # occurred. So make sure that nothing of this minute is used
+            # TODO
+            if bgImg is not bgModel.getBgImg(frame, debug=True):
+                print("background model changed this minute. DO SOMETHING")
             
             # use ffmpeg to render frames into videos
             tmpBaseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4')
@@ -929,7 +933,6 @@ class Vials(object):
             ffmpegCmd = "ffmpeg -y -f image2 -r {2} -i {3}.v{1}.%05d.tif -vcodec ffv1 -sameq -r {2} {0}.v{1}.avi"
             
             for patchNo in range(len(pos)):
-                print(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName))
                 p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName),
                                     shell=True, stdout=subprocess.PIPE, 
                                     stderr=subprocess.STDOUT)
@@ -939,7 +942,6 @@ class Vials(object):
             #ffmpeg -y -f image2 -r 29.97 -i 2013-02-19.00-00-00.v0.%05d.tif -c:v libx264 -preset faster -qp 0 test.mp4
             ffmpegCmd = "ffmpeg -y -i {3}.v{1}.%05d.tif -c:v libx264 -preset faster -qp 0 -r {2} {0}.v{1}.mp4"
             for patchNo in range(len(pos)):
-                print(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName))
                 p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName),
                                     shell=True, stdout=subprocess.PIPE, 
                                     stderr=subprocess.STDOUT)

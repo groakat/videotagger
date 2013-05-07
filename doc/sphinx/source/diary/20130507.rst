@@ -2,6 +2,8 @@
 07/05/2013
 ==========
 
+.. _diary20130507:
+
 News
 ####
 
@@ -9,3 +11,211 @@ News
     - 22 teraflops
     - http://arstechnica.com/information-technology/2013/05/cray-brings-top-supercomputer-tech-to-businesses-for-a-mere-500000/
     - SUSE based, development in Linux is quite a good idea
+    
+Implementations
+###############
+- save patches in same dictionary structure as root folder structure is
+- saving procedure should also create the necessary folders
+
+General Remarks
+###############
+- LDA outperforms SVM in histogram classification (day-night) if dataset is "unpure"
+- if dataset is pure (no wrong labels), both are equally good
+
+.. code-block:: python
+
+    # comment this line if not working with IPython notebook or qtconsole
+    %pylab inline
+    
+    # general imports
+    import sys, os, glob
+    sys.path.append('/home/peter/code/pyTools/')
+    
+    from pyTools.system.videoExplorer import *
+    import numpy as np
+    from sklearn.cross_validation import StratifiedKFold
+    
+    
+    vE = videoExplorer()
+    
+    #function to compute confusion matrix
+    def computeConfusionMatrix(predict, label):
+        idx = np.unique(label)
+        cmat = np.zeros((idx.shape[0], idx.shape[0]))
+        
+        for i in range(predict.shape[0]):
+            cmat[label[i], predict[i]] += 1
+            
+        return cmat
+    
+    # crossvalidation function
+    def crossValidate(data, labels, classifier,Nfolds=2):
+        idx = np.unique(labels)
+        cmat = np.zeros((idx.shape[0], idx.shape[0]), dtype=np.int32)
+    
+        #kf = KFold(len(labels), n_folds=Nfolds, indices=True)
+        kf = StratifiedKFold(labels, n_folds=Nfolds, indices=True)
+    
+        cnt = 1
+    
+        predict = []
+        testLbl = []
+        testPos = []
+        for train, test in kf:
+            testPos.append(test)
+            print("processing fold no {0}/{1}".format(cnt, Nfolds))
+    
+            trainSet = data[train]
+            trainLbl = labels[train]
+    
+            testSet = data[test]
+            testLbl.append(labels[test])
+    
+            wclf = classifier
+            wclf.fit(trainSet, trainLbl)
+    
+            predict.append(wclf.predict(testSet))
+    
+            cmat += computeConfusionMatrix(predict[-1], testLbl[-1])
+            cnt += 1
+    
+        return cmat, predict, testLbl, testPos
+    
+    # define function for color histogram feature extraction
+    def colorHistogramFeature(img):
+        r = np.histogram(img[:,:,0], bins =10)
+        g = np.histogram(img[:,:,1], bins =10)
+        b = np.histogram(img[:,:,2], bins =10)
+    
+        return np.concatenate((r[0], g[0], b[0]))
+    
+    # set paths
+    days = ['/run/media/peter/Elements/peter/data/box1.0/20130219/17/2013-02-19.17-47-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130219/12/2013-02-19.12-55-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130219/15/2013-02-19.15-25-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130219/17/2013-02-19.17-34-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130219/20/2013-02-19.20-35-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130220/10/2013-02-20.10-00-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130220/12/2013-02-20.12-54-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130220/15/2013-02-20.15-35-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130220/17/2013-02-20.17-40-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130220/20/2013-02-20.20-47-00.mp4']
+    nights =['/run/media/peter/Elements/peter/data/box1.0/20130220/07/2013-02-20.07-14-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130219/02/2013-02-19.02-12-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130219/04/2013-02-19.04-47-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130219/06/2013-02-19.06-18-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130219/08/2013-02-19.08-40-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130220/00/2013-02-20.00-00-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130220/02/2013-02-20.02-23-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130220/04/2013-02-20.04-21-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130220/06/2013-02-20.06-54-00.mp4',
+    '/run/media/peter/Elements/peter/data/box1.0/20130220/08/2013-02-20.08-16-00.mp4']
+    
+    # calculate features
+    hst = np.zeros((20, 30))
+    
+    for i in range(len(days)):
+        frame = vE.getRandomFrame([days[i]], frameMode='RGB')
+        figure()
+        imshow(frame)
+        title(days[i])
+        hst[i,:] = colorHistogramFeature(frame)
+    
+    for i in range(len(nights)):
+        frame = vE.getRandomFrame([nights[i]], frameMode='RGB')
+        figure()
+        imshow(frame)
+        title(nights[i])
+        hst[i + len(days),:] = colorHistogramFeature(frame)
+       
+    
+    # define labeles
+    lbl = np.zeros((20,))
+    lbl[10:] = 1
+    
+    # bring data and labels in format of scikit-learn docu, to ease understanding
+    X = hst
+    y = lbl
+        
+    from sklearn.lda import LDA
+    cmat, predict, testLbl, testPos = crossValidate(X, y, LDA(),  Nfolds=2)
+    print cmat
+    
+    from sklearn import svm
+    cmat, predict, testLbl, testPos = crossValidate(X, y,  svm.SVC(kernel='linear'),  Nfolds=2)
+    print cmat
+
+
+
+This produces   
+::
+
+    (LDA)
+    processing fold no 1/2
+    processing fold no 2/2
+    [[ 9  1]
+     [ 0 10]]
+    
+::
+
+    (SVM)
+    processing fold no 1/2
+    processing fold no 2/2
+    [[9 1]
+     [2 8]]
+
+
+.. note::
+    be aware in the path of the code above, the 5th (starting counting at 0) day image is
+    actually a night image
+    
+Now have a look what happens if labels are correct:
+
+.. code-block:: python
+
+    # define labeles
+    lbl = np.zeros((20,))
+    lbl[10:] = 1
+    
+    # bring data and labels in format of scikit-learn docu, to ease understanding
+    X = np.concatenate((hst[0:5], hst[6:]))
+    y = np.concatenate((lbl[0:5], lbl[6:]))
+        
+    from sklearn.lda import LDA
+    cmat, predict, testLbl, testPos = crossValidate(X, y, LDA(),  Nfolds=2)
+    print cmat
+    
+    from sklearn import svm
+    cmat, predict, testLbl, testPos = crossValidate(X, y,  svm.SVC(kernel='linear'),  Nfolds=2)
+    print cmat
+
+It produces:
+
+::
+
+    processing fold no 1/2
+    processing fold no 2/2
+    [[ 9  0]
+     [ 0 10]]
+    processing fold no 1/2
+    processing fold no 2/2
+    [[ 9  0]
+     [ 0 10]]
+
+
+.. note::
+    Color histogram feature computation takes quite a while
+    
+Using the full histogram that is also faster computed in numpy, SVM and LDA give the same outout. 
+However, based on the observation above, I will use LDA.
+    
+    
+Todo
+####
+
+- incorporate color test before updating background model
+    - finish incorporation of backgroundmodel selection in extractPatchesFromList
+    - # at the last frame check if this background model is the same
+      # as for the first frame. If not, probably a day/night switch 
+      # occurred. So make sure that nothing of this minute is used
+- figure out if jason is a better way of saving the positions

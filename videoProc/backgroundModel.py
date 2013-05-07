@@ -1,5 +1,7 @@
 from pyTools.system.videoExplorer import videoExplorer
 from pyTools.videoProc.backgroundImage import *
+
+from sklearn.lda import LDA
 import datetime as dt
 import numpy as np
 from matplotlib import pyplot as plt
@@ -20,9 +22,12 @@ class backgroundModel(object):
     
     def __init__(self,  verbose=False, colorMode='gray'):
         """
-            Args:
-            verbose     bool        switch verbosity
-            colorMode   String      get available colourModes with 
+        
+        Args:
+            verbose (bool):
+                                    switch verbosity
+            colorMode (String):
+                                    get available colourModes with 
                                     getcolorModes()
         """
         self.startDate = 0
@@ -33,6 +38,11 @@ class backgroundModel(object):
         self.verbose = verbose
         self.modelDay = []
         self.modelNight = []
+        self.modelClassifier = None
+        self.histDay = None             # histogram of day images used to create
+                                        # background model
+        self.histNight = None           # histogram of night images used to
+                                        # create background model        
         
         self.bgModelList = [None]*2      # [bgImg, startTime, endTime]
                 
@@ -102,7 +112,8 @@ class backgroundModel(object):
         return mean
         
         
-    def createModelFromListMedian(self, pathList,  sampleSize=20):
+    def createModelFromListMedian(self, pathList,  sampleSize=20, 
+                                                        calcHistFeatures=False):
         """        
         estimate background by calculating median
         
@@ -114,6 +125,9 @@ class backgroundModel(object):
                                 list of video paths
             sampleSize (int): 
                                 number of frames used to estimate background
+            calcHistFeatures (bool):
+                                if True, colorHistogramFeatures will be computed
+                                and returned as an numpy array
         """
         if sampleSize > 255:
             warnings.warn("createModelFromListMedian: sampleSize has to be between 0..255", RuntimeWarning)
@@ -128,6 +142,10 @@ class backgroundModel(object):
         else:
             stepSize = len(pathList) / sampleSize
             
+        ## define histogram
+        if calcHistFeatures:
+            hst = np.zeros((sampleSize, 256*3))
+        
         ## framebuffer a list with one element per dimension of reference image
         if len(refFrame.shape) > 2:
             frameBuffer = [None] * refFrame.shape[2]
@@ -137,11 +155,15 @@ class backgroundModel(object):
                                             refFrame.shape[1],  sampleSize],
                                             dtype=np.uint8)
                 frameBuffer[i][:, :, 0] = refFrame[:, :, i]
+                if calcHistFeatures:
+                    hst[0,:] = colorHistogramFeature(refFrame)
             
             for s in range(1, sampleSize):
                 frame = self.getFrame(pathList[stepSize * s], 0)
                 for i in range(len(frameBuffer)):
                     frameBuffer[i][:, :, s] = frame[:, :, i]
+                if calcHistFeatures:
+                    hst[i,:] = colorHistogramFeature(frame)
             
             medianImage = np.zeros(refFrame.shape,  np.uint8)
             
@@ -160,7 +182,10 @@ class backgroundModel(object):
             
             medianImage = np.median(frameBuffer, axis=2)
                 
-        return medianImage
+        if not calcHistFeatures:
+            return medianImage
+        else:
+            return medianImage, hst
         
     def getRandomFrame(self, pathList,  info=False):
         """
@@ -215,9 +240,11 @@ class backgroundModel(object):
         """
         if self.verbose:
             print "creating night model.."
-        self.modelNight = backgroundImage(
-                                self.createModelFromListMedian(self.nightPaths, 
-                                                         sampleSize))
+        
+        bgImg, self.histNight =  self.createModelFromListMedian(self.nightPaths, 
+                                                         sampleSize,
+                                                         calcHistFeatures=True)
+        self.modelNight = backgroundImage(bgImg)
         times = [a.time() for a in self.vE.getDatesOfList(self.vE.nightList)]
         # get beginning and end of time range (inverted to dayModel, because
         # the night range starts in the evening and ends in the morning
@@ -226,23 +253,54 @@ class backgroundModel(object):
         
         self.bgModelList[1] = [self.modelNight, startTime, endTime]
         
+        if self.histDay is not None:
+            self.trainDayNightClassifier()
+        
     def createDayModel(self, sampleSize=20):
         """
         computes background model for day frames
         """
         if self.verbose:
             print "creating day model.."
-        self.modelDay = backgroundImage(
-                                self.createModelFromListMedian(self.dayPaths,  
-                                                       sampleSize))
+            
+        bgImg, self.histDay =  self.createModelFromListMedian(self.dayPaths,  
+                                                            sampleSize,
+                                                          calcHistFeatures=True)
+        self.modelDay = backgroundImage(bgImg)
         times = [a.time() for a in self.vE.getDatesOfList(self.vE.dayList)]
         startTime = min(times)
         endTime = max(times)
         self.bgModelList[0] = [self.modelDay, startTime, endTime]
         
-    def getBgImg(self, time, debug=False):
+        if self.histNight is not None:
+            self.trainDayNightClassifier()
+            
+            
+    def trainDayNightClassifier(self):
+        """
+        Trains model classifier, given that an histogram feature matrix was 
+        created for day and night.
+        
+        The method trains an LDA. Have a look at diary of 07/05/2013 for an
+        experiment, showing that LDA is more robust to wrong labels than SVM.
+        """
+        if self.histNight is None or self.histDay is None:
+            raise RuntimeError("day or night histogram was not computed " + \
+                                "before calling this function")
+        
+        hist = np.concatenate((self.histDay, self.histNight))
+        lbl = np.concatenate((np.zeros((len(self.histDay))), 
+                              np.ones((len(self.histNight)))))
+        
+        self.modelClassifier = LDA()
+        self.modelClassifier.fit(hist, lbl)
+        
+    def getBgImg(self, img, debug=False):
         """
         returns correct background image based on given time
+        
+        If classifier was trained the classifier output is used, otherwise
+        the image is returned based on time only.
         
         Args:
             time (time object):
@@ -250,18 +308,30 @@ class backgroundModel(object):
             debug (bool):
                                 if True, prints which model was chosen
         """
-        if debug:
-            print time
-        if time >= self.bgModelList[0][1] and time <= self.bgModelList[0][2]:
+        if self.modelClassifier is not None:
             if debug:
-                print "choose day model"
-            return self.bgModelList[0][0]
-        elif time <= self.bgModelList[1][1] or time >= self.bgModelList[1][2]:
+                print ("background model selection: use classifier")
+            hist = colorHistogramFeature(img)
+            isNight = (self.modelClassifier.predict(hist) == 1)            
+        else:
+            raise RuntimeError("background model classifier trained")
+            #if debug:
+                #print time
+            #if time >= self.bgModelList[0][1] and time <= self.bgModelList[0][2]:
+                #isNight = False
+            #elif time <= self.bgModelList[1][1] or time >= self.bgModelList[1][2]:
+                #isNight = True
+            #else:
+                #raise ValueError("given time not covered by computed background Models")
+                
+        if isNight:     
             if debug:
                 print "choose night model"
             return self.bgModelList[1][0]
-        else:
-            raise ValueError("given time not covered by computed background Models")
+        else:            
+            if debug:
+                print "choose day model"
+            return self.bgModelList[0][0]
     
     def saveModels(self, path=''):
         """
@@ -318,6 +388,19 @@ class backgroundModel(object):
             returns available colour spaces
         """
         return [row[0] for row in self.colorModeLst]
+        
+#@staticmethod
+# define function for color histogram feature extraction
+def colorHistogramFeature(img):
+    """
+    Returns the concateted color histograms of the given color(!) image. 3rd 
+    dimensions are concatenated in the order they appear.
+    """
+    r = np.bincount(img[:,:,0].flatten(), minlength=256)
+    g = np.bincount(img[:,:,1].flatten(), minlength=256)
+    b = np.bincount(img[:,:,2].flatten(), minlength=256)
+
+    return np.concatenate((r, g, b)).transpose()
 
 if __name__ == "__main__":
     bgModel = backgroundModel(verbose=True)
