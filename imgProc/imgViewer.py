@@ -15,6 +15,10 @@ import matplotlib as mpl
 
 class imgViewer(object):
     def show(self,  img):
+        """
+        Show an image using matplotlib. However this function extends the viewer
+        with a functionality that returns the value of pixels on mouse click
+        """
         self.img = plt.imshow(img, interpolation='nearest')
         self.fig = plt.gcf()
         self.ax = plt.gca()
@@ -23,7 +27,39 @@ class imgViewer(object):
         plt.show()     
         
         
-    def showPatch(self, img, center, patchSize, patch_zoom=0.2, offsetX=0, offsetY=0.5, fig=None, no=0, patch=None):
+    def showPatch(self, img, center, patchSize, patch_zoom=0.2, offsetX=0, 
+                    offsetY=0.5, fig=None, no=0, patch=None):
+        """
+        Displays position of a patch and the patch itself in a zoomed version
+        
+        Args:
+            img (ndarray):
+                                image
+            center ([int, int]):
+                                center position of patch
+            patchSize ([int, int]):
+                                size of patch
+            patch_zoom (float):
+                                zoom factor of patch
+            offsetX:
+                                x offset of figure-axes (can be used to display
+                                several axes within one figure)
+            offsetY:
+                                y offset of figure-axes (can be used to display
+                                several axes within one figure)
+            fig (matplotlib figure instance):
+                                figure instance in which the axes will be drawn
+                                if fig=None a new figure will be created
+            no (int):
+                                number (position) of plot. It can be used to
+                                plot several plots within one figure. Each 
+                                plot should have its unique number and will
+                                be placed at this given position
+            patch (ndarray):
+                                Image to be shown as patch. If patch=None, patch
+                                will be extracted from image (using center,
+                                patchSize)
+        """
         if fig == None:
             fig, tmp = subplots()
             
@@ -78,12 +114,20 @@ class imgViewer(object):
     @staticmethod
     def extractPatch(img, center, patchSize):
         """
-            Extracts savely a patch from an image. The patch is centered around 
-            center and has height/ width as specified in patchSize
-            Input:
-                img         <ndarray>                   image
-                center      [int, int]                  center position of patch
-                patchSize   [int, int]                  size of patch
+        Extracts savely a patch from an image. The patch is centered around 
+        center and has height/ width as specified in patchSize
+        
+        Args:
+            img (ndarray):
+                                image
+            center ([int, int]):
+                                center position of patch
+            patchSize ([int, int]):
+                                size of patch
+                                
+        Returns:
+            patch (ndarray):
+                                extracted patch
         """
         
         rngX, rngY = imgViewer.getValidPatchRange(img, center, patchSize)
@@ -91,7 +135,23 @@ class imgViewer(object):
         return img[rngX, rngY]
     
     @staticmethod
-    def getValidPatchRange(img, center, patchSize):        
+    def getValidPatchRange(img, center, patchSize):      
+        """
+        Returns valid slices for patches to avoid exceeding of indeces of 
+        image dimensions
+        
+        Args:
+            img (ndarray):
+                                image
+            center ([int, int]):
+                                center of patch
+            patchSize ([int, int]):
+                                size of patch
+        
+        Returns:
+            xRng, yRng:
+                                slices of x and y direction
+        """  
         xy = np.round(copy(center))
         xy[0] -= patchSize[0]/2
         xy[1] -= patchSize[1]/2
@@ -114,6 +174,9 @@ class imgViewer(object):
     
     @staticmethod
     def fig2np(fig):
+        """
+        Converts matplotlib figure in a numpy ndarray
+        """
         # If we haven't already shown or saved the plot, then we need to
         # draw the figure first...
         fig.canvas.draw()
@@ -127,19 +190,19 @@ class imgViewer(object):
     @staticmethod
     def createSuppressionMask(frame, center, patchSize):
         """
-            creates a boolean mask with a "window" of the given patch size 
-            around the center
-            
-            Args:   
-                frame (ndarray):
-                            input image, used for size reference only
-                center (int, int):
-                            center of the window
-                patchSize [int, int]:
-                            size of the patch
-                            
-            Returns:
-                ndarray (boolean): mask
+        creates a boolean mask with a "window" of the given patch size around 
+        the center
+        
+        Args:   
+            frame (ndarray):
+                        input image, used for size reference only
+            center (int, int):
+                        center of the window
+            patchSize ([int, int]):
+                        size of the patch
+                        
+        Returns:
+            ndarray (boolean): mask
                     
         """
         mask = np.ones((frame.shape[0], frame.shape[1]), dtype=np.bool)

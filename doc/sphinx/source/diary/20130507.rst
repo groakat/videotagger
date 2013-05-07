@@ -1,0 +1,11 @@
+==========
+07/05/2013
+==========
+
+News
+####
+
+- Cray Supercomputer available for $500.000
+    - 22 teraflops
+    - http://arstechnica.com/information-technology/2013/05/cray-brings-top-supercomputer-tech-to-businesses-for-a-mere-500000/
+    - SUSE based, development in Linux is quite a good idea

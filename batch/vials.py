@@ -4,7 +4,7 @@
    :synopsis: This class is used to batch-process videos to retrieve fly positions 
         for each vial. 
 
-.. moduleauthor:: Peter Rennert <p.rennert@cs.ucl.ac.uk>
+.. codeauthor:: Peter Rennert <p.rennert@cs.ucl.ac.uk>
 
 
 """
@@ -42,7 +42,8 @@ class Vials(object):
         for each vial.        
     """
     def __init__(self,  rois=None, gaussWeight=1000, sigma=10, xoffsetFact=0.7, 
-                updateLimit = 5000, clfyFunc=None, acceptPosFunc=None):
+                updateLimit = 5000, clfyFunc=None, acceptPosFunc=None,
+                acceptPosFuncArgs=None):
         """
         
         Args:            
@@ -110,6 +111,10 @@ class Vials(object):
                                 
                                 - Input: please refer to :func:`Vials.acceptPosFunc`
                                 - Output: [int, int]
+            
+            acceptPosFuncArgs (dict):
+                                dictionary carrying the additional arguments for
+                                acceptPosFunc. 
         """
         self.rois = rois
         self.iV = imgViewer()
@@ -138,7 +143,8 @@ class Vials(object):
                                     # detected fly should be used for an
                                     # update of the background
                                     
-        self.acceptPosFunc = acceptPosFunc # used in localize fly
+        self.acceptPosFunc = acceptPosFunc # used in replacement for localizeFly
+        self.acceptPosFuncArgs = acceptPosFuncArgs # additional arguments
         
     def batchProcessImage(self,  img,  funct,  args):
         """
@@ -310,8 +316,8 @@ class Vials(object):
                                         plotIterations=plotIt, retIt=retIt)
             else:
                 actPos = self.acceptPosFunc(self, diffImg, p, i, img=img, 
-                                        plotIterations=plotIt, retIt=retIt)
-                                  
+                                        plotIterations=plotIt, retIt=retIt,
+                                        args=self.acceptPosFuncArgs)
             if debug:
                 pos.append(actPos[0])   
             else:
@@ -526,6 +532,7 @@ class Vials(object):
                         - 'patch':(np.ndarray)      image of patch
                         - 'center':([int,int])      center of patch wrt roi
                         - 'patchSize':([int,int])   size of patch frame in roi
+        
         """
         iV = imgViewer()
         figure = plt.figure(figsize=(11,7))
@@ -555,7 +562,7 @@ class Vials(object):
         """
         Test function that extracts patches around the maxima responses of 
         background subtraction for each vial. No post processing is performed. 
-        I.e. *no :func:`meanShiftMin` is used` to get fly center
+        I.e. *no :func:`meanShiftMin` is used` to get fly center*
         
         Args:
             bgImg (pyTools.videoProc.backgroundImage):
@@ -756,6 +763,7 @@ class Vials(object):
             in here
             
             use :func:`extractPatchesFromList` only
+        
         """
         # build a rectangle in axes coords
         left, width = .25, .5
@@ -967,7 +975,87 @@ class Vials(object):
                 print "patch passed threshold, but classifier rejected it!"
         
         return False
+
+
+    @staticmethod
+    def acceptPosFunc(self, diffImg, startPos, vialNo, img, plotIterations, retIt, args):
+        """
+        Example function for a acceptPosFunc that can be defined in the 
+        constructor of the class.
+              
+        Please have a look in the code how it works. Important are the input 
+        arguments and the return value which should not be altered at all.
         
+        
+        In this case the classical fly localization is augmented with a sanity 
+        check of the reported fly position. This is done by the use of a 
+        previously trained SVM.
+        
+        The functions are defined outside and passed via the optional args.
+        
+        .. code-block:: python
+        
+            import pyTools.libs.faceparts.vanillaHogUtils as vanHog
+            from skimage.color import rgb2gray
+            import skimage.transform
+
+            def computeHog(patch):
+                a = list(skimage.transform.pyramid_gaussian(patch, 
+                                                            sigma=2,
+                                                            max_layer=1))
+                return vanHog.hog(a[1], 9,3, 360, [0, 64, 0, 64])
+        
+            
+            flyClassifier = joblib.load('/run/media/peter/Elements/peter/data/bin/models/fly_svm/fly.svm')
+            noveltyClassfy = joblib.load('/run/media/peter/Elements/peter/data/bin/models/fly_svmNovelty/flyNovelty.svm')
+
+            flyClassify = lambda patch: Vials.checkIfPatchShowsFly(patch, 
+                                                                  flyClassifier,
+                                                                  flyClass=1, 
+                                                                  debug=True)
+                                                                  
+            acceptArgs = {'computeHog': computeHog, 
+                          'noveltyClassfy': noveltyClassfy,
+                          'flyClassify': flyClassify}
+        
+            Vials(roi, gaussWeight=2000, sigma=20,  xoffsetFact=0.6, 
+                    clfyFunc=flyClassify, acceptPosFunc=acceptPosFunc,
+                    acceptPosFuncArgs=acceptArgs)
+        """
+        computeHog = args['computeHog']
+        noveltyClassfy = args['noveltyClassfy']
+        flyClassify = args['flyClassify']
+        
+        for i in range(2):
+            initPos = self.localizeFly(diffImg, startPos, img=img,
+                                                plotIterations=plotIterations, retIt=retIt)
+
+            patch = self.iV.extractPatch(diffImg, [initPos[0], initPos[1]], [64, 64])
+            if np.min(patch) > -40:
+                if not np.allclose(patch.shape, [64, 64]):
+                    # patch is outside of the image
+                    print "patch outside of image"
+                    continue
+
+                hog = computeHog(patch)
+                if not(noveltyClassfy.predict(hog) == 1):
+                    # hog features were not modelled, very likely to be background
+                    continue
+
+                if not(flyClassify is 1):
+                    # position is valid
+                    return initPos
+
+                # do minimum suppresion
+                diffImg[initPos[0]-32:initPos[0]+32, initPos[1]-32:initPos[1]+32] = 0
+                startPos = self.getVialMinGlobal(diffImg)[vialNo]
+            else:
+                return initPos
+
+        # return default position
+        return [33, 33]
+    
+
 import pyTools.libs.faceparts.vanillaHogUtils as vanHog
 from skimage.color import rgb2gray
 import skimage.transform

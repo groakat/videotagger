@@ -3,6 +3,10 @@ import scipy.weave as weave
 from copy import copy
 
 class backgroundImage(np.ndarray):
+    """
+    Class to efficiently do background subtraction of several different 
+    background models.
+    """
     __array_priority__ = 100
     
     def __new__(cls,  img):
@@ -20,12 +24,30 @@ class backgroundImage(np.ndarray):
         return obj
         
     def resetShiftList(self):
+        """
+        Erase all shifted version of the background
+        """
         self.shiftList = []
         
     def subtractImg(self, img, offsetX=0, offsetY=0):
+        """
+        Robust background subtraction that aligns images to prevent errors from
+        non-matching sizes of images
+        
+        Args:
+            img (nd-array):
+                                image
+            offsetX (int):
+                                X shift of image
+            offsetY (int):
+                                Y shift of image
+            
+        Returns:
+            difference image
+        """
         diff = np.subtract(*self.alignImgPair([offsetX,  offsetY], 
-                                              img, 
-                                              self))
+                                                img, 
+                                                self))
         
         if len(diff.shape) == 3:
             return np.sum(diff, axis=2)
@@ -34,14 +56,22 @@ class backgroundImage(np.ndarray):
             
     def subtractImgPadding(self, img, shift=[0, 0]):
         """
-            subtract image from background image with any given shift using 
-            padding to return an image of the same size as the input images
-            INPUT:
-                img             nd-array                image
-                shift           [x, x]                  shift of image
-                
-            OUTPUT:
-                difference image
+        subtract image from background image with any given shift using 
+        padding to return an image of the same size as the input images.
+        
+        .. warning::
+            This is recomputing the shift and subtracting using np.subtract. 
+            I.e. this is not as efficient as using :func:`subtrackStack` for
+            multiple shifts
+        
+        Args:
+            img (nd-array):
+                                image
+            shift ([int, int]):
+                                shift of background image
+            
+        Returns:
+            difference image
         """
         self.shiftList.append(shift)
         diff = np.subtract(*self.alignImgPairPadding(shift, img, self))
@@ -53,7 +83,17 @@ class backgroundImage(np.ndarray):
         
     def getValidROI(self,  reset=False):
         """
-            returns ROI that is used by all shifted background images
+            returns ROI that is used by all shifted background images. I.e. the
+            overlap of all shifted versions
+            
+            Args:
+                reset (bool):
+                                calls :func:`resetShiftList` after calculating
+                                the valid ROI
+                                
+            Returns:
+                rngX,  rngY:
+                                slices representing the ROI
         """
         ret = self.getValidSlices(self.shiftList, self.shape)
         if reset:
@@ -61,6 +101,21 @@ class backgroundImage(np.ndarray):
         return ret
     
     def createBackgroundStack(self, fortranStyle=False, new=True):
+        """
+        Arranges background image as background stack which is a stack of shifted
+        versions of itself that can then be used to do a fast and robust 
+        background subtraction.
+        
+        Args:
+            fortranStyle (bool):
+                                depending on the background subtraction algorithm
+                                used, the stack has to be either aranged in a
+                                fortran style or not. Consult the documentation
+                                of the respective function.
+            new (bool):
+                                if true, a new (non fortran style) background 
+                                stack will be computed
+        """
         self.fortranStyle = fortranStyle
         if new:
             self.bgStack = self.calculateBackgroundStack(self)
@@ -80,6 +135,13 @@ class backgroundImage(np.ndarray):
             #self.bgStack = self.calculateBackgroundStack(self)
             
     def updateBackgroundStack(self):
+        """
+        Recalculates the background stack. Useful when background stack is 
+        updated with new background models that are not simply shifts.
+        
+        .. seealso::
+            :func:`createUpdatedBgImg`
+        """
         self.createBackgroundStack(self.fortranStyle, new=False)
         
     def configureStackSubtraction(self, func):
@@ -90,10 +152,13 @@ class backgroundImage(np.ndarray):
             to be called)
             
             Input:
-                func    function pointer        a pointer to either
-                                                - backgroundSubstractionStack
-                                                - backgroundSubstractionWeaver
-                                                - backgroundSubstractionWeaverF
+                func (function pointer):
+                                a pointer to either
+                                
+                                    - :func:`backgroundSubstractionStack`
+                                    - :func:`backgroundSubstractionWeaver`
+                                    - :func:`backgroundSubstractionWeaverF`
+                                    
         """
         if func == self.backgroundSubtractionStack:
             if self.bgStack == []:
@@ -118,6 +183,14 @@ class backgroundImage(np.ndarray):
                                 "involving bgStack. Use help for more info")  
     
     def configureStackSubtractionCustom(self, func, fortranStyle=False):
+        """
+        Allows to load a custum function for background subtraction. It needs to
+        comply with the input/output specifications of the existing background
+        subtraction functions.
+        
+        Please refer to the code of :func:`backgroundSubstractionStack`,
+         :func:`backgroundSubstractionWeaver` and :func:`backgroundSubstractionWeaverF`
+        """
         if fortranStyle:
             if self.bgStackF == []:
                 self.createBackgroundStack(fortranStyle=True)
@@ -132,12 +205,13 @@ class backgroundImage(np.ndarray):
         
     def subtractStack(self, img):
         """
-            Background subtraction using background stack for robust background
-            subtraction. To configure the backgroundImage object, first call
-            configureStackSubtraction() once before. 
-            
-            Input:
-                img         nd array                image
+        Background subtraction using background stack for robust background
+        subtraction. To configure the backgroundImage object, first call
+        :func:`configureStackSubtraction` once before. 
+        
+        Args:
+            img (nd array):
+                            image
         """
         if not self.subtractStackFunc == 0:
             return self.subtractStackFunc(img)
@@ -147,15 +221,15 @@ class backgroundImage(np.ndarray):
                                 
     def createUpdatedBgImg(self, frame, mask):
         """
-            replace frame where mask == False with the backgroundImage
+        replace frame where mask == False with the backgroundImage
+        
+        Args:
+            frame (ndarray):    input image
+            mask (ndarray):     boolean mask
             
-            Args:
-                frame (ndarray):    input image
-                mask (ndarray):     boolean mask
-                
-            Returns:
-                ndarray:
-                    updated frame
+        Returns:
+            ndarray:
+                updated frame
         """
         update = np.zeros(tuple(frame.shape), dtype=np.uint8)
         
@@ -171,17 +245,17 @@ class backgroundImage(np.ndarray):
     
     def updateBackgroundModel(self, update, level=-1):
         """
-            inserts update into the existing background models
-            
-            Args:
-                update (ndarray):
-                            image that is to be inserted into the background 
-                            model
-                level (int):
-                            position (in the background stack) where the image
-                            is to be inserted. If level=-1, the backgroundImage
-                            object will manage the level by itself, by iterating
-                            trough the stack
+        inserts update into the existing background models
+        
+        Args:
+            update (ndarray):
+                        image that is to be inserted into the background 
+                        model
+            level (int):
+                        position (in the background stack) where the image
+                        is to be inserted. If level=-1, the backgroundImage
+                        object will manage the level by itself, by iterating
+                        trough the stack
         """
         if level == -1:
             level = self.stackIdx
@@ -195,9 +269,21 @@ class backgroundImage(np.ndarray):
     @staticmethod
     def alignImgPair(shift, img, bg):      
         """
-            aligns two images (incorporating the shift)
-            useful to speed up algorithms that require to do operations on 
-            neighbour pixels
+        aligns two images (incorporating the shift)
+        useful to speed up algorithms that require to do operations on 
+        neighbour pixels
+        
+        Args:
+            shift ([int, int]):
+                                x and y direction of shift
+            img (ndarray):
+                                image 1
+            bg (ndarray):
+                                image 2 (typically the background image)
+                                
+        Returns:
+            img, bg:
+                                both images shifted approriately
         """
         if img.shape != bg.shape:
             raise ValueError("image dimension does not match background dimension")
@@ -227,10 +313,24 @@ class backgroundImage(np.ndarray):
     @staticmethod
     def alignImgPairPadding(shift, img, bg):      
         """
-            aligns two images (incorporating the shift)
-            useful to speed up algorithms that require to do operations on 
-            neighbour pixels however, it copies a blank padding border around 
-            the output image so that it remains the same size as the input images
+        aligns two images (incorporating the shift) useful to speed up 
+        algorithms that require to do operations on neighbour pixels however, 
+        it copies a blank padding border around the output image so that it 
+        remains the same size as the input images       
+        
+        Args:
+            shift ([int, int]):
+                                x and y direction of shift
+            img (ndarray):
+                                image 1
+            bg (ndarray):
+                                image 2 (typically the background image)
+        
+        Returns:
+            img:
+                                unchanged image
+            bgImg:
+                                padded background image
         """
         if img.shape != bg.shape:
             raise ValueError("image dimension does not match background dimension")
@@ -264,12 +364,14 @@ class backgroundImage(np.ndarray):
     @staticmethod
     def getValidSlices(shifts,  shape):
         """
-            Ensures that slices have valid range (i.e. are within the boundaries
-            of the image)
-            
-            INPUT:
-                shifts      <list of [int, int]>        list of shifts
-                shape       [int, int]                  shape of image
+        Ensures that slices have valid range (i.e. are within the boundaries
+        of the image)
+        
+        Args:
+            shifts (list of [int, int]):
+                                list of shifts
+            shape ([int, int]):
+                                shape of image
         """
         
         npShifts = np.asarray(shifts)
@@ -302,26 +404,30 @@ class backgroundImage(np.ndarray):
     def backgroundSubtractionShiftsNaive(img, bgImg, rngX=range(-2, 3), 
                                             rngY=range(-2, 3)):
         """
-            Naive background subtraction employing shifts of background to 
-            make subtraction robust to small changes in the background
-            
-            This method is very slow and is interally only used as reference
-            for tests. Perhaps also the most easy to understand.
-            
-            All other background subtraction methods working with stacks, employ
-            the same principle. But they operate on a precomputed background
-            stack and implement further optimizations.
-            
-            Input:
-                img         np.array            image
-                bgImg       np.array            background image
-                rngY        range               list of vertical shifts to be 
-                                                performed by background
-                rngX        range               list of horizontal shifts to be 
-                                                performed by background
-                                                
-            Output:
-                difference image
+        Naive background subtraction employing shifts of background to 
+        make subtraction robust to small changes in the background
+        
+        This method is very slow and is interally only used as reference
+        for tests. Perhaps also the most easy to understand.
+        
+        All other background subtraction methods working with stacks, employ
+        the same principle. But they operate on a precomputed background
+        stack and implement further optimizations.
+        
+        Args:
+            img (np.array):
+                                image
+            bgImg (np.array):
+                                background image
+            rngY (range):
+                                list of vertical shifts to be performed by 
+                                background
+            rngX (range):
+                                list of horizontal shifts to be performed by
+                                background
+                                            
+        Returns:
+            difference image
         """
                                          
         stack = np.zeros((img.shape[0], img.shape[1], len(rngX) * len(rngY)), dtype=bgImg.dtype)
@@ -340,8 +446,26 @@ class backgroundImage(np.ndarray):
     @staticmethod
     def calculateBackgroundStack(bgImg, rngX=range(-2, 3), rngY=range(-2, 3)): 
         """
-            precompute a stack of background images that can be used for
-            robust background subtraction
+        precompute a stack of background images that can be used for
+        robust background subtraction
+        
+        Args:
+            bgImg (np.array):
+                                background image
+            rngY (range):
+                                list of vertical shifts to be performed by 
+                                background
+            rngX (range):
+                                list of horizontal shifts to be performed by
+                                background
+                                            
+        Returns:
+            difference image
+            
+        .. seealso::
+            :func:`backgroundSubstractionStack`
+            :func:`backgroundSubstractionWeaver`
+            :func:`backgroundSubstractionWeaverF`
         """
         
         bgImg.resetShiftList()  
@@ -376,21 +500,27 @@ class backgroundImage(np.ndarray):
     @staticmethod
     def backgroundSubtractionStack(img, bgStack):
         """
-            simple function to operate on precomputed background stacks 
+        simple function to operate on precomputed background stacks 
+        
+        This method uses numpy functions only and is not very fast
+        
+        background gets subtracted from foreground (foreground objects 
+        should appear negative on the output)
+        
+        Args:
+            img (nd array):
+                                input image
+            bgStack (background image stack):
+                                - for computation see :func:`calculateBackgroundStack`
+                                - *needs to generated with fortranStyle=False*
+                        
+        Returns:
+            difference image
             
-            This method uses numpy functions only and is not very fast
-            
-            background gets subtracted from foreground (foreground objects 
-            should appear negative on the output)
-            
-            Input:
-                img         nd array                input image
-                bgStack     stack of background  (see calculateBackgroundStack()
-                            images                for computation)
-                            !! needs to generated with fortranStyle=False !!
-                            
-            Output:
-                difference image
+        .. seealso::
+            :func:`backgroundSubstractionStack`
+            :func:`backgroundSubstractionWeaver`
+            :func:`backgroundSubstractionWeaverF`
         """
         
         ## This method has to look for the minimum and return the negative diff image, because it needs 
@@ -413,23 +543,24 @@ class backgroundImage(np.ndarray):
     @staticmethod
     def backgroundSubtractionWeaver(img, bgStack, test=False):
         """
-            background subtraction using C++ code works on non-fortran style 
-            background stacks, is less efficient than 
-            backgroundSubtractionWeaverF
+        background subtraction using C++ code works on non-fortran style 
+        background stacks, is less efficient than 
+        backgroundSubtractionWeaverF
+        
+        Args:
+            img (nd array):
+                                input image
+            bgStack (background image stack):
+                                - for computation see :func:`calculateBackgroundStack`
+                                - *needs to generated with fortranStyle=False*
+                        
+        Returns:
+            difference image
             
-            Input:
-                img         nd array                input image
-                
-                bgStack     stack of background  (see calculateBackgroundStack()
-                            images                for computation)
-                            !! needs to generated with fortranStyle=False !!
-                            
-                test        bool                    if result should get 
-                                                    compared to the output of
-                                                    backgroundSubstractionStack
-                            
-            Output:
-                difference image
+        .. seealso::
+            :func:`backgroundSubstractionStack`
+            :func:`backgroundSubstractionWeaver`
+            :func:`backgroundSubstractionWeaverF`
         """
         im0 = img[:,:,0].flatten()
         im1 = img[:,:,1].flatten()
@@ -487,23 +618,30 @@ class backgroundImage(np.ndarray):
     @staticmethod
     def backgroundSubtractionWeaverF(img, bgStackF, test=False, vSkip = 3, hSkip = 3):
         """
-            background subtraction using C++ code works on _fortran style_ 
-            background stacks, 
-            
+        background subtraction using C++ code works on *fortran style*
+        background stacks, 
+        
+        .. note::
             IS THE FASTEST APPROACH SO FAR
             
-            Input:
-                img         nd array                input image
-                
-                bgStackF    stack of background  (see calculateBackgroundStack()
-                            images                for computation)
-                            !! needs to generated with fortranStyle=True !!
-                            
-                test        bool                    if result should get 
-                                                    compared to the output of
-                                                    backgroundSubstractionStack
-                            
-            Output:
+        Args:
+            img (nd array):
+                                input image
+            bgStack (background image stack):
+                                - for computation see :func:`calculateBackgroundStack`
+                                - *needs to generated with fortranStyle=True*
+            test (bool):
+                                if result should get compared to the output of
+                                :func:`backgroundSubstractionStack`
+            vSkip (int):
+                                number of columns that are skipped in the 
+                                background subtraction
+            hSkip (int):
+                                number of rows that are skipped in the 
+                                background subtraction
+                        
+        Returns:
+            difference image
         """
                 
         im0 = img[:,:,0].flatten()
@@ -569,6 +707,10 @@ class backgroundImage(np.ndarray):
 
     
     def testStackProcessing(self, img):
+        """
+        Test function to veritfy the output of the different background 
+        subtractions
+        """
         from time import time
     
         print "start benchmarking stack approaches, be patient..."   

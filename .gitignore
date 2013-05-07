@@ -48,3 +48,6 @@ libs/*
 
 # IPython notebooks
 *.ipynb
+
+# sphinx documentation system
+doc/sphinx/build/*

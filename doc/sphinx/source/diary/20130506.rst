@@ -1,0 +1,9 @@
+==========
+06/05/2013
+==========
+
+- completed most of the documentation of fly localization
+- exchanged vials of flies
+
+- found video fly climbing of Teresa
+    - put into /home/peter/Downloads/leicaSave/

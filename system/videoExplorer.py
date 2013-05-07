@@ -9,11 +9,19 @@ import ffvideo
 class videoExplorer(object):
     """
     Class for access of recorded video files
-    ========================================
+    
     Allows to filter video files in a root folder to be retrieved by date
 
     """
     def __init__(self,  verbose=False, rootPath="/run/media/peter/Elements/peter/data/"):
+        """
+        
+        Args:
+            verbose (bool):
+                                switch verbosity on (prints some status messages)
+            rootPath (string):
+                                root directory to be scanned for video files
+        """
         self.rootPath = rootPath
         self.start = 0
         self.end = 0
@@ -25,25 +33,39 @@ class videoExplorer(object):
         
     def setTimeRange(self,  start,  end):
         """
-            set range of video explorer
-            INPUT:
-                start:  <datetime object>
-                end:    <datetime object>
+        set range of video explorer (works similar to a slice())
+        
+        Args:
+            start (datetime object):
+                                beginning of time range
+            end(datetime object):
+                                end of time range
         """
         self.start = start
         self.end = end
         
     def setRootPath(self,  root):
+        """
+        Set root path of object
+        
+        Test:
+            asdad
+        """
         self.rootPath = root
         
     def parseFiles(self):
         """
-            parses files in the main path and returns list of all files fitting
-            the start - end criteria
-            
-            make sure that before calling this function:
-            -   start and end datetimes were set 
-            -   mainPath is set
+        parses files in the main path and returns list of all files fitting
+        the start - end criteria
+        
+        make sure that before calling this function:
+        
+            - start and end datetimes were set 
+            - mainPath is set
+        
+        .. seealso::
+            :func:`setTimeRange()`
+            :func:`setRootPath()`
         """
         if self.start == 0 or self.end == 0:
             raise ValueError("start or end value not set properly")
@@ -68,8 +90,8 @@ class videoExplorer(object):
                     
     def filterDayVideos(self):
         """
-            generates list (self.nightList) of videos that were recorded during 
-            day (between 10am and 10pm)
+        generates list (self.nightList) of videos that were recorded during 
+        day (between 10am and 11pm)
         """
         self.dayList = []
         
@@ -80,8 +102,8 @@ class videoExplorer(object):
     
     def filterNightVideos(self):
         """
-            generates list (self.nightList) of videos that were recorded during 
-            night (between 10pm and 10am)
+        generates list (self.nightList) of videos that were recorded during 
+        night (between 11pm and 10am)
         """
         self.nightList = []
         
@@ -92,7 +114,7 @@ class videoExplorer(object):
                 
     def getPathsOfList(self,  list):
         """
-            returns a list of pure filenames without the corresponding datetime
+        returns a list of pure filenames without the corresponding datetime
         """
         out = []
         for item in list:
@@ -102,7 +124,7 @@ class videoExplorer(object):
                 
     def getDatesOfList(self,  list):
         """
-            returns a list of pure datetime without the corresponding paths
+        returns a list of pure datetime without the corresponding paths
         """
         out = [item[0] for item in list]
             
@@ -111,13 +133,15 @@ class videoExplorer(object):
         
     def fileName2DateTime(self,  fn, ending="mp4"):
         """
-            converts filename of video file to python datetime object
+        converts filename of video file to python datetime object
+        
+        Args:
+            fn (string):
+                                filename
             
-            INPUT:
-                fn      <String>    filename
-                
-            OUTPUT:
-                out     <datetime object> conversion of filename
+        Returns:
+            out (datetime object):
+                                conversion of filename
         """
         
         folders = re.split("/",  fn)
@@ -144,17 +168,23 @@ class videoExplorer(object):
                 
     def getRandomFrame(self, pathList,  info=False, frameMode='L'):
         """
-            returns the first frame from a random video of the list
+        returns the first frame from a random video of the list
+        
+        Args:
+            pathList (List of Strings):
+                                paths to video files
+            info (bool):
+                                return frame and filename
+            frameMode (String):
+                                Switch of color mode:
+                                
+                                - 'RGB': color representation
+                                - 'L':   gray-scale representation
+                                - 'F':   ???
             
-            INPUT:
-                pathList    <List of Strings>   paths to video files
-                info        bool                return frame and filename
-                frameMode  String              'RGB': color representation
-                                                'L':   gray-scale representation
-                                                'F':   ???
-                
-            OUT:
-                frame       <ndarray>           decoded video frame
+        Returns:
+            frame (ndarray):
+                                decoded video frame
         """
         file = pathList[random.randint(0,  len(pathList) - 1)]            
         frameNo = random.randint(0,  1600 - 1)
@@ -173,19 +203,26 @@ class videoExplorer(object):
                 
     def getFrame(self, file, frameNo=0, info=False, frameMode='L'):
         """
-            returns the given frame from a given video
+        returns the given frame from a given video
+        
+        Args:
+            file (String):
+                                path to video file
+            frameNo (int):
+                                frame number to be returned
+            info (bool):
+                                return frame and filename
+            frameMode (String):
+                                Switch of color mode:
+                                
+                                - 'RGB': color representation
+                                - 'L':   gray-scale representation
+                                - 'F':   ???
+                                            
             
-            INPUT:
-                file        String              path to video file
-                frameNo     int                 frame number to be returned
-                info        bool                return frame and filename
-                frameMode  String              'RGB': color representation
-                                                'L':   gray-scale representation
-                                                'F':   ???
-                                                
-                
-            OUT:
-                frame       <ndarray>           decoded video frame
+        Returns:
+            frame (ndarray):
+                                decoded video frame
         """
         
         if self.verbose:
@@ -202,11 +239,16 @@ class videoExplorer(object):
                 
     def next(self):
         """
-            returns next frame in opened video file
-            Call getFrame() or getRandomFrame() first
-            
-            INPUT:
-                info        bool                return frame and filename
+        returns next frame in opened video file
+        Call getFrame() or getRandomFrame() first
+        
+        Args:
+            info (bool):
+                                return frame and filename
+                                
+        .. seealso::
+            :func:`getFrame`
+            :func:`getRandomFrame`
         """
         
         if self.vs is None:
@@ -225,17 +267,23 @@ class videoExplorer(object):
     
     def setVideoStream(self, file,  info=False, frameMode='L'):
         """
-            returns the first frame from a random video of the list
+        returns the first frame from a random video of the list
+        
+        Args:
+            pathList (List of Strings):
+                                paths to video files
+            info (bool):
+                                return frame and filename
+            frameMode (String):
+                                Switch of color mode:
+                                
+                                - 'RGB': color representation
+                                - 'L':   gray-scale representation
+                                - 'F':   ???
             
-            INPUT:
-                pathList    <List of Strings>   paths to video files
-                info        bool                return frame and filename
-                frameMode  String              'RGB': color representation
-                                                'L':   gray-scale representation
-                                                'F':   ???
-                
-            OUT:
-                frame       <ndarray>           decoded video frame
+        Returns:
+            frame (ndarray):
+                                decoded video frame
         """       
         frameNo = random.randint(0,  1600 - 1)
         

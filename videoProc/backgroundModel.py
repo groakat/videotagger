@@ -20,7 +20,7 @@ class backgroundModel(object):
     
     def __init__(self,  verbose=False, colorMode='gray'):
         """
-            INPUT:
+            Args:
             verbose     bool        switch verbosity
             colorMode   String      get available colourModes with 
                                     getcolorModes()
@@ -39,13 +39,38 @@ class backgroundModel(object):
         self.colorIdx = self.getcolorModes().index(colorMode)
         
     def setData(self, startDate,  endDate):
+        """
+        Set dates that were used to estimate background model
+        
+        Args:
+            startDate (datetime):
+                                beginning date
+            endDate (datetime):
+                                end date
+        """
         self.startDate = startDate
         self.endDate = endDate
         
     def setPath(self,  rootPath):
+        """
+        Set root path
+        """
         self.rootPath = rootPath
         
     def getVideoPaths(self, rootPath, start, end,  sampleSize=200):        
+        """
+        Parse video files in the root folder
+        
+        Args:
+            rootPath (string):
+                                path to root folder
+            startDate (datetime):
+                                beginning date
+            endDate (datetime):
+                                end date
+            sampleSize (int): 
+                                number of frames used to estimate background
+        """
         self.rootPath = rootPath
         self.startDate = start
         self.endDate = end
@@ -59,6 +84,15 @@ class backgroundModel(object):
         self.nightPaths = self.vE.getPathsOfList(self.vE.nightList)
         
     def createModelFromListMean(self, pathList, sampleSize=200):
+        """        
+        estimate background by calculating mean
+        
+        Args:
+            pathList (list of string):
+                                list of video paths
+            sampleSize (int): 
+                                number of frames used to estimate background
+        """
         mean = np.float32(self.vE.getRandomFrame(pathList))
         for i in range(2, sampleSize + 1):     
             if self.verbose:
@@ -69,6 +103,18 @@ class backgroundModel(object):
         
         
     def createModelFromListMedian(self, pathList,  sampleSize=20):
+        """        
+        estimate background by calculating median
+        
+        .. note::
+            preferred method to mean calculation
+        
+        Args:
+            pathList (list of string):
+                                list of video paths
+            sampleSize (int): 
+                                number of frames used to estimate background
+        """
         if sampleSize > 255:
             warnings.warn("createModelFromListMedian: sampleSize has to be between 0..255", RuntimeWarning)
             sampleSize = 255
@@ -117,6 +163,21 @@ class backgroundModel(object):
         return medianImage
         
     def getRandomFrame(self, pathList,  info=False):
+        """
+        Get a random frame from videos in pathList
+        
+        Args:
+            pathList (list of string):
+                                list of video paths
+            info (bool):
+                                if True, returns list [frame, path to frame]
+        
+        Returns:
+            frame:
+                if info == False
+            [frame, path to frame]:
+                if info == True            
+        """
         if self.colorModeLst[self.colorIdx][0] == 'gray':
             fM = 'L'
         else:
@@ -125,6 +186,22 @@ class backgroundModel(object):
         return self.vE.getRandomFrame(pathList, frameMode=fM, info=info)
         
     def getFrame(self, path,  info=False):
+        """
+        Get a frame from videos in pathList
+        
+        Args:
+            pathList (list of string):
+                                list of video paths
+            info (bool):
+                                if True, returns list [frame, path to frame]
+        
+        Returns:
+            frame:
+                if info == False
+            [frame, path to frame]:
+                if info == True       
+        """
+        
         if self.colorModeLst[self.colorIdx][0] == 'gray':
             fM = 'L'
         else:
@@ -133,6 +210,9 @@ class backgroundModel(object):
         return self.vE.getFrame(path, frameMode=fM, info=info)
                         
     def createNightModel(self, sampleSize=20):
+        """
+        computes background model for night frames
+        """
         if self.verbose:
             print "creating night model.."
         self.modelNight = backgroundImage(
@@ -147,6 +227,9 @@ class backgroundModel(object):
         self.bgModelList[1] = [self.modelNight, startTime, endTime]
         
     def createDayModel(self, sampleSize=20):
+        """
+        computes background model for day frames
+        """
         if self.verbose:
             print "creating day model.."
         self.modelDay = backgroundImage(
@@ -158,6 +241,15 @@ class backgroundModel(object):
         self.bgModelList[0] = [self.modelDay, startTime, endTime]
         
     def getBgImg(self, time, debug=False):
+        """
+        returns correct background image based on given time
+        
+        Args:
+            time (time object):
+                                time of video recording
+            debug (bool):
+                                if True, prints which model was chosen
+        """
         if debug:
             print time
         if time >= self.bgModelList[0][1] and time <= self.bgModelList[0][2]:
@@ -172,6 +264,15 @@ class backgroundModel(object):
             raise ValueError("given time not covered by computed background Models")
     
     def saveModels(self, path=''):
+        """
+        saves background models as png in the given folder
+        
+        Args:
+            path (string):
+                                path to folder where background models will
+                                be saved to.
+                                If path=='', root path will be used
+        """
         if path == '':
             path = self.rootPath
         
@@ -186,6 +287,9 @@ class backgroundModel(object):
                        arr=self.modelNight, cmap=mpl.cm.gray)
                        
     def loadModel(self, path):
+        """
+        loads background model from given path
+        """
         img = plt.imread(path)
         
         names = re.split("[_]",  os.path.basename(path))

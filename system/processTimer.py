@@ -1,6 +1,8 @@
 """
 ProcessTimer class to monitor memory use of sub process
 
+Untested
+
 code taken from:
 http://stackoverflow.com/questions/13607391/subprocess-memory-usage-in-python
 
