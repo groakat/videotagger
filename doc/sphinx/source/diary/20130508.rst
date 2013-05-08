@@ -1,0 +1,43 @@
+==========
+08/05/2013
+==========
+
+Experiment
+==========
+
+Experiment from previous day showed that night videos produced an obvious error:
+
+.. image:: 
+    ../../../../images/doc/20130508-badNight.png
+    
+    
+In the same time, the day extraction seemed to work properly.
+
+.. image:: 
+    ../../../../images/doc/20130508-badDay.png
+    
+.. note::
+    night extraction were done with two parallel workers, while day is done in one go
+
+For some reasons this seem to happen with the second worker. Maybe be the kernel was not restarted before it was run.
+
+.. image::
+    ../../../../images/doc/20130508-goodNight-qtConsoleScriptIOnly.png
+    
+- do restart of kernel and second run now
+
+
+.. image::
+    ../../../../images/doc/20130508-repairedNightAtTheEndOfday.png
+    
+.. image::
+    ../../../../images/doc/20130508-repairedDayAtTheEndOfday.png
+
+Stuff
+=====
+
+- Met with Mark for the python course
+- made background update more robust by changing the used background image as soon as it is discovered that the background changed (previously the applied background image would be only checked when a new video was analyzed)
+- still the change of light (day/night) leads to wrong fly detections as until it is discovered that a new background image has to be used
+    
+    
