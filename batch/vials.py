@@ -148,6 +148,7 @@ class Vials(object):
         
         self.bgModel = None         # will be set in extractPatches
         self.currentBgImg = None
+        self.currentFrame = None
         
     def batchProcessImage(self,  img,  funct,  args):
         """
@@ -251,7 +252,7 @@ class Vials(object):
         
         return diffMin
     
-    def getFlyPositions(self, frame, bgImg, img=None, debug=False,
+    def getFlyPositions(self, frame, bgImg=None, img=None, debug=False,
                         clfyFunc=None, patchSize=[64,64]):
         """
         Returns positions of flies within all vials.
@@ -264,6 +265,7 @@ class Vials(object):
                                 image on which the flies are searched in
             bgImg (pyTools.videoProc.backgroundImage):
                                 background image for background subtraction
+                                if None, self.currentBgImg will be used
             patchSize ([int, int]):
                                 size of extracted patch                                
             clfyFunc (function):
@@ -296,12 +298,20 @@ class Vials(object):
                 background subtraction:            
         
         """
+        if bgImg is None and self.currentBgImg is not None:
+            bgImg = self.currentBgImg
+        elif bgImg is None:
+            raise ValueError("bgImg not specified, while self.currentBgImg was"+
+                               " not set previously")
+        
+        
         if clfyFunc is None:
             if self.clfyFunc is not None:
                 clfyFunc = self.clfyFunc
             else:
                 clfyFunc = lambda patch: np.min(patch.flatten()) < -250
         
+        self.currentFrame = frame
         diffImg = bgImg.subtractStack(frame)
         if debug:
             plotIt = True
@@ -530,6 +540,16 @@ class Vials(object):
             self.update = None
             
         self.wasUpdated = [False] * len(self.rois)
+        
+        bgImg = self.bgModel.getBgImg(self.currentFrame,debug=True)
+        
+        if bgImg is not self.currentBgImg:
+            self.setBackgroundImage(bgImg)
+        
+    def setBackgroundImage(self, bgImg):
+        bgFunc = bgImg.backgroundSubtractionWeaverF
+        bgImg.configureStackSubtraction(bgFunc)
+        self.currentBgImg = bgImg        
     
     @staticmethod
     def plotVialWithPatch(img,  vials):
@@ -897,11 +917,9 @@ class Vials(object):
                     # select correct background model
                     bgImg = bgModel.getBgImg(frame, debug=True)
                     if bgImg is not vial.currentBgImg:
-                        bgFunc = bgImg.backgroundSubtractionWeaverF
-                        bgImg.configureStackSubtraction(bgFunc)
-                        vial.currentBgImg = bgImg
+                        vial.setBackgroundImage(bgImg)
                   
-                pos = vial.getFlyPositions(frame, bgImg, img=frame, debug=False)        
+                pos = vial.getFlyPositions(frame, None, img=frame, debug=False)        
                 baseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4') + \
                                                             '.v{0}.{1:05d}.tif'
                 
@@ -1052,6 +1070,12 @@ class Vials(object):
                     continue
 
                 hog = computeHog(patch)
+                
+                if np.isnan(np.sum(hog.flatten())):
+                    # happens if all values in patch are low(?)
+                    # whatever it is, it will not represent a fly
+                    continue
+                
                 if not(noveltyClassfy.predict(hog) == 1):
                     # hog features were not modelled, very likely to be background
                     continue
