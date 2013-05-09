@@ -297,40 +297,51 @@ class videoExplorer(object):
     
     @staticmethod
     def splitFolders(path):
-		"""
-		splits path into its folders and returns them 
-		in a list. 
+        """
+        splits path into its folders and returns them 
+        in a list. 
 
-		.. note::
-			Last entry of the returned list will be the
-			basename of the path if applicable
+        .. note::
+            Last entry of the returned list will be the
+            basename of the path if applicable
 
-		Args:
-			path (string):
-							path to split
+        Args:
+            path (string):
+                            path to split
 
-		Returns:
-			folders (list of strings):
-							list of folders in path
-							
-		Source:
-			http://stackoverflow.com/questions/3167154/how-to-split-a-dos-path-into-its-components-in-python
-		"""
-		folders=[]
-		while 1:
-			path,folder=os.path.split(path)
+        Returns:
+            folders (list of strings):
+                            list of folders in path
+                            
+        Source:
+            http://stackoverflow.com/questions/3167154/how-to-split-a-dos-path-into-its-components-in-python
+        """
+        folders=[]
+        while 1:
+            path,folder=os.path.split(path)
 
-			if folder!="":
-				folders.append(folder)
-			else:
-				if path!="":
-					folders.append(path)
+            if folder!="":
+                folders.append(folder)
+            else:
+                if path!="":
+                    folders.append(path)
 
-				break
+                break
 
-		folders.reverse()
+        folders.reverse()
 
-		return folders
+        return folders
+        
+    @staticmethod
+    def findFileInList(lst, filename):
+        """
+        returns the position of the file within the list of paths
+        """
+        return [a for a,b in enumerate(lst) if b[1].endswith(filename)]
+        
+    @staticmethod
+    def findClosestDate(dateList, date):
+		min(DTlist,key=lambda date : abs(dt-date))
     
 if __name__ == "__main__":
     vE = videoExplorer()

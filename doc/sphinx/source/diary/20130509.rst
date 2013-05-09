@@ -1,0 +1,123 @@
+==========
+09/05/2013
+==========
+
+Results of fly tracking
+=======================
+
+.. image::
+    ../../../../images/doc/20130509-night-0-1200.png
+    
+.. image::
+    ../../../../images/doc/20130509-day-all.png
+
+Results of comparing load/save of position as string dump and using np.save
+===========================================================================
+
+.. code-block:: python
+    
+    %pylab inline
+    import matplotlib.pyplot as plt
+    import sys, os, glob
+    sys.path.append('/home/peter/code/pyTools/')
+    
+    import numpy as np
+    from pyTools.system.videoExplorer import *
+    
+    vE = videoExplorer()
+    
+    import datetime as dt
+    start = dt.datetime(2013, 02, 19)
+    end = dt.datetime(2013, 02, 21)
+    rootPath = "/run/media/peter/Elements/peter/data/box1.0/"
+    vE.setTimeRange(start, end)
+    vE.setRootPath(rootPath)
+    vE.parseFiles()
+    
+    import os
+    
+    # import all position files that were saved with
+    # '{0}'.format(pos)
+    
+    from time import time
+    
+    dayPosList = []
+    nightPosList = []
+    
+    t = time()
+    for root,  dirs,  files in os.walk('/run/media/peter/Elements/peter/data/tmp-20130506/'):
+        for f in files:
+            if f.endswith('pos'):
+                dt = vE.fileName2DateTime(f, 'pos')
+                
+                fl = open(root + '/' + f, 'r')
+                pos = eval(fl.read())
+                            
+                fl.close()
+                
+                hour = dt.hour
+                if hour < 10 or hour >= 23:
+                    nightPosList += pos
+                else:
+                    dayPosList += pos
+                    
+                    
+    print time() - t
+    
+::
+
+    133.641154051
+    
+.. code-block:: python
+    
+    # import all position files that were saved using
+    # numpy.save()
+    import os
+    from time import time
+    
+    dayPosList = []
+    nightPosList = []
+    
+    t = time()
+    for root,  dirs,  files in os.walk('/run/media/peter/Elements/peter/data/tmp-20130506/'):
+        for f in files:
+            if f.endswith('npy'):
+                dt = vE.fileName2DateTime(f, 'npy')
+                
+                #fl = open(root + '/' + f, 'r')
+                pos = np.load(root + '/' + f)
+                            
+                hour = dt.hour
+                if hour < 10 or hour >= 23:
+                    nightPosList.append(pos)
+                else:
+                    dayPosList.append(pos)
+                    
+    print time() - t
+    
+::
+
+    7.20595097542
+    
+.. note::
+    loading numpy files is almost 20x faster
+    
+    
+General progress
+================
+- made video player play continuesly within folder structure
+    - video jumps possible
+    - plays about 12x speed
+
+
+Notes
+=====
+
+- amazon webservice:
+    - http://aws.amazon.com/ec2/
+    - heavy load costs $805 a year (3yr usage + $2000 upfront)
+    - other options available for sure, have to keep checking
+
+- super fast forward (as with day flies and 12x speed, making them really 30x fast forward) does
+  not really make sense (the flies move extremely fast)
+

@@ -40,4 +40,4 @@ Stuff
 - made background update more robust by changing the used background image as soon as it is discovered that the background changed (previously the applied background image would be only checked when a new video was analyzed)
 - still the change of light (day/night) leads to wrong fly detections as until it is discovered that a new background image has to be used
     
-    
+
