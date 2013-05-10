@@ -1,0 +1,136 @@
+==========
+10/05/2013
+==========
+
+Experiments
+===========
+
+- Tried to plot the movements of the flies over the course of two days.
+    - approximate 1px with 1mm
+    - ran into problems because an error/noise of just 0.5px per frame accumulates to 1000px each minute
+    - or said otherwise, the noise is almost as strong as movement
+    - this makes early filtering necessary to smooth out noise
+
+.. image::
+    ../../../../images/doc/20130510-influenceOfPixelErrorInLocation.png
+    
+.. note::
+    Ab -RU is absolutely not moving in the first 10 hours. But the plot shows more 
+    movement of this fly than of others...
+    
+.. code-block:: python
+
+    %pylab inline
+    import matplotlib.pyplot as plt
+    import sys, os, glob
+    sys.path.append('/home/peter/code/pyTools/')
+    
+    import numpy as np
+    from pyTools.system.videoExplorer import *
+    import os
+    from time import time
+    
+    vE = videoExplorer()
+    fileList  = []
+    posList = []
+    
+    t = time()
+    for root,  dirs,  files in os.walk('/run/media/peter/Elements/peter/data/tmp-20130506/'):
+        files = files
+        for f in files:
+            if f.endswith('npy'):
+                #fl = open(root + '/' + f, 'r')
+                path = root + '/' + f
+                fileList.append(path)
+                posList.append(np.load(path))            
+    
+    #sort both lists based on the file name
+    posList = [x for y, x in sorted(zip(fileList, posList))]
+    fileList = sorted(fileList)
+    print time() - t
+    
+    ## smooth the positions
+    # first make long arrays for each vial and direction 
+    
+    sequence =  [[] for i in range(8)]
+    for minute in posList:
+        for pos in minute:
+            for v in range(len(pos)):
+                sequence[v * 2].append(pos[v][0])
+                sequence[v * 2 + 1].append(pos[v][1])
+    
+    from scipy.signal import medfilt
+
+    filteredPos = []
+    for a in sequence:
+        filteredPos.append(medfilt(a, 51))
+    
+    diff  =  []
+
+    for p in filteredPos:
+        diff.append(np.convolve([1,-1], p))
+    
+    dists = [[] for i in range(4)]
+    for i in range(4):
+        dists[i] = np.sqrt(diff[i*2] ** 2 + diff[i*2 + 1] ** 2)
+    
+    figure(figsize=(20,10))
+    color = ['r', 'g', 'y', 'b']
+    name = ['Ab +RU', 'Ab -RU', 'dilp', 'w+']
+    for i in range(3,-1,-1):
+        v = dists[i]
+        
+        smoothLen = 51.0
+        m = np.convolve(v, np.ones(smoothLen)/smoothLen, 'same')
+                
+        plot(np.arange(m.shape[0]), m, color[i], label=name[i])
+        
+produces:
+
+.. image:: 
+    ../../../../images/doc/20130510-outliersStandOut.png
+    
+That suggests that we should threshold difference values above 25 savely.
+
+Results
+=======
+Args:
+    medfilter:  
+        51
+    plot-median: 
+        31
+
+.. image::
+    ../../../../images/doc/20130510-correctedPlot-med51-plot31.png
+
+Args:
+    medfilter:  
+        31
+    plot-median: 
+        31
+
+.. image::
+    ../../../../images/doc/20130510-correctedPlot-med31-plot31.png
+
+Args:
+    medfilter:  
+        - 11
+        - is too low, graphs do not go to zero anymore
+        - however, the peaks are unchanged, so it can be set higher
+        
+    plot-median: 
+        31
+
+.. image::
+    ../../../../images/doc/20130510-correctedPlot-med11-plot31.png
+
+Args:
+    medfilter:  
+        31
+        
+    plot-median: 
+        - 11
+        - makes it really hard to interpret
+
+.. image::
+    ../../../../images/doc/20130510-correctedPlot-med31-plot11.png

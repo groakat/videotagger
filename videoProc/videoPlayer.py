@@ -100,6 +100,7 @@ class videoPlayer(QMainWindow):
         #img = vE.next()[:,:,0:3]
         frame = vE.vs.next()
         
+        
         #print frame.frameno
         
         img = frame.ndarray()
@@ -122,7 +123,7 @@ class videoPlayer(QMainWindow):
         lbl.setScaledContents(True)
         lbl.setPixmap(px)
         
-        #lbl.update()
+        lbl.update()
         
         return img
         
@@ -167,10 +168,10 @@ class videoPlayer(QMainWindow):
                 img = self.updateVial(self.vEs[2], self.ui.lbl_v2, self.pos[idx][2])
                 img = self.updateVial(self.vEs[3], self.ui.lbl_v3, self.pos[idx][3])
                 
-                #print (i, len(self.pos))
                             
-                if (i % int(updateRate / fps)) == 0:
+                if (i % 30) == 0:
                     QApplication.processEvents()
+                
                 time.sleep(0.0001)# / updateRate)
             print time.time()-t
             
