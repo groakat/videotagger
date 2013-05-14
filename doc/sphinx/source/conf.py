@@ -28,6 +28,17 @@ sys.path.append('/home/peter/code/pyTools/')
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 #'sphinx.ext.pngmath',
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest', 'sphinx.ext.todo', 'sphinx.ext.coverage', 'sphinx.ext.mathjax', 'sphinx.ext.viewcode']
+
+# Add any Sphinx extension module names here, as strings. They can
+# be extensions coming with Sphinx (named 'sphinx.ext.*') or your
+# custom ones.
+extensions += ['matplotlib.sphinxext.mathmpl',
+          'matplotlib.sphinxext.only_directives',
+          'matplotlib.sphinxext.plot_directive',
+          'matplotlib.sphinxext.ipython_directive',
+          'sphinx.ext.autodoc',
+          'sphinx.ext.doctest']
+
 #mathjax_path =  
 
 # [extensions]

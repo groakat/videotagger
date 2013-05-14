@@ -1,0 +1,92 @@
+==========
+13/05/2013
+==========
+
+Experiments
+===========
+
+- continued with plotting fly trajectories
+- combined profile plot of 10/05/2013 with trail plot, showing each frame two minutes of fly trajectory trails
+
+.. image::
+    ../../../../images/doc/20130513-trail-profile-plot.png
+    
+    
+- to this end
+    - scatter plot was used to plot trails (colored "dots") using a color map fast
+
+.. plot:: 
+
+    from pylab import *
+    cdict =      {'red':   ((0.0+0.0*0.25, 0.5, 0.2),# 1st vial
+                            (0.0+0.9*0.25, 0.5, 0.5),
+                            (0.0+1.0*0.25, 1.0, 1.0), 
+                            (0.25+0.0*0.25, 0.0, 0.0),# 2nd vial
+                            (0.25+0.0*0.25, 0.0, 0.0),
+                            (0.25+1.0*0.25, 0.0, 0.0), 
+                            (0.50+0.0*0.25, 0.2, 0.2),# 3rd vial
+                            (0.50+0.9*0.25, 0.5, 0.5),
+                            (0.50+1.0*0.25, 1.0, 1.0), 
+                            (0.75+0.0*0.25, 0.0, 0.0),# 4th vial
+                            (0.75+0.9*0.25, 0.0, 0.0),
+                            (0.75+1.0*0.25, 0.0, 0.0), 
+                            ),
+                  'green': ((0.0+0.0*0.25, 0.0, 0.0),# 1st vial
+                            (0.0+0.9*0.25, 0.0, 0.0),
+                            (0.0+1.0*0.25, 0.0, 0.0), 
+                            (0.25+0.0*0.25, 0.2, 0.2),# 2nd vial
+                            (0.25+0.9*0.25, 0.5, 0.5),
+                            (0.25+1.0*0.25, 1.0, 1.0), 
+                            (0.50+0.0*0.25, 0.2, 0.2),# 3rd vial
+                            (0.50+0.9*0.25, 0.5, 0.5),
+                            (0.50+1.0*0.25, 1.0, 1.0), 
+                            (0.75+0.0*0.25, 0.0, 0.0),# 4th vial
+                            (0.75+0.9*0.25, 0.0, 0.0),
+                            (0.75+1.0*0.25, 0.0, 0.0), 
+                            ),
+                  'blue':  ((0.0+0.0*0.25, 0.2, 0.2), # 1st vial
+                            (0.0+0.9*0.25, 0.1, 0.1),
+                            (0.0+1.0*0.25, 0.0, 0.0),  
+                            (0.25+0.0*0.25, 0.0, 0.0),# 2nd vial
+                            (0.25+0.0*0.25, 0.0, 0.0),
+                            (0.25+1.0*0.25, 0.0, 0.0), 
+                            (0.50+0.0*0.25, 0.0, 0.0),# 3rd vial
+                            (0.50+0.9*0.25, 0.0, 0.0),
+                            (0.50+1.0*0.25, 0.0, 0.0), 
+                            (0.75+0.0*0.25, 0.2, 0.2),# 4th vial
+                            (0.75+0.9*0.25, 0.5, 0.5),
+                            (0.75+1.0*0.25, 1.0, 1.0), 
+                            )
+                 } 
+    my_cmap = matplotlib.colors.LinearSegmentedColormap('my_colormap',cdict,256)
+    pcolor(rand(10,10),cmap=my_cmap)
+    colorbar()
+    
+Multi-Threading using IPython Cluster
+=====================================
+To speed up the plotting, I experimented with the IPython multithreading support. Its great. Just took a while to figure out how it works. Thats how:
+
+.. code-block:: python
+
+    # start a client and get all clusters to work for us
+    from IPython.parallel import Client
+    rc = Client()
+    print rc.ids
+    dview = rc[:]
+    
+    # export global variables and functions into the cluster view
+    # this is just an example
+    dview.block=True
+    dview['accDist'] = accDist
+    dview['fileList'] = fileList
+    dview['posList']= posList
+    dview['saveScatters'] = saveScatters
+    dview['plotTrajectorySummery'] = plotTrajectorySummery
+    dview['vE'] = vE
+    
+    # get a balanced view and run it on the function we want to run
+    lview = rc.load_balanced_view()
+    lview.block = True
+    res = lview.map(lambda x: saveScatters(x), range(300, len(posList)-2), chunksize=10)
+    
+A working example can be found in "Demo - Display Trials". Hopefully I will have time tomorrow to transfer the code in a module.
