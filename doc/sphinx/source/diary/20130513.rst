@@ -90,3 +90,10 @@ To speed up the plotting, I experimented with the IPython multithreading support
     res = lview.map(lambda x: saveScatters(x), range(300, len(posList)-2), chunksize=10)
     
 A working example can be found in "Demo - Display Trials". Hopefully I will have time tomorrow to transfer the code in a module.
+
+Generation of Video
+===================
+
+::
+
+    ffmpeg -f image2 -i scatter_%05d.png -s 1280x912 -c:v libx264 -preset medium -crf 10 output.mp4

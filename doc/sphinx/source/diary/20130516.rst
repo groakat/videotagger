@@ -1,0 +1,22 @@
+==========
+16/05/2013
+==========
+
+Memory Leak in Parallel Plotting
+================================
+
+- solved by not using %pylab but by importing pylab and numpy directly
+- it seems that %pylab is not clearing the figures acurately
+
+
+General
+=======
+
+Making "night areas" in actogram darker
+
+Files
+=====
+
+Final rerendered trail video
+
+:download:

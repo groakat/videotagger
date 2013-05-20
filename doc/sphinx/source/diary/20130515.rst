@@ -1,0 +1,35 @@
+==========
+15/05/2013
+==========
+
+Improvements
+============
+
+- trail plot
+    - made blue lighter
+    - added time stamp
+    - added vial description
+    - added night zones for trajectory summary plot
+
+
+Notes
+=====
+
+Other python toolkits as alternative to matplotlib
+
+- different 3D plots (look quite ok) VisIt https://wci.llnl.gov/codes/visit/gallery.html
+- amazing parallized plots: http://paraview.org/Wiki/ParaView/Python_Scripting
+
+Problems
+========
+
+- parallelization for plotting the trails has memory leak
+
+
+Observations from trails
+========================
+
+- Mail from Matt -> Carlos might be interested
+- Interesting things happen:
+    - flies seem to return after exploration to initial position
+    - Alzheimer flies dont do that
