@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Mon May 20 16:26:47 2013
+# Created: Tue May 21 14:05:47 2013
 #      by: PyQt4 UI code generator 4.10.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -208,8 +208,11 @@ class Ui_Form(object):
         self.lv_jmp.setGeometry(QtCore.QRect(840, 571, 61, 121))
         self.lv_jmp.setObjectName(_fromUtf8("lv_jmp"))
         self.pb_compDist = QtGui.QPushButton(Form)
-        self.pb_compDist.setGeometry(QtCore.QRect(940, 670, 141, 23))
+        self.pb_compDist.setGeometry(QtCore.QRect(940, 670, 151, 23))
         self.pb_compDist.setObjectName(_fromUtf8("pb_compDist"))
+        self.pb_test = QtGui.QPushButton(Form)
+        self.pb_test.setGeometry(QtCore.QRect(940, 700, 151, 23))
+        self.pb_test.setObjectName(_fromUtf8("pb_test"))
 
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
@@ -225,4 +228,5 @@ class Ui_Form(object):
         self.pb_stopVideo.setText(_translate("Form", "stop video", None))
         self.pb_jmp2frame.setText(_translate("Form", "jump to frame", None))
         self.pb_compDist.setText(_translate("Form", "compute distances", None))
+        self.pb_test.setText(_translate("Form", "test button", None))
 

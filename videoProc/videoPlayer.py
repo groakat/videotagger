@@ -56,9 +56,6 @@ class videoPlayer(QMainWindow):
         self.connectSignals()       
         self.show()
         
-        #self.posList = sorted(self.providePosList(path))
-        #a = self.providePosList(path)
-        #1/0
         self.posList = self.providePosList(path)    
         
         self.lm = MyListModel(self.fileList, self)        
@@ -89,6 +86,8 @@ class videoPlayer(QMainWindow):
         self.ui.pb_startVideo.clicked.connect(self.startVideo)
         self.ui.pb_stopVideo.clicked.connect(self.stopVideo)
         self.ui.pb_compDist.clicked.connect(self.compDistances)
+        self.ui.pb_test.clicked.connect(self.loadNewVideo)
+        
         self.ui.sldr_paths.valueChanged.connect(self.selectVideo)
         self.ui.lv_frames.activated.connect(self.selectFrame)
         self.ui.lv_jmp.activated.connect(self.selectFrameJump)
@@ -325,6 +324,82 @@ class videoPlayer(QMainWindow):
         self.filterList = filterJumps(self.posList, self.dists, 25)
         print "finished computing jumps"
         
+    def loadNewVideo(self):
+        self.prefetchVideo(self.fileList[0])
+    
+    @pyqtSlot(list)
+    def addVideo(self, videoList):
+        print "slot"
+        self.videoList += videoList
+        
+        print self.videoList
+                
+    def prefetchVideo(self, posPath):        
+        self.vl = VideoLoader()
+        self.vl.loadedVideos.connect(self.addVideo)
+        self.vl.loadVideos(posPath)
+        
+class BaseThread(QThread):
+    def __init__(self):
+        QThread.__init__(self)
+        self.exiting = False
+
+    def __del__(self):
+        self.exiting = True
+        self.wait()
+        
+from IPython.parallel import Client
+# Subclassing QObject and using moveToThread
+# http://labs.qt.nokia.com/2007/07/05/qthreads-no-longer-abstract/
+class VideoLoader(BaseThread):    
+    
+    loadedVideos = pyqtSignal(list)
+    #loadedVideos = pyqtSignal()
+    finished = pyqtSignal()
+    
+    def __init__(self):
+        BaseThread.__init__(self)
+
+    def loadVideos(self, posPath):  
+        self.posPath = posPath        
+        self.exiting = False
+        self.start()        
+        
+    def run(self):
+        print "loadVideos"
+        rc = Client()
+        print rc.ids
+        
+        dview = rc[:]        
+        lbview = rc.load_balanced_view()   
+        
+        @lbview.parallel(block=True)
+        def loadVideo(f):    
+            from qimage2ndarray import array2qimage
+            from pyTools.system.videoExplorer import videoExplorer
+            #from PyQt4.QtGui import QPixmap        
+            
+            vE = videoExplorer()        
+            vE.setVideoStream(f, info=False, frameMode='RGB')
+            
+            qi = []
+            for frame in vE:
+                qi.append(array2qimage(frame))
+            
+            return qi
+            
+        
+        f = []
+        for i in range(4):
+            f += [self.posPath.split('.pos')[0] + '.v{0}.{1}'.format(i, 'avi')]
+        
+        result = [self.posPath, loadVideo.map(f)]
+        
+        print "finished computing, emiting signal"
+        self.loadedVideos.emit(result)
+        #self.loadedVideos.emit()
+        self.finished.emit()     
+
         
 if __name__ == "__main__":
     
