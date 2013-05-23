@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Tue May 21 14:05:47 2013
+# Created: Thu May 23 15:41:20 2013
 #      by: PyQt4 UI code generator 4.10.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -213,6 +213,18 @@ class Ui_Form(object):
         self.pb_test = QtGui.QPushButton(Form)
         self.pb_test.setGeometry(QtCore.QRect(940, 700, 151, 23))
         self.pb_test.setObjectName(_fromUtf8("pb_test"))
+        self.lbl_v0_full = QtGui.QLabel(Form)
+        self.lbl_v0_full.setGeometry(QtCore.QRect(1040, 50, 64, 64))
+        self.lbl_v0_full.setObjectName(_fromUtf8("lbl_v0_full"))
+        self.lbl_v1_full = QtGui.QLabel(Form)
+        self.lbl_v1_full.setGeometry(QtCore.QRect(1040, 120, 64, 64))
+        self.lbl_v1_full.setObjectName(_fromUtf8("lbl_v1_full"))
+        self.lbl_v2_full = QtGui.QLabel(Form)
+        self.lbl_v2_full.setGeometry(QtCore.QRect(1040, 200, 64, 64))
+        self.lbl_v2_full.setObjectName(_fromUtf8("lbl_v2_full"))
+        self.lbl_v3_full = QtGui.QLabel(Form)
+        self.lbl_v3_full.setGeometry(QtCore.QRect(1040, 270, 64, 64))
+        self.lbl_v3_full.setObjectName(_fromUtf8("lbl_v3_full"))
 
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
@@ -229,4 +241,8 @@ class Ui_Form(object):
         self.pb_jmp2frame.setText(_translate("Form", "jump to frame", None))
         self.pb_compDist.setText(_translate("Form", "compute distances", None))
         self.pb_test.setText(_translate("Form", "test button", None))
+        self.lbl_v0_full.setText(_translate("Form", "TextLabel", None))
+        self.lbl_v1_full.setText(_translate("Form", "TextLabel", None))
+        self.lbl_v2_full.setText(_translate("Form", "TextLabel", None))
+        self.lbl_v3_full.setText(_translate("Form", "TextLabel", None))
 
