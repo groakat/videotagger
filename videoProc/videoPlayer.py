@@ -425,11 +425,11 @@ class VideoLoader(BaseThread):
             import numpy as np    
             
             vE = videoExplorer()        
-            vE.setVideoStream(f, info=False, frameMode='RGB')
             
-            qi = []
+            
+            qi = [vE.getFrame(f, info=False, frameMode='RGB')]
             for frame in vE:
-                qi.append(frame)
+                qi += [frame]
                         
             ret = dict()
             
@@ -507,7 +507,7 @@ class VideoLoader(BaseThread):
             for i in range(len(self.frameList)):
                 out += [self.frameList[i][idx]]
                 
-            return [self.pos[idx+1], out]
+            return [self.pos[idx], out]
         else:
             raise RuntimeError("Video frame was not available")
 
