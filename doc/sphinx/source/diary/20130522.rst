@@ -1,0 +1,37 @@
+==========
+22/05/2013
+==========
+
+Implementation
+==============
+
+Video player
+############
+- ipython parallel leaks memory
+
+The solution is to
+
+1. use applu_async
+#. once the data is in
+    #. get result
+    #. get the message id of the results
+    #. use the message id to delete results and metadata in the cluster
+    
+.. code-block:: python
+
+    results = []
+    for i in range(4):
+        f = self.posPath.split('.pos')[0] + '.v{0}.{1}'.format(i, 'avi')
+        results += [lbview.apply_async(loadVideo, f, i)]
+
+    self.frameList = [0]*4
+    for i in range(4):
+        # copy data
+        ar = results[i].get()
+        self.frameList[ar["vialNo"]] = ar["qi"]
+        # delete data from cluster
+        msgId = results[i].msg_id
+        #~ del lbview.results[msgId]
+        del rc.results[msgId]
+        del rc.metadata[msgId]
+        

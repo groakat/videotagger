@@ -5,3 +5,23 @@
 
 Meetings
 ========
+
+Matt
+#####
+- we trying to get carlos' oppinion about the movements
+- Cellular Automata
+
+Gabe
+####
+- reuse of old annotation widget
+- end of the week player should  be able to make annotations
+- cast "predictions" of movements on player
+
+Implementations
+===============
+
+- Video player is able to play video seemlessly
+- jumps to different files and frames possible
+- video player can jump to positions with high movement
+
+- positions and frames seem to be disaligned

@@ -671,6 +671,19 @@
     <string>TextLabel</string>
    </property>
   </widget>
+  <widget class="QCheckBox" name="cb_trajectory">
+   <property name="geometry">
+    <rect>
+     <x>940</x>
+     <y>550</y>
+     <width>161</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Show Trajectory</string>
+   </property>
+  </widget>
  </widget>
  <resources/>
  <connections/>

@@ -1,0 +1,25 @@
+==========
+23/05/2013
+==========
+
+Implementation
+==============
+
+Video player
+############
+
+- uses keys to navigate framewise
+- changed behaviour of frame fetching (threads will be deleted later than they are created)
+    - this was done to solve the problem if one navigated between two videos fast back and forward which led to the result of quickly creating and deleting the same threads (or threads holding the same video chunk) over and over again
+    - the solution is to use different buffering scopes for video fetching and video deletion
+    - the scope for fetching is smaller than the scope for deletion
+    
+- videoExplorer did not provide the first frame of the video
+    - solved by fetching the first frame explicitly and the looping over the remaining frames
+    
+- too many open files problem
+    - after reading something like 100 videos usually a GLibError would report that the maximum limit for open files would be reached.
+        - searched for the cause in videoExplorer and np.load (used to load position files), none of them caused the problem (I replaced their functions with placebos, problem remained)
+        - it turned out the problem was caused by the sockets of the ipython parallel interface.
+            - can be solved by calling rc.close() (rc is the ipython parallel client)
+- show original size version of patches aside

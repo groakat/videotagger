@@ -1,0 +1,8 @@
+==========
+21/05/2013
+==========
+
+Implementation
+==============
+
+- Video player uses ipython parallel and qthread to load videos

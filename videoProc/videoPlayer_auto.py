@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Thu May 23 15:41:20 2013
+# Created: Thu May 23 18:18:07 2013
 #      by: PyQt4 UI code generator 4.10.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -225,6 +225,9 @@ class Ui_Form(object):
         self.lbl_v3_full = QtGui.QLabel(Form)
         self.lbl_v3_full.setGeometry(QtCore.QRect(1040, 270, 64, 64))
         self.lbl_v3_full.setObjectName(_fromUtf8("lbl_v3_full"))
+        self.cb_trajectory = QtGui.QCheckBox(Form)
+        self.cb_trajectory.setGeometry(QtCore.QRect(940, 550, 161, 21))
+        self.cb_trajectory.setObjectName(_fromUtf8("cb_trajectory"))
 
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
@@ -245,4 +248,5 @@ class Ui_Form(object):
         self.lbl_v1_full.setText(_translate("Form", "TextLabel", None))
         self.lbl_v2_full.setText(_translate("Form", "TextLabel", None))
         self.lbl_v3_full.setText(_translate("Form", "TextLabel", None))
+        self.cb_trajectory.setText(_translate("Form", "Show Trajectory", None))
 

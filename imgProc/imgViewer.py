@@ -358,7 +358,7 @@ def getJumpPositions(filterList, minute):
     
     Args:
         filterList:
-                            output of :function:`filterJumps`
+                            output of :func:`filterJumps`
         minute (int):
                             selected minute
         
