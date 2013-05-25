@@ -552,6 +552,7 @@ class VideoLoader(BaseThread):
             f = self.posPath.split('.pos')[0] + '.v{0}.{1}'.format(i, 'avi')
             results += [lbview.apply_async(loadVideo, f, i)]
         
+        print "videoLoader: waiting for process..."
         allReady = False
         while not allReady:
             if self.exiting:
@@ -569,8 +570,9 @@ class VideoLoader(BaseThread):
             for ar in results:
                 allReady = allReady and ar.ready()
                 
-            time.sleep(0.001)
+            self.msleep(10)
         
+        print "videoLoader: copy data and clear cluster"
         self.frameList = [0]*4
         for i in range(4):
             # copy data
@@ -583,8 +585,10 @@ class VideoLoader(BaseThread):
             del rc.metadata[msgId]
         
         # close client to close socket connections
+        print "videoLoader: close client to close socket connections"
         rc.close()
         
+        print "videoLoader: load positions"
         self.pos = np.load(self.posPath)
         
         print "finished computing, emiting signal"
@@ -682,9 +686,9 @@ class VideoHandler(QObject):
         
         try:
             if increment > 0:
-                frame = self.getNextFrame(increment, emitFileChange=False)
+                frame = self.getNextFrame(increment, doBufferCheck=False, emitFileChange=False)
             else:
-                frame = self.getPrevFrame(-increment, emitFileChange=False)
+                frame = self.getPrevFrame(-increment, doBufferCheck=False, emitFileChange=False)
         except KeyError:
             pass
         except RuntimeError:
@@ -695,7 +699,7 @@ class VideoHandler(QObject):
         
         return frame
         
-    def getCurrentFrame(self):      
+    def getCurrentFrame(self, doBufferCheck=True):      
         try:
             frame = self.videoDict[self.posPath].getFrame(self.idx)
         except KeyError:
@@ -706,7 +710,8 @@ class VideoHandler(QObject):
         except RuntimeError:
             print "something went wrong during the fetching procedure"
         
-        self.checkBuffer()
+        if doBufferCheck:
+            self.checkBuffer()
         return frame
         
     def getBufferFrame(self, posPath, idx):    
@@ -719,7 +724,7 @@ class VideoHandler(QObject):
             
         return frame
                 
-    def getNextFrame(self, increment=1, emitFileChange=True):
+    def getNextFrame(self, increment=1, doBufferCheck=True, emitFileChange=True):
         self.idx += increment
         if self.idx >= self.videoDict[self.posPath].getVideoLength():
             pos = sorted(self.videoDict.keys())
@@ -735,9 +740,9 @@ class VideoHandler(QObject):
                         self.idx = self.videoDict[self.posPath].getVideoLength()
                         print "This is the very first frame, cannot go back further"
                         
-        return self.getCurrentFrame()
+        return self.getCurrentFrame(doBufferCheck=doBufferCheck)
         
-    def getPrevFrame(self, decrement=1, emitFileChange=True):
+    def getPrevFrame(self, decrement=1, doBufferCheck=True, emitFileChange=True):
         self.idx -= decrement
         if self.idx < 0:
             pos = sorted(self.videoDict.keys())
@@ -753,7 +758,7 @@ class VideoHandler(QObject):
                         self.idx = 0
                         print "This is the very first frame, cannot go back further"
                         
-        return self.getCurrentFrame()
+        return self.getCurrentFrame(doBufferCheck=doBufferCheck)
                 
     def checkBuffer(self):        
         hS = ((self.dictLength + 1) / 2.0)
@@ -767,8 +772,8 @@ class VideoHandler(QObject):
             e = len(self.posList)            
         fetchRng = slice(s, e) 
         
-        s -= 3
-        e += 3
+        s -= 2
+        e += 2
         if s < 0:
             s = 0
         if e > len(self.posList):
