@@ -1,0 +1,35 @@
+==========
+29/05/2013
+==========
+
+Meeting with Gabe and Mike
+==========================
+
+GUI
+###
+
+Mike:
+    - get input from future users
+    - make comparison possible by displaying similar video sequences next to each other
+        - this could be previously annotated sequences
+        - this could be sequences with similar feature vector
+        - maybe even a combination of both
+        
+Gabe:
+    - make focus on one vial possible
+    - it is important for the MIL to get perfectly clean negative bags
+
+Additional conclusions:
+    - ask user to verify negative video sequences before using for MIL
+    
+    
+Implementation
+==============
+
+*annotation*:
+    - implemented filter that is capable of generating new annotation instances with the filtered content
+    
+*annotation visualization*
+    - implemented blockwise visualization for QGraphicsView
+
+.. image:: ../../../../images/doc/20130529-annotationGUIpreview.png

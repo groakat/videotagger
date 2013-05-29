@@ -1,10 +1,12 @@
 import json
 
-class annotation():
+class Annotation():
     frameList = []
+    annotators = []
+    behaviours = []
     
-    def __init__(self, frameNo=1000, vialNames=['','','','']):
-        self.frameList = []
+    def __init__(self, frameNo=0, vialNames=['','','','']):
+        frameList = []
         
         for frame in range(frameNo):
             v = []
@@ -13,7 +15,30 @@ class annotation():
                 d["name"] = vialNames[vial]
                 v += [d]
                 
-            self.frameList += [v]
+            frameList += [v]
+            
+        self.setFrameList(frameList)
+            
+    def setFrameList(self, frameList):
+        """
+        Sets frameList and updates internal lists of annotators and behaviours
+        """
+        self.frameList = frameList
+        annotators = set()
+        behaviours = set()
+        
+        # TODO: also create list of annotators per behaviour and behaviours per annotator        
+        for fN in range(len(frameList)):
+            for vN in range(len(frameList[fN])):
+                if "behaviour" in  frameList[fN][vN]:
+                    bhvr = frameList[fN][vN]["behaviour"].keys()
+                    behaviours = behaviours.union(bhvr)
+                    for bhvrName in bhvr:
+                        anno = frameList[fN][vN]["behaviour"][bhvrName].keys()
+                        annotators = annotators.union(anno)
+                        
+        self.annotators = list(annotators)
+        self.behaviours = list(behaviours)
             
     def getFrame(self, frameNo):
         return frameList[frameNo]
@@ -61,8 +86,39 @@ class annotation():
     
     def filterFrameList(self,  vialNo=None, behaviourName=None, annotator=None):
         """
-        Returns frameList with frames that were labelled with
-        the string *behaviourName*, excluding all other behaviours
+        Returns a new annotation object that contains only annotations that 
+        satisfy all filter criteria.
+        
+        Args:
+            vialNo (None, int or list of int):
+                                defines the vials that will be filtered. Possible
+                                values are
+                                
+                                None:
+                                    do not filter any specific vial
+                                int:
+                                    search only in this single vial
+                                list of int:
+                                    search in all vials given in the list
+            behaviourName (None or list of strings):
+                                defines the behaviours that will be filtered.
+                                Possible values are
+                                
+                                None:
+                                    do not filter any specific behaviour
+                                list of string:
+                                    behaviours to filter
+            annotator (None or list of strings):
+                                defines the annotators that will be filtered.
+                                Possible values are
+                                
+                                None:
+                                    do not filter any specific annotator
+                                list of strings:
+                                    annotators to be filtered for
+                                    
+        Returns:
+            new annotator object satisfying the filter criteria
         """
         
         if vialNo is None:
@@ -123,4 +179,59 @@ class annotation():
             else:
                 filteredList += [None]
         
-        return filteredList
+        out = Annotation()
+        out.setFrameList(filteredList)
+        
+        return out
+
+    def addAnnotation(self, vial, frames, behaviour, annotator, confidence=1.0):
+        """
+        frames list of ints
+        """
+        if len(self.frameList) < max(frames):
+            raise ValueError("Trying to add annotation to frame that" +
+                             " exceeds length of existing annotation")
+        
+        for frame in frames:
+            if not (behaviour in self.frameList[frame][vial]["behaviour"]):
+                a = dict()
+                self.frameList[frame][vial]["behaviour"][behaviour] = a
+                
+            self.frameList[frame][vial]["behaviour"][behaviour][annotator] = confidence
+
+
+if __name__ == "__main__":
+    vid = []
+
+for frame in range(2):
+    v = []
+    for vial in range(4):
+        d = dict()
+        if vial == 0:
+            d["name"] = "Abeta +RU"
+            b = dict()            
+            b["falling"] = {"peter": 1.0}
+            d["behaviour"] = b
+        if vial == 1:
+            d["name"] = "Abeta -RU"
+            b = dict()            
+            b["rest"] = {"peter": 1.0}
+            d["behaviour"] = b
+        if vial == 2:
+            d["name"] = "dilp"
+            b = dict()            
+            b["feeding"] = {"peter": 0.5, "matt": 1.0}
+            b["walking"] = {"peter": 0.5}
+            d["behaviour"] = b
+        if vial == 3:
+            d["name"] = "wDah"
+            b = dict()            
+            b["walking"] = {"peter": 1.0}
+            d["behaviour"] = b
+        v += [d]
+    vid += [v]
+    
+    a = Annotation()
+    a.setFrameList(vid)
+    a.addAnnotation(1, [0,1], "falling", "peter", 0.5)
+    res = a.filterFrameList(vialNo=None, behaviourName=None, annotator=['peter'])
