@@ -1,0 +1,155 @@
+==========
+28/05/2013
+==========
+
+Annotation
+==============
+
+Datastructure
+#############
+
+
+- each frame: list element
+    - each vial: list element
+        - dictionary with keys *name* and *behaviour*
+            - *name*: contains string with description of fly experimental condition
+            - *behaviour*: dictionary
+                - key: behaviour name/ tag
+                - value: dictionary
+                    - key: annotator
+                    - value: confidence
+
+.. code-block:: python
+    
+    # create example annotation
+    vid = []
+    
+    for frame in range(1000):
+        v = []
+        for vial in range(4):
+            d = dict()
+            if vial == 0:
+                d["name"] = "Abeta +RU"
+                b = dict()            
+                b["falling"] = {"peter": 1.0}
+                d["behaviour"] = b
+            if vial == 1:
+                d["name"] = "Abeta -RU"
+                b = dict()            
+                b["rest"] = {"peter": 1.0}
+                d["behaviour"] = b
+            if vial == 2:
+                d["name"] = "dilp"
+                b = dict()            
+                b["feeding"] = {"peter": 0.5, "matt": 1.0}
+                b["walking"] = {"peter": 0.5}
+                d["behaviour"] = b
+            if vial == 3:
+                d["name"] = "wDah"
+                b = dict()            
+                b["walking"] = {"peter": 1.0}
+                d["behaviour"] = b
+            v += [d]
+        vid += [v]
+        
+    # export annotation       
+    import json
+    f = open("test.jsn", 'w')
+    json.dump(vid, f, sort_keys=True,indent=4, separators=(',', ': '))
+    f.close()
+    
+    # import annotation
+    f = open("test.jsn", 'r')
+    jd2 = json.load(f)
+    f.close()
+    
+    
+Example text generated from two "frames" using the code above.
+::
+
+    [
+        [
+            {
+                "behaviour": {
+                    "falling": {
+                        "peter": 1.0
+                    }
+                },
+                "name": "Abeta +RU"
+            },
+            {
+                "behaviour": {
+                    "rest": {
+                        "peter": 1.0
+                    }
+                },
+                "name": "Abeta -RU"
+            },
+            {
+                "behaviour": {
+                    "feeding": {
+                        "matt": 1.0,
+                        "peter": 0.5
+                    },
+                    "walking": {
+                        "peter": 0.5
+                    }
+                },
+                "name": "dilp"
+            },
+            {
+                "behaviour": {
+                    "walking": {
+                        "peter": 1.0
+                    }
+                },
+                "name": "wDah"
+            }
+        ],
+        [
+            {
+                "behaviour": {
+                    "falling": {
+                        "peter": 1.0
+                    }
+                },
+                "name": "Abeta +RU"
+            },
+            {
+                "behaviour": {
+                    "rest": {
+                        "peter": 1.0
+                    }
+                },
+                "name": "Abeta -RU"
+            },
+            {
+                "behaviour": {
+                    "feeding": {
+                        "matt": 1.0,
+                        "peter": 0.5
+                    },
+                    "walking": {
+                        "peter": 0.5
+                    }
+                },
+                "name": "dilp"
+            },
+            {
+                "behaviour": {
+                    "walking": {
+                        "peter": 1.0
+                    }
+                },
+                "name": "wDah"
+            }
+        ]
+    ]
+    
+GUI
+###
+
+Problem differs from my previous implementation (last year). Requested help from Gabe.
+
+from email to Gabe:
+    However, I am stuck now with the annotations. I have a general data structure that will reflect the annotations, I know how I will save and load it. However, I have no good idea how I can display the annotations, because I cannot simply reuse the concept from last year. Because now I have different vials in which different things are going to happen (last year I had just one). So, I need a way to nicely show this information to the user. I have no good idea at the moment how to do that. If you have time, I could need some brain storming to find a good solution. 

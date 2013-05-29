@@ -1,5 +1,6 @@
 . ../startEnv
 
-firefox&
+firefox &
+../libs/shuttlexpress/shuttle &
 ipython notebook --no-browser
 

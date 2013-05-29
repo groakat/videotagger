@@ -4,13 +4,33 @@
 
 Implementation
 ==============
-        
+Still working on the video player
+
+- implemented trajectory 
+
+- made shuttlexpress work 
+    - using https://github.com/threedaymonk/shuttlexpress
+    - all other approaches did not work at all
+
+    
 Stuff
 =====
+
+Musca
+#####
+
 Saw a was a huge fly in my room. It tried to leave the room through a window that was closed. What it did was  flying in a huge ellipse through the entire room repetitively hitting the window using over and over the same trajectory and hitting the window at very similar spots.
 
 So I was thinking, maybe it tried to "punch" a hole into the window. In nature such bright spots could only be leaves that could get pushed away over time.
 
 So maybe the flies try to escape  through the cotton ball. Whatever it is, I start to see patterns in the world
 
-It would be very interesting to see what they would do if you would put a fly into a doughnut shaped vial. Would it walk around over an over again, or would it return and move back to the spot where it started its exploration behaviour. 
+It would be very interesting to see what they would do if you would put a fly into a doughnut shaped vial. Would it walk around over and over again, or would it return and move back to the spot where it started its exploration behaviour. 
+
+Others
+######
+I found interesting software
+
+- gnuradio that has python bindings for sound processing
+- kdenlive that is a premiere like video editor
+
