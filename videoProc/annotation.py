@@ -1,11 +1,14 @@
 import json
+import os
 
 class Annotation():
     frameList = []
     annotators = []
     behaviours = []
+    children = []
     
     def __init__(self, frameNo=0, vialNames=['','','','']):
+        
         frameList = []
         
         for frame in range(frameNo):
@@ -29,6 +32,9 @@ class Annotation():
         
         # TODO: also create list of annotators per behaviour and behaviours per annotator        
         for fN in range(len(frameList)):
+            if frameList[fN] is None:
+                continue
+                
             for vN in range(len(frameList[fN])):
                 if "behaviour" in  frameList[fN][vN]:
                     bhvr = frameList[fN][vN]["behaviour"].keys()
@@ -53,7 +59,7 @@ class Annotation():
         
     def loadFromFile(self, filename):
         f = open(filename, 'r')
-        self.frameList = json.load(f)
+        self.setFrameList(json.load(f))
         f.close()
     
     def getFramesWithBehaviour(self, behaviourName, vialNo=None):
@@ -181,6 +187,7 @@ class Annotation():
         
         out = Annotation()
         out.setFrameList(filteredList)
+        self.children += [out]
         
         return out
 
@@ -197,41 +204,68 @@ class Annotation():
                 a = dict()
                 self.frameList[frame][vial]["behaviour"][behaviour] = a
                 
-            self.frameList[frame][vial]["behaviour"][behaviour][annotator] = confidence
+            self.frameList[frame][vial]["behaviour"][behaviour][annotator] = \
+                                                                    confidence
+        
+        for child in self.children:
+            child.addAnnotation(vial, frames, behaviour, annotator, 
+                                                                    confidence)
+                                                                    
+    def removeAnnotation(self, vial, frames, behaviour, annotator):
+        """
+        frames list of ints
+        """
+        if len(self.frameList) < max(frames):
+            raise ValueError("Trying to remove annotation to frame that" +
+                             " exceeds length of existing annotation")
+        
+        v = vial
+        b = behaviour
+        a = annotator
+        
+        for frame in frames:
+            if b in self.frameList[frame][v]["behaviour"]:
+                if a in self.frameList[frame][v]["behaviour"][b]:
+                    del self.frameList[frame][v]["behaviour"][b][a]
+                    if self.frameList[frame][v]["behaviour"][b] == {}:
+                        del self.frameList[frame][v]["behaviour"][b]
+        
+        for child in self.children:
+            child.removeAnnotation(v, frames, b, a)
 
 
 if __name__ == "__main__":
     vid = []
 
-for frame in range(2):
-    v = []
-    for vial in range(4):
-        d = dict()
-        if vial == 0:
-            d["name"] = "Abeta +RU"
-            b = dict()            
-            b["falling"] = {"peter": 1.0}
-            d["behaviour"] = b
-        if vial == 1:
-            d["name"] = "Abeta -RU"
-            b = dict()            
-            b["rest"] = {"peter": 1.0}
-            d["behaviour"] = b
-        if vial == 2:
-            d["name"] = "dilp"
-            b = dict()            
-            b["feeding"] = {"peter": 0.5, "matt": 1.0}
-            b["walking"] = {"peter": 0.5}
-            d["behaviour"] = b
-        if vial == 3:
-            d["name"] = "wDah"
-            b = dict()            
-            b["walking"] = {"peter": 1.0}
-            d["behaviour"] = b
-        v += [d]
-    vid += [v]
-    
-    a = Annotation()
-    a.setFrameList(vid)
-    a.addAnnotation(1, [0,1], "falling", "peter", 0.5)
-    res = a.filterFrameList(vialNo=None, behaviourName=None, annotator=['peter'])
+    for frame in range(2):
+        v = []
+        for vial in range(4):
+            d = dict()
+            if vial == 0:
+                d["name"] = "Abeta +RU"
+                b = dict()            
+                b["falling"] = {"peter": 1.0}
+                d["behaviour"] = b
+            if vial == 1:
+                d["name"] = "Abeta -RU"
+                b = dict()            
+                b["rest"] = {"peter": 1.0}
+                d["behaviour"] = b
+            if vial == 2:
+                d["name"] = "dilp"
+                b = dict()            
+                b["feeding"] = {"peter": 0.5, "matt": 1.0}
+                b["walking"] = {"peter": 0.5}
+                d["behaviour"] = b
+            if vial == 3:
+                d["name"] = "wDah"
+                b = dict()            
+                b["walking"] = {"peter": 1.0}
+                d["behaviour"] = b
+            v += [d]
+        vid += [v]
+        
+        a = Annotation()
+        a.setFrameList(vid)
+        a.addAnnotation(1, [0,1], "falling", "peter", 0.5)
+        res = a.filterFrameList(vialNo=None, behaviourName=None, annotator=['peter'])

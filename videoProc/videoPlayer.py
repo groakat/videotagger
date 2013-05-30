@@ -124,6 +124,19 @@ class videoPlayer(QMainWindow):
         
         self.ui.lv_paths.setCurrentIndex(self.lm.index(0,0))
         
+        self.createAnnoViews()
+        
+        
+    def createAnnoViews(self):
+        self.annoViewList = []
+        
+        self.annoViewList += [AnnoView(self)]#, vialNo=0, annotator=["peter"])]
+        self.annoViewList[-1].setGeometry(QRect(70, 720, 701, 23))
+        self.annoViewList[-1].show()
+        
+        self.vh.addAnnoView(self.annoViewList[-1])
+        
+        
     def keyPressEvent(self, event):
         key = event.key()
                 
@@ -489,13 +502,132 @@ class videoPlayer(QMainWindow):
         self.vl.loadedVideos.connect(self.addVideo)
         self.vl.loadVideos(posPath)
         
+class AnnoView(QGraphicsView):
+    
+    annotationDict = dict()
+    color = QColor(0,255,0,150)
+    zoomLevels = [0.1, 0.2, 0.5, 1, 2, 5, 10]
+    zoom = 4
+    lines = dict()
+    frames = dict()
+    
+    scene = None
+    selKey = None
+    idx = None
+    
+    boxHeight = 10
+    
+    #filters
+    vialNo = None
+    behaviourName=None
+    annotator=None
+    
+    def __init__(self, parent, vialNo=None, behaviourName=None, annotator=None):
+        super(AnnoView, self).__init__(parent)
+        #QGraphicsView.__init__(parent)
+        
+        geo = self.geometry()
+        geo.setHeight(self.boxHeight + 6)
+        self.setGeometry(geo)
+        
+        self.scene = QGraphicsScene()
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        
+        self.vialNo = vialNo
+        self.behaviourName = behaviourName
+        self.annotator = annotator
+        
+    def addAnnotation(self, annotation, key):
+        self.clearScene()
+        self.annotationDict[key] = annotation.filterFrameList(self.vialNo,
+                                                            self.behaviourName,
+                                                            self.annotator)
+                                                            
+        self.populateScene()
+        
+    def removeAnnotation(self, key):
+        self.clearScene()
+        del self.annotationDict[key]
+        self.populateScene()
+                
+    def clearScene(self):
+        for key in self.frames:
+            for frame in self.frames[key]:
+                self.scene.removeItem(frame)
+            for line in self.lines[key]:
+                self.scene.removeItem(line)
+    
+    def populateScene(self):
+        keys = sorted(self.annotationDict.keys())
+        i = 0
+        
+        scene = self.scene
+        boxHeight = self.boxHeight
+        
+        for key in keys:
+            self.lines[key] = []
+            self.frames[key] = []
+            for f in range(len(self.annotationDict[key].frameList)):
+                self.lines[key] += [(self.scene.addLine(i+0.5, 0, i+0.5, boxHeight,  
+                                                    QPen(QColor(100,100,100))))]
+                if self.annotationDict[key].frameList[f] is not None:
+                    col = self.color
+                    self.frames[key] += [(self.scene.addRect(QRectF(i, 0, 1, boxHeight), 
+                                                        QPen(col), QBrush(col)))]
+                else:
+                    col = QColor(0,0,0,0)
+                    self.frames[key] += [(self.scene.addRect(QRectF(i, 0, 1, boxHeight),
+                                                        QPen(col), QBrush(col)))]
+                                                        
+                i += 1
+        
+        self.setScene(self.scene)
+        
+    def setPosition(self, key, idx):
+        self.selKey = key
+        self.idx = idx
+        self.updateGraphicView()
+        
+    def setFilter(self, vialNo=None, behaviourName=None, annotator=None):
+        self.vialNo = vialNo
+        self.behaviourName = behaviourName
+        self.annotator = annotator
+        
+    def setZoom(self, zoomLevel):
+        self.zoom = zoomLevel
+        updateGraphicView()
+        
+    def setColor(self, color):
+        self.color = color
+        self.clearScene()
+        self.populateScene()
+        
+    def updateGraphicView(self):
+        #scale absolute
+        scale = self.zoomLevels[self.zoom]
+        if self.zoom < 4:
+            for key in self.lines:
+                for line in self.lines[key]:
+                    line.setVisible(False)
+        else:
+            for key in self.lines:
+                for line in self.lines[key]:
+                    line.setVisible(True)
+        
+        self.setTransform(QTransform().scale(scale, 1))
+        
+        if self.selKey is not None:
+            self.centerOn(self.frames[self.selKey][self.idx])
+            
+        self.update()
+        
 class BaseThread(QThread):
     def __init__(self):
         QThread.__init__(self)
         self.exiting = False
 
-    def __del__(self):
-        
+    def __del__(self):        
         print "deleting"
         self.exiting = True
         self.wait()
@@ -504,11 +636,24 @@ from IPython.parallel import Client
 # Subclassing QObject and using moveToThread
 # http://labs.qt.nokia.com/2007/07/05/qthreads-no-longer-abstract/
 class VideoLoader(BaseThread):        
-    loadedVideos = pyqtSignal(list)
+    loadedVideos = pyqtSignal(list) 
+    loadedAnnotation = pyqtSignal(list)
     finished = pyqtSignal()
+    loading = False
     
     videoLength = -1
     frameList = []
+    
+    annotation = None # annotation object
+    
+
+    def __del__(self):        
+        print "deleting"
+        self.exiting = True
+        self.wait()
+                
+        if self.annotation is not None:
+            self.annotation.saveToFile(self.posPath.split('.pos')[0] + '.bhvr')
     
     def __init__(self, posPath):
         BaseThread.__init__(self)
@@ -545,8 +690,23 @@ class VideoLoader(BaseThread):
             
             ret["vialNo"] = vialNo
             ret["qi"] = qi
-            return ret           
-        
+            return ret     
+            
+        def loadAnnotation(posPath, videoLength):
+            from pyTools.videoProc.annotation import Annotation
+            from os.path import isfile            
+            
+            f = posPath.split('.pos')[0] + '.bhvr'
+            if isfile(f):
+                out = Annotation()
+                out.loadFromFile(f)
+            else:
+                out = Annotation(frameNo=videoLength, vialNames=["Abeta +RU",
+                                                                 "ABeta -RU",
+                                                                 "dilp",
+                                                                 "wDah(+)"])
+            return out
+            
         results = []
         for i in range(4):
             f = self.posPath.split('.pos')[0] + '.v{0}.{1}'.format(i, 'avi')
@@ -572,7 +732,6 @@ class VideoLoader(BaseThread):
                 
             self.msleep(10)
         
-        print "videoLoader: copy data and clear cluster"
         self.frameList = [0]*4
         for i in range(4):
             # copy data
@@ -585,17 +744,20 @@ class VideoLoader(BaseThread):
             del rc.metadata[msgId]
         
         # close client to close socket connections
-        print "videoLoader: close client to close socket connections"
         rc.close()
         
-        print "videoLoader: load positions"
-        self.pos = np.load(self.posPath)
+        if not self.exiting:
+            self.pos = np.load(self.posPath)
+            self.videoLength = len(self.frameList[0])
+        
+        if not self.exiting:
+            self.annotation = loadAnnotation(self.posPath, self.videoLength)
         
         print "finished computing, emiting signal"
         
-        self.videoLength = len(self.frameList[0])
         self.loading = False
-        self.finished.emit()   
+        self.finished.emit()  
+        self.loadedAnnotation.emit([self.annotation, self.posPath])
         
     def getVideoLength(self):
         if not self.loading:
@@ -634,10 +796,11 @@ class VideoLoader(BaseThread):
 class VideoHandler(QObject):    
     videoDict = dict()
     posList = []
+    annoViewList = []
     posPath = ''
     idx = 0
     pathIdx = 0
-    dictLength = 9         # should be odd, otherwise fix checkBuffers()!
+    dictLength = 5 #9         # should be odd, otherwise fix checkBuffers()!
     
     
     changedFile = pyqtSignal(str)
@@ -709,6 +872,8 @@ class VideoHandler(QObject):
             self.getCurrentFrame()
         except RuntimeError:
             print "something went wrong during the fetching procedure"
+        
+        self.updateAnnoViewPositions()
         
         if doBufferCheck:
             self.checkBuffer()
@@ -786,6 +951,8 @@ class VideoHandler(QObject):
             try:
                 self.posList[delRng].index(vidPath)
             except ValueError:
+                for aV in self.annoViewList:
+                    aV.removeAnnotation(vidPath)
                 del self.videoDict[vidPath]
                 
         
@@ -799,7 +966,28 @@ class VideoHandler(QObject):
         
     def fetchVideo(self, path):
         print "fetching", path
-        self.videoDict[path] = VideoLoader(path)
+        vL = VideoLoader(path)
+        vL.loadedAnnotation.connect(self.updateNewAnnotation)
+        self.videoDict[path] = vL
+        
+    def addAnnoView(self, annoView):
+        for vidPath in self.videoDict:
+            if not self.videoDict[vidPath].loading:
+                annoView.addAnnotation(self.videoDict[vidPath].annotation, vidPath)
+                
+        self.annoViewList += [annoView]
+        
+    def removeAnnoView(self, idx):
+        self.annoViewList.pop(idx)
+        
+    def updateAnnoViewPositions(self):
+        for aV in self.annoViewList:
+            aV.setPosition(self.posPath, self.idx)
+        
+    @pyqtSlot(list)
+    def updateNewAnnotation(self, annotationBundle):
+        for aV in self.annoViewList:
+            aV.addAnnotation(annotationBundle[0], annotationBundle[1])
         
 if __name__ == "__main__":
     

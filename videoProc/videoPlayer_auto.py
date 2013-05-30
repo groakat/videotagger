@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Wed May 29 18:27:24 2013
+# Created: Thu May 30 18:59:48 2013
 #      by: PyQt4 UI code generator 4.10.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,7 +26,7 @@ except AttributeError:
 class Ui_Form(object):
     def setupUi(self, Form):
         Form.setObjectName(_fromUtf8("Form"))
-        Form.resize(1120, 723)
+        Form.resize(1120, 758)
         self.pb_startVideo = QtGui.QPushButton(Form)
         self.pb_startVideo.setGeometry(QtCore.QRect(940, 580, 151, 23))
         self.pb_startVideo.setObjectName(_fromUtf8("pb_startVideo"))
