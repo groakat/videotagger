@@ -1,0 +1,20 @@
+==========
+30/05/2013
+==========
+
+
+Implementation of AnnotationView
+=================================
+
+- it is possible to show/ filter an annotation loaded from a file
+- I can add framewise annotation
+
+However 
+
+- at the moment the filtering is done in the GUI thread which leads to enormous lags
+    - filtering should be done in the video-loader thread
+- jumps within file names have to be accounted for there are huge lags at the moment, as well as an KeyError
+    
+- although not a great challenge once addition of annotations is working, deletion is not implemented yet
+
+Still need to think about a nice way to display the annotation within the GUI. Autosave of annotation files needs to be done

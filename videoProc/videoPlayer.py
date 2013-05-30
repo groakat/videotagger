@@ -99,7 +99,7 @@ class videoPlayer(QMainWindow):
         self.ui.pb_startVideo.clicked.connect(self.startVideo)
         self.ui.pb_stopVideo.clicked.connect(self.stopVideo)
         self.ui.pb_compDist.clicked.connect(self.compDistances)
-        self.ui.pb_test.clicked.connect(self.loadNewVideo)
+        self.ui.pb_test.clicked.connect(self.testFunction)
         
         self.ui.sldr_paths.valueChanged.connect(self.selectVideo)
         self.ui.lv_frames.activated.connect(self.selectFrame)
@@ -147,43 +147,53 @@ class videoPlayer(QMainWindow):
         if key == Qt.Key_D:
             self.increment = 1
             self.showNextFrame(self.increment)
+            self.vh.annoViewZoom(6)
             self.play = False
             
         if key == Qt.Key_E:
             self.increment = 1
+            self.vh.annoViewZoom(4)
             self.play = True
             
         if key == Qt.Key_Y:
             self.increment = 3
+            self.vh.annoViewZoom(2)
             self.play = True
             
         if key == Qt.Key_O:
             self.increment = 5
+            #self.vh.annoViewZoom(1)
             self.play = True
             
         if key == Qt.Key_C:
             self.increment = 10
+            #self.vh.annoViewZoom(0)
             self.play = True
         
         if key == Qt.Key_A:
             self.increment = -1
             self.showNextFrame(self.increment)
+            self.vh.annoViewZoom(6)
             self.play = False
             
         if key == Qt.Key_Q:
             self.increment = -1
+            self.vh.annoViewZoom(4)
             self.play = True
             
         if key == Qt.Key_T:
             self.increment = -3
+            self.vh.annoViewZoom(2)
             self.play = True
             
         if key == Qt.Key_U:
             self.increment = -5
+            #self.vh.annoViewZoom(1)
             self.play = True
             
         if key == Qt.Key_X:
             self.increment = -10
+            #self.vh.annoViewZoom(0)
             self.play = True
             
         if key == Qt.Key_I:
@@ -502,14 +512,19 @@ class videoPlayer(QMainWindow):
         self.vl.loadedVideos.connect(self.addVideo)
         self.vl.loadVideos(posPath)
         
+    def testFunction(self):
+        print "testFunction"
+        self.vh.addFrameToAnnotation(0, "peter", "just kidding")
+        
 class AnnoView(QGraphicsView):
     
     annotationDict = dict()
     color = QColor(0,255,0,150)
-    zoomLevels = [0.1, 0.2, 0.5, 1, 2, 5, 10]
+    zoomLevels = [0.5, 0.6, 0.8, 1, 2, 5, 10]
     zoom = 4
     lines = dict()
     frames = dict()
+    absInx = dict()
     
     scene = None
     selKey = None
@@ -557,6 +572,10 @@ class AnnoView(QGraphicsView):
                 self.scene.removeItem(frame)
             for line in self.lines[key]:
                 self.scene.removeItem(line)
+                
+        self.lines = dict()
+        self.frames = dict()
+        self.absInx = dict()
     
     def populateScene(self):
         keys = sorted(self.annotationDict.keys())
@@ -568,7 +587,9 @@ class AnnoView(QGraphicsView):
         for key in keys:
             self.lines[key] = []
             self.frames[key] = []
+            self.absInx[key] = []
             for f in range(len(self.annotationDict[key].frameList)):
+                self.absInx[key] += [i]
                 self.lines[key] += [(self.scene.addLine(i+0.5, 0, i+0.5, boxHeight,  
                                                     QPen(QColor(100,100,100))))]
                 if self.annotationDict[key].frameList[f] is not None:
@@ -584,6 +605,36 @@ class AnnoView(QGraphicsView):
         
         self.setScene(self.scene)
         
+    def addFramesToAnnotation(self, key, frames, annotator, behaviour):
+        """
+        
+        Args:
+            frames (list of int)
+        """
+        inScope = False
+        if self.annotator is not None:
+            if annotator == self.annotator:
+                inScope = True
+        else:
+            inScope = True
+        if self.behaviourName is not None:
+            if behaviour == self.behaviourName:
+                inScope = True
+        else:
+            inScope = True
+                
+        if inScope:
+            for frame in frames:                    
+                self.scene.removeItem(self.frames[key][frame])
+                col = self.color
+                i = self.absInx[key][frame]
+                boxHeight = self.boxHeight
+                self.frames[key][frame] = \
+                            (self.scene.addRect(QRectF(i, 0, 1, boxHeight), 
+                                                QPen(col), QBrush(col)))
+            
+        self.setScene(self.scene)
+        
     def setPosition(self, key, idx):
         self.selKey = key
         self.idx = idx
@@ -596,7 +647,7 @@ class AnnoView(QGraphicsView):
         
     def setZoom(self, zoomLevel):
         self.zoom = zoomLevel
-        updateGraphicView()
+        self.updateGraphicView()
         
     def setColor(self, color):
         self.color = color
@@ -792,6 +843,10 @@ class VideoLoader(BaseThread):
             return self.pos
         else:
             raise RuntimeError("calling posList, before video finished loading")
+            
+    def addAnnotation(self, vialNo, frames, behaviour, annotator):
+        if not self.loading:
+            self.annotation.addAnnotation(vialNo, frames, behaviour, annotator)
 
 class VideoHandler(QObject):    
     videoDict = dict()
@@ -800,7 +855,7 @@ class VideoHandler(QObject):
     posPath = ''
     idx = 0
     pathIdx = 0
-    dictLength = 5 #9         # should be odd, otherwise fix checkBuffers()!
+    dictLength = 9         # should be odd, otherwise fix checkBuffers()!
     
     
     changedFile = pyqtSignal(str)
@@ -902,8 +957,8 @@ class VideoHandler(QObject):
                             self.changedFile.emit(self.posPath)  
                         break
                     else:
-                        self.idx = self.videoDict[self.posPath].getVideoLength()
-                        print "This is the very first frame, cannot go back further"
+                        self.idx = self.videoDict[self.posPath].getVideoLength() -1
+                        print "This is the very last frame, cannot advance further"
                         
         return self.getCurrentFrame(doBufferCheck=doBufferCheck)
         
@@ -988,6 +1043,19 @@ class VideoHandler(QObject):
     def updateNewAnnotation(self, annotationBundle):
         for aV in self.annoViewList:
             aV.addAnnotation(annotationBundle[0], annotationBundle[1])
+            
+    def addFrameToAnnotation(self, vialNo, annotator, behaviour):
+        for aV in self.annoViewList:
+            aV.addFramesToAnnotation(self.posPath, [self.idx], annotator, 
+                                                                    behaviour)
+                                                                    
+        
+        self.videoDict[self.posPath].addAnnotation(vialNo, [self.idx], 
+                                                   behaviour, annotator)
+                                                                    
+    def annoViewZoom(self, zoomLevel):
+        for aV in self.annoViewList:
+            aV.setZoom(zoomLevel)
         
 if __name__ == "__main__":
     

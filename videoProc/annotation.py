@@ -200,6 +200,12 @@ class Annotation():
                              " exceeds length of existing annotation")
         
         for frame in frames:
+            if self.frameList[frame][vial] is None:
+                self.frameList[frame][vial] = dict()
+            
+            if not ("behaviour" in self.frameList[frame][vial]):
+                self.frameList[frame][vial]["behaviour"] = dict()
+                
             if not (behaviour in self.frameList[frame][vial]["behaviour"]):
                 a = dict()
                 self.frameList[frame][vial]["behaviour"][behaviour] = a
@@ -207,9 +213,9 @@ class Annotation():
             self.frameList[frame][vial]["behaviour"][behaviour][annotator] = \
                                                                     confidence
         
-        for child in self.children:
-            child.addAnnotation(vial, frames, behaviour, annotator, 
-                                                                    confidence)
+        #~ for child in self.children:
+            #~ child.addAnnotation(vial, frames, behaviour, annotator, 
+                                                                    #~ confidence)
                                                                     
     def removeAnnotation(self, vial, frames, behaviour, annotator):
         """
@@ -230,8 +236,8 @@ class Annotation():
                     if self.frameList[frame][v]["behaviour"][b] == {}:
                         del self.frameList[frame][v]["behaviour"][b]
         
-        for child in self.children:
-            child.removeAnnotation(v, frames, b, a)
+        #~ for child in self.children:
+            #~ child.removeAnnotation(v, frames, b, a)
 
 
 if __name__ == "__main__":
