@@ -98,6 +98,9 @@ class videoPlayer(QMainWindow):
         self.setBackground("/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
         
         
+        glMatrixMode(GL_PROJECTION)
+        
+        
         
     def connectSignals(self):
         self.ui.pb_startVideo.clicked.connect(self.startVideo)
@@ -136,11 +139,24 @@ class videoPlayer(QMainWindow):
     def createAnnoViews(self):
         self.annoViewList = []
         
-        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"])]
-        self.annoViewList[-1].setGeometry(QRect(70, 720, 701, 23))
-        self.annoViewList[-1].show()
+        aV = AnnoView(self, vialNo=0, annotator=["peter"])
+        aV.setGeometry(QRect(70, 715, 701, 23))
+        aV.show()
+        self.vh.addAnnoView(aV)        
+        self.annoViewList += [aV]
         
-        self.vh.addAnnoView(self.annoViewList[-1])
+        aV = AnnoView(self, vialNo=0, annotator=["peter"])
+        aV.setGeometry(QRect(70, 730, 701, 23))
+        aV.show()
+        self.vh.addAnnoView(aV)        
+        self.annoViewList += [aV]
+        
+        aV = AnnoView(self, vialNo=0, annotator=["peter"])
+        aV.setGeometry(QRect(70, 745, 701, 23))
+        aV.show()
+        self.vh.addAnnoView(aV)        
+        self.annoViewList += [aV]
+        
         
         
     def keyPressEvent(self, event):
@@ -246,19 +262,17 @@ class videoPlayer(QMainWindow):
             qi = array2qimage(img)
             pixmap = QPixmap()
             px = QPixmap.fromImage(qi)        
-            lbl.setScaledContents(True)
+            #lbl.setScaledContents(True)
             lbl.setPixmap(px)
             
+                
+        newX = p[1] - 32 #lblOrigin.x() + p[1] * self.xFactor + self.xOffset
+        newY = p[0] - 32 #lblOrigin.y() + (p[0] * self.yFactor) + self.yOffset
         
-        lblOrigin = self.ui.label.pos()
-        
-        newX = lblOrigin.x() + p[1] * self.xFactor + self.xOffset
-        newY = lblOrigin.y() + (p[0] * self.yFactor) + self.yOffset
-                    
-        lbl.move(newX,newY)
+        lbl.setPos(newX,newY)
         #lbl.setStyleSheet("border: 1px dotted rgba(255, 0, 0, 75%);");
-        lbl.raise_()
-        lbl.update()
+        #lbl.raise_()
+        #lbl.update()
         
     def updateOriginalLabel(self, lbl, img):
         qi = array2qimage(img)
@@ -295,10 +309,10 @@ class videoPlayer(QMainWindow):
         for i in range(self.trajNo-1, -1, -1):
             frame = self.frames[i]
             if i == 0:
-                self.updateLabel(self.ui.lbl_v0, frame[0][0], frame[1][0])
-                self.updateLabel(self.ui.lbl_v1, frame[0][1], frame[1][1])
-                self.updateLabel(self.ui.lbl_v2, frame[0][2], frame[1][2])
-                self.updateLabel(self.ui.lbl_v3, frame[0][3], frame[1][3])
+                self.updateLabel(self.lbl_v0, frame[0][0], frame[1][0])
+                self.updateLabel(self.lbl_v1, frame[0][1], frame[1][1])
+                self.updateLabel(self.lbl_v2, frame[0][2], frame[1][2])
+                self.updateLabel(self.lbl_v3, frame[0][3], frame[1][3])
             
                 self.updateOriginalLabel(self.ui.lbl_v0_full, frame[1][0])
                 self.updateOriginalLabel(self.ui.lbl_v1_full, frame[1][1])
@@ -343,13 +357,46 @@ class videoPlayer(QMainWindow):
         qi = array2qimage(a*255)
         pixmap = QPixmap()
         px = QPixmap.fromImage(qi)
+        #~ 
+        #~ self.ui.label.setScaledContents(True)
+        #~ self.ui.label.setPixmap(px)
         
-        self.ui.label.setScaledContents(True)
-        self.ui.label.setPixmap(px)
+        self.videoView = QGraphicsView(self)        
+        self.videoView.setGeometry(QRect(10, 10, 1920/2, 1080/2))
+        self.videoScene = QGraphicsScene()
+        
+        self.videoView.setScene(self.videoScene)
+        #self.videoView.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        #self.videoView.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        
+        self.bgImg = QGraphicsPixmapItem(px)        
+        self.videoScene.addItem(self.bgImg)   
+        self.bgImg.setPos(0,0)     
+        
+        
+        self.lbl_v0 = QGraphicsPixmapItem()
+        self.lbl_v1 = QGraphicsPixmapItem()
+        self.lbl_v2 = QGraphicsPixmapItem()
+        self.lbl_v3 = QGraphicsPixmapItem()   
+         
+        self.videoScene.addItem(self.lbl_v0)   
+        self.videoScene.addItem(self.lbl_v1)   
+        self.videoScene.addItem(self.lbl_v2)   
+        self.videoScene.addItem(self.lbl_v3)   
+        
+        fmt = QGLFormat()
+        fmt.setAlpha(True)
+        fmt.setOverlay(True)
+        fmt.setDoubleBuffer(True);                 
+        fmt.setDirectRendering(True);
+        
+        self.videoView.setViewport(QGLWidget(fmt))
+        self.videoView.show()
+        self.videoView.fitInView(self.bgImg, Qt.KeepAspectRatio)
         
     def startVideo(self):
         #self.play = True
-        self.setBackground("/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
+        #self.setBackground("/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
         
         fps = 25.0
         updateRate = 33.0 * 12
@@ -357,6 +404,7 @@ class videoPlayer(QMainWindow):
         print "start Video"
         
         i = 0
+        t = time.time()
         while not self.stop:
             if self.play:            
                 self.showNextFrame(self.increment)
@@ -370,6 +418,11 @@ class videoPlayer(QMainWindow):
                 frameNo = self.vh.getCurrentFrameNo()
                 self.ui.lv_frames.setCurrentIndex(self.frameList.index(frameNo,0))
                 QApplication.processEvents()
+                
+            if (i % 1760) == 0:
+                dt = time.time() - t
+                print("fps: {0}".format(1760 / dt))
+                t = time.time()
                     
             i += 1
         
@@ -481,21 +534,23 @@ class videoPlayer(QMainWindow):
         if self.trajLabels != []:
             for i in range(len(self.trajLabels)):
                 for k in range(len(self.trajLabels[i])):
-                    self.trajLabels[i].pop().setVisible(False)
+                    #self.trajLabels[i].pop().setVisible(False)
+                    self.videoScene.removeItem(self.trajLabels[i].pop())
                     
         self.ui.label.update()
         self.trajLabels = []
         for i in range(self.trajNo):
             lbl = []
             for k in range(4):
-                l = QLabel(self)
-                l.setGeometry(QRect(180, 500, 57, 14))
-                l.resize(self.xFactor*64, self.yFactor*64)
-                l.setFrameShape(QFrame.Box)
-                l.setLineWidth(1)
-                l.setStyleSheet("border: 1px solid hsva({0}, 200, 150, 15%);".format(i / 50.0 * 255));
-                l.show()
-                lbl += [l]
+                #l = QLabel(self)
+                geo = QRectF(0, 0, 64, 64)
+                penCol = QColor()
+                penCol.setHsv(i / 50.0 * 255, 200, 150, 15)
+                lbl += [self.videoScene.addRect(geo, QPen(penCol))]
+                #l.setLineWidth(1)
+                #l.setStyleSheet("border: 1px solid hsva({0}, 200, 150, 15%);".format(i / 50.0 * 255));
+                #l.show()
+                #lbl += [l]
             self.trajLabels += [lbl]
     
     @pyqtSlot(list)
@@ -661,15 +716,6 @@ class AnnoView(QGraphicsView):
         self.annotator = annotator
         
     def setZoom(self, zoomLevel):
-        self.zoom = zoomLevel
-        self.updateGraphicView()
-        
-    def setColor(self, color):
-        self.color = color
-        self.clearScene()
-        self.populateScene()
-        
-    def updateGraphicView(self):
         #scale absolute
         scale = self.zoomLevels[self.zoom]
         if self.zoom < 4:
@@ -683,10 +729,20 @@ class AnnoView(QGraphicsView):
         
         self.setTransform(QTransform().scale(scale, 1))
         
+        self.zoom = zoomLevel
+        self.updateGraphicView()
+        
+    def setColor(self, color):
+        self.color = color
+        self.clearScene()
+        self.populateScene()
+        
+    def updateGraphicView(self):
+        
         if self.selKey is not None:
             self.centerOn(self.frames[self.selKey][self.idx])
             
-        self.update()
+        #self.update()
         
     
     
