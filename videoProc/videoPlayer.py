@@ -592,6 +592,7 @@ class AnnoView(QGraphicsView):
     lines = dict()
     frames = dict()
     absIdx = dict()
+    chunks = dict()
     
     scene = None
     selKey = None
@@ -623,18 +624,19 @@ class AnnoView(QGraphicsView):
         self.setViewport(QGLWidget())
         
     def addAnnotation(self, annotation, key):
-        self.clearScene()
+        #self.clearScene()
         self.annotationDict[key] = annotation.filterFrameList(self.vialNo,
                                                             self.behaviourName,
                                                             self.annotator)
                                                             
-        self.populateScene()
+        #self.populateScene()
+        self.addAnnotationToScene(key)
         
     def removeAnnotation(self, key):
         print "remove annotation", key
+        ######################################################################## TODO shift only if absIdx goes out of int range
         #shift = len(self.annotationDict[key].frameList)
         #self.shiftScene(shift)
-        ######################################################################## TODO shift only if absIdx goes out of int range
         del self.annotationDict[key]
         #self.clearScene()
         #self.populateScene()
@@ -649,6 +651,75 @@ class AnnoView(QGraphicsView):
         self.lines = dict()
         self.frames = dict()
         self.absIdx = dict()
+        self.chunks = dict()
+        
+    def addAnnotationToScene(self, key):
+        """
+        Key needs to be in self.annotationDict !!
+        """
+        t = time.time()
+        print "addAnnotationToScene: begin"
+        keys = sorted(self.annotationDict.keys())
+        
+        if key == keys[0]:
+            if len(keys) > 1:
+                i = self.absIdx[keys[1]][0] - len(self.annotationDict[key].frameList)
+            else:
+                i = 0
+        elif key == keys[-1]:
+            if len(keys) > 1:
+                i = self.absIdx[keys[-2]][-1] + 1
+            else: 
+                # should never happen anyway
+                i = 0
+        else:
+            print("addAnnotationToScene: tried to insert an annotation in the middle." + 
+                 " It only makes sense to append, or prepend. Trying to clear and" +
+                 " repopulate entirely")
+            self.clearScene()
+            self.populateScene()
+            return
+        
+        print "i", i, "key", key
+        
+        scene = self.scene
+        boxHeight = self.boxHeight
+        
+        aCol = self.color
+        aBrush = QBrush(aCol)
+        aPen = QPen(aCol)
+        
+        uCol = QColor(0,0,0,0)
+        uPen = QPen(uCol)
+        uBrush = QBrush(uCol)
+        
+        self.lines[key] = []
+        self.frames[key] = []
+        chunkLength = len(self.annotationDict[key].frameList)
+        self.chunks[key] = self.scene.addRect(QRectF(i, 0, chunkLength, boxHeight)   )         
+        self.absIdx[key] = np.arange(chunkLength) + i
+        
+        for f in range(len(self.annotationDict[key].frameList)):
+            line = QGraphicsLineItem(i+0.5, 0, i+0.5, boxHeight,
+                                     self.chunks[key])
+            line.setPen(QPen(QColor(100,100,100)))
+            self.lines[key] += [line]
+            if self.annotationDict[key].frameList[f] is not None:
+                item = QGraphicsRectItem(   QRectF(i, 0, 1, boxHeight), 
+                                            self.chunks[key])
+                item.setPen(aPen)
+                item.setBrush(aBrush)
+                self.frames[key] += [item]
+            else:
+                item = QGraphicsRectItem(   QRectF(i, 0, 1, boxHeight), 
+                                            self.chunks[key])
+                item.setPen(uPen)
+                item.setBrush(uBrush)
+                self.frames[key] += [item]
+                                                    
+            i += 1
+            
+        print "addAnnotationToScene: end", time.time() - t
     
     def populateScene(self):
         t = time.time()
@@ -659,22 +730,39 @@ class AnnoView(QGraphicsView):
         scene = self.scene
         boxHeight = self.boxHeight
         
+        aCol = self.color
+        aBrush = QBrush(aCol)
+        aPen = QPen(aCol)
+        
+        uCol = QColor(0,0,0,0)
+        uPen = QPen(uCol)
+        uBrush = QBrush(uCol)
+        
         for key in keys:
             self.lines[key] = []
             self.frames[key] = []
             self.absIdx[key] = []
+            chunkLength = len(self.annotationDict[key].frameList)
+            self.chunks[key] = self.scene.addRect(QRectF(i, 0, chunkLength, boxHeight)   )         
+            self.absIdx[key] = np.arange(chunkLength) + i
+            
             for f in range(len(self.annotationDict[key].frameList)):
-                self.absIdx[key] += [i]
-                self.lines[key] += [(self.scene.addLine(i+0.5, 0, i+0.5, boxHeight,  
-                                                    QPen(QColor(100,100,100))))]
+                line = QGraphicsLineItem(i+0.5, 0, i+0.5, boxHeight,
+                                         self.chunks[key])
+                line.setPen(QPen(QColor(100,100,100)))
+                self.lines[key] += [line]
                 if self.annotationDict[key].frameList[f] is not None:
-                    col = self.color
-                    self.frames[key] += [(self.scene.addRect(QRectF(i, 0, 1, boxHeight), 
-                                                        QPen(col), QBrush(col)))]
+                    item = QGraphicsRectItem(   QRectF(i, 0, 1, boxHeight), 
+                                                self.chunks[key])
+                    item.setPen(aPen)
+                    item.setBrush(aBrush)
+                    self.frames[key] += [item]
                 else:
-                    col = QColor(0,0,0,0)
-                    self.frames[key] += [(self.scene.addRect(QRectF(i, 0, 1, boxHeight),
-                                                        QPen(col), QBrush(col)))]
+                    item = QGraphicsRectItem(   QRectF(i, 0, 1, boxHeight), 
+                                                self.chunks[key])
+                    item.setPen(uPen)
+                    item.setBrush(uBrush)
+                    self.frames[key] += [item]
                                                         
                 i += 1
         
@@ -687,11 +775,9 @@ class AnnoView(QGraphicsView):
         keys = sorted(self.annotationDict.keys())        
         trans = QTransform().translate(shift, 0)
         
-        for key in keys:
-            for f in range(len(self.annotationDict[key].frameList)):
-                self.absIdx[key][f] += shift
-                self.lines[key][f].setTransform(trans)
-                self.frames[key][f].setTransform(trans)
+        for key in keys:                
+            self.chunks[key].setTransform(trans)        
+            self.absIdx[key] += shift
                 
         print "shift Scene: end", time.time() - t
         
