@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Thu May 30 18:59:48 2013
+# Created: Sat Jun  1 21:41:04 2013
 #      by: PyQt4 UI code generator 4.10.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -192,14 +192,14 @@ class Ui_Form(object):
         self.lv_paths.setGeometry(QtCore.QRect(60, 570, 721, 121))
         self.lv_paths.setObjectName(_fromUtf8("lv_paths"))
         self.pb_stopVideo = QtGui.QPushButton(Form)
-        self.pb_stopVideo.setGeometry(QtCore.QRect(940, 610, 151, 23))
+        self.pb_stopVideo.setGeometry(QtCore.QRect(940, 600, 151, 23))
         self.pb_stopVideo.setObjectName(_fromUtf8("pb_stopVideo"))
         self.sldr_paths = QtGui.QSlider(Form)
         self.sldr_paths.setGeometry(QtCore.QRect(70, 690, 701, 23))
         self.sldr_paths.setOrientation(QtCore.Qt.Horizontal)
         self.sldr_paths.setObjectName(_fromUtf8("sldr_paths"))
         self.pb_jmp2frame = QtGui.QPushButton(Form)
-        self.pb_jmp2frame.setGeometry(QtCore.QRect(940, 640, 151, 23))
+        self.pb_jmp2frame.setGeometry(QtCore.QRect(940, 620, 151, 23))
         self.pb_jmp2frame.setObjectName(_fromUtf8("pb_jmp2frame"))
         self.lv_frames = QtGui.QListView(Form)
         self.lv_frames.setGeometry(QtCore.QRect(780, 571, 61, 121))
@@ -208,10 +208,10 @@ class Ui_Form(object):
         self.lv_jmp.setGeometry(QtCore.QRect(840, 571, 61, 121))
         self.lv_jmp.setObjectName(_fromUtf8("lv_jmp"))
         self.pb_compDist = QtGui.QPushButton(Form)
-        self.pb_compDist.setGeometry(QtCore.QRect(940, 670, 151, 23))
+        self.pb_compDist.setGeometry(QtCore.QRect(940, 640, 151, 23))
         self.pb_compDist.setObjectName(_fromUtf8("pb_compDist"))
         self.pb_test = QtGui.QPushButton(Form)
-        self.pb_test.setGeometry(QtCore.QRect(940, 700, 151, 23))
+        self.pb_test.setGeometry(QtCore.QRect(940, 660, 151, 23))
         self.pb_test.setObjectName(_fromUtf8("pb_test"))
         self.lbl_v0_full = QtGui.QLabel(Form)
         self.lbl_v0_full.setGeometry(QtCore.QRect(1040, 50, 64, 64))
@@ -226,8 +226,14 @@ class Ui_Form(object):
         self.lbl_v3_full.setGeometry(QtCore.QRect(1040, 270, 64, 64))
         self.lbl_v3_full.setObjectName(_fromUtf8("lbl_v3_full"))
         self.cb_trajectory = QtGui.QCheckBox(Form)
-        self.cb_trajectory.setGeometry(QtCore.QRect(940, 550, 161, 21))
+        self.cb_trajectory.setGeometry(QtCore.QRect(950, 560, 161, 21))
         self.cb_trajectory.setObjectName(_fromUtf8("cb_trajectory"))
+        self.pb_eraseAnno = QtGui.QPushButton(Form)
+        self.pb_eraseAnno.setGeometry(QtCore.QRect(940, 700, 151, 23))
+        self.pb_eraseAnno.setObjectName(_fromUtf8("pb_eraseAnno"))
+        self.pb_addAnno = QtGui.QPushButton(Form)
+        self.pb_addAnno.setGeometry(QtCore.QRect(940, 680, 151, 23))
+        self.pb_addAnno.setObjectName(_fromUtf8("pb_addAnno"))
 
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
@@ -249,4 +255,6 @@ class Ui_Form(object):
         self.lbl_v2_full.setText(_translate("Form", "TextLabel", None))
         self.lbl_v3_full.setText(_translate("Form", "TextLabel", None))
         self.cb_trajectory.setText(_translate("Form", "Show Trajectory", None))
+        self.pb_eraseAnno.setText(_translate("Form", "erase annotation", None))
+        self.pb_addAnno.setText(_translate("Form", "add annotation", None))
 

@@ -1,6 +1,10 @@
 import sys
+from OpenGL.GL import *
+from OpenGL.GLU import *
 from PyQt4.QtGui import *
 from PyQt4.QtCore import * 
+from PyQt4.QtOpenGL import * 
+
 from videoPlayer_auto import Ui_Form
 
 from pyTools.system.videoExplorer import *
@@ -100,6 +104,8 @@ class videoPlayer(QMainWindow):
         self.ui.pb_stopVideo.clicked.connect(self.stopVideo)
         self.ui.pb_compDist.clicked.connect(self.compDistances)
         self.ui.pb_test.clicked.connect(self.testFunction)
+        self.ui.pb_addAnno.clicked.connect(self.addAnno)
+        self.ui.pb_eraseAnno.clicked.connect(self.eraseAnno)
         
         self.ui.sldr_paths.valueChanged.connect(self.selectVideo)
         self.ui.lv_frames.activated.connect(self.selectFrame)
@@ -130,7 +136,7 @@ class videoPlayer(QMainWindow):
     def createAnnoViews(self):
         self.annoViewList = []
         
-        self.annoViewList += [AnnoView(self)]#, vialNo=0, annotator=["peter"])]
+        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"])]
         self.annoViewList[-1].setGeometry(QRect(70, 720, 701, 23))
         self.annoViewList[-1].show()
         
@@ -516,6 +522,12 @@ class videoPlayer(QMainWindow):
         print "testFunction"
         self.vh.addFrameToAnnotation(0, "peter", "just kidding")
         
+    def addAnno(self):
+        self.vh.addAnnotation(0, "peter", "just kidding")
+        
+    def eraseAnno(self):
+        self.vh.eraseAnnotation(0, "peter", "just kidding")
+        
 class AnnoView(QGraphicsView):
     
     annotationDict = dict()
@@ -524,7 +536,7 @@ class AnnoView(QGraphicsView):
     zoom = 4
     lines = dict()
     frames = dict()
-    absInx = dict()
+    absIdx = dict()
     
     scene = None
     selKey = None
@@ -553,6 +565,8 @@ class AnnoView(QGraphicsView):
         self.behaviourName = behaviourName
         self.annotator = annotator
         
+        self.setViewport(QGLWidget())
+        
     def addAnnotation(self, annotation, key):
         self.clearScene()
         self.annotationDict[key] = annotation.filterFrameList(self.vialNo,
@@ -575,7 +589,7 @@ class AnnoView(QGraphicsView):
                 
         self.lines = dict()
         self.frames = dict()
-        self.absInx = dict()
+        self.absIdx = dict()
     
     def populateScene(self):
         keys = sorted(self.annotationDict.keys())
@@ -587,9 +601,9 @@ class AnnoView(QGraphicsView):
         for key in keys:
             self.lines[key] = []
             self.frames[key] = []
-            self.absInx[key] = []
+            self.absIdx[key] = []
             for f in range(len(self.annotationDict[key].frameList)):
-                self.absInx[key] += [i]
+                self.absIdx[key] += [i]
                 self.lines[key] += [(self.scene.addLine(i+0.5, 0, i+0.5, boxHeight,  
                                                     QPen(QColor(100,100,100))))]
                 if self.annotationDict[key].frameList[f] is not None:
@@ -627,7 +641,7 @@ class AnnoView(QGraphicsView):
             for frame in frames:                    
                 self.scene.removeItem(self.frames[key][frame])
                 col = self.color
-                i = self.absInx[key][frame]
+                i = self.absIdx[key][frame]
                 boxHeight = self.boxHeight
                 self.frames[key][frame] = \
                             (self.scene.addRect(QRectF(i, 0, 1, boxHeight), 
@@ -638,6 +652,7 @@ class AnnoView(QGraphicsView):
     def setPosition(self, key, idx):
         self.selKey = key
         self.idx = idx
+        self.addTempAnno()
         self.updateGraphicView()
         
     def setFilter(self, vialNo=None, behaviourName=None, annotator=None):
@@ -672,6 +687,135 @@ class AnnoView(QGraphicsView):
             self.centerOn(self.frames[self.selKey][self.idx])
             
         self.update()
+        
+    
+    
+    addingAnno = False
+    tempAnno = dict()
+    def addAnno(self):
+        if not self.addingAnno:
+            self.tempStart = [self.selKey, self.idx]
+            self.addingAnno = True
+        else:
+            self.addingAnno = False  
+            for key in self.tempAnno:
+                for i in  self.tempAnno[key]:
+                    idx = self.absIdx[key][i]
+                    self.scene.removeItem(self.frames[key][i])
+                    col = self.color
+                    self.frames[key][i] = \
+                            (self.scene.addRect(QRectF(idx, 0, 1, self.boxHeight),
+                            QPen(col), QBrush(col)))
+                    self.scene.removeItem(self.tempAnno[key][i])
+            
+            # save range to original annotation
+            # saveToFile
+            self.tempAnno = dict()
+            
+        self.addTempAnno()
+            
+    erasingAnno = False
+    def eraseAnno(self):
+        if not self.erasingAnno:
+            self.tempStart = [self.selKey, self.idx]
+            self.erasingAnno = True
+            self.tempAnno = dict()
+            self.addTempAnno()
+        else:
+            self.erasingAnno = False
+            for key in self.tempAnno:
+                for i in  self.tempAnno[key]:
+                    idx = self.absIdx[key][i]
+                    self.scene.removeItem(self.frames[key][i])
+                    col = QColor(0,0,0,0)
+                    self.frames[key][i] = \
+                            (self.scene.addRect(QRectF(idx, 0, 1, self.boxHeight),
+                            QPen(col), QBrush(col)))
+                
+            # erase in original annotation
+            # save to file
+            self.tempAnno = dict()           
+            
+            
+    def addTempAnno(self):
+        if self.addingAnno:
+            for key in self.tempAnno:
+                for idx in  self.tempAnno[key]:
+                    self.scene.removeItem(self.tempAnno[key][idx])
+                    #del self.tempAnno[idx]
+            
+            rng = self.generateRangeValuesFromKeys(self.tempStart, 
+                                                    [self.selKey, self.idx + 1])
+                                                    
+            #print rng
+                                                    
+            self.tempAnno = dict()
+            for key in rng:
+                self.tempAnno[key] = dict()
+                for i in rng[key]:
+                    idx = self.absIdx[key][i]
+                    col = self.color
+                    self.tempAnno[key][i] = \
+                        (self.scene.addRect(QRectF(idx, 0, 1, self.boxHeight),
+                        QPen(col), QBrush(col)))
+                
+        if self.erasingAnno:            
+            for key in self.tempAnno:
+                for idx in self.tempAnno[key]:
+                    self.frames[key][idx].setVisible(True)  
+            
+            rng = self.generateRangeValuesFromKeys(self.tempStart, 
+                                                    [self.selKey, self.idx + 1])                                                                  
+            
+            self.tempAnno = dict()
+            for key in rng:
+                self.tempAnno[key] = dict()
+                for i in rng[key]:
+                    idx = self.absIdx[key][i]
+                    self.tempAnno[key][i] = self.frames[key][idx]
+                    self.frames[key][idx].setVisible(False)
+                
+    def generateRangeValuesFromKeys(self, start, end):
+        """        
+        Args:
+            start ([dict key, int])
+            end ([dict key, int])
+        """
+        
+        c = [start,end]
+        if start[0] != end[0]:
+            c.sort(key=lambda x: x[0])
+        else:
+            c.sort(key=lambda x: x[1])
+        s = c[0]
+        e = c[1]
+            
+        
+        rng = dict()
+        isWithinRange = False
+        for key in sorted(self.annotationDict.keys()):
+            rngS = None
+            rngE = None
+            
+            if key == s[0]:
+               isWithinRange = True
+               rngS = s[1]
+            else:
+                rngS = 0
+               
+            if key == e[0]:
+                isWithinRange = False
+                rngE = e[1]
+                rng[key] = range(rngS, rngE)
+                return rng
+            else:
+                rngE = len(self.annotationDict[key].frameList)
+            
+            if isWithinRange:
+                rng[key] = range(rngS, rngE)
+                
+        return rng
+                
         
 class BaseThread(QThread):
     def __init__(self):
@@ -1006,6 +1150,7 @@ class VideoHandler(QObject):
             try:
                 self.posList[delRng].index(vidPath)
             except ValueError:
+                ################################################################ TODO: remove only if annotation is not open
                 for aV in self.annoViewList:
                     aV.removeAnnotation(vidPath)
                 del self.videoDict[vidPath]
@@ -1056,6 +1201,31 @@ class VideoHandler(QObject):
     def annoViewZoom(self, zoomLevel):
         for aV in self.annoViewList:
             aV.setZoom(zoomLevel)
+        
+    def addAnnotation(self, vial, annotator, behaviour):
+        for aV in self.annoViewList:
+            if (aV.behaviourName == None) \
+            or (behaviour == aV.behaviourName) \
+            or (behaviour in aV.behaviourName):
+                if (aV.annotator == None) \
+                or (annotator == aV.annotator) \
+                or (annotator in aV.annotator):
+                    if vial == aV.vialNo:
+                        print "addAnnotation"
+                        aV.addAnno()
+        
+    def eraseAnnotation(self, vial, annotator, behaviour):
+        for aV in self.annoViewList:
+            if aV.behaviourName == None \
+            or behaviour == aV.behaviourName \
+            or behaviour in aV.behaviourName:
+                if aV.annotator == None \
+                or annotator == aV.annotator \
+                or annotator in aV.annotator:
+                    if vial == aV.vialNo:
+                        print "eraseAnnotation"
+                        aV.eraseAnno()
+        
         
 if __name__ == "__main__":
     

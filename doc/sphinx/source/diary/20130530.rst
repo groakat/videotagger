@@ -18,3 +18,14 @@ However
 - although not a great challenge once addition of annotations is working, deletion is not implemented yet
 
 Still need to think about a nice way to display the annotation within the GUI. Autosave of annotation files needs to be done
+
+Ideas
+=====
+
+GUI
+
+- allow rejustification of annotation boundaries by clicking via mouse (click and drag with mouse)
+    - during click, show preview of neighbouring frames
+    - if the mouse is moved during the click, the center (displayed frame) will change as well
+    
+- allow only one annotation at a time, but allow to put bookmarks even if one annotation was started already
