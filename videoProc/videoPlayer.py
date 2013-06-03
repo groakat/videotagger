@@ -145,17 +145,17 @@ class videoPlayer(QMainWindow):
         self.vh.addAnnoView(aV)        
         self.annoViewList += [aV]
         
-        aV = AnnoView(self, vialNo=0, annotator=["peter"])
-        aV.setGeometry(QRect(70, 730, 701, 23))
-        aV.show()
-        self.vh.addAnnoView(aV)        
-        self.annoViewList += [aV]
-        
-        aV = AnnoView(self, vialNo=0, annotator=["peter"])
-        aV.setGeometry(QRect(70, 745, 701, 23))
-        aV.show()
-        self.vh.addAnnoView(aV)        
-        self.annoViewList += [aV]
+        #~ aV = AnnoView(self, vialNo=0, annotator=["peter"])
+        #~ aV.setGeometry(QRect(70, 730, 701, 23))
+        #~ aV.show()
+        #~ self.vh.addAnnoView(aV)        
+        #~ self.annoViewList += [aV]
+        #~ 
+        #~ aV = AnnoView(self, vialNo=0, annotator=["peter"])
+        #~ aV.setGeometry(QRect(70, 745, 701, 23))
+        #~ aV.show()
+        #~ self.vh.addAnnoView(aV)        
+        #~ self.annoViewList += [aV]
         
         
         
@@ -631,9 +631,13 @@ class AnnoView(QGraphicsView):
         self.populateScene()
         
     def removeAnnotation(self, key):
-        self.clearScene()
+        print "remove annotation", key
+        #shift = len(self.annotationDict[key].frameList)
+        #self.shiftScene(shift)
+        ######################################################################## TODO shift only if absIdx goes out of int range
         del self.annotationDict[key]
-        self.populateScene()
+        #self.clearScene()
+        #self.populateScene()
                 
     def clearScene(self):
         for key in self.frames:
@@ -647,6 +651,8 @@ class AnnoView(QGraphicsView):
         self.absIdx = dict()
     
     def populateScene(self):
+        t = time.time()
+        print "populate Scene: begin"
         keys = sorted(self.annotationDict.keys())
         i = 0
         
@@ -673,6 +679,22 @@ class AnnoView(QGraphicsView):
                 i += 1
         
         self.setScene(self.scene)
+        print "populate Scene: end", time.time() - t
+        
+    def shiftScene(self, shift):
+        t = time.time()
+        print "shift Scene: begin"
+        keys = sorted(self.annotationDict.keys())        
+        trans = QTransform().translate(shift, 0)
+        
+        for key in keys:
+            for f in range(len(self.annotationDict[key].frameList)):
+                self.absIdx[key][f] += shift
+                self.lines[key][f].setTransform(trans)
+                self.frames[key][f].setTransform(trans)
+                
+        print "shift Scene: end", time.time() - t
+        
         
     def addFramesToAnnotation(self, key, frames, annotator, behaviour):
         """
