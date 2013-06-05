@@ -636,17 +636,9 @@ class AnnoView(QGraphicsView):
         self.color = color
         
     def addAnnotation(self, annotation, key):
-        #self.clearScene()
-        
-        print "addAnnotation: begin", self, key, self.annotationDict.keys()
-        if True:#key == '/run/media/peter/Elements/peter/data/tmp-20130506/20130219/00/2013-02-19.00-00-00.pos.npy':
-            self.annotationDict[key] = annotation.filterFrameList(self.vialNo,
-                                                                self.behaviourName,
-                                                                self.annotator)
-            self.addAnnotationToScene(key)
-            return
-        else:
-            return
+        self.annotationDict[key] = annotation.filterFrameList(self.vialNo,
+                                                            self.behaviourName,
+                                                            self.annotator)
             
         if True:
             self.addAnnotationToScene(key)            
@@ -674,39 +666,34 @@ class AnnoView(QGraphicsView):
         print "addPrefetchedAnnoToScene: end", time.time() - t
         
     def removeAnnotation(self, key):
-        print "remove annotation", self, key, id(self.annotationDict)
         ######################################################################## TODO shift only if absIdx goes out of int range
         #shift = len(self.annotationDict[key].frameList)
         #self.shiftScene(shift)
+        self.scene.removeItem(self.chunks[key])    
+        del self.chunks[key] 
+        del self.lines[key] 
+        del self.frames[key]
+        del self.absIdx[key]
         del self.annotationDict[key]
         #self.clearScene()
         #self.populateScene()
                 
     def clearScene(self):
-        print "clearScene: begin", self, self.scene, self.annotator
-            
         keys = self.chunks.keys()
         for key in keys:
-            self.scene.removeItem(self.chunks[key])
-            #~ for frame in self.frames[key]:
-                #~ self.scene.removeItem(frame)
-            #~ for line in self.lines[key]:
-                #~ self.scene.removeItem(line)               
+            self.scene.removeItem(self.chunks[key])       
                 
         self.chunks.clear()
         self.lines.clear()
         self.frames.clear()
         self.absIdx.clear()
             
-        # ignore any non-custom warnings that may be in the list
-            
+        # ignore any non-custom warnings that may be in the list            
                 
         self.lines = dict()
         self.frames = dict()
         self.absIdx = dict()
-        self.chunks = dict()
-        print "clearScene: end", self, self.scene
-        
+        self.chunks = dict()      
         
     
         
@@ -714,8 +701,6 @@ class AnnoView(QGraphicsView):
         """
         Key needs to be in self.annotationDict !!
         """
-        t = time.time()
-        print "addAnnotationToScene: begin"
         keys = sorted(self.annotationDict.keys())
         
         if key == keys[0]:
@@ -742,10 +727,11 @@ class AnnoView(QGraphicsView):
         boxHeight = self.boxHeight
         
         aCol = self.color
-        aBrush = QBrush(aCol)
-        aPen = QPen(aCol)
-        
         uCol = QColor(0,0,0,0)
+        
+        aBrush = QBrush(aCol)
+        aPen = QPen(uCol)
+        
         uPen = QPen(uCol)
         uBrush = QBrush(uCol)
         
@@ -775,8 +761,6 @@ class AnnoView(QGraphicsView):
                                                     
             i += 1
             
-        #self.scene.addItem(self.chunks[key])
-        print "addAnnotationToScene: end", time.time() - t
     
     def populateScene(self):
         t = time.time()
@@ -787,10 +771,11 @@ class AnnoView(QGraphicsView):
         boxHeight = self.boxHeight
         
         aCol = self.color
-        aBrush = QBrush(aCol)
-        aPen = QPen(aCol)
-        
         uCol = QColor(0,0,0,0)
+        
+        aBrush = QBrush(aCol)
+        aPen = QPen(uCol)
+        
         uPen = QPen(uCol)
         uBrush = QBrush(uCol)
         
@@ -807,7 +792,6 @@ class AnnoView(QGraphicsView):
                                          self.chunks[key])
                 line.setPen(QPen(QColor(100,100,100)))
                 self.lines[key] += [line]
-                #~ self.lines[key] += [self.scene.addLine(i+0.5, 0, i+0.5, boxHeight, QPen(QColor(100,100,100)))]
                 
                 if self.annotationDict[key].frameList[f] is not None:
                     item = QGraphicsRectItem(   QRectF(i, 0, 1, boxHeight), 
@@ -815,19 +799,15 @@ class AnnoView(QGraphicsView):
                     item.setPen(aPen)
                     item.setBrush(aBrush)
                     self.frames[key] += [item]
-                    #~ self.frames[key] += [self.scene.addRect(QRectF(i, 0, 1, boxHeight), aPen, aBrush)]
                 else:
                     item = QGraphicsRectItem(   QRectF(i, 0, 1, boxHeight), 
                                                 self.chunks[key])
                     item.setPen(uPen)
                     item.setBrush(uBrush)
                     self.frames[key] += [item]
-                    #~ self.frames[key] += [self.scene.addRect(QRectF(i, 0, 1, boxHeight), uPen, uBrush)]
                                                         
                 i += 1
         
-        #self.setScene(self.scene)
-        print "populate Scene: end", time.time() - t
         
     def shiftScene(self, shift):
         t = time.time()
@@ -870,7 +850,6 @@ class AnnoView(QGraphicsView):
                             (self.scene.addRect(QRectF(i, 0, 1, boxHeight), 
                                                 QPen(col), QBrush(col)))
             
-        #self.setScene(self.scene)
         
     def setPosition(self, key, idx):
         self.selKey = key
@@ -1298,9 +1277,9 @@ class VideoHandler(QObject):
         except RuntimeError:
             print "something went wrong during the fetching procedure"
         
-        self.updateAnnoViewPositions()
         
         if doBufferCheck:
+            self.updateAnnoViewPositions()
             self.checkBuffer()
         return frame
         
@@ -1378,7 +1357,6 @@ class VideoHandler(QObject):
             except ValueError:
                 ################################################################ TODO: remove only if annotation is not open
                 for aV in self.annoViewList:
-                    print aV, aV.annotationDict.keys()
                     aV.removeAnnotation(vidPath)
                 del self.videoDict[vidPath]
                 
