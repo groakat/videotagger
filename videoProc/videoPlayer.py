@@ -98,7 +98,7 @@ class videoPlayer(QMainWindow):
         self.setBackground("/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
         
         
-        glMatrixMode(GL_PROJECTION)
+        #glMatrixMode(GL_PROJECTION)
         
         
         
@@ -138,26 +138,25 @@ class videoPlayer(QMainWindow):
         
     def createAnnoViews(self):
         self.annoViewList = []
-        
-        aV = AnnoView(self, vialNo=0, annotator=["peter"])
-        aV.setGeometry(QRect(70, 715, 701, 23))
-        aV.show()
-        self.vh.addAnnoView(aV)        
-        self.annoViewList += [aV]
-        
-        #~ aV = AnnoView(self, vialNo=0, annotator=["peter"])
-        #~ aV.setGeometry(QRect(70, 730, 701, 23))
-        #~ aV.show()
-        #~ self.vh.addAnnoView(aV)        
-        #~ self.annoViewList += [aV]
-        #~ 
-        #~ aV = AnnoView(self, vialNo=0, annotator=["peter"])
-        #~ aV.setGeometry(QRect(70, 745, 701, 23))
-        #~ aV.show()
-        #~ self.vh.addAnnoView(aV)        
-        #~ self.annoViewList += [aV]
+             
+        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], color = QColor(0,0,255,150))]
+        self.annoViewList[-1].setGeometry(QRect(70, 715, 701, 23))
+        self.annoViewList[-1].show()
+        self.vh.addAnnoView(self.annoViewList[-1]) 
         
         
+        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["matt"],color = QColor(0,255,0,150))]
+        self.annoViewList[-1].setGeometry(QRect(70, 730, 701, 23))
+        self.annoViewList[-1].show()
+        self.vh.addAnnoView(self.annoViewList[-1])        
+        
+        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"],color = QColor(255,0,0,150))]
+        self.annoViewList[-1].setGeometry(QRect(70, 745, 701, 23))
+        self.annoViewList[-1].show()
+        self.vh.addAnnoView(self.annoViewList[-1])      
+        
+        for aV in self.annoViewList:
+            print aV
         
     def keyPressEvent(self, event):
         key = event.key()
@@ -363,7 +362,9 @@ class videoPlayer(QMainWindow):
         
         self.videoView = QGraphicsView(self)        
         self.videoView.setGeometry(QRect(10, 10, 1920/2, 1080/2))
-        self.videoScene = QGraphicsScene()
+        self.videoScene = QGraphicsScene(self)
+        self.videoScene.setItemIndexMethod(QGraphicsScene.NoIndex)
+        self.videoScene.setSceneRect(QRectF(0, 0, 1920, 1080))
         
         self.videoView.setScene(self.videoScene)
         #self.videoView.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -585,35 +586,41 @@ class videoPlayer(QMainWindow):
         
 class AnnoView(QGraphicsView):
     
-    annotationDict = dict()
-    color = QColor(0,255,0,150)
-    zoomLevels = [0.5, 0.6, 0.8, 1, 2, 5, 10]
-    zoom = 4
-    lines = dict()
-    frames = dict()
-    absIdx = dict()
-    chunks = dict()
-    
-    scene = None
-    selKey = None
-    idx = None
-    
-    boxHeight = 10
-    
-    #filters
-    vialNo = None
-    behaviourName=None
-    annotator=None
-    
-    def __init__(self, parent, vialNo=None, behaviourName=None, annotator=None):
+    def __init__(self, parent, vialNo=None, behaviourName=None, annotator=None,
+                color=None):
         super(AnnoView, self).__init__(parent)
         #QGraphicsView.__init__(parent)
+        
+        # initialization of parameters
+        self.annotationDict = dict()
+        self.color = QColor(0,255,0,150)
+        self.zoomLevels = [0.5, 0.6, 0.8, 1, 2, 5, 10]
+        self.zoom = 4
+        self.lines = dict()
+        self.frames = dict()
+        self.absIdx = dict()
+        self.chunks = dict()
+        
+        self.scene = None
+        self.selKey = None
+        self.idx = None
+        
+        self.boxHeight = 10
+        
+        #filters
+        self.vialNo = None
+        self.behaviourName=None
+        self.annotator=None
         
         geo = self.geometry()
         geo.setHeight(self.boxHeight + 6)
         self.setGeometry(geo)
         
-        self.scene = QGraphicsScene()
+        # setting values
+        self.scene = QGraphicsScene(parent)
+        #self.scene.setSceneRect(QRectF(-50000, -20, 50000, 20))
+        self.setScene(self.scene)
+        
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         
@@ -621,19 +628,53 @@ class AnnoView(QGraphicsView):
         self.behaviourName = behaviourName
         self.annotator = annotator
         
-        self.setViewport(QGLWidget())
+        self.setViewport(QGLWidget(parent))
+        
+        if color == None:
+            color = QColor(0,255,0,150)
+            
+        self.color = color
         
     def addAnnotation(self, annotation, key):
         #self.clearScene()
-        self.annotationDict[key] = annotation.filterFrameList(self.vialNo,
-                                                            self.behaviourName,
-                                                            self.annotator)
-                                                            
-        #self.populateScene()
-        self.addAnnotationToScene(key)
+        
+        print "addAnnotation: begin", self, key, self.annotationDict.keys()
+        if True:#key == '/run/media/peter/Elements/peter/data/tmp-20130506/20130219/00/2013-02-19.00-00-00.pos.npy':
+            self.annotationDict[key] = annotation.filterFrameList(self.vialNo,
+                                                                self.behaviourName,
+                                                                self.annotator)
+            self.addAnnotationToScene(key)
+            return
+        else:
+            return
+            
+        if True:
+            self.addAnnotationToScene(key)            
+        else:
+            # does not work. An idea would be to update a second scene
+            # and swap the scenes, rather than adding the items to
+            # the scene in addPrefetchedAnnoToScene
+            aL = AnnotationItemLoader(key, self.annotationDict, self.absIdx,
+                                        self.color, QColor(0,0,0,0))
+            aL.annotationStuff.connect(self.addPrefetchedAnnoToScene)
+            aL.start()
+        
+    @pyqtSlot(list)
+    def addPrefetchedAnnoToScene(self, lst):
+        t = time.time()
+        print "addPrefetchedAnnoToScene: begin"
+        for key in lst[0].keys():
+            self.chunks[key] = QGraphicsRectItem(lst[0][key])
+            self.absIdx[key] = deepcopy(lst[1][key])
+            self.lines[key] = deepcopy(lst[2][key])
+            self.frames[key] = deepcopy(lst[3][key])
+            self.scene.addItem(self.chunks[key])
+            
+        lst[-1].processedSignal = True
+        print "addPrefetchedAnnoToScene: end", time.time() - t
         
     def removeAnnotation(self, key):
-        print "remove annotation", key
+        print "remove annotation", self, key, id(self.annotationDict)
         ######################################################################## TODO shift only if absIdx goes out of int range
         #shift = len(self.annotationDict[key].frameList)
         #self.shiftScene(shift)
@@ -642,16 +683,32 @@ class AnnoView(QGraphicsView):
         #self.populateScene()
                 
     def clearScene(self):
-        for key in self.frames:
-            for frame in self.frames[key]:
-                self.scene.removeItem(frame)
-            for line in self.lines[key]:
-                self.scene.removeItem(line)
+        print "clearScene: begin", self, self.scene, self.annotator
+            
+        keys = self.chunks.keys()
+        for key in keys:
+            self.scene.removeItem(self.chunks[key])
+            #~ for frame in self.frames[key]:
+                #~ self.scene.removeItem(frame)
+            #~ for line in self.lines[key]:
+                #~ self.scene.removeItem(line)               
+                
+        self.chunks.clear()
+        self.lines.clear()
+        self.frames.clear()
+        self.absIdx.clear()
+            
+        # ignore any non-custom warnings that may be in the list
+            
                 
         self.lines = dict()
         self.frames = dict()
         self.absIdx = dict()
         self.chunks = dict()
+        print "clearScene: end", self, self.scene
+        
+        
+    
         
     def addAnnotationToScene(self, key):
         """
@@ -682,7 +739,6 @@ class AnnoView(QGraphicsView):
         
         print "i", i, "key", key
         
-        scene = self.scene
         boxHeight = self.boxHeight
         
         aCol = self.color
@@ -696,7 +752,7 @@ class AnnoView(QGraphicsView):
         self.lines[key] = []
         self.frames[key] = []
         chunkLength = len(self.annotationDict[key].frameList)
-        self.chunks[key] = self.scene.addRect(QRectF(i, 0, chunkLength, boxHeight)   )         
+        self.chunks[key] = self.scene.addRect(QRectF(i, 0, chunkLength, boxHeight))        
         self.absIdx[key] = np.arange(chunkLength) + i
         
         for f in range(len(self.annotationDict[key].frameList)):
@@ -719,6 +775,7 @@ class AnnoView(QGraphicsView):
                                                     
             i += 1
             
+        #self.scene.addItem(self.chunks[key])
         print "addAnnotationToScene: end", time.time() - t
     
     def populateScene(self):
@@ -727,7 +784,6 @@ class AnnoView(QGraphicsView):
         keys = sorted(self.annotationDict.keys())
         i = 0
         
-        scene = self.scene
         boxHeight = self.boxHeight
         
         aCol = self.color
@@ -751,22 +807,26 @@ class AnnoView(QGraphicsView):
                                          self.chunks[key])
                 line.setPen(QPen(QColor(100,100,100)))
                 self.lines[key] += [line]
+                #~ self.lines[key] += [self.scene.addLine(i+0.5, 0, i+0.5, boxHeight, QPen(QColor(100,100,100)))]
+                
                 if self.annotationDict[key].frameList[f] is not None:
                     item = QGraphicsRectItem(   QRectF(i, 0, 1, boxHeight), 
                                                 self.chunks[key])
                     item.setPen(aPen)
                     item.setBrush(aBrush)
                     self.frames[key] += [item]
+                    #~ self.frames[key] += [self.scene.addRect(QRectF(i, 0, 1, boxHeight), aPen, aBrush)]
                 else:
                     item = QGraphicsRectItem(   QRectF(i, 0, 1, boxHeight), 
                                                 self.chunks[key])
                     item.setPen(uPen)
                     item.setBrush(uBrush)
                     self.frames[key] += [item]
+                    #~ self.frames[key] += [self.scene.addRect(QRectF(i, 0, 1, boxHeight), uPen, uBrush)]
                                                         
                 i += 1
         
-        self.setScene(self.scene)
+        #self.setScene(self.scene)
         print "populate Scene: end", time.time() - t
         
     def shiftScene(self, shift):
@@ -810,7 +870,7 @@ class AnnoView(QGraphicsView):
                             (self.scene.addRect(QRectF(i, 0, 1, boxHeight), 
                                                 QPen(col), QBrush(col)))
             
-        self.setScene(self.scene)
+        #self.setScene(self.scene)
         
     def setPosition(self, key, idx):
         self.selKey = key
@@ -997,14 +1057,7 @@ from IPython.parallel import Client
 class VideoLoader(BaseThread):        
     loadedVideos = pyqtSignal(list) 
     loadedAnnotation = pyqtSignal(list)
-    finished = pyqtSignal()
-    loading = False
-    
-    videoLength = -1
-    frameList = []
-    
-    annotation = None # annotation object
-    
+    finished = pyqtSignal()   
 
     def __del__(self):        
         print "deleting"
@@ -1015,7 +1068,15 @@ class VideoLoader(BaseThread):
             self.annotation.saveToFile(self.posPath.split('.pos')[0] + '.bhvr')
     
     def __init__(self, posPath):
-        BaseThread.__init__(self)
+        BaseThread.__init__(self)        
+        
+        self.loading = False
+        
+        self.videoLength = -1
+        self.frameList = []
+        
+        self.annotation = None # annotation object
+        
         self.posPath = posPath      
         self.loadVideos()
 
@@ -1156,20 +1217,21 @@ class VideoLoader(BaseThread):
         if not self.loading:
             self.annotation.addAnnotation(vialNo, frames, behaviour, annotator)
 
-class VideoHandler(QObject):    
-    videoDict = dict()
-    posList = []
-    annoViewList = []
-    posPath = ''
-    idx = 0
-    pathIdx = 0
-    dictLength = 9         # should be odd, otherwise fix checkBuffers()!
-    
+class VideoHandler(QObject):       
     
     changedFile = pyqtSignal(str)
     
     def __init__(self, posList):
-        super(VideoHandler, self).__init__()
+        super(VideoHandler, self).__init__()        
+        
+        self.videoDict = dict()
+        self.posList = []
+        self.annoViewList = []
+        self.posPath = ''
+        self.idx = 0
+        self.pathIdx = 0
+        self.dictLength = 9         # should be odd, otherwise fix checkBuffers()!
+        
         self.posList = sorted(posList)
         self.posPath = posList[0]
         self.checkBuffer()
@@ -1316,6 +1378,7 @@ class VideoHandler(QObject):
             except ValueError:
                 ################################################################ TODO: remove only if annotation is not open
                 for aV in self.annoViewList:
+                    print aV, aV.annotationDict.keys()
                     aV.removeAnnotation(vidPath)
                 del self.videoDict[vidPath]
                 
@@ -1389,7 +1452,97 @@ class VideoHandler(QObject):
                     if vial == aV.vialNo:
                         print "eraseAnnotation"
                         aV.eraseAnno()
+                        
+                        
+class AnnotationItemLoader(BaseThread):
+        annotationStuff = pyqtSignal(list)
         
+        def __init__(self, key, annotationDict, absIdx, aCol, uCol):
+            super(AnnotationItemLoader, self).__init__()
+            self.lines = dict()
+            self.frames = dict()
+            self.absIdx = absIdx
+            self.chunks = dict()
+            
+            self.annotationDict = annotationDict
+            self.aCol = aCol
+            self.uCol = uCol
+            self.key = key            
+            self.processedSignal = False
+            
+        def run(self):
+            """
+            Key needs to be in self.annotationDict !!
+            """
+
+            keys = sorted(self.annotationDict.keys())
+            key = self.key
+            
+            if key == keys[0]:
+                if len(keys) > 1:
+                    i = self.absIdx[keys[1]][0] - len(self.annotationDict[key].frameList)
+                else:
+                    i = 0
+            elif key == keys[-1]:
+                if len(keys) > 1:
+                    i = self.absIdx[keys[-2]][-1] + 1
+                else: 
+                    # should never happen anyway
+                    i = 0
+            else:
+                print("addAnnotationToScene: tried to insert an annotation in the middle." + 
+                     " It only makes sense to append, or prepend. Trying to clear and" +
+                     " repopulate entirely")
+                self.clearScene()
+                self.populateScene()
+                return
+            
+            print "i", i, "key", key
+            
+            boxHeight = 10
+            
+            aBrush = QBrush(self.aCol)
+            aPen = QPen(self.aCol)
+            
+            uPen = QPen(self.uCol)
+            uBrush = QBrush(self.uCol)
+            
+            self.lines[key] = []
+            self.frames[key] = []
+            chunkLength = len(self.annotationDict[key].frameList)
+            self.chunks[key] = QGraphicsRectItem(QRectF(i, 0, chunkLength, boxHeight))         
+            self.absIdx[key] = np.arange(chunkLength) + i
+            
+            for f in range(len(self.annotationDict[key].frameList)):
+                line = QGraphicsLineItem(i+0.5, 0, i+0.5, boxHeight,
+                                         self.chunks[key])
+                line.setPen(QPen(QColor(100,100,100)))
+                self.lines[key] += [line]
+                if self.annotationDict[key].frameList[f] is not None:
+                    item = QGraphicsRectItem(   QRectF(i, 0, 1, boxHeight), 
+                                                self.chunks[key])
+                    item.setPen(aPen)
+                    item.setBrush(aBrush)
+                    self.frames[key] += [item]
+                else:
+                    item = QGraphicsRectItem(   QRectF(i, 0, 1, boxHeight), 
+                                                self.chunks[key])
+                    item.setPen(uPen)
+                    item.setBrush(uBrush)
+                    self.frames[key] += [item]
+                                                        
+                i += 1
+                
+            self.annotationStuff.emit([self.chunks, self.absIdx, self.lines, 
+                                    self.frames, self])
+            
+            print "end of worker thread for", key
+            
+            #~ while(True):
+                #~ if self.processedSignal:
+                    #~ del self
+                #~ else:
+                    #~ self.msleep(100)
         
 if __name__ == "__main__":
     

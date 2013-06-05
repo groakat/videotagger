@@ -1,0 +1,16 @@
+==========
+02/06/2013
+==========
+
+Implementation
+==============
+
+make annoView more responsive
+################################
+
+- setting scale in updateGraphicView made it get so slow that annoView block trajectory plots
+- adding new annotations onto scene rather than clearing scene completely and readding all elements speeds the annoView up in the transition between files
+- 100ms possible without the lag of 0.07sec at each transition
+- tried to prefetch and build elements of scene in separate thread: failed, took longer to copy the data
+- an alternative approach would be to have two scenes which are swapped like framebuffers
+- having three annoViews should work, however it seems that the annotationDict is shared between them which leads to crashed when it is deleted and even interferences before.
