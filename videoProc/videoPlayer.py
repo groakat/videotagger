@@ -9,6 +9,7 @@ from videoPlayer_auto import Ui_Form
 
 from pyTools.system.videoExplorer import *
 from pyTools.imgProc.imgViewer import *
+from pyTools.misc.basic import *
 
 import numpy as np
 #import matplotlib as mpl
@@ -579,10 +580,10 @@ class videoPlayer(QMainWindow):
         self.vh.addFrameToAnnotation(0, "peter", "just kidding")
         
     def addAnno(self):
-        self.vh.addAnnotation(0, "peter", "just kidding")
+        self.vh.addAnnotation(0, "peter", "just testing", confidence=1)
         
     def eraseAnno(self):
-        self.vh.eraseAnnotation(0, "peter", "just kidding")
+        self.vh.eraseAnnotation(0, "peter", "just testing")
         
 class AnnoView(QGraphicsView):
     
@@ -897,7 +898,9 @@ class AnnoView(QGraphicsView):
     tempAnno = dict()
     def addAnno(self):
         if not self.addingAnno:
-            self.tempStart = [self.selKey, self.idx]
+            #self.tempStart = [self.selKey, self.idx]
+            self.tempStart = FramePosition(self.annotationDict, self.selKey, 
+                                                                    self.idx)
             self.addingAnno = True
         else:
             self.addingAnno = False  
@@ -908,7 +911,7 @@ class AnnoView(QGraphicsView):
                     col = self.color
                     self.frames[key][i] = \
                             (self.scene.addRect(QRectF(idx, 0, 1, self.boxHeight),
-                            QPen(col), QBrush(col)))
+                            QPen(QColor(0,0,0,0)), QBrush(col)))
                     self.scene.removeItem(self.tempAnno[key][i])
             
             # save range to original annotation
@@ -920,7 +923,9 @@ class AnnoView(QGraphicsView):
     erasingAnno = False
     def eraseAnno(self):
         if not self.erasingAnno:
-            self.tempStart = [self.selKey, self.idx]
+            #self.tempStart = [self.selKey, self.idx]
+            self.tempStart = FramePosition(self.annotationDict, self.selKey, 
+                                                                    self.idx)
             self.erasingAnno = True
             self.tempAnno = dict()
             self.addTempAnno()
@@ -933,7 +938,7 @@ class AnnoView(QGraphicsView):
                     col = QColor(0,0,0,0)
                     self.frames[key][i] = \
                             (self.scene.addRect(QRectF(idx, 0, 1, self.boxHeight),
-                            QPen(col), QBrush(col)))
+                            QPen(QColor(0,0,0,0)), QBrush(col)))
                 
             # erase in original annotation
             # save to file
@@ -945,10 +950,10 @@ class AnnoView(QGraphicsView):
             for key in self.tempAnno:
                 for idx in  self.tempAnno[key]:
                     self.scene.removeItem(self.tempAnno[key][idx])
-                    #del self.tempAnno[idx]
+                    #del self.tempAnno[idx]           
             
-            rng = self.generateRangeValuesFromKeys(self.tempStart, 
-                                                    [self.selKey, self.idx + 1])
+            tempEnd = FramePosition(self.annotationDict, self.selKey, self.idx + 1)            
+            rng = generateRangeValuesFromKeys(self.tempStart, tempEnd) 
                                                     
             #print rng
                                                     
@@ -960,15 +965,15 @@ class AnnoView(QGraphicsView):
                     col = self.color
                     self.tempAnno[key][i] = \
                         (self.scene.addRect(QRectF(idx, 0, 1, self.boxHeight),
-                        QPen(col), QBrush(col)))
+                        QPen(QColor(0,0,0,0)), QBrush(col)))
                 
         if self.erasingAnno:            
             for key in self.tempAnno:
                 for idx in self.tempAnno[key]:
                     self.frames[key][idx].setVisible(True)  
             
-            rng = self.generateRangeValuesFromKeys(self.tempStart, 
-                                                    [self.selKey, self.idx + 1])                                                                  
+            tempEnd = FramePosition(self.annotationDict, self.selKey, self.idx + 1)            
+            rng = generateRangeValuesFromKeys(self.tempStart, tempEnd)                                                                  
             
             self.tempAnno = dict()
             for key in rng:
@@ -978,47 +983,47 @@ class AnnoView(QGraphicsView):
                     self.tempAnno[key][i] = self.frames[key][idx]
                     self.frames[key][idx].setVisible(False)
                 
-    def generateRangeValuesFromKeys(self, start, end):
-        """        
-        Args:
-            start ([dict key, int])
-            end ([dict key, int])
-        """
-        
-        c = [start,end]
-        if start[0] != end[0]:
-            c.sort(key=lambda x: x[0])
-        else:
-            c.sort(key=lambda x: x[1])
-        s = c[0]
-        e = c[1]
-            
-        
-        rng = dict()
-        isWithinRange = False
-        for key in sorted(self.annotationDict.keys()):
-            rngS = None
-            rngE = None
-            
-            if key == s[0]:
-               isWithinRange = True
-               rngS = s[1]
-            else:
-                rngS = 0
-               
-            if key == e[0]:
-                isWithinRange = False
-                rngE = e[1]
-                rng[key] = range(rngS, rngE)
-                return rng
-            else:
-                rngE = len(self.annotationDict[key].frameList)
-            
-            if isWithinRange:
-                rng[key] = range(rngS, rngE)
-                
-        return rng
-                
+    #~ def generateRangeValuesFromKeys(self, start, end):
+        #~ """        
+        #~ Args:
+            #~ start ([dict key, int])
+            #~ end ([dict key, int])
+        #~ """
+        #~ 
+        #~ c = [start,end]
+        #~ if start[0] != end[0]:
+            #~ c.sort(key=lambda x: x[0])
+        #~ else:
+            #~ c.sort(key=lambda x: x[1])
+        #~ s = c[0]
+        #~ e = c[1]
+            #~ 
+        #~ 
+        #~ rng = dict()
+        #~ isWithinRange = False
+        #~ for key in sorted(self.annotationDict.keys()):
+            #~ rngS = None
+            #~ rngE = None
+            #~ 
+            #~ if key == s[0]:
+               #~ isWithinRange = True
+               #~ rngS = s[1]
+            #~ else:
+                #~ rngS = 0
+               #~ 
+            #~ if key == e[0]:
+                #~ isWithinRange = False
+                #~ rngE = e[1]
+                #~ rng[key] = range(rngS, rngE)
+                #~ return rng
+            #~ else:
+                #~ rngE = len(self.annotationDict[key].frameList)
+            #~ 
+            #~ if isWithinRange:
+                #~ rng[key] = range(rngS, rngE)
+                #~ 
+        #~ return rng
+                #~ 
         
 class BaseThread(QThread):
     def __init__(self):
@@ -1214,6 +1219,8 @@ class VideoHandler(QObject):
         self.posList = sorted(posList)
         self.posPath = posList[0]
         self.checkBuffer()
+        
+        self.annoStart = None
     
     def setFrameIdx(self, idx):
         self.idx = idx
@@ -1407,7 +1414,7 @@ class VideoHandler(QObject):
         for aV in self.annoViewList:
             aV.setZoom(zoomLevel)
         
-    def addAnnotation(self, vial, annotator, behaviour):
+    def addAnnotation(self, vial, annotator, behaviour, confidence):
         for aV in self.annoViewList:
             if (aV.behaviourName == None) \
             or (behaviour == aV.behaviourName) \
@@ -1418,6 +1425,22 @@ class VideoHandler(QObject):
                     if vial == aV.vialNo:
                         print "addAnnotation"
                         aV.addAnno()
+                        
+        if self.annoStart == None:
+            self.annoStart = FramePosition(self.videoDict, self.posPath, 
+                                                                    self.idx)
+        else:
+            annoEnd = FramePosition(self.videoDict, self.posPath, self.idx + 1)            
+            rng = generateRangeValuesFromKeys(self.annoStart, annoEnd)
+            self.annoStart = None
+            
+            for key in rng:
+                self.videoDict[key].annotation.addAnnotation(vial, rng[key], 
+                                        annotator, behaviour, confidence)
+                                        
+                print "add annotation", vial, rng[key], annotator, behaviour, confidence
+                tmpFilename = key.split(".pos")[0] + ".bhvr~"
+                self.videoDict[key].annotation.saveToFile(tmpFilename)
         
     def eraseAnnotation(self, vial, annotator, behaviour):
         for aV in self.annoViewList:
@@ -1430,6 +1453,21 @@ class VideoHandler(QObject):
                     if vial == aV.vialNo:
                         print "eraseAnnotation"
                         aV.eraseAnno()
+                        
+        if self.annoStart == None:
+            self.annoStart = FramePosition(self.videoDict, self.posPath, 
+                                                                    self.idx)
+        else:
+            annoEnd = FramePosition(self.videoDict, self.posPath, self.idx + 1)            
+            rng = generateRangeValuesFromKeys(self.annoStart, annoEnd)
+            self.annoStart == None
+            
+            for key in rng:
+                self.videoDict[key].annotation.removeAnnotation(vial, rng[key], 
+                                        annotator, behaviour)
+                tmpFilename = key.split(".pos")[0] + ".bhvr~"
+                self.videoDict[key].annotation.saveToFile(tmpFilename)
+    
                         
                         
 class AnnotationItemLoader(BaseThread):

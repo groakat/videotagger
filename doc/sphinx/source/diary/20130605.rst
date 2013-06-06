@@ -1,0 +1,16 @@
+==========
+05/06/2013
+==========
+
+Implementation
+==============
+
+annoView now working and in usable condition
+############################################
+
+- got all problems that appeared since the 03/05/2013 because I initialized the dictionaries in the class rather than in a function which made them static class variables
+
+general annotation software
+###########################
+
+- need to implement saving of altered annotations and then it will be fully functional

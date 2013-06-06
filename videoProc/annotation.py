@@ -191,7 +191,7 @@ class Annotation():
         
         return out
 
-    def addAnnotation(self, vial, frames, behaviour, annotator, confidence=1.0):
+    def addAnnotation(self, vial, frames, annotator,behaviour, confidence=1.0):
         """
         frames list of ints
         """
@@ -217,7 +217,7 @@ class Annotation():
             #~ child.addAnnotation(vial, frames, behaviour, annotator, 
                                                                     #~ confidence)
                                                                     
-    def removeAnnotation(self, vial, frames, behaviour, annotator):
+    def removeAnnotation(self, vial, frames, annotator, behaviour):
         """
         frames list of ints
         """
@@ -230,11 +230,12 @@ class Annotation():
         a = annotator
         
         for frame in frames:
-            if b in self.frameList[frame][v]["behaviour"]:
-                if a in self.frameList[frame][v]["behaviour"][b]:
-                    del self.frameList[frame][v]["behaviour"][b][a]
-                    if self.frameList[frame][v]["behaviour"][b] == {}:
-                        del self.frameList[frame][v]["behaviour"][b]
+            if "behaviour" in self.frameList[frame][vial]:
+                if b in self.frameList[frame][v]["behaviour"]:
+                    if a in self.frameList[frame][v]["behaviour"][b]:
+                        del self.frameList[frame][v]["behaviour"][b][a]
+                        if self.frameList[frame][v]["behaviour"][b] == {}:
+                            del self.frameList[frame][v]["behaviour"][b]
         
         #~ for child in self.children:
             #~ child.removeAnnotation(v, frames, b, a)
