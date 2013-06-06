@@ -1103,7 +1103,14 @@ class VideoLoader(BaseThread):
             f = posPath.split('.pos')[0] + '.bhvr'
             if isfile(f):
                 out = Annotation()
-                out.loadFromFile(f)
+                try:
+                    out.loadFromFile(f)
+                except:
+                    print("load annotation of "+f+" failed, reset annotaions")
+                    out = Annotation(frameNo=videoLength, vialNames=["Abeta +RU",
+                                                                 "ABeta -RU",
+                                                                 "dilp",
+                                                                 "wDah(+)"])
             else:
                 out = Annotation(frameNo=videoLength, vialNames=["Abeta +RU",
                                                                  "ABeta -RU",
