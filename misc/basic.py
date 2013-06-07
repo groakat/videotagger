@@ -16,13 +16,14 @@ def chunks(l, n):
 
 FramePosition = namedtuple('FramePosition', ['dicnry', 'key', 'idx'])
 
-def generateRangeValuesFromKeys(start, end):
+def generateRangeValuesFromKeys(start, end, includingEnd=True):
         """        
         It generates a range ranging over several files. I.e. 
         Generates a dict with ranges for each key. T
         Args:
             start (FramePosition)
             end (FramePosition)
+            includingEnd: is it an inclusive range
         """        
         c = [start,end]
         if start.key != end.key:
@@ -48,7 +49,10 @@ def generateRangeValuesFromKeys(start, end):
             if key == e.key:
                 isWithinRange = False
                 rngE = e.idx
-                rng[key] = range(rngS, rngE)
+                if includingEnd:
+                    rng[key] = range(rngS, rngE + 1)
+                else:
+                    rng[key] = range(rngS, rngE)
                 return rng
             else:
                 rngE = len(s.dicnry[key].frameList)

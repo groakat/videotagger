@@ -5,10 +5,12 @@ from PyQt4.QtGui import *
 from PyQt4.QtCore import * 
 from PyQt4.QtOpenGL import * 
 
+
 from videoPlayer_auto import Ui_Form
 
 from pyTools.system.videoExplorer import *
 from pyTools.imgProc.imgViewer import *
+from pyTools.videoProc.annotation import *
 from pyTools.misc.basic import *
 
 import numpy as np
@@ -221,6 +223,9 @@ class videoPlayer(QMainWindow):
         if key == Qt.Key_I:
             print "position length:", self.vh.getCurrentPositionLength()
             print "video length:", self.vh.getCurrentVideoLength()
+            
+        if key == Qt.Key_Escape:
+            self.escapeAnnotationAlteration()
         
         
     def updateFrameList(self, intList):
@@ -585,6 +590,10 @@ class videoPlayer(QMainWindow):
     def eraseAnno(self):
         self.vh.eraseAnnotation(0, "peter", "just testing")
         
+    def escapeAnnotationAlteration(self):
+        print "escape annotation"
+        self.vh.escapeAnnotationAlteration()
+        
 class AnnoView(QGraphicsView):
     
     def __init__(self, parent, vialNo=None, behaviourName=None, annotator=None,
@@ -942,20 +951,34 @@ class AnnoView(QGraphicsView):
                 
             # erase in original annotation
             # save to file
-            self.tempAnno = dict()           
+            self.tempAnno = dict()      
             
-            
-    def addTempAnno(self):
+    def resetAnno(self):
         if self.addingAnno:
             for key in self.tempAnno:
                 for idx in  self.tempAnno[key]:
-                    self.scene.removeItem(self.tempAnno[key][idx])
-                    #del self.tempAnno[idx]           
+                    self.scene.removeItem(self.tempAnno[key][idx])            
+                    
+        if self.erasingAnno:            
+            for key in self.tempAnno:
+                for idx in self.tempAnno[key]:
+                    self.frames[key][idx].setVisible(True)  
+    
+    def escapeAnno(self):
+        self.resetAnno()
+        self.erasingAnno = False
+        self.addingAnno = False
+            
+            
+    def addTempAnno(self):
+        self.resetAnno()
+        if self.addingAnno:
+            #~ for key in self.tempAnno:
+                #~ for idx in  self.tempAnno[key]:
+                    #~ self.scene.removeItem(self.tempAnno[key][idx])
             
             tempEnd = FramePosition(self.annotationDict, self.selKey, self.idx + 1)            
             rng = generateRangeValuesFromKeys(self.tempStart, tempEnd) 
-                                                    
-            #print rng
                                                     
             self.tempAnno = dict()
             for key in rng:
@@ -968,9 +991,9 @@ class AnnoView(QGraphicsView):
                         QPen(QColor(0,0,0,0)), QBrush(col)))
                 
         if self.erasingAnno:            
-            for key in self.tempAnno:
-                for idx in self.tempAnno[key]:
-                    self.frames[key][idx].setVisible(True)  
+            #~ for key in self.tempAnno:
+                #~ for idx in self.tempAnno[key]:
+                    #~ self.frames[key][idx].setVisible(True)  
             
             tempEnd = FramePosition(self.annotationDict, self.selKey, self.idx + 1)            
             rng = generateRangeValuesFromKeys(self.tempStart, tempEnd)                                                                  
@@ -982,48 +1005,6 @@ class AnnoView(QGraphicsView):
                     idx = self.absIdx[key][i]
                     self.tempAnno[key][i] = self.frames[key][idx]
                     self.frames[key][idx].setVisible(False)
-                
-    #~ def generateRangeValuesFromKeys(self, start, end):
-        #~ """        
-        #~ Args:
-            #~ start ([dict key, int])
-            #~ end ([dict key, int])
-        #~ """
-        #~ 
-        #~ c = [start,end]
-        #~ if start[0] != end[0]:
-            #~ c.sort(key=lambda x: x[0])
-        #~ else:
-            #~ c.sort(key=lambda x: x[1])
-        #~ s = c[0]
-        #~ e = c[1]
-            #~ 
-        #~ 
-        #~ rng = dict()
-        #~ isWithinRange = False
-        #~ for key in sorted(self.annotationDict.keys()):
-            #~ rngS = None
-            #~ rngE = None
-            #~ 
-            #~ if key == s[0]:
-               #~ isWithinRange = True
-               #~ rngS = s[1]
-            #~ else:
-                #~ rngS = 0
-               #~ 
-            #~ if key == e[0]:
-                #~ isWithinRange = False
-                #~ rngE = e[1]
-                #~ rng[key] = range(rngS, rngE)
-                #~ return rng
-            #~ else:
-                #~ rngE = len(self.annotationDict[key].frameList)
-            #~ 
-            #~ if isWithinRange:
-                #~ rng[key] = range(rngS, rngE)
-                #~ 
-        #~ return rng
-                #~ 
         
 class BaseThread(QThread):
     def __init__(self):
@@ -1227,7 +1208,7 @@ class VideoHandler(QObject):
         self.posPath = posList[0]
         self.checkBuffer()
         
-        self.annoStart = None
+        self.annoAltStart = None
     
     def setFrameIdx(self, idx):
         self.idx = idx
@@ -1321,7 +1302,8 @@ class VideoHandler(QObject):
                         break
                     else:
                         self.idx = self.videoDict[self.posPath].getVideoLength() -1
-                        print "This is the very last frame, cannot advance further"
+                        if doBufferCheck:
+                            print "This is the very last frame, cannot advance further"
                         
         return self.getCurrentFrame(doBufferCheck=doBufferCheck)
         
@@ -1339,7 +1321,8 @@ class VideoHandler(QObject):
                         break
                     else:
                         self.idx = 0
-                        print "This is the very first frame, cannot go back further"
+                        if doBufferCheck:
+                            print "This is the very first frame, cannot go back further"
                         
         return self.getCurrentFrame(doBufferCheck=doBufferCheck)
                 
@@ -1433,13 +1416,23 @@ class VideoHandler(QObject):
                         print "addAnnotation"
                         aV.addAnno()
                         
-        if self.annoStart == None:
-            self.annoStart = FramePosition(self.videoDict, self.posPath, 
+        if self.annoAltStart == None:
+            self.annoAltStart = FramePosition(self.videoDict, self.posPath, 
                                                                     self.idx)
+            self.annoAltFilter = AnnotationFilter([vial], [annotator], 
+                                                                    [behaviour])
         else:
-            annoEnd = FramePosition(self.videoDict, self.posPath, self.idx + 1)            
-            rng = generateRangeValuesFromKeys(self.annoStart, annoEnd)
-            self.annoStart = None
+            curFilter = AnnotationFilter([vial], [annotator], [behaviour])
+            sameAnnotationFilter = \
+                    all((sorted(curFilter[i]) == sorted(self.annoAltFilter[i]) \
+                                        for i in range(len(curFilter))))
+            if not sameAnnotationFilter:
+                self.escapeAnnotationAlteration()
+            else:
+                annoEnd = FramePosition(self.videoDict, self.posPath, 
+                                                                   self.idx + 1)            
+                rng = generateRangeValuesFromKeys(self.annoAltStart, annoEnd)
+                self.annoAltStart = None
             
             for key in rng:
                 self.videoDict[key].annotation.addAnnotation(vial, rng[key], 
@@ -1461,22 +1454,36 @@ class VideoHandler(QObject):
                         print "eraseAnnotation"
                         aV.eraseAnno()
                         
-        if self.annoStart == None:
-            self.annoStart = FramePosition(self.videoDict, self.posPath, 
+        if self.annoAltStart == None:
+            self.annoAltStart = FramePosition(self.videoDict, self.posPath, 
                                                                     self.idx)
+            self.annoAltFilter = AnnotationFilter([vial], [annotator], 
+                                                                    [behaviour])
         else:
-            annoEnd = FramePosition(self.videoDict, self.posPath, self.idx + 1)            
-            rng = generateRangeValuesFromKeys(self.annoStart, annoEnd)
-            self.annoStart == None
-            
-            for key in rng:
-                self.videoDict[key].annotation.removeAnnotation(vial, rng[key], 
-                                        annotator, behaviour)
-                tmpFilename = key.split(".pos")[0] + ".bhvr~"
-                self.videoDict[key].annotation.saveToFile(tmpFilename)
+            curFilter = AnnotationFilter([vial], [annotator], [behaviour])
+            sameAnnotationFilter = \
+                    all((sorted(curFilter[i]) == sorted(self.annoAltFilter[i]) \
+                                        for i in range(len(curFilter))))
+            if not sameAnnotationFilter:
+                self.escapeAnnotationAlteration()
+            else:
+                annoEnd = FramePosition(self.videoDict, self.posPath, self.idx + 1)            
+                rng = generateRangeValuesFromKeys(self.annoAltStart, annoEnd)
+                self.annoAltStart == None
+                
+                for key in rng:
+                    self.videoDict[key].annotation.removeAnnotation(vial, rng[key], 
+                                            annotator, behaviour)
+                    tmpFilename = key.split(".pos")[0] + ".bhvr~"
+                    self.videoDict[key].annotation.saveToFile(tmpFilename)
     
                         
-                        
+    def escapeAnnotationAlteration(self):
+        self.annoAltStart == None
+        
+        for aV in self.annoViewList:
+            aV.escapeAnno()
+    
 class AnnotationItemLoader(BaseThread):
         annotationStuff = pyqtSignal(list)
         

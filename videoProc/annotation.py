@@ -1,5 +1,10 @@
 import json
 import os
+from collections import namedtuple
+
+
+AnnotationFilter = \
+        namedtuple("AnnotationFilter", ["vials", "annotators", "behaviours"])
 
 class Annotation():
     frameList = []
