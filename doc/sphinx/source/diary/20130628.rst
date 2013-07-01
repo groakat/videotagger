@@ -1,0 +1,27 @@
+==========
+28/06/2013
+==========
+
+* set up dropbox
+
+* trying out how to sync report files such as this one between different devices. so far it seems to work quite good. the writing on the phone gets also better and better. I am surprised how fast one can type using this tiny keyboard
+
+meeting with Matt
+#################
+
+* showed Matt the annotation software
+    * he is satisfied
+    * me: idea to show only a single vial and dismiss the others to get more speed but also to use the space on the display more effective than it is the case now.
+
+* speaking about the climbing assay prototype of Teresa
+    * he wants to support us and try to fibs money for it
+    * the open fellowship does not work because it would require much of travelling to promote open science.
+    * generally he would advocate an open source solution 
+
+prism meeting
+#############
+
+* legion is available for large datasets
+* it takes some time to set it up but the support is good
+* Malcolm and Michael either used legion or did a course in handling legion as a service
+* I will first stick to the old plan of using the desktop machines to process the first batch of data but start applying for legion for later processings

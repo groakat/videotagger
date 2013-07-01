@@ -1,0 +1,53 @@
+==========
+10/06/2013
+==========
+
+
+Hard Drives
+===========
+
+- recording
+    - 4TB: WD4000FYYZ: £253.74
+    - RAID 1 system
+    
+- processing
+    - 1TB: WD1003FBYX: £67.99 
+    - not back upped
+    - because the lab computers I use for processing do not have enough power to keep 2RAID with minimal efford
+    - data will be transferred to a 4TB RAID1 after processing
+        - that mean the entire dataset can be stored on a single physical disk
+        
+Video Conversion
+================
+
+Converting from H264 to FFV1
+
+::
+    ffmpeg -i 2013-06-10.14-15-00.mp4 -vcodec ffv1 -qscale 0 2013-06-10.14-15-00.avi
+    
+Converting video into image sequence each frame an image
+
+::
+    ffmpeg -i 2013-06-10.14-15-00.mp4 -vsync 0 -s hd480 -f image2 image15-%05d.png    
+    
+Quantitative Evaluation of Video Capture
+========================================
+
+- got counter from the electrical engineering dept
+- preliminary results of testing of old pipeline:
+    - framerate stable (just tested with a single video)
+    - one second loss between two videos
+
+Rebuild of Capturing Environment with GStreamer 1.0
+===================================================
+
+- dynamically changing pipeline while in RUNNING
+    - http://gstreamer.freedesktop.org/data/doc/gstreamer/head/manual/html/section-dynamic-pipelines.html (19.4.1)
+    
+- Gstreamer 1.1.1 released a few days ago. Should wait until stable release 1.2.x is released, which is hopefully in a few weeks
+    - http://lists.freedesktop.org/archives/gstreamer-devel/2013-June/041320.html
+    
+KVM
+===
+
+- http://www.aten.co.uk/products/productItem.php?model_no=CS64U

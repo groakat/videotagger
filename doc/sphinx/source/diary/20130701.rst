@@ -1,0 +1,29 @@
+==========
+01/07/2013
+==========
+
+IPython notbook
+###############
+
+nbconvert to html
+~~~~~~~~~~~~~~~~~
+
+* nbconvert needs master top of ipython
+
+:: 
+    python nbconvert.py full_html Climbing.ipynb
+    
+    
+nbconvert to reveal.js slideshow
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+::    
+    python nbconvert.py reveal reveal-test.ipynb
+    
+* needs to have the reveal.js folder in the same location as the slideshow.reveal.html file
+* markdown sections in the ipython notebook are used to generate new slides
+* code cells are integrated as "down" arrow slides
+
+using python as webserver
+~~~~~~~~~~~~~~~~~~~~~~~~~
+::
+    python -m SimpleHTTPServer 8000

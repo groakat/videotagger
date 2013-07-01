@@ -1,0 +1,38 @@
+==========
+26/06/2013
+==========
+
+Setting up cluster computers in touch lab
+#########################################
+
+alphons
+    * JXxfjLj9ZL
+    
+beata
+    * A3hsPyNdhu
+
+cleopatra
+    * 59rEhmQAzs
+    
+dante
+    * LcUSpWGafg
+    
+    
+Started installing software
+###########################
+* https://gist.github.com/groakat/0b544bdbee25cb18ee5e
+
+
+Labelling of hard drives
+########################
+
+naming convention
+=================
+
+convention:
+    * ex[experiment number]/b[box number]/p[part number]/yymmdd-yymmdd/mk[RAID number]
+    * start all counters with 0
+    
+example:
+    * first experiment, box 1, second disk in the recording series, includes recordings from 22/03/2013 to 30/03/2013, "first" disk of the pair of RAID1 disks
+    * ex0/b1/p01/130322-130330/mk0

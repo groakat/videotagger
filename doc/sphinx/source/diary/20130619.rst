@@ -1,0 +1,60 @@
+==========
+19/06/2013
+==========
+
+curses
+######
+
+Reading about curses for python. A working example.
+
+.. code-block: python
+
+    import curses
+    import time
+    
+    def show_progress():
+        #Create a window object.
+        win = curses.newwin(3,32,14,10)
+        # Add the Border
+        win.border(0)
+        # Current text: Progress
+        win.addstr(1,1,"Progress ")
+        # This is to move the progress bar per iteration.
+        pos = 10
+        # Random number I chose for demonstration.
+        for i in range(15):
+            # Add '.' for each iteration.
+            win.addstr(1,pos,".")
+            # Refresh or we'll never see it.
+            win.refresh()
+            # Here is where you can customize for data/percentage.
+            time.sleep(0.05)
+            # Need to move up or we'll just redraw the same cell!
+            pos += 1
+        # Current text: Progress ............... Done!
+        win.addstr(1,26,"Done!")
+        # Gotta show our changes.
+        win.refresh()
+        # Without this the bar fades too quickly for this example.
+        time.sleep(1)
+        
+    def init(stdscr):
+        #stdscr = curses.initscr()
+        show_progress()
+        #curses.endwin()
+        
+        
+    if __name__ == "__main__":
+        curses.wrapper(init)
+    
+controlling processes from outside (SSH)
+########################################
+
+* screen
+    * tutorials
+        * http://magazine.redhat.com/2007/09/27/a-guide-to-gnu-screen/
+        
+Sending emails via Python
+#########################
+
+cs.ucl.ac.uk server accepts mails sent by python from the localhost

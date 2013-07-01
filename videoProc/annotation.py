@@ -95,7 +95,7 @@ class Annotation():
         
         return frames
     
-    def filterFrameList(self,  vialNo=None, behaviourName=None, annotator=None):
+    def filterFrameList(self, filterTuple): #vialNo=None, behaviourName=None, annotator=None):
         """
         Returns a new annotation object that contains only annotations that 
         satisfy all filter criteria.
@@ -131,6 +131,10 @@ class Annotation():
         Returns:
             new annotator object satisfying the filter criteria
         """
+        
+        vialNo = filterTuple.vials
+        behaviourName = filterTuple.behaviours
+        annotator = filterTuple.annotators
         
         if vialNo is None:
             vials = range(len(self.frameList[0]))

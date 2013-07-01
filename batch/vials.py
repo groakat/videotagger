@@ -43,7 +43,7 @@ class Vials(object):
     """
     def __init__(self,  rois=None, gaussWeight=1000, sigma=10, xoffsetFact=0.7, 
                 updateLimit = 5000, clfyFunc=None, acceptPosFunc=None,
-                acceptPosFuncArgs=None):
+                acceptPosFuncArgs=None, verbose=False):
         """
         
         Args:            
@@ -115,6 +115,9 @@ class Vials(object):
             acceptPosFuncArgs (dict):
                                 dictionary carrying the additional arguments for
                                 acceptPosFunc. 
+                                
+            verbose (boolean):
+                                print debug messages
         """
         self.rois = rois
         self.iV = imgViewer()
@@ -149,6 +152,8 @@ class Vials(object):
         self.bgModel = None         # will be set in extractPatches
         self.currentBgImg = None
         self.currentFrame = None
+        
+        self.verbose = verbose
         
     def batchProcessImage(self,  img,  funct,  args):
         """
@@ -350,7 +355,8 @@ class Vials(object):
             
             if clfyFunc(patch):
                 #print("getFlyPositions - minVal", minVal)
-                if self.currentBgImg is self.bgModel.getBgImg(frame,debug=True):
+                if self.currentBgImg is self.bgModel.getBgImg(frame,
+                                                            debug=self.verbose):
                     self.updateBackgroundMask(frame, bgImg, i, pos[i], 
                                               [300, 100])
                 else:
@@ -484,8 +490,10 @@ class Vials(object):
             if self.wasUpdated[vialNo] is not True:
                 self.update[mask == 1] = frame[mask == 1]
                 self.wasUpdated[vialNo] = True        
-        
-        print("vials.updateBackgroundMask:", self.updateCnt, self.updateLimit, vialNo, center)            
+                
+        if self.verbose:
+            print("vials.updateBackgroundMask:", self.updateCnt, 
+                                            self.updateLimit, vialNo, center)            
         
     
     def createBackgroundUpdateMask(self, frame, vialNo, center, patchSize):
@@ -541,7 +549,7 @@ class Vials(object):
             
         self.wasUpdated = [False] * len(self.rois)
         
-        bgImg = self.bgModel.getBgImg(self.currentFrame,debug=True)
+        bgImg = self.bgModel.getBgImg(self.currentFrame,debug=self.verbose)
         
         if bgImg is not self.currentBgImg:
             self.setBackgroundImage(bgImg)
@@ -915,7 +923,7 @@ class Vials(object):
             for frame in vE:                 
                 if cnt == 0:
                     # select correct background model
-                    bgImg = bgModel.getBgImg(frame, debug=True)
+                    bgImg = bgModel.getBgImg(frame, debug=vial.verbose)
                     if bgImg is not vial.currentBgImg:
                         vial.setBackgroundImage(bgImg)
                   
@@ -942,7 +950,7 @@ class Vials(object):
             # as for the first frame. If not, probably a day/night switch 
             # occurred. So make sure that nothing of this minute is used
             # TODO
-            if bgImg is not bgModel.getBgImg(frame, debug=True):
+            if bgImg is not bgModel.getBgImg(frame, debug=vial.verbose):
                 print("background model changed this minute. DO SOMETHING")
                 vial.updateBackgroundModel()
                 
@@ -980,7 +988,8 @@ class Vials(object):
             fl.write('{0}'.format(accPos))
             fl.close()
             
-            print("processed ", f)
+            if vial.verbose:
+                print("processed ", f)
             
     @staticmethod
     def checkIfPatchShowsFly(patch, classifier, flyClass=1, debug=False):

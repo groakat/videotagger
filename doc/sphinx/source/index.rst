@@ -8,8 +8,10 @@ Welcome to Fly Behaviour's documentation!
 =========================================
 
 Contents:
+
 =========
 
+.. _user_guide:
 User Guide
 ##########
 .. toctree::
@@ -18,6 +20,7 @@ User Guide
     sec/flyLocation
     sec/vialExchange
 
+.. _class_documentation:
 Class documentation
 ###################
 
@@ -27,6 +30,7 @@ Class documentation
 
     mod/*
 
+.. _diary:
 Diary
 #####
 .. toctree::
@@ -55,7 +59,7 @@ Todo list
 =========
 .. todolist::	
 
-
+.. [2006-Zhu-Avidan-Yeh-Cheng] Qiang Zhu, Shai Avidan, Mei-Chen Yeh, and Kwang-Ting Cheng, *Fast Human Detection Using a Cascade of Histograms of Oriented Gradients*, CVPR 2006. :download:`PDF </../../../../../../../home/peter/Desktop/IntegralHoG.pdf>`
     
     
 

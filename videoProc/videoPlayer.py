@@ -141,19 +141,21 @@ class videoPlayer(QMainWindow):
         
     def createAnnoViews(self):
         self.annoViewList = []
+        
+            
              
-        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], color = QColor(0,0,255,150))]
+        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["falling"],  color = QColor(0,0,255,150))]
         self.annoViewList[-1].setGeometry(QRect(70, 715, 701, 23))
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1]) 
         
         
-        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["matt"],color = QColor(0,255,0,150))]
+        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["struggle"], color = QColor(0,255,0,150))]
         self.annoViewList[-1].setGeometry(QRect(70, 730, 701, 23))
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1])        
         
-        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"],color = QColor(255,0,0,150))]
+        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["flying"], color = QColor(255,0,0,150))]
         self.annoViewList[-1].setGeometry(QRect(70, 745, 701, 23))
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1])      
@@ -226,6 +228,15 @@ class videoPlayer(QMainWindow):
             
         if key == Qt.Key_Escape:
             self.escapeAnnotationAlteration()
+            
+        if key == Qt.Key_1:
+            self.vh.addAnnotation(0, "peter", "falling", confidence=1)
+            
+        if key == Qt.Key_2:
+            self.vh.addAnnotation(0, "peter", "struggle", confidence=1)
+            
+        if key == Qt.Key_3:
+            self.vh.addAnnotation(0, "peter", "flying", confidence=1)
         
         
     def updateFrameList(self, intList):
@@ -582,7 +593,7 @@ class videoPlayer(QMainWindow):
         
     def testFunction(self):
         print "testFunction"
-        self.vh.addFrameToAnnotation(0, "peter", "just kidding")
+        self.vh.saveAll()
         
     def addAnno(self):
         self.vh.addAnnotation(0, "peter", "just testing", confidence=1)
@@ -646,9 +657,9 @@ class AnnoView(QGraphicsView):
         self.color = color
         
     def addAnnotation(self, annotation, key):
-        self.annotationDict[key] = annotation.filterFrameList(self.vialNo,
-                                                            self.behaviourName,
-                                                            self.annotator)
+        filt = AnnotationFilter([self.vialNo], self.annotator, 
+                                                        self.behaviourName)
+        self.annotationDict[key] = annotation.filterFrameList(filt)
             
         if True:
             self.addAnnotationToScene(key)            
@@ -977,7 +988,7 @@ class AnnoView(QGraphicsView):
                 #~ for idx in  self.tempAnno[key]:
                     #~ self.scene.removeItem(self.tempAnno[key][idx])
             
-            tempEnd = FramePosition(self.annotationDict, self.selKey, self.idx + 1)            
+            tempEnd = FramePosition(self.annotationDict, self.selKey, self.idx)            
             rng = generateRangeValuesFromKeys(self.tempStart, tempEnd) 
                                                     
             self.tempAnno = dict()
@@ -995,7 +1006,7 @@ class AnnoView(QGraphicsView):
                 #~ for idx in self.tempAnno[key]:
                     #~ self.frames[key][idx].setVisible(True)  
             
-            tempEnd = FramePosition(self.annotationDict, self.selKey, self.idx + 1)            
+            tempEnd = FramePosition(self.annotationDict, self.selKey, self.idx)            
             rng = generateRangeValuesFromKeys(self.tempStart, tempEnd)                                                                  
             
             self.tempAnno = dict()
@@ -1429,8 +1440,7 @@ class VideoHandler(QObject):
             if not sameAnnotationFilter:
                 self.escapeAnnotationAlteration()
             else:
-                annoEnd = FramePosition(self.videoDict, self.posPath, 
-                                                                   self.idx + 1)            
+                annoEnd = FramePosition(self.videoDict, self.posPath, self.idx)            
                 rng = generateRangeValuesFromKeys(self.annoAltStart, annoEnd)
                 self.annoAltStart = None
             
@@ -1467,7 +1477,7 @@ class VideoHandler(QObject):
             if not sameAnnotationFilter:
                 self.escapeAnnotationAlteration()
             else:
-                annoEnd = FramePosition(self.videoDict, self.posPath, self.idx + 1)            
+                annoEnd = FramePosition(self.videoDict, self.posPath, self.idx)            
                 rng = generateRangeValuesFromKeys(self.annoAltStart, annoEnd)
                 self.annoAltStart == None
                 
@@ -1483,6 +1493,11 @@ class VideoHandler(QObject):
         
         for aV in self.annoViewList:
             aV.escapeAnno()
+            
+    def saveAll(self):
+        for key in self.videoDict:
+            tmpFilename = key.split(".pos")[0] + ".bhvr"
+            self.videoDict[key].annotation.saveToFile(tmpFilename)
     
 class AnnotationItemLoader(BaseThread):
         annotationStuff = pyqtSignal(list)

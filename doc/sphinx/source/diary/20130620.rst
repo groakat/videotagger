@@ -1,0 +1,10 @@
+==========
+20/06/2013
+==========
+
+Ubuntu: creating ISO from current installation
+##############################################
+
+https://help.ubuntu.com/community/LiveCDCustomization
+
+* remastersys
