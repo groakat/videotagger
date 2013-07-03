@@ -1,3 +1,42 @@
+# user input variables
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-fc', '--flyClassifierPath', 
+    help="path to SVM that discrimitates flies from background patches",
+    default='/run/media/peter/Elements/peter/data/bin/models/fly_svm/fly.svm')
+parser.add_argument('-nc', '--noveltyClassfyPath',
+    help="path to SVM that discrimiates between trained data and untrained patches",
+    default='/run/media/peter/Elements/peter/data/bin/models/fly_svmNovelty/flyNovelty.svm')
+parser.add_argument('-r', '--rootPath', 
+    help='path to root folder containing the vials, typically a "box0.0" type of folder',
+    default="/run/media/peter/Elements/peter/data/box1.0/")
+parser.add_argument('-s', '--baseSaveDirPath', 
+    help='path to root folder to save the results',
+    default='/run/media/peter/Elements/peter/data/tmp-20130701/')
+parser.add_argument('-c', '--gmailCredentialPath', 
+    help="""
+    path to gmail credentials. This file should only contain
+    "[abc@gmail.com, password]" """,
+    default='../sandbox/mailCredentials')
+parser.add_argument('-n', '--notificationEmail', 
+    help="email the notifications are sent to",
+    default='p.rennert@cs.ucl.ac.uk')
+parser.add_argument('-e', '--maxErrors', 
+    help="maximum an error can occur repeatitly before processing is stopped entirely",
+    type=int, default=2)
+args = parser.parse_args()
+
+
+
+flyClassifierPath = args.flyClassifierPath
+noveltyClassfyPath = args.noveltyClassfyPath
+rootPath = args.rootPath
+baseSaveDirPath = args.baseSaveDirPath
+gmailCredentialPath = args.gmailCredentialPath
+notificationEmail = args.notificationEmail
+maxErrors = args.maxErrors
+
 # - - - - - - - - -
 # import basic stuff
 # - - - - - - - - -
@@ -18,7 +57,16 @@ import subprocess
 import joblib
 import getpass
 import smtplib
+import ast
 from email.mime.text import MIMEText
+
+#~ flyClassifierPath = '/run/media/peter/Elements/peter/data/bin/models/fly_svm/fly.svm'
+#~ noveltyClassfyPath = '/run/media/peter/Elements/peter/data/bin/models/fly_svmNovelty/flyNovelty.svm'
+#~ rootPath = "/run/media/peter/Elements/peter/data/box1.0/"
+#~ baseSaveDirPath = '/run/media/peter/Elements/peter/data/tmp-20130701/'
+#~ gmailCredentialPath = '../sandbox/mailCredentials'
+#~ notificationEmail = 'p.rennert@cs.ucl.ac.uk'
+#~ maxErrors = 2
 
 # - - - - - - - - - - - - -
 # create essential objects
@@ -44,8 +92,8 @@ def computeHog(patch):
     return vanHog.hog(a[1], 9,3, 360, [0, 64, 0, 64])
 
 
-flyClassifier = joblib.load('/run/media/peter/Elements/peter/data/bin/models/fly_svm/fly.svm')
-noveltyClassfy = joblib.load('/run/media/peter/Elements/peter/data/bin/models/fly_svmNovelty/flyNovelty.svm')
+flyClassifier = joblib.load(flyClassifierPath)
+noveltyClassfy = joblib.load(noveltyClassfyPath)
 
 flyClassify = lambda patch: Vials.checkIfPatchShowsFly(patch, flyClassifier, flyClass=1, debug=True)
 
@@ -56,13 +104,17 @@ acceptArgs = {'computeHog': computeHog,
 vial = Vials(roi, gaussWeight=2000, sigma=20,  xoffsetFact=0.6)
 
 
+# load credentials for gmail
+f = open(gmailCredentialPath)
+userdata = ast.literal_eval(f.read())
+f.close()
+
 # - - - - - - - - - - - - - - - - - - - - - - - -
 # split files into sets of consequent recordings
 # - - - - - - - - - - - - - - - - - - - - - - - - 
 
 import datetime as dt
 
-rootPath = "/run/media/peter/Elements/peter/data/box1.0/"
 fileList = []
 for root,  dirs,  files in os.walk(rootPath):
     for fn in files:
@@ -83,6 +135,8 @@ recRngs = vE.findInteruptions(fileList)
 # - - - - - - - - - - - - - - - - - - - - - - - - 
 totI = len(fileList)
 curI = 0
+errorCnt = [0, 0]
+
 startTime = dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))
 user = getpass.getuser()
 
@@ -105,13 +159,12 @@ for start, end in recRngs:
     
     chunkSize = 2
     
-    for files in bsc.chunks(fileList, chunkSize):    
-        try:
+    for files in bsc.chunks(fileList, chunkSize):   
+        curI += chunkSize   
+        try:            
             vial = Vials(roi, gaussWeight=2000, sigma=20,  xoffsetFact=0.6, clfyFunc=flyClassify, acceptPosFunc=Vials.acceptPosFunc, acceptPosFuncArgs=acceptArgs)
-            1/0
-            vial.extractPatches(files, bgModel, baseSaveDir='/run/media/peter/Elements/peter/data/tmp-20130701/')
-    
-            curI += chunkSize        
+            vial.extractPatches(files, bgModel, baseSaveDir=baseSaveDirPath)
+          
             currentTime = dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))
             
             progress = curI / totI
@@ -120,7 +173,8 @@ for start, end in recRngs:
             finish = currentTime + eta
             
             status = \
-            """{0} @ {1}:
+            """
+            {0} @ {1}:
             
             Processed: \t\t {2} / {3} files ({4}%).
             Processing time: \t {5}
@@ -136,18 +190,29 @@ for start, end in recRngs:
             msg = MIMEText(status.format(user, currentTime,
                                          curI, totI, progress, passedTime, eta, finish))
             
-            me = '{0}@prism-cluster.co.uk'.format(user)
-            you = 'p.rennert@cs.ucl.ac.uk'
+            me = userdata[0]
+            you = notificationEmail
             msg['Subject'] = 'Status Report of %s' % user
             msg['From'] = me
             msg['To'] = you
             
-            s = smtplib.SMTP('localhost')
+            s = smtplib.SMTP('smtp.gmail.com', 587)
+            s.ehlo()
+            s.starttls()
+            s.ehlo
+            s.login(*userdata)
             s.sendmail(me, [you], msg.as_string())
             s.quit()
             
-        except Exception as inst:    
-            curI += chunkSize        
+        except Exception as inst: 
+            if curI - chunkSize ==  errorCnt[0]:
+                # there were errors just before
+                errorCnt[1] += 1
+            else:
+                errorCnt = 1
+            
+            errorCnt[0] = curI
+            
             currentTime = dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))
             
             progress = curI / totI
@@ -167,24 +232,48 @@ for start, end in recRngs:
             ==============================================
             ERROR MESSAGE:
             {8}
+            Processing:
+            {9}
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             """
             
             print status.format(user, currentTime,
-                                         curI, totI, progress, passedTime, eta, finish, inst)
+                                         curI, totI, progress, passedTime, eta, finish, inst, files)
 
             # send a status email
             msg = MIMEText(status.format(user, currentTime,
-                                         curI, totI, progress, passedTime, eta, finish, inst))
+                                         curI, totI, progress, passedTime, eta, finish, inst, files))
             
-            me = '{0}@prism-cluster.co.uk'.format(user)
-            you = 'p.rennert@cs.ucl.ac.uk'
+            me = userdata[0]
+            you = notificationEmail
             msg['Subject'] = '!!!! ERROR !!!! Status Report of %s' % user
             msg['From'] = me
             msg['To'] = you
             
-            s = smtplib.SMTP('localhost')
+            s = smtplib.SMTP('smtp.gmail.com', 587)
+            s.ehlo()
+            s.starttls()
+            s.ehlo
+            s.login(*userdata)
             s.sendmail(me, [you], msg.as_string())
             s.quit()
             
+            if errorCnt[1] >= maxErrors:
+                msg = MIMEText("== stopping process of {0}".format(user))
+                
+                me = userdata[0]
+                you = notificationEmail
+                msg['Subject'] = '!!!! STOPPING !!!! Too many errors in %s' % user
+                msg['From'] = me
+                msg['To'] = you
+                
+                s = smtplib.SMTP('smtp.gmail.com', 587)
+                s.ehlo()
+                s.starttls()
+                s.ehlo
+                s.login(*userdata)
+                s.sendmail(me, [you], msg.as_string())
+                s.quit()
+                
+                raise Exception("Process failed too often: Stop.")
             

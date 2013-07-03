@@ -27,3 +27,15 @@ using python as webserver
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 ::
     python -m SimpleHTTPServer 8000
+
+Share screen
+############
+ start a new screen with name "work"
+ ::
+    screen -S work
+    
+share screen with
+::
+    screen -x work
+    
+Leave the session with CTRL+A d

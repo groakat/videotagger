@@ -1,0 +1,57 @@
+==========
+02/07/2013
+==========
+
+Status Email Account (prism.remote.status@gmail.com)
+####################################################
+
+* Password
+    s9KdasJJ
+    
+IPython notebook and reveal
+###########################
+
+Newer IPythons integrate a Cell Toolbar --> Slideshow 
+
+Allows to divide cells into slides and subslides. These can then be converted with 
+
+.. code-block:: bash
+
+    python nbconvert.py reveal reveal-test.ipynb
+    
+Problems with local content
+===========================
+
+IPython notebook requires to prepend local paths with 'files/' while HTML does not want that. Therefore before using `nbconvert` one has to remove those prefixes.
+
+IPython parallel
+################
+
+Debugging on engines, by starting a qtconsole directly on the remote worker:
+
+.. code-block:: python
+
+    %%px
+    from IPython.parallel import bind_kernel
+    bind_kernel()
+    
+    rc[0].execute("%qtconsole")
+
+
+Meeting with Gabe
+#################
+
+Fly behaviour project
+=====================
+* CVPR deadline in November
+* topic: cost sensitive learning for "easy examples" 
+    * show that it is possible to learn with less human cost if MIL is used 
+    * show that labelling boundaries is more costly than labelling centers of action
+    * (maybe similarities with image segmentation from strokes)
+* we need a method to estimate the user time spend for a certain part/frame of the movie
+
+Fly Climbin Project
+===================
+* should produce a paper
+* is interesting, however should have a lower priority than main project
+* maybe counting flies could be another source for Dominics counting
