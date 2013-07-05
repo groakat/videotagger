@@ -43,7 +43,7 @@ maxErrors = args.maxErrors
 
 import matplotlib.pyplot as plt
 import sys, os, glob
-sys.path.append('/home/peter/code/pyTools/')
+sys.path.append("../..")
 
 import numpy as np
 from pyTools.system.videoExplorer import *
@@ -129,6 +129,32 @@ for root,  dirs,  files in os.walk(rootPath):
 fileList = sorted(fileList)
 recRngs = vE.findInteruptions(fileList)
 
+def logMessage(message, subject):
+
+    print message
+
+    # send a status email
+    msg = MIMEText(message)
+
+    me = userdata[0]
+    you = notificationEmail
+    msg['Subject'] = subject
+    msg['From'] = me
+    msg['To'] = you
+
+    s = smtplib.SMTP('smtp.gmail.com', 587)
+    s.ehlo()
+    s.starttls()
+    s.ehlo
+    s.login(*userdata)
+    s.sendmail(me, [you], msg.as_string())
+    s.quit()
+    
+    if not os.path.exists(baseSaveDirPath):
+        os.makedirs(baseSaveDirPath)
+        
+    with open(baseSaveDirPath + 'log.txt', 'a+') as myfile:
+        myfile.write(message)
 
 # - - - - - - - - - - - - - - - - - - - - - - - -
 # compute each section
@@ -144,6 +170,11 @@ for start, end in recRngs:
     vE.setTimeRange(start, end)
     vE.setRootPath(rootPath)
     vE.parseFiles()
+    
+    if len(vE.fileList) < 10:
+        logMessage("skipped {0} to {1} because it had too few files".format(start, end),
+                    "Skipping in {0}".format(user))
+        continue
     
     bgModel.getVideoPaths(rootPath, start,  end)
     bgModel.createDayModel(sampleSize=10)
@@ -183,26 +214,30 @@ for start, end in recRngs:
             ==============================================
             """
             
-            print status.format(user, currentTime,
-                                         curI, totI, progress, passedTime, eta, finish)
+            logMessage(status.format(user, currentTime,
+                                     urI, totI, progress, passedTime, eta, finish),
+                       'Status Report of {0}'.format(user))
+            
+            #print status.format(user, currentTime,
+                                         #curI, totI, progress, passedTime, eta, finish)
 
-            # send a status email
-            msg = MIMEText(status.format(user, currentTime,
-                                         curI, totI, progress, passedTime, eta, finish))
+            ## send a status email
+            #msg = MIMEText(status.format(user, currentTime,
+                                         #curI, totI, progress, passedTime, eta, finish))
             
-            me = userdata[0]
-            you = notificationEmail
-            msg['Subject'] = 'Status Report of %s' % user
-            msg['From'] = me
-            msg['To'] = you
+            #me = userdata[0]
+            #you = notificationEmail
+            #msg['Subject'] = 'Status Report of %s' % user
+            #msg['From'] = me
+            #msg['To'] = you
             
-            s = smtplib.SMTP('smtp.gmail.com', 587)
-            s.ehlo()
-            s.starttls()
-            s.ehlo
-            s.login(*userdata)
-            s.sendmail(me, [you], msg.as_string())
-            s.quit()
+            #s = smtplib.SMTP('smtp.gmail.com', 587)
+            #s.ehlo()
+            #s.starttls()
+            #s.ehlo
+            #s.login(*userdata)
+            #s.sendmail(me, [you], msg.as_string())
+            #s.quit()
             
         except Exception as inst: 
             if curI - chunkSize ==  errorCnt[0]:
@@ -237,43 +272,50 @@ for start, end in recRngs:
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             """
             
-            print status.format(user, currentTime,
-                                         curI, totI, progress, passedTime, eta, finish, inst, files)
+            logMessage(status.format(user, currentTime,
+                                         curI, totI, progress, passedTime, eta, finish, inst, files),
+                       '!!!! ERROR !!!! Status Report of {0}'.format(user))
+                       
+            #print status.format(user, currentTime,
+                                         #curI, totI, progress, passedTime, eta, finish, inst, files)
 
-            # send a status email
-            msg = MIMEText(status.format(user, currentTime,
-                                         curI, totI, progress, passedTime, eta, finish, inst, files))
+            ## send a status email
+            #msg = MIMEText(status.format(user, currentTime,
+                                         #curI, totI, progress, passedTime, eta, finish, inst, files))
             
-            me = userdata[0]
-            you = notificationEmail
-            msg['Subject'] = '!!!! ERROR !!!! Status Report of %s' % user
-            msg['From'] = me
-            msg['To'] = you
+            #me = userdata[0]
+            #you = notificationEmail
+            #msg['Subject'] = '!!!! ERROR !!!! Status Report of %s' % user
+            #msg['From'] = me
+            #msg['To'] = you
             
-            s = smtplib.SMTP('smtp.gmail.com', 587)
-            s.ehlo()
-            s.starttls()
-            s.ehlo
-            s.login(*userdata)
-            s.sendmail(me, [you], msg.as_string())
-            s.quit()
+            #s = smtplib.SMTP('smtp.gmail.com', 587)
+            #s.ehlo()
+            #s.starttls()
+            #s.ehlo
+            #s.login(*userdata)
+            #s.sendmail(me, [you], msg.as_string())
+            #s.quit()
             
             if errorCnt[1] >= maxErrors:
-                msg = MIMEText("== stopping process of {0}".format(user))
+                logMessage("== stopping process of {0} ==".format(user),
+                       '!!!! STOPPING !!!! Too many errors in {0}'.format(user))
+                       
+                #msg = MIMEText("== stopping process of {0}".format(user))
                 
-                me = userdata[0]
-                you = notificationEmail
-                msg['Subject'] = '!!!! STOPPING !!!! Too many errors in %s' % user
-                msg['From'] = me
-                msg['To'] = you
+                #me = userdata[0]
+                #you = notificationEmail
+                #msg['Subject'] = '!!!! STOPPING !!!! Too many errors in %s' % user
+                #msg['From'] = me
+                #msg['To'] = you
                 
-                s = smtplib.SMTP('smtp.gmail.com', 587)
-                s.ehlo()
-                s.starttls()
-                s.ehlo
-                s.login(*userdata)
-                s.sendmail(me, [you], msg.as_string())
-                s.quit()
+                #s = smtplib.SMTP('smtp.gmail.com', 587)
+                #s.ehlo()
+                #s.starttls()
+                #s.ehlo
+                #s.login(*userdata)
+                #s.sendmail(me, [you], msg.as_string())
+                #s.quit()
                 
                 raise Exception("Process failed too often: Stop.")
             
