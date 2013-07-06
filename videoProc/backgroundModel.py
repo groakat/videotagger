@@ -240,18 +240,22 @@ class backgroundModel(object):
         """
         if self.verbose:
             print "creating night model.."
-        
-        bgImg, self.histNight =  self.createModelFromListMedian(self.nightPaths, 
-                                                         sampleSize,
-                                                         calcHistFeatures=True)
-        self.modelNight = backgroundImage(bgImg)
-        times = [a.time() for a in self.vE.getDatesOfList(self.vE.nightList)]
-        # get beginning and end of time range (inverted to dayModel, because
-        # the night range starts in the evening and ends in the morning
-        startTime = max([i for i in times if i < dt.time(12)])
-        endTime = min([i for i in times if i > dt.time(12)])
-        
-        self.bgModelList[1] = [self.modelNight, startTime, endTime]
+            
+        if len(self.nightPaths) > 0:            
+            bgImg, self.histNight =  self.createModelFromListMedian(self.nightPaths, 
+                                                             sampleSize,
+                                                             calcHistFeatures=True)
+            self.modelNight = backgroundImage(bgImg)
+            
+            times = [a.time() for a in self.vE.getDatesOfList(self.vE.nightList)]
+            # get beginning and end of time range (inverted to dayModel, because
+            # the night range starts in the evening and ends in the morning
+            # startTime = max([i for i in times if i < dt.time(12)])
+            # endTime = min([i for i in times if i > dt.time(12)])
+            
+            self.bgModelList[1] = [self.modelNight]#, startTime, endTime]
+        else:
+            self.histNight = np.ones((sampleSize, 768))
         
         if self.histDay is not None:
             self.trainDayNightClassifier()
@@ -263,15 +267,18 @@ class backgroundModel(object):
         if self.verbose:
             print "creating day model.."
             
-        bgImg, self.histDay =  self.createModelFromListMedian(self.dayPaths,  
-                                                            sampleSize,
-                                                          calcHistFeatures=True)
-        self.modelDay = backgroundImage(bgImg)
-        times = [a.time() for a in self.vE.getDatesOfList(self.vE.dayList)]
-        startTime = min(times)
-        endTime = max(times)
-        self.bgModelList[0] = [self.modelDay, startTime, endTime]
-        
+        if len(self.dayPaths) > 0:
+            bgImg, self.histDay =  self.createModelFromListMedian(self.dayPaths,  
+                                                                sampleSize,
+                                                              calcHistFeatures=True)
+            self.modelDay = backgroundImage(bgImg)
+            times = [a.time() for a in self.vE.getDatesOfList(self.vE.dayList)]
+            # startTime = min(times)
+            # endTime = max(times)
+            self.bgModelList[0] = [self.modelDay]#, startTime, endTime]
+        else:
+            self.histDay = np.ones((sampleSize, 768))
+            
         if self.histNight is not None:
             self.trainDayNightClassifier()
             

@@ -25,6 +25,9 @@ parser.add_argument('-n', '--notificationEmail',
 parser.add_argument('-e', '--maxErrors', 
     help="maximum an error can occur repeatitly before processing is stopped entirely",
     type=int, default=2)
+parser.add_argument('-cs', '--chunkSize', 
+    help="number of video files to be processed before status is send",
+    type=int, default=500)
 args = parser.parse_args()
 
 
@@ -36,6 +39,7 @@ baseSaveDirPath = args.baseSaveDirPath
 gmailCredentialPath = args.gmailCredentialPath
 notificationEmail = args.notificationEmail
 maxErrors = args.maxErrors
+chunkSize = args.chunkSize
 
 # - - - - - - - - -
 # import basic stuff
@@ -58,6 +62,9 @@ import joblib
 import getpass
 import smtplib
 import ast
+import logging
+from StringIO import *
+
 from email.mime.text import MIMEText
 
 #~ flyClassifierPath = '/run/media/peter/Elements/peter/data/bin/models/fly_svm/fly.svm'
@@ -129,6 +136,7 @@ for root,  dirs,  files in os.walk(rootPath):
 fileList = sorted(fileList)
 recRngs = vE.findInteruptions(fileList)
 
+
 def logMessage(message, subject):
 
     print message
@@ -188,11 +196,21 @@ for start, end in recRngs:
     
     fileList = night + day
     
-    chunkSize = 2
     
     for files in bsc.chunks(fileList, chunkSize):   
         curI += chunkSize   
         try:            
+
+            logStream = StringIO()
+            logHandler = logging.StreamHandler(logStream)
+            log = logging.getLogger()
+            log.setLevel(logging.DEBUG)
+            for handler in log.handlers: 
+                log.removeHandler(handler)
+                
+            log.addHandler(logHandler)
+            
+            
             vial = Vials(roi, gaussWeight=2000, sigma=20,  xoffsetFact=0.6, clfyFunc=flyClassify, acceptPosFunc=Vials.acceptPosFunc, acceptPosFuncArgs=acceptArgs)
             vial.extractPatches(files, bgModel, baseSaveDir=baseSaveDirPath)
           
@@ -215,7 +233,7 @@ for start, end in recRngs:
             """
             
             logMessage(status.format(user, currentTime,
-                                     urI, totI, progress, passedTime, eta, finish),
+                                    curI, totI, progress, passedTime, eta, finish),
                        'Status Report of {0}'.format(user))
             
             #print status.format(user, currentTime,
@@ -266,16 +284,29 @@ for start, end in recRngs:
             estimated finish: \t {7}
             ==============================================
             ERROR MESSAGE:
-            {8}
+            {8}            
+            ==============================================
             Processing:
             {9}
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             """
+            # - - - - - - - - - - - - -
+            # setup of logging process
+            # - - - - - - - - - - - - -
+            
+            logging.exception(inst)
+            
+            log.removeHandler(logHandler)
+            
+            #self.logHandler.flush()
+            logHandler.flush()
+            logStream.flush()
             
             logMessage(status.format(user, currentTime,
-                                         curI, totI, progress, passedTime, eta, finish, inst, files),
+                                         curI, totI, progress, passedTime, eta, finish, logStream.getvalue(), files),
                        '!!!! ERROR !!!! Status Report of {0}'.format(user))
                        
+            raise
             #print status.format(user, currentTime,
                                          #curI, totI, progress, passedTime, eta, finish, inst, files)
 

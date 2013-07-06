@@ -1008,6 +1008,9 @@ class Vials(object):
         """
         if np.min(patch[30:35,30:35].flatten()) < -150:
             hog = computeHog(patch)
+            if np.isnan(sum(hog)):
+                return False
+                
             clas = classifier.predict(hog)
             if  int(clas[0]) == flyClass:
                 return True

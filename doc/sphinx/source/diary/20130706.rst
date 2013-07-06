@@ -1,0 +1,9 @@
+==========
+06/07/2013
+==========
+
+python: logging to String
+#########################
+
+http://opensourcehacker.com/2011/02/23/temporarily-capturing-python-logging-output-to-a-string-buffer/
+http://stackoverflow.com/questions/9534245/python-logging-to-stringio-handler?rq=1
