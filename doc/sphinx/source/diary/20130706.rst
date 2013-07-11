@@ -7,3 +7,20 @@ python: logging to String
 
 http://opensourcehacker.com/2011/02/23/temporarily-capturing-python-logging-output-to-a-string-buffer/
 http://stackoverflow.com/questions/9534245/python-logging-to-stringio-handler?rq=1
+
+Trying to fix ubuntu to make ffmpeg work
+########################################
+
+* standard compilation of ffmpeg did not allow to open videos
+* tried the whole day to compile ffmpeg completely --> fail
+
+* will go back to Fedora at monday
+* there are many tools for other distributions around to create custom distribtuions, also for fedora
+
+http://www.maketecheasier.com/6-tools-to-easily-create-your-own-custom-linux-distro/2010/04/08
+
+* revisor seems to be outdated
+
+* now kickstarter is used
+
+https://fedoraproject.org/wiki/Spins_SIG?rd=SIGs/Spins
