@@ -9,7 +9,7 @@ import time
 # gstreamer imports
 import gi
 gi.require_version('Gst', '1.0')
-from gi.repository import Gst, GObject, Gtk
+from gi.repository import Gst, GObject, Gtk, GdkX11, GstVideo
 print "Gstreamer version:", Gst.version()
 
 GObject.threads_init()
@@ -32,33 +32,37 @@ class vidCapture(object):
 
         self.mainloop = GObject.MainLoop()
         
+        # create gtk interface
         self.log.debug("create Gtk interface")
         self.window = Gtk.Window()
         self.window.connect('destroy', self.quit)
         self.window.set_default_size(800, 450)
-
+        
+        self.box = Gtk.Box(homogeneous=False, spacing=6)
+        self.window.add(self.box)
+        
         self.drawingarea = Gtk.DrawingArea()
-        self.window.add(self.drawingarea)        
+        self.drawingarea.set_size_request(800, 350)
+        self.box.pack_start(self.drawingarea, True, True, 0)        
 
+        self.button = Gtk.Button(label="Click Here")
+        self.button.connect("clicked", self.on_button_clicked)
+        self.box.pack_start(self.button, True, True, 0)  
 
         self.log.debug("create self.pipelines")
         self.pipelines = dict()
         self.pipelines["main"] = Gst.Pipeline()
         self.pipelines["catch"] = Gst.Pipeline()
         
+        self.log.debug("link message bus")
         # Create bus to get events from GStreamer pipeline
-        self.bus = self.pipeline.get_bus()
+        self.bus = self.pipelines["main"].get_bus()
         self.bus.add_signal_watch()
         self.bus.connect('message::error', self.on_error)
 
         # This is needed to make the video output in our DrawingArea:
         self.bus.enable_sync_message_emission()
-        self.bus.connect('sync-message::element', self.on_sync_message)
-
-        # Create GStreamer elements
-        self.src = Gst.ElementFactory.make('autovideosrc', None)
-        self.sink = Gst.ElementFactory.make('autovideosink', None)
-        
+        self.bus.connect('sync-message::element', self.on_sync_message)      
         
         # create all self.elements that we will need later
         self.log.debug("create gst elements")
@@ -66,7 +70,7 @@ class vidCapture(object):
         self.elements = dict()
         self.elements["src"] = Gst.ElementFactory.make("uvch264src", "src")
         self.elements["queue_preview"] = Gst.ElementFactory.make( "queue", "queue_preview")
-        self.elements["preview_sink"] = Gst.ElementFactory.make( "xvimagesink", "previewsink")
+        self.elements["preview_sink"] = Gst.ElementFactory.make( "autovideosink", "previewsink")
         self.elements["filesink1"] = Gst.ElementFactory.make( "filesink", "file_sink1")
         self.elements["filesink2"] = Gst.ElementFactory.make( "filesink", "file_sink2")
         self.elements["queue_0"] = Gst.ElementFactory.make( "queue", "queue_0")
@@ -138,7 +142,7 @@ class vidCapture(object):
         self.elements["filesink1"].set_property("location", "/home/peter/tmp/testVid.mp4")
         
         self.log.debug("set uvch264src device")
-        self.elements["src"].set_property("device", "/dev/video1")
+        self.elements["src"].set_property("device", "/dev/video3")
         self.elements["src"].set_property("auto-start", True)
         
                 
@@ -150,18 +154,39 @@ class vidCapture(object):
         
     def run(self):        
         self.log.debug("start pipeline")
+        self.window.show_all()
+        # You need to get the XID after window.show_all().  You shouldn't get it
+        # in the on_sync_message() handler because threading issues will cause
+        # segfaults there.
+        self.xid = self.drawingarea.get_property('window').get_xid()
         self.pipelines["main"].set_state(Gst.State.PLAYING)
-        self.mainloop.run()
+        Gtk.main()
+        self.elements["src"].emit('start-capture')
+        
+    def quit(self, window):
+        self.log.debug("null pipeline")
+        self.elements["src"].emit('stop-capture')
+        self.pipelines["main"].set_state(Gst.State.NULL)     
+        Gtk.main_quit()
         
     def kill(self):
-        self.log.debug("null pipeline")
-        self.pipelines["main"].set_state(Gst.State.NULL)      
-        self.mainloop.quit() 
+        self.quit(self.window)
+
+    def on_sync_message(self, bus, msg):
+        if msg.get_structure().get_name() == 'prepare-window-handle':
+            self.log.debug('prepare-window-handle')
+            msg.src.set_property('force-aspect-ratio', True)
+            msg.src.set_window_handle(self.xid)
+
+    def on_error(self, bus, msg):
+        print('on_error():', msg.parse_error())
+        
+
+    def on_button_clicked(self, widget):
+        print "Hello World"
         
 if __name__ == "__main__":
     vC = vidCapture()
     vC.run()
-    time.sleep(2)
-    vC.kill()
 
 
