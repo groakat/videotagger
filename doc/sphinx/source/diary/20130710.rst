@@ -1,0 +1,64 @@
+==========
+10/07/2013
+==========
+
+Yesterday and today: setting up of cluster computers
+
+* Relatively straight forward using Fedora
+* only problem is the use of pip install -r requirements
+    * numpy and cython have to get installed before requirements.txt can be installed
+    * numba and related were commented out and not installed
+    
+* tiny incident:
+    * one power supply unit melted during setup (was replaced, but makes stability of others questionable)
+    
+Startup precedure on each cluster
+#################################
+
+* mount source and destination hard drives
+* start ssh as root
+
+.. code-block:: bash
+
+    # /sbin/service sshd start
+    
+* start virtual environment in ~/code/pyTools
+
+.. code-block:: bash
+
+    $ source pyToolsEnv/bin/activate
+    
+* start screen
+
+.. code-block:: bash
+
+    $ screen -S batch
+    
+* start script
+
+Batch installation of gstreamer plugins
+#######################################
+
+After installing gstreamer and copying the gstreamer/scripts/gst-uninstalled to ~/bin/gst-sth and modifying the root path in it, the gstreamer plugins can all be compiled with:
+
+By using expect
+
+.. code-block:: bash
+
+    #!/usr/bin/expect
+    
+    set timeout -1
+    
+    foreach i {gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-python gnonlin gst-ffmpeg} {
+        spawn gst-gst2
+        expect "$ "
+        send "git clone git://cgit.freedesktop.org/gstreamer/$i\r"
+        expect "$ "
+        send "cd ./$i\r"
+        expect "$ "
+        send "./autogen.sh\r"
+        expect "$ "
+        send "make -j7\r"
+        expect "$ "
+        send "exit\r"
+    }

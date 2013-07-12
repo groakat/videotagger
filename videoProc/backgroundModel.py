@@ -11,6 +11,7 @@ import re
 import os
 import dateutil.parser
 from skimage.color import *
+from skimage.io import imread
 
 class backgroundModel(object):
     colorModeLst = [['gray', rgb2gray ], 
@@ -272,7 +273,7 @@ class backgroundModel(object):
                                                                 sampleSize,
                                                               calcHistFeatures=True)
             self.modelDay = backgroundImage(bgImg)
-            times = [a.time() for a in self.vE.getDatesOfList(self.vE.dayList)]
+            # times = [a.time() for a in self.vE.getDatesOfList(self.vE.dayList)]
             # startTime = min(times)
             # endTime = max(times)
             self.bgModelList[0] = [self.modelDay]#, startTime, endTime]
@@ -339,6 +340,36 @@ class backgroundModel(object):
             if debug:
                 print "choose day model"
             return self.bgModelList[0][0]
+        
+    
+
+    def updateModelWithBgImages(self, bgList):
+        """
+        Updates the model with the given list of images.
+        The function uses the classifier trained by the 
+        backgroundModel to automatically add the images to
+        the right model.
+        
+        .. note::
+            the function does not sort `bgList`
+    
+        Args:
+            bgList (list of strings):
+                        list with paths to images that are
+                        used to update the model
+        
+        """
+        for path in bgList:
+            img = imread(path)
+            bgImg = self.getBgImg(img)
+            bgImg.updateBackgroundModel(img, level=-1, integrate=False)
+        
+        if self.bgModelList[0][0] is not None:
+            self.bgModelList[0][0].updateBackgroundStack()
+            
+        if self.bgModelList[1][0] is not None:
+            self.bgModelList[1][0].updateBackgroundStack()
+        
     
     def saveModels(self, path=''):
         """
