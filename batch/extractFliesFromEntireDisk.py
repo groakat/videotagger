@@ -215,13 +215,10 @@ errorCnt = [0, 0]
 startTime = dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))
 user = getpass.getuser()
 
-<<<<<<< HEAD
+
 for i in range(len(recRngs)):
     start, end = recRngs[i]
     
-=======
-for start, end in recRngs[4:]:
->>>>>>> 6cd6a62bfbff511339edb75023a59e15df13b620
     vE.setTimeRange(start, end)
     vE.setRootPath(rootPath)
     vE.parseFiles()
