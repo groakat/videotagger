@@ -962,7 +962,7 @@ class Vials(object):
             
             # render images as avi for complete losslessness
             # ffmpeg -y -f image2 -r 29.97 -i /tmp/2013-02-19.00-01-00.v0.%05d.png -vcodec ffv1 -sameq /tmp/test.avi
-            ffmpegCmd = "ffmpeg -y -f image2 -r {2} -i {3}.v{1}.%05d.tif -vcodec ffv1 -sameq -r {2} {0}.v{1}.avi"
+            ffmpegCmd = "ffmpeg -y -f image2 -r {2} -i {3}.v{1}.%05d.tif -vcodec ffv1 -qscale 0 -r {2} {0}.v{1}.avi"
             
             for patchNo in range(len(pos)):
                 p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName),

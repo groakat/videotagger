@@ -174,7 +174,7 @@ errorCnt = [0, 0]
 startTime = dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))
 user = getpass.getuser()
 
-for start, end in recRngs:
+for start, end in recRngs[4:]:
     vE.setTimeRange(start, end)
     vE.setRootPath(rootPath)
     vE.parseFiles()
@@ -262,7 +262,7 @@ for start, end in recRngs:
                 # there were errors just before
                 errorCnt[1] += 1
             else:
-                errorCnt = 1
+                errorCnt[1] = 1
             
             errorCnt[0] = curI
             
