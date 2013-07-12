@@ -259,7 +259,7 @@ for i in range(len(recRngs)):
     fileList = diff
     
     for files in bsc.chunks(fileList, chunkSize):   
-        curI += chunkSize   
+        curI += len(files)   
         try:            
 
             logStream = StringIO()
@@ -288,7 +288,7 @@ for i in range(len(recRngs)):
             
             Processed: \t\t {2} / {3} files ({4}%).
             Processing time: \t {5}
-            ETA: \t\t\t {6}
+            ETA: \t\t {6}
             estimated finish: \t {7}
             ==============================================
             """
@@ -308,9 +308,9 @@ for i in range(len(recRngs)):
             
             currentTime = dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))
             
-            progress = curI / totI
+            progress = curI / float(totI)
             passedTime = currentTime - startTime
-            eta = passedTime * (100 - progress)
+            eta = dt.timedelta(seconds=passedTime.total_seconds() * (100 - progress))
             finish = currentTime + eta
             
             status = \
