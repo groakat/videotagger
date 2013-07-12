@@ -274,12 +274,12 @@ for i in range(len(recRngs)):
             
             vial = Vials(roi, gaussWeight=2000, sigma=20,  xoffsetFact=0.6, clfyFunc=flyClassify, acceptPosFunc=Vials.acceptPosFunc, acceptPosFuncArgs=acceptArgs)
             vial.extractPatches(files, bgModel, baseSaveDir=baseSaveDirPath)
-          
+            
             currentTime = dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))
             
-            progress = curI / totI
+            progress = curI / float(totI)
             passedTime = currentTime - startTime
-            eta = passedTime * (100 - progress)
+            eta = dt.timedelta(seconds=passedTime.total_seconds() * (100 - progress))
             finish = currentTime + eta
             
             status = \
