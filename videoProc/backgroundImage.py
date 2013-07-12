@@ -243,7 +243,7 @@ class backgroundImage(np.ndarray):
         
         return update
     
-    def updateBackgroundModel(self, update, level=-1):
+    def updateBackgroundModel(self, update, level=-1, integrate=True):
         """
         inserts update into the existing background models
         
@@ -256,6 +256,14 @@ class backgroundImage(np.ndarray):
                         is to be inserted. If level=-1, the backgroundImage
                         object will manage the level by itself, by iterating
                         trough the stack
+            integrate (bool):
+                        integrate the new background image into the background
+                        stack. This necessary to use the new background model.
+                        However, this is a mildly heavy task and if more than
+                        one background image are added to the model at once,
+                        set integrate=False to speed up the operation.
+                        *Remember to set integrate=True for the last added
+                        background image* or call `func:updateBackgroundStack`
         """
         if level == -1:
             level = self.stackIdx
@@ -263,7 +271,9 @@ class backgroundImage(np.ndarray):
         
         for i in range(self.shape[2]):
             self.bgStack[i][level, :] = np.int16(update[:,:,i].flatten())
-        self.updateBackgroundStack()
+        
+        if integrate:
+            self.updateBackgroundStack()
     
     
     @staticmethod

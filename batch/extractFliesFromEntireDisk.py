@@ -3,10 +3,10 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-fc', '--flyClassifierPath', 
-    help="path to SVM that discrimitates flies from background patches",
+    help="path to SVM that discriminates flies from background patches",
     default='/run/media/peter/Elements/peter/data/bin/models/fly_svm/fly.svm')
 parser.add_argument('-nc', '--noveltyClassfyPath',
-    help="path to SVM that discrimiates between trained data and untrained patches",
+    help="path to SVM that discriminates between trained data and untrained patches",
     default='/run/media/peter/Elements/peter/data/bin/models/fly_svmNovelty/flyNovelty.svm')
 parser.add_argument('-r', '--rootPath', 
     help='path to root folder containing the vials, typically a "box0.0" type of folder',
@@ -23,7 +23,7 @@ parser.add_argument('-n', '--notificationEmail',
     help="email the notifications are sent to",
     default='p.rennert@cs.ucl.ac.uk')
 parser.add_argument('-e', '--maxErrors', 
-    help="maximum an error can occur repeatitly before processing is stopped entirely",
+    help="maximum an error can occur repeatively before processing is stopped entirely",
     type=int, default=2)
 parser.add_argument('-cs', '--chunkSize', 
     help="number of video files to be processed before status is send",
@@ -119,9 +119,6 @@ f.close()
 # - - - - - - - - - - - - - - - - - - - - - - - -
 # split files into sets of consequent recordings
 # - - - - - - - - - - - - - - - - - - - - - - - - 
-
-import datetime as dt
-
 fileList = []
 for root,  dirs,  files in os.walk(rootPath):
     for fn in files:
@@ -136,8 +133,52 @@ for root,  dirs,  files in os.walk(rootPath):
 fileList = sorted(fileList)
 recRngs = vE.findInteruptions(fileList)
 
+# retrieve all processed images
+fileListS = []
+for root,  dirs,  files in os.walk(baseSaveDirPath):
+    for fn in files:
+        fileDT = vE.fileName2DateTime(fn, 'pos')
+        
+        if fileDT == -1:
+            ## file is no mp4 file of interest
+            continue
+            
+        fileListS.append([fileDT, root + r'/' + fn])
+        
+fileListS = sorted(fileListS)
 
-def logMessage(message, subject):
+# retrieve paths of all background images
+fileListB = []
+for root,  dirs,  files in os.walk(baseSaveDirPath):
+    for fn in files:
+        fileDT = vE.fileName2DateTime(fn, 'png')
+        
+        if fileDT == -1:
+            ## file is no mp4 file of interest
+            continue
+            
+        fileListB.append([fileDT, root + r'/' + fn])
+        
+fileListB = sorted(fileListB)
+
+# sort processed videos and backgrounds to root ranges
+rngBgImgs = [[]] * len(recRngs)
+rngPos = [[]] * len(recRngs)
+    
+for bg in fileListB:
+    for i in range(len(recRngs)):
+        if (bg[0] >= recRngs[i][0]) and (bg[0] < recRngs[i][1]):
+            rngBgImgs[i] += [bg]
+
+for vid in fileListS:
+    for i in range(len(recRngs)):
+        if (vid[0] >= recRngs[i][0]) and (vid[0] < recRngs[i][1]):
+            rngPos[i] += [vid]
+            
+
+
+def logMessage(message, subject):    
+    message += '\n'
 
     print message
 
@@ -174,7 +215,9 @@ errorCnt = [0, 0]
 startTime = dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))
 user = getpass.getuser()
 
-for start, end in recRngs:
+for i in range(len(recRngs)):
+    start, end = recRngs[i]
+    
     vE.setTimeRange(start, end)
     vE.setRootPath(rootPath)
     vE.parseFiles()
@@ -188,14 +231,32 @@ for start, end in recRngs:
     bgModel.createDayModel(sampleSize=10)
     bgModel.createNightModel(sampleSize=10)
     
+    #update models
+    bgModel.updateModelWithBgImages(vE.getPathsOfList(rngBgImgs[i]))
+    
     pathList = vE.nightList
-    night = sorted(pathList)#[0:100]#[1:300]
+    night = sorted(pathList)
     
     pathList = vE.dayList
-    day = sorted(pathList)#[0:600]
+    day = sorted(pathList)
     
-    fileList = night + day
+    # take all files except the last one, because that will be corrupted (not closed properly)
+    fileList = sorted(night + day)[:-1]
     
+    #calculate differences
+    #diff = set(vE.getDatesOfList(fileList)).difference(vE.getDatesOfList(rngPos[i]))
+    
+    a = dict(fileList)
+    b = dict(rngPos[i])
+    
+    # compute the files that were not processed so far
+    diff = [[item, a[item]] for item in a.keys() if not b.has_key(item)]
+    
+    logMessage("{0} will process {1} of {2} @ {3}".format(i, len(diff), len(fileList),
+        dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))),
+        "Process new batch in {0}".format(user))
+    
+    fileList = diff
     
     for files in bsc.chunks(fileList, chunkSize):   
         curI += chunkSize   
@@ -236,33 +297,12 @@ for start, end in recRngs:
                                     curI, totI, progress, passedTime, eta, finish),
                        'Status Report of {0}'.format(user))
             
-            #print status.format(user, currentTime,
-                                         #curI, totI, progress, passedTime, eta, finish)
-
-            ## send a status email
-            #msg = MIMEText(status.format(user, currentTime,
-                                         #curI, totI, progress, passedTime, eta, finish))
-            
-            #me = userdata[0]
-            #you = notificationEmail
-            #msg['Subject'] = 'Status Report of %s' % user
-            #msg['From'] = me
-            #msg['To'] = you
-            
-            #s = smtplib.SMTP('smtp.gmail.com', 587)
-            #s.ehlo()
-            #s.starttls()
-            #s.ehlo
-            #s.login(*userdata)
-            #s.sendmail(me, [you], msg.as_string())
-            #s.quit()
-            
         except Exception as inst: 
             if curI - chunkSize ==  errorCnt[0]:
                 # there were errors just before
                 errorCnt[1] += 1
             else:
-                errorCnt = 1
+                errorCnt[1] = 1
             
             errorCnt[0] = curI
             
@@ -305,48 +345,15 @@ for start, end in recRngs:
             logMessage(status.format(user, currentTime,
                                          curI, totI, progress, passedTime, eta, finish, logStream.getvalue(), files),
                        '!!!! ERROR !!!! Status Report of {0}'.format(user))
-                       
-            raise
-            #print status.format(user, currentTime,
-                                         #curI, totI, progress, passedTime, eta, finish, inst, files)
-
-            ## send a status email
-            #msg = MIMEText(status.format(user, currentTime,
-                                         #curI, totI, progress, passedTime, eta, finish, inst, files))
             
-            #me = userdata[0]
-            #you = notificationEmail
-            #msg['Subject'] = '!!!! ERROR !!!! Status Report of %s' % user
-            #msg['From'] = me
-            #msg['To'] = you
-            
-            #s = smtplib.SMTP('smtp.gmail.com', 587)
-            #s.ehlo()
-            #s.starttls()
-            #s.ehlo
-            #s.login(*userdata)
-            #s.sendmail(me, [you], msg.as_string())
-            #s.quit()
+            # remove files from /tmp/ to free memory
+            tmpFiles = glob.glob("/tmp/*.tif")
+            for f in tmpFiles:
+                os.remove(f)
             
             if errorCnt[1] >= maxErrors:
                 logMessage("== stopping process of {0} ==".format(user),
                        '!!!! STOPPING !!!! Too many errors in {0}'.format(user))
-                       
-                #msg = MIMEText("== stopping process of {0}".format(user))
-                
-                #me = userdata[0]
-                #you = notificationEmail
-                #msg['Subject'] = '!!!! STOPPING !!!! Too many errors in %s' % user
-                #msg['From'] = me
-                #msg['To'] = you
-                
-                #s = smtplib.SMTP('smtp.gmail.com', 587)
-                #s.ehlo()
-                #s.starttls()
-                #s.ehlo
-                #s.login(*userdata)
-                #s.sendmail(me, [you], msg.as_string())
-                #s.quit()
                 
                 raise Exception("Process failed too often: Stop.")
             

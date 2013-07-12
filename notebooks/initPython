@@ -1,4 +1,4 @@
-. ../startEnv
+source ../startEnv
 
 firefox &
 ../libs/shuttlexpress/shuttle &

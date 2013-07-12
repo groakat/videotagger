@@ -160,7 +160,7 @@ class videoExplorer(object):
             raise ValueError("mp4 file without proper date part discovered")
             return -1
             
-        if len(time) != 3:
+        if len(time) < 3:
             raise ValueError("mp4 file without proper time part discovered")
             return -1
         
@@ -192,6 +192,10 @@ class videoExplorer(object):
         rngs = []
         start = None
         stop = None
+        
+        if len(fileList) < 2:
+            raise ValueError("There are less then 2 files in the list. That usually means that a wrong folder was selected.")
+        
         for i in range(len(fileList) - 1):
             if start == None:
                 start = fileList[i][0]
@@ -205,8 +209,8 @@ class videoExplorer(object):
                 rngs += [[start, stop]]
                 start = None
                 stop = None
-        
-        stop = fileList[i][0]
+                
+        stop = fileList[i+1][0]
         rngs += [[start, stop]]
                 
         return rngs
