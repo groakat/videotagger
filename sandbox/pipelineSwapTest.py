@@ -71,14 +71,19 @@ class pipelineSwap(object):
         # gst-launch-1.0 filesrc location="/run/media/peter/home/tmp/webcam/Video 66.mp4" ! qtdemux ! h264parse ! avdec_h264 ! xvimagesink
         self.elements = dict()
         self.elements["src"] = Gst.ElementFactory.make("filesrc", "src")
+        self.elements["srcQueue"] = Gst.ElementFactory.make( "queue", "srcQueue")
         self.elements["queue_preview"] = Gst.ElementFactory.make( "queue", "queue_preview")    
-        self.elements["demux"] = Gst.ElementFactory.make("qtdemux", "demux")
-        self.elements["ph264_1"] = Gst.ElementFactory.make ("h264parse", "ph264_1")
-        self.elements["avdec"] = Gst.ElementFactory.make("avdec_h264", "dec")
+        self.elements["demux_preview"] = Gst.ElementFactory.make("qtdemux", "demux_preview")
+        self.elements["ph264_preview"] = Gst.ElementFactory.make ("h264parse", "ph264_preview")
+        self.elements["avdec_preview"] = Gst.ElementFactory.make("avdec_h264", "dec_preview")
         self.elements["preview_sink"] = Gst.ElementFactory.make( "autovideosink", "previewsink")
         
         
-#         self.elements["filesink1"] = Gst.ElementFactory.make( "filesink", "file_sink1")
+        self.elements["fileQueue1"] = Gst.ElementFactory.make( "queue", "fileQueue1")
+        self.elements["caps1"] = Gst.ElementFactory.make( "capsfilter", "caps1")
+        self.elements["ph264_1"] = Gst.ElementFactory.make ("h264parse", "ph264_1")
+        self.elements["mux_1"] = Gst.ElementFactory.make("mp4mux", "mux_1")
+        self.elements["filesink1"] = Gst.ElementFactory.make( "filesink", "file_sink1")
 #         self.elements["filesink2"] = Gst.ElementFactory.make( "filesink", "file_sink2")
 #         self.elements["queue_0"] = Gst.ElementFactory.make( "queue", "queue_0")
 #         self.elements["queue_1"] = Gst.ElementFactory.make( "queue", "queue_1")
@@ -100,7 +105,7 @@ class pipelineSwap(object):
 #         self.elements["queue_catch"] = Gst.ElementFactory.make( "queue", "queue_catch")
 #         self.elements["mainFakesink"] = Gst.ElementFactory.make( "fakesink", "mainFakesink")
 
-#         self.elements["t"] = Gst.ElementFactory.make( "tee", "teee")
+        self.elements["t"] = Gst.ElementFactory.make( "tee", "t")
 
 
         if any(self.elements[k] is None for k in self.elements.keys()):
@@ -109,24 +114,57 @@ class pipelineSwap(object):
         
         self.log.debug("populate main pipeline")
         self.pipelines["main"].add(self.elements["src"])
+        self.pipelines["main"].add(self.elements["demux_preview"])
+        self.pipelines["main"].add(self.elements["srcQueue"])
+        self.pipelines["main"].add(self.elements["t"])
+        
         self.pipelines["main"].add(self.elements["queue_preview"])
-        self.pipelines["main"].add(self.elements["demux"])
-        self.pipelines["main"].add(self.elements["ph264_1"])
-        self.pipelines["main"].add(self.elements["avdec"])
+        self.pipelines["main"].add(self.elements["ph264_preview"])
+        self.pipelines["main"].add(self.elements["avdec_preview"])
         self.pipelines["main"].add(self.elements["preview_sink"])
+        
+        self.pipelines["main"].add(self.elements["fileQueue1"])
+        self.pipelines["main"].add(self.elements["caps1"])
+        self.pipelines["main"].add(self.elements["ph264_1"])
+        self.pipelines["main"].add(self.elements["mux_1"])
+        self.pipelines["main"].add(self.elements["filesink1"])
         
         self.log.debug("link self.elements in main pipeline")
         
-        assert(self.elements["src"].link(self.elements["demux"]))
-#         assert(self.elements["demux"].link(self.elements["ph264_1"]))
+        assert(self.elements["src"].link(self.elements["demux_preview"]))
+        self.elements["demux_preview"].connect("pad-added", on_new_demux_pad_preview)        
+        assert(self.elements["srcQueue"].link(self.elements["t"]))
         
-        self.elements["demux"].connect("pad-added", on_new_decoded_pad)
-        assert(self.elements["ph264_1"].link(self.elements["queue_preview"]))
-        assert(self.elements["queue_preview"].link(self.elements["avdec"]))
-        assert(self.elements["avdec"].link(self.elements["preview_sink"]))
+        tPad1 = Gst.Element.get_request_pad(self.elements["t"], 'src_%u')
+        tPad1.link(self.elements["queue_preview"].get_static_pad("sink"))
+        assert(self.elements["queue_preview"].link(self.elements["ph264_preview"]))
+        assert(self.elements["ph264_preview"].link(self.elements["avdec_preview"]))
+        assert(self.elements["avdec_preview"].link(self.elements["preview_sink"]))
+                
+        tPad2 = Gst.Element.get_request_pad(self.elements["t"], 'src_%u')
+        tPad2.link(self.elements["fileQueue1"].get_static_pad("sink"))  
+        assert(self.elements["fileQueue1"].link(self.elements["ph264_1"])) 
+        assert(self.elements["ph264_1"].link(self.elements["mux_1"])) 
+        self.log.debug("link mp4mux")     
+#          muxPad1 = self.elements["mux_1"].request_pad('video_%u', "muxpad",
+#                  Gst.caps_from_string('video/x-h264,width=1920,height=1080,framerate=30/1'))
+#          muxPad1 = Gst.Element.get_request_pad(self.elements["mux_1"], 'video_%u')
+#         Gst.Element.link_pads_filtered(self.elements["mux_1"], 'video_%u', self.elements["filesink1"], "sink",
+#                 Gst.caps_from_string('video/x-h264'))  
+        assert(self.elements["mux_1"].link(self.elements["filesink1"]))  
+        
+        
+        self.log.debug("set caps")
+        caps = 'video/x-h264,width=1920,height=1080,framerate=30/1'
+        #self.elements["caps1"].set_property('caps', Gst.caps_from_string(caps))
+        
+        self.log.debug("set muxer")
+#         self.elements["mux_1"].set_property("faststart", True)
+#         self.elements["mux_1"].set_property("streamable", True)
         
         self.log.debug("set filesink location")
         self.elements["src"].set_property("location", "/run/media/peter/home/tmp/webcam/Video 66.mp4")
+        self.elements["filesink1"].set_property("location", "/run/media/peter/home/tmp/webcam/test.mp4")
                 
                 
         #~ self.log.debug("sleep to wait")
@@ -149,6 +187,15 @@ class pipelineSwap(object):
     def quit(self, window):
         self.log.debug("null pipeline")
         
+        c = self.elements["caps1"].get_property('caps')
+        self.log.debug('caps ' + c.to_string())
+        
+        self.pipelines["main"].send_event(Gst.Event.new_eos())
+        
+        bus = self.pipelines["main"].get_bus()
+        
+        msg = bus.timed_pop_filtered (Gst.CLOCK_TIME_NONE, Gst.MessageType.EOS | Gst.MessageType.ERROR)
+        
         self.pipelines["main"].set_state(Gst.State.NULL)     
         Gtk.main_quit()
         
@@ -170,13 +217,22 @@ class pipelineSwap(object):
         
 
         
-def on_new_decoded_pad(gstObj, pad):
-    print "on_new_decoded_pad!", gstObj, pad
+def on_new_demux_pad_preview(gstObj, pad):
     demux = pad.get_parent()
     pipeline = demux.get_parent()
-    ph264 = pipeline.get_by_name('ph264_1')
+    ph264 = pipeline.get_by_name('srcQueue')
     demux.link(ph264)
-#     pipeline.set_state(Gst.State.PAUSED)
+    
+def link_many(elements, debug=True):
+    if type(elements) == list:
+        for i in range(len(elements) -1):
+            if debug:
+                assert(elements[i].link(elements[i+1]))
+            else:
+                elements[i].link(elements[i+1])
+    else:
+        raise ValueError("expect list of elements")
+    
     
 if __name__ == "__main__":
     vC = pipelineSwap()
