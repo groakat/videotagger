@@ -227,14 +227,29 @@ class pipelineSwap(object):
 
     def on_button_clicked(self, widget):
         print "Hello World"
-        self.blockActiveQueuePad()
-        
-    def blockActiveQueuePad(self):   
-        self.log.debug("start blocking process")     
+        self.blockOnNextKeyframe()
+    
+    def blockOnNextKeyframe(self):
+        tp = self.elements["srcQueue"].get_static_pad("sink")      
+        tp.add_probe(Gst.PadProbeType.BUFFER, blockActiveQueuePad, self)
+    
+def blockActiveQueuePad(pad, probeInfo, userData):   
+    self = userData
+    
+    buffer = probeInfo.get_buffer()
+    #if not buffer.flag_is_set(Gst.BufferFlags.DELTA_UNIT):
+    if not (buffer.mini_object.flags & Gst.BufferFlags.DELTA_UNIT):
+        pad.remove_probe(probeInfo.id)
+        self.log.debug("found keyframe start blocking process")     
         # tee pad to active recording bin
         Gst.debug_bin_to_dot_file_with_ts(self.pipelines["main"], Gst.DebugGraphDetails.ALL, "main_before" )
         tp = self.elements["srcQueue"].get_static_pad("src")      
         tp.add_probe(Gst.PadProbeType.BLOCK_DOWNSTREAM, preparePipeline, self)
+        return Gst.PadProbeReturn.OK
+    else:
+        self.log.debug("no keyframe yet")  
+        return Gst.PadProbeReturn.OK
+        
         
 def preparePipeline(pad, probeInfo, userData):
     self = userData
