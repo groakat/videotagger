@@ -285,7 +285,7 @@ for i in range(len(recRngs)):
             
             progress = curI / totI
             passedTime = currentTime - startTime
-            eta = passedTime * (100 - progress)
+            eta = passedTime * (100.0 / progress)
             finish = currentTime + eta
             
             status = \

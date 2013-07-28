@@ -254,6 +254,7 @@ class backgroundModel(object):
             # startTime = max([i for i in times if i < dt.time(12)])
             # endTime = min([i for i in times if i > dt.time(12)])
             
+            #########################################################################   TODO: remove unnecessary nesting of bgModelList and change the code everywhere accordingly 
             self.bgModelList[1] = [self.modelNight]#, startTime, endTime]
         else:
             self.histNight = np.ones((sampleSize, 768))
@@ -364,10 +365,10 @@ class backgroundModel(object):
             bgImg = self.getBgImg(img)
             bgImg.updateBackgroundModel(img, level=-1, integrate=False)
         
-        if self.bgModelList[0][0] is not None:
+        if self.bgModelList[0] is not None:
             self.bgModelList[0][0].updateBackgroundStack()
             
-        if self.bgModelList[1][0] is not None:
+        if self.bgModelList[1] is not None:
             self.bgModelList[1][0].updateBackgroundStack()
         
     
