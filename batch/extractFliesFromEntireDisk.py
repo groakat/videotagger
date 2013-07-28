@@ -283,9 +283,11 @@ for i in range(len(recRngs)):
           
             currentTime = dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))
             
-            progress = curI / totI + 0.000000001
+            progress = curI / totI
+            if progress == 0:
+	      progress = 1
             passedTime = currentTime - startTime
-            eta = passedTime * int(100.0 / progress)
+            eta = passedTime * int(100 / progress)
             finish = currentTime + eta
             
             status = \
@@ -314,7 +316,9 @@ for i in range(len(recRngs)):
             
             currentTime = dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))
             
-            progress = curI / totI + 0.000000001
+            progress = curI / totI
+            if progress == 0:
+	      progress = 1
             passedTime = currentTime - startTime
             eta = passedTime * int(100.0 / progress)
             finish = currentTime + eta
