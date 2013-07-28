@@ -283,7 +283,7 @@ for i in range(len(recRngs)):
           
             currentTime = dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))
             
-            progress = curI / totI
+            progress = curI / totI + 0.000000001
             passedTime = currentTime - startTime
             eta = passedTime * (100.0 / progress)
             finish = currentTime + eta
