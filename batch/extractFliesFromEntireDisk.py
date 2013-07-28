@@ -162,8 +162,8 @@ for root,  dirs,  files in os.walk(baseSaveDirPath):
 fileListB = sorted(fileListB)
 
 # sort processed videos and backgrounds to root ranges
-rngBgImgs = [[]] * len(recRngs)
-rngPos = [[]] * len(recRngs)
+rngBgImgs = [[] for i in range(len(recRngs))]
+rngPos = [[] for i in range(len(recRngs))]
     
 for bg in fileListB:
     for i in range(len(recRngs)):
@@ -228,12 +228,6 @@ for i in range(len(recRngs)):
                     "Skipping in {0}".format(user))
         continue
     
-    bgModel.getVideoPaths(rootPath, start,  end)
-    bgModel.createDayModel(sampleSize=10)
-    bgModel.createNightModel(sampleSize=10)
-    
-    #update models
-    bgModel.updateModelWithBgImages(vE.getPathsOfList(rngBgImgs[i]))
     
     pathList = vE.nightList
     night = sorted(pathList)
@@ -253,11 +247,22 @@ for i in range(len(recRngs)):
     # compute the files that were not processed so far
     diff = [[item, a[item]] for item in a.keys() if not b.has_key(item)]
     
-    logMessage("{0} will process {1} of {2} @ {3}".format(i, len(diff), len(fileList),
+    logMessage("{0} will process {1} of {2} ({3} to {4}) @ {5}".format(i, len(diff), len(fileList), start, end,
         dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))),
         "Process new batch in {0}".format(user))
     
+    if len(diff) == 0:
+        continue      
+    
     fileList = diff
+    
+    # create background models
+    bgModel.getVideoPaths(rootPath, start,  end)
+    bgModel.createDayModel(sampleSize=10)
+    bgModel.createNightModel(sampleSize=10)
+    
+    #update models
+    bgModel.updateModelWithBgImages(vE.getPathsOfList(rngBgImgs[i]))
     
     for files in bsc.chunks(fileList, chunkSize):   
         curI += chunkSize   
