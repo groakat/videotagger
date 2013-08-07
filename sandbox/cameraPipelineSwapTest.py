@@ -8,6 +8,19 @@ import time,sys
 from time import localtime, strftime
 import os
 
+import gc
+
+# gc.set_debug(gc.DEBUG_LEAK)
+
+def get_cell_value(cell):
+    """
+    http://code.activestate.com/recipes/439096-get-the-value-of-a-cell-from-a-closure/
+    """
+    return type(lambda: 0)(
+        (lambda x: lambda: x)(0).func_code, {}, None, None, (cell,)
+    )()
+    
+
 # gstreamer imports
 import gi
 gi.require_version('Gst', '1.0')
@@ -20,7 +33,7 @@ Gst.init(None)
 class pipelineSwap(object):
     
     def __init__(self):
-        self.baseDir = "/run/media/peter/home/tmp/webcam/"
+        self.baseDir = "/run/media/peter/Elements/peter/data/tmp-20130801/"
         self.inFirstMinute = True
         
         import logging, logging.handlers        
@@ -90,19 +103,19 @@ class pipelineSwap(object):
         self.elements["recBin1"] = Gst.Bin.new("recoding bin 1")
         self.elements["fileQueue1"] = Gst.ElementFactory.make( "queue", "fileQueue1")
         self.elements["ph264_1"] = Gst.ElementFactory.make ("h264parse", "ph264_1")
-        self.elements["mux_1"] = Gst.ElementFactory.make("mp4mux", "mux")
+        self.elements["mux_1"] = Gst.ElementFactory.make("mp4mux", "mux1")
         self.elements["filesink1"] = Gst.ElementFactory.make( "filesink", "filesink1")
          
         self.elements["recBin2"] = Gst.Bin.new("recoding bin 2")
         self.elements["fileQueue2"] = Gst.ElementFactory.make( "queue", "fileQueue2")
         self.elements["ph264_2"] = Gst.ElementFactory.make ("h264parse", "ph264_2")
-        self.elements["mux_2"] = Gst.ElementFactory.make("mp4mux", "mux")
+        self.elements["mux_2"] = Gst.ElementFactory.make("mp4mux", "mux2")
         self.elements["filesink2"] = Gst.ElementFactory.make( "filesink", "filesink2")
          
         self.elements["recBin3"] = Gst.Bin.new("recoding bin 3")
         self.elements["fileQueue3"] = Gst.ElementFactory.make( "queue", "fileQueue3")
         self.elements["ph264_3"] = Gst.ElementFactory.make ("h264parse", "ph264_3")
-        self.elements["mux_3"] = Gst.ElementFactory.make("mp4mux", "mux")
+        self.elements["mux_3"] = Gst.ElementFactory.make("mp4mux", "mux3")
         self.elements["filesink3"] = Gst.ElementFactory.make( "filesink", "filesink3")
 
 
@@ -186,10 +199,10 @@ class pipelineSwap(object):
         assert(self.elements["ph264_3"].link(self.elements["mux_3"])) 
         assert(self.elements["mux_3"].link(self.elements["filesink3"]))
         
-        self.log.debug("create ghost pad for recBin3")
-        self.elements["recBin3"].add_pad(
-                                Gst.GhostPad.new("sink",
-                                self.elements["fileQueue3"].get_static_pad("sink")))
+#         self.log.debug("create ghost pad for recBin3")
+#         self.elements["recBin3"].add_pad(
+#                                 Gst.GhostPad.new("sink",
+#                                 self.elements["fileQueue3"].get_static_pad("sink")))
         
         
         self.log.debug("add recBin1 to main pipeline")
@@ -203,32 +216,38 @@ class pipelineSwap(object):
            
          
         self.log.debug("set filesink1 location")   
-        self.updateFilesinkLocation(self.elements["filesink1"])
+        self.updateFilesinkLocation(self.elements["filesink1"], self.elements["mux_1"])
 
 
         self.log.debug("set uvch264 properties")   
         self.elements["src"].set_property("auto-start", True)
         self.elements["src"].set_property("fixed-framerate", True)
-        self.elements["src"].set_property("async-handling", True)
+        self.elements["src"].set_property("async-handling", False)
         self.elements["src"].set_property("iframe-period", 30)
+        self.elements["src"].set_property("num-clock-samples", -1)
         self.elements["src"].set_property("device", "/dev/video1")
         
         self.log.debug("set caps")           
-        caps = Gst.Caps.from_string("video/x-h264,width=1920,height=1080,framerate=30/1,profile=high")
+        caps = Gst.Caps.from_string("video/x-h264,width=1920,height=1080,framerate=30/1,profile=constrained-baseline")
         self.elements["vidcaps"].props.caps = caps
         caps2 = Gst.Caps.from_string('video/x-raw,width=320,height=240,framerate=15/1')
         self.elements["vfcaps"].props.caps = caps2
+        
+        
+#         self.elements["mux_1"].set_property("dts-method", 2)
                 
         
         self.debugBuffer = None
         
         self.log.debug("done")
         self.elementRefcounting()
+        self.getMuxValues(self.elements["mux_1"])
+        
         
         # register function that initiates swap of filename in Gtk mainloop #
         # make sure that that it will be called at the beginning of the next 
         # minute 
-        GLib.timeout_add_seconds(60 - localtime().tm_sec, self.blockFirstFrame)
+#         GLib.timeout_add_seconds(60 - localtime().tm_sec, self.blockFirstFrame)
         
     def run(self):        
         self.log.debug("start pipeline")
@@ -246,7 +265,33 @@ class pipelineSwap(object):
 
     def elementRefcounting(self):
         for k in self.elements.keys():
-            self.log.debug("recount of {key}: {cnt}".format(key=k, cnt=sys.getrefcount(self.elements[k])))        
+            self.log.debug("recount of {key}: {cnt}".format(key=k, cnt=sys.getrefcount(self.elements[k])))   
+            
+    def getMuxValues(self, mux):        
+        self.log.debug("mux property of {p}: {v}".format(v=mux.get_base_time(), p="mux.get_base_time"))
+        self.log.debug("mux property of {p}: {v}".format(v=mux.get_bus(), p="mux.get_bus"))
+        self.log.debug("mux property of {p}: {v}".format(v=mux.get_clock(), p="mux.get_clock"))
+#         self.log.debug("mux property of {p}: {v}".format(v=mux.get_compatible_pad(), p="mux.get_compatible_pad"))
+#         self.log.debug("mux property of {p}: {v}".format(v=mux.get_compatible_pad_template(), p="mux.get_compatible_pad_template"))
+        self.log.debug("mux property of {p}: {v}".format(v=mux.get_context(), p="mux.get_context"))
+#         self.log.debug("mux property of {p}: {v}".format(v=mux.get_control_binding(), p="mux.get_control_binding"))
+        self.log.debug("mux property of {p}: {v}".format(v=mux.get_control_rate(), p="mux.get_control_rate"))
+#         self.log.debug("mux property of {p}: {v}".format(v=mux.get_data(), p="mux.get_data"))
+        self.log.debug("mux property of {p}: {v}".format(v=mux.get_factory(), p="mux.get_factory"))
+#         self.log.debug("mux property of {p}: {v}".format(v=mux.get_g_value_array(), p="mux.get_g_value_array"))
+        self.log.debug("mux property of {p}: {v}".format(v=mux.get_name(), p="mux.get_name"))
+        self.log.debug("mux property of {p}: {v}".format(v=mux.get_parent(), p="mux.get_parent"))
+        self.log.debug("mux property of {p}: {v}".format(v=mux.get_path_string(), p="mux.get_path_string"))
+#         self.log.debug("mux property of {p}: {v}".format(v=mux.get_properties(), p="mux.get_properties"))
+#         self.log.debug("mux property of {p}: {v}".format(v=mux.get_property(), p="mux.get_property"))
+#         self.log.debug("mux property of {p}: {v}".format(v=mux.get_request_pad(), p="mux.get_request_pad"))
+        self.log.debug("mux property of {p}: {v}".format(v=mux.get_start_time(), p="mux.get_start_time"))
+#         self.log.debug("mux property of {p}: {v}".format(v=mux.get_state(), p="mux.get_state"))
+#         self.log.debug("mux property of {p}: {v}".format(v=mux.get_static_pad(), p="mux.get_static_pad"))
+        self.log.debug("mux property of {p}: {v}".format(v=mux.get_tag_list(), p="mux.get_tag_list"))
+        self.log.debug("mux property of {p}: {v}".format(v=mux.get_tag_merge_mode(), p="mux.get_tag_merge_mode"))
+#         self.log.debug("mux property of {p}: {v}".format(v=mux.get_value(), p="mux.get_value"))
+#         self.log.debug("mux property of {p}: {v}".format(v=mux.get_value_array(), p="mux.get_value_array"))
         
     def pipeline2Null(self, pipeline):
         self.log.debug("send EOS")
@@ -262,7 +307,7 @@ class pipelineSwap(object):
         self.log.debug("null pipeline")
         pipeline.set_state(Gst.State.NULL) 
         
-    def updateFilesinkLocation(self, fs):
+    def updateFilesinkLocation(self, fs, mux=None):
         """
         Changes the *location* property of the filesink. Takes care of 
         generating the appropriate folders etc.
@@ -282,8 +327,11 @@ class pipelineSwap(object):
         if not os.path.exists(folder):
             os.makedirs(folder)
             
-        fs.set_property("location", os.path.join(folder,
-                                strftime("%Y-%m-%d.%H-%M-%S.mp4", localtime())))
+        rawPath = os.path.join(folder,
+                                strftime("%Y-%m-%d.%H-%M-%S.{0}", localtime()))
+        fs.set_property("location", rawPath.format('mp4'))
+        if mux is not None:
+            mux.set_property("moov-recovery-file", rawPath.format('moov'))
     
     def quit(self, window):
         self.pipeline2Null(self.pipelines["main"])            
@@ -310,10 +358,10 @@ class pipelineSwap(object):
     def generateRecBin1(self):      
         self.elementRefcounting()  
         self.elements["recBin1"] = Gst.Bin.new("recoding bin 1")
-        self.elements["fileQueue1"] = Gst.ElementFactory.make( "queue", "fileQueue1")
-        self.elements["ph264_1"] = Gst.ElementFactory.make ("h264parse", "ph264_1")
-        self.elements["mux_1"] = Gst.ElementFactory.make("mp4mux", "mux")
-        self.elements["filesink1"] = Gst.ElementFactory.make( "filesink", "filesink1")
+#         self.elements["fileQueue1"] = Gst.ElementFactory.make( "queue", "fileQueue{0}".format(self.cnt))
+        self.elements["ph264_1"] = Gst.ElementFactory.make ("h264parse", "ph264_{0}".format(self.cnt))
+#         self.elements["mux_1"] = Gst.ElementFactory.make("mp4mux", "mux{0}".format(self.cnt))
+#         self.elements["filesink1"] = Gst.ElementFactory.make( "filesink", "filesink{0}".format(self.cnt))
 
 
         self.log.debug("populate recBin1")          
@@ -335,10 +383,10 @@ class pipelineSwap(object):
     def generateRecBin2(self):
         self.elementRefcounting()
         self.elements["recBin2"] = Gst.Bin.new("recoding bin 2")
-        self.elements["fileQueue2"] = Gst.ElementFactory.make( "queue", "fileQueue2")
-        self.elements["ph264_2"] = Gst.ElementFactory.make ("h264parse", "ph264_2")
-        self.elements["mux_2"] = Gst.ElementFactory.make("mp4mux", "mux")
-        self.elements["filesink2"] = Gst.ElementFactory.make( "filesink", "filesink2")
+#         self.elements["fileQueue2"] = Gst.ElementFactory.make( "queue", "fileQueue{0}".format(self.cnt))
+        self.elements["ph264_2"] = Gst.ElementFactory.make ("h264parse", "ph264_{0}".format(self.cnt))
+#         self.elements["mux_2"] = Gst.ElementFactory.make("mp4mux", "mux{0}".format(self.cnt))
+#         self.elements["filesink2"] = Gst.ElementFactory.make( "filesink", "filesink{0}".format(self.cnt))
 
 
         self.log.debug("populate recBin2")          
@@ -383,6 +431,61 @@ class pipelineSwap(object):
                 
         return True
     
+    def resetBin(self, bin):         
+        bin.set_state(Gst.State.NULL)
+#         bin.send_event(Gst.Event.new_flush_stop(True))  
+        
+         
+#         if bin == self.elements["recBin1"]:            
+# #             self.elements["recBin1"].remove(self.elements["fileQueue1"])
+#             self.elements["recBin1"].remove(self.elements["ph264_1"])
+# #             self.elements["ph264_1"].stop()
+# #             self.elements["ph264_1"] = Gst.ElementFactory.make ("h264parse", "ph264_{0}".format(self.cnt))
+#             self.elements["recBin1"].add(self.elements["ph264_1"])
+#             assert(self.elements["fileQueue1"].link(self.elements["ph264_1"])) 
+#             assert(self.elements["ph264_1"].link(self.elements["mux_1"])) 
+# #             self.elements["recBin1"].remove(self.elements["mux_1"])
+# #             self.elements["recBin1"].remove(self.elements["filesink1"])
+# #             self.generateRecBin1()
+#         else:         
+#             
+#             self.elements["recBin2"].remove(self.elements["ph264_2"])
+# #             self.elements["ph264_2"] = Gst.ElementFactory.make ("h264parse", "ph264_{0}".format(self.cnt))
+#             self.elements["recBin2"].add(self.elements["ph264_2"])
+#             assert(self.elements["fileQueue2"].link(self.elements["ph264_2"])) 
+#             assert(self.elements["ph264_2"].link(self.elements["mux_2"])) 
+#             
+#
+#         if bin == self.elements["recBin1"]:
+#             self.elements["fileQueue1"].unlink(self.elements["ph264_1"]) 
+#             self.elements["ph264_1"].unlink(self.elements["mux_1"])
+#             self.elements["mux_1"].unlink(self.elements["filesink1"])     
+#             self.elements["recBin1"].remove(self.elements["mux_1"])   
+#             self.elements["recBin1"].remove(self.elements["ph264_1"])
+#             self.elements["recBin1"].remove(self.elements["fileQueue1"])
+#             
+#             #################################################################### TODO: remove mux name!!! maybe that the reason for the memory leak
+#             self.elements["mux_1"] = Gst.ElementFactory.make("mp4mux", "mux_3")   
+#             self.elements["ph264_1"] = Gst.ElementFactory.make ("h264parse", "ph264_1")
+#             self.elements["fileQueue1"] = Gst.ElementFactory.make( "queue", "fileQueue1")
+#             
+#             self.elements["recBin1"].add(self.elements["ph264_1"])
+#             self.elements["recBin1"].add(self.elements["mux_1"])
+#             self.elements["recBin1"].add(self.elements["fileQueue1"])
+#             
+#             self.elements["recBin1"].add_pad(
+#                                     Gst.GhostPad.new("sink",
+#                                     self.elements["fileQueue1"].get_static_pad("sink")))
+#             
+#             assert(self.elements["fileQueue1"].link(self.elements["ph264_1"])) 
+#             assert(self.elements["ph264_1"].link(self.elements["mux_1"])) 
+#             assert(self.elements["mux_1"].link(self.elements["filesink1"]))  
+#         
+#         else:
+#             self.elements["ph264_2"].unlink(self.elements["mux_2"])
+#             self.elements["ph264_2"].link(self.elements["mux_2"])       
+        
+    
 def blockActiveQueuePad(pad, probeInfo, userData):   
     self = userData
     
@@ -394,10 +497,10 @@ def blockActiveQueuePad(pad, probeInfo, userData):
         self.log.debug("{0}".format(buffer.get_all_memory().size)) 
         
         # tee pad to active recording bin #
-        Gst.debug_bin_to_dot_file_with_ts(self.pipelines["main"], Gst.DebugGraphDetails.ALL, "main_before" )
+        Gst.debug_bin_to_dot_file_with_ts(self.pipelines["main"], Gst.DebugGraphDetails.ALL, "main_blockActiveQueuePad" )
         tp = self.elements["srcQueue"].get_static_pad("src")      
         tp.add_probe(Gst.PadProbeType.BLOCK_DOWNSTREAM, preparePipeline, self)
-        return Gst.PadProbeReturn.OK
+        return Gst.PadProbeReturn.DROP
     else:
         self.log.debug("no keyframe yet")  
         return Gst.PadProbeReturn.OK
@@ -424,31 +527,62 @@ def preparePipeline(pad, probeInfo, userData):
     fs = None
     if binC == self.elements["recBin1"]:
         self.log.debug("replace recBin1 by recBin2") 
-#         del self.elements["recBin1"]
-#         del self.elements["fileQueue1"]
-#         del self.elements["ph264_1"]
-#         del self.elements["mux_1"]
-#         del self.elements["filesink1"]  
-        
-        self.generateRecBin2()
+#         del self.elements["recBin2"]
+#         del self.elements["fileQueue2"]
+#         del self.elements["ph264_2"]
+#         del self.elements["mux_2"]
+#         del self.elements["filesink2"]  
+#         
+#         gc.collect()
+#         
+#         self.generateRecBin2()
+ 
         binN = self.elements["recBin2"]
         fs = self.elements["filesink2"]
+        mux = self.elements["mux_2"]
+        fqN = self.elements["fileQueue2"]
+        fqC = self.elements["fileQueue1"]
 #     elif binC == self.elements["recBin2"]:
 #         self.log.debug("replace recBin2 by recBin3")
 #         binN = self.elements["recBin3"]
     else:
         self.log.debug("replace recBin2 by recBin1")    
+        self.log.debug("ref of recBin1: {0}".format(gc.get_referrers(self.elements["recBin1"])))
 #         del self.elements["recBin1"]
 #         del self.elements["fileQueue1"]
 #         del self.elements["ph264_1"]
 #         del self.elements["mux_1"]
 #         del self.elements["filesink1"]
-        
-        self.generateRecBin1()        
+#         
+# #         self.elements["recBin1"] = None
+# #         self.elements["fileQueue1"] = None
+# #         self.elements["ph264_1"] = None
+# #         self.elements["mux_1"] = None
+# #         self.elements["filesink1"] = None
+#         
+#         gc.collect()
+#         
+#         self.log.debug("garbage[:] {0}".format(gc.garbage[:]))
+#         
+#         self.log.debug("ref of recBin1: {0}".format(gc.get_referrers(self.elements["recBin2"])))
+#         
+#         self.generateRecBin1()    
+ 
+               
+#         self.elements["mux_1"].set_state(Gst.State.NULL)
         binN = self.elements["recBin1"]
         fs = self.elements["filesink1"]
+        mux = self.elements["mux_1"]
+        fqN = self.elements["fileQueue1"]
+        fqC = self.elements["fileQueue2"]
+        
     
+    self.log.debug("prepare next recBin")   
+    self.resetBin(binN)
+        
+    self.updateFilesinkLocation(fs, mux)
     self.log.debug("remove current recBin from main and prepare catch")
+    self.elements["srcQueue"].unlink(fqC)  
     self.pipelines["main"].remove(binC)   
 #     self.pipelines["catch"].set_state(Gst.State.PAUSED) 
 # #     self.pipelines["catch"].remove(self.elements["fakesink"])
@@ -459,37 +593,41 @@ def preparePipeline(pad, probeInfo, userData):
 #     
 #     self.log.debug("set catch PLAYING")
 #     self.pipelines["catch"].set_state(Gst.State.PLAYING)
-    Gst.debug_bin_to_dot_file_with_ts(self.pipelines["catch"], Gst.DebugGraphDetails.ALL, "catch" )
-    Gst.debug_bin_to_dot_file_with_ts(self.pipelines["main"], Gst.DebugGraphDetails.ALL, "main" )
+    Gst.debug_bin_to_dot_file_with_ts(self.pipelines["catch"], Gst.DebugGraphDetails.ALL, "catch-1" )
+    Gst.debug_bin_to_dot_file_with_ts(self.pipelines["main"], Gst.DebugGraphDetails.ALL, "main-1" )
          
     self.log.debug("send EOS to current recBin")
     binC.send_event(Gst.Event.new_eos())  
+#     binC.send_event(Gst.Event.new_flush_start())  
 #     
     self.log.debug("prepare next recBin")    
     binN.set_state(Gst.State.NULL)
     self.log.debug("add and link next recBin to main")
     self.pipelines["main"].add(binN)   
-    self.elements["srcQueue"].link(binN)  
+    assert(self.elements["srcQueue"].link(binN))
+#     if self.cnt < 2:
+#         assert(self.elements["srcQueue"].link(fqN))
+#     else:
+#         assert(self.elements["srcQueue"].link(binN))
+        
     
     self.log.debug("change file location of next recBin")
 #     fs = binN.get_by_name("filesink")
 #     fs.set_property("location", "/run/media/peter/home/tmp/webcam/test{0}.mp4".format(strftime("%Y-%m-%d.%H-%M-%S", gmtime())))
-    self.updateFilesinkLocation(fs)
-    mux = binN.get_by_name("mux")
+#     self.updateFilesinkLocation(fs, mux)
+#     mux = binN.get_by_name("mux")
     for pad in mux.pads:
         if pad.get_name().startswith("video"):
             pad.push_event(Gst.Event.new_reconfigure())
             
     binN.set_state(Gst.State.PLAYING)
     
-    self.log.debug("prepare next recBin")    
-    binC.set_state(Gst.State.NULL)
     
 ################################################################################
     
     
-    Gst.debug_bin_to_dot_file_with_ts(self.pipelines["catch"], Gst.DebugGraphDetails.ALL, "catch" )
-    Gst.debug_bin_to_dot_file_with_ts(self.pipelines["main"], Gst.DebugGraphDetails.ALL, "main" )
+    Gst.debug_bin_to_dot_file_with_ts(self.pipelines["catch"], Gst.DebugGraphDetails.ALL, "catch-2" )
+    Gst.debug_bin_to_dot_file_with_ts(self.pipelines["main"], Gst.DebugGraphDetails.ALL, "main-2" )
     
     return Gst.PadProbeReturn.OK
     

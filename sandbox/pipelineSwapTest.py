@@ -9,7 +9,7 @@ import time
 # gstreamer imports
 import gi
 gi.require_version('Gst', '1.0')
-from gi.repository import Gst, GObject, Gtk, GdkX11, GstVideo
+from gi.repository import Gst, GObject, Gtk, GdkX11, GstVideo, GLib
 print "Gstreamer version:", Gst.version()
 
 GObject.threads_init()
@@ -175,7 +175,8 @@ class pipelineSwap(object):
         
         
         self.log.debug("set filesink location")
-        self.elements["src"].set_property("location", "/run/media/peter/home/tmp/webcam/Video 66.mp4")
+#         self.elements["src"].set_property("location", "/run/media/peter/home/tmp/webcam/Video 66.mp4")
+        self.elements["src"].set_property("location", "/run/media/peter/Elements/peter/data/tmp-20130801/20130805/20/2013-08-05.20-00-39.mp4")
         self.elements["filesink1"].set_property("location", "/run/media/peter/home/tmp/webcam/test0.mp4")
 #         self.elements["filesink2"].set_property("location", "/run/media/peter/home/tmp/webcam/test2.mp4")
                 
@@ -238,7 +239,7 @@ def blockActiveQueuePad(pad, probeInfo, userData):
     
     buffer = probeInfo.get_buffer()
     #if not buffer.flag_is_set(Gst.BufferFlags.DELTA_UNIT):
-    if not (buffer.mini_object.flags & Gst.BufferFlags.DELTA_UNIT):
+    if True:#not (buffer.mini_object.flags & Gst.BufferFlags.DELTA_UNIT):
         pad.remove_probe(probeInfo.id)
         self.log.debug("found keyframe start blocking process")     
         # tee pad to active recording bin
