@@ -631,6 +631,41 @@ class videoPlayer(QMainWindow):
         cfg.log.debug("escape annotation")
         self.vh.escapeAnnotationAlteration()
         
+        
+class AnnoViewManager(QObject):
+    def __init__(self, parent, vialNo=None, behaviourName=None, annotator=None,
+                color=None):        
+        self.worker = Worker()
+        
+        self.AVs = []
+        
+        for i in range(2):
+            self.AVs += [{"av": AnnoView(parent, vialNo=None, 
+                                         behaviourName=None,
+                                         annotator=None, color=None),
+                          "tasks": []}]
+            
+            
+            
+           
+    def addAnnotation(self):
+        cfg.warning("not coded")
+        
+    def removeAnnotation(self):
+        cfg.warning("not coded")
+            
+    def setPosition(self):
+        cfg.warning("not coded")
+            
+    def addAnno(self):
+        cfg.warning("not coded")
+            
+    def escapeAnno(self):
+        cfg.warning("not coded")         
+        
+    
+    
+    
 class AnnoView(QGraphicsView):
     
     def __init__(self, parent, vialNo=None, behaviourName=None, annotator=None,
@@ -683,6 +718,9 @@ class AnnoView(QGraphicsView):
         self.color = color
         
     def addAnnotation(self, annotation, key):
+        """
+        adds an annotation to a scene
+        """
         filt = AnnotationFilter([self.vialNo], self.annotator, 
                                                         self.behaviourName)
         self.annotationDict[key] = annotation.filterFrameList(filt)
@@ -713,15 +751,20 @@ class AnnoView(QGraphicsView):
         cfg.log.debug("end {0}".format(time.time() - t))
         
     def removeAnnotation(self, key):
+        """
+        removes annotation from scene
+        """
         ######################################################################## TODO shift only if absIdx goes out of int range
         #shift = len(self.annotationDict[key].frameList)
         #self.shiftScene(shift)
+        cfg.log.debug("(AnnotationView) - begin")
         self.scene.removeItem(self.chunks[key])    
         del self.chunks[key] 
         del self.lines[key] 
         del self.frames[key]
         del self.absIdx[key]
         del self.annotationDict[key]
+        cfg.log.debug("(AnnotationView) - end")
         #self.clearScene()
         #self.populateScene()
                 
@@ -1245,6 +1288,7 @@ class VideoHandler(QObject):
         self.videoDict = dict()
         self.posList = []
         self.annoViewList = []
+        self.annoUpdaterList = []
         self.posPath = ''
         self.idx = 0
         self.pathIdx = 0
@@ -1428,6 +1472,7 @@ class VideoHandler(QObject):
                 annoView.addAnnotation(self.videoDict[vidPath].annotation, vidPath)
                 
         self.annoViewList += [annoView]
+        self.annoUpdaterList += [Worker()]
         
     def removeAnnoView(self, idx):
         self.annoViewList.pop(idx)
@@ -1635,6 +1680,42 @@ class AnnotationItemLoader(BaseThread):
                     #~ del self
                 #~ else:
                     #~ self.msleep(100)
+                    
+                    
+class Worker(BaseThread):            
+    def __init__(self, func, *args):
+        """
+        This object will exectute `func` with `args` in a
+        separate thread. You can query ready() to check
+        if processing finished and get() to get the result.
+
+        Args:
+            func (function pointer)
+                        function will be called asyncroneously
+            args (arguments)
+                        arguments for func
+        """
+        BaseThread.__init__(self)   
+        
+        self.func = func
+        self.args = args        
+        self.result = None
+        self.isReady = False
+    
+        self.start()
+    
+    def run(self):
+        self.result = self.func(*self.args)
+        self.isReady = True
+            
+    def ready(self):
+        return self.isReady
+    
+    def get(self):
+        if self.isReady:
+            return self.result
+        else:
+            return None
         
 if __name__ == "__main__":
     # settings    
