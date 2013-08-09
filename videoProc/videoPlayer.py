@@ -12,6 +12,7 @@ from pyTools.system.videoExplorer import *
 from pyTools.imgProc.imgViewer import *
 from pyTools.videoProc.annotation import *
 from pyTools.misc.basic import *
+import pyTools.misc.config as cfg
 
 import numpy as np
 #import matplotlib as mpl
@@ -20,6 +21,9 @@ import time
 
 
 from qimage2ndarray import *
+from PyQt4.uic.Compiler.qtproxies import QtCore
+
+
 
 #################################################################### 
 class MyListModel(QAbstractListModel): 
@@ -86,9 +90,6 @@ class videoPlayer(QMainWindow):
         
         self.filterList = []
         
-        self.vEs = []
-        for i in range(4):
-            self.vEs.append(videoExplorer())
         
         #self.setVideo(0)
         
@@ -98,7 +99,12 @@ class videoPlayer(QMainWindow):
         
         self.configureUI() 
         
+        self.vialRoi = [[350, 660], [661, 960], [971, 1260], [1270, 1600]]
+        
+        self.selectedVial = 0
+        
         self.setBackground("/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
+        
         
         
         #glMatrixMode(GL_PROJECTION)
@@ -122,8 +128,8 @@ class videoPlayer(QMainWindow):
         
     def configureUI(self):
         
-        self.xFactor = self.ui.label.width() / 1920.0
-        self.yFactor = self.ui.label.height() / 1080.0
+        self.xFactor = 1 # self.ui.label.width() / 1920.0
+        self.yFactor = 1 #self.ui.label.height() / 1080.0
         self.xOffset = -32 + (self.xFactor*64) / 2
         self.yOffset = -32 + (self.yFactor*64) / 2
         
@@ -161,7 +167,7 @@ class videoPlayer(QMainWindow):
         self.vh.addAnnoView(self.annoViewList[-1])      
         
         for aV in self.annoViewList:
-            print aV
+            cfg.log.debug("av: {aV}".format(aV=aV))
         
     def keyPressEvent(self, event):
         key = event.key()
@@ -223,8 +229,8 @@ class videoPlayer(QMainWindow):
             self.play = True
             
         if key == Qt.Key_I:
-            print "position length:", self.vh.getCurrentPositionLength()
-            print "video length:", self.vh.getCurrentVideoLength()
+            cfg.log.debug("position length: {0}".format(self.vh.getCurrentPositionLength()))
+            cfg.log.debug("video length: {0}".format(self.vh.getCurrentVideoLength()))
             
         if key == Qt.Key_Escape:
             self.escapeAnnotationAlteration()
@@ -282,8 +288,9 @@ class videoPlayer(QMainWindow):
             lbl.setPixmap(px)
             
                 
-        newX = p[1] - 32 #lblOrigin.x() + p[1] * self.xFactor + self.xOffset
-        newY = p[0] - 32 #lblOrigin.y() + (p[0] * self.yFactor) + self.yOffset
+        newX = p[0] - 32#lblOrigin.x() + p[1] * self.xFactor + self.xOffset
+        newY = self.vialRoi[0][1] - p[1] - 32 #lblOrigin.y() + (p[0] * self.yFactor) + self.yOffset
+        
         
         lbl.setPos(newX,newY)
         #lbl.setStyleSheet("border: 1px dotted rgba(255, 0, 0, 75%);");
@@ -322,23 +329,25 @@ class videoPlayer(QMainWindow):
             i += 1
             self.frames += [self.vh.getTempFrame(increment * (i - offset))] 
         
+        sv = self.selectedVial
+        
         for i in range(self.trajNo-1, -1, -1):
             frame = self.frames[i]
             if i == 0:
-                self.updateLabel(self.lbl_v0, frame[0][0], frame[1][0])
-                self.updateLabel(self.lbl_v1, frame[0][1], frame[1][1])
-                self.updateLabel(self.lbl_v2, frame[0][2], frame[1][2])
-                self.updateLabel(self.lbl_v3, frame[0][3], frame[1][3])
+                self.updateLabel(self.lbl_v0, frame[0][0], frame[1][sv])
+#                 self.updateLabel(self.lbl_v1, frame[0][1], frame[1][1])
+#                 self.updateLabel(self.lbl_v2, frame[0][2], frame[1][2])
+#                 self.updateLabel(self.lbl_v3, frame[0][3], frame[1][3])
             
-                self.updateOriginalLabel(self.ui.lbl_v0_full, frame[1][0])
-                self.updateOriginalLabel(self.ui.lbl_v1_full, frame[1][1])
-                self.updateOriginalLabel(self.ui.lbl_v2_full, frame[1][2])
-                self.updateOriginalLabel(self.ui.lbl_v3_full, frame[1][3])
+                self.updateOriginalLabel(self.ui.lbl_v0_full, frame[1][sv])
+#                 self.updateOriginalLabel(self.ui.lbl_v1_full, frame[1][1])
+#                 self.updateOriginalLabel(self.ui.lbl_v2_full, frame[1][2])
+#                 self.updateOriginalLabel(self.ui.lbl_v3_full, frame[1][3])
             else:
-                self.updateLabel(self.trajLabels[i][0], frame[0][0], None)
-                self.updateLabel(self.trajLabels[i][1], frame[0][1], None)
-                self.updateLabel(self.trajLabels[i][2], frame[0][2], None)
-                self.updateLabel(self.trajLabels[i][3], frame[0][3], None)
+                self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
+#                 self.updateLabel(self.trajLabels[i][1], frame[0][1], None)
+#                 self.updateLabel(self.trajLabels[i][2], frame[0][2], None)
+#                 self.updateLabel(self.trajLabels[i][3], frame[0][3], None)
         
         if self.showTraject:
             pass
@@ -370,6 +379,13 @@ class videoPlayer(QMainWindow):
     def setBackground(self, path):
         a = plt.imread(path)
         
+        # crop and rotate background image to show only one vial
+        rng = slice(*self.vialRoi[self.selectedVial])
+        a = np.rot90(a[:, rng])
+        
+        h = a.shape[0]
+        w = a.shape[1]
+        
         qi = array2qimage(a*255)
         pixmap = QPixmap()
         px = QPixmap.fromImage(qi)
@@ -378,10 +394,11 @@ class videoPlayer(QMainWindow):
         #~ self.ui.label.setPixmap(px)
         
         self.videoView = QGraphicsView(self)        
-        self.videoView.setGeometry(QRect(10, 10, 1920/2, 1080/2))
+        self.videoView.setGeometry(QRect(10, 10, w, h))#1920/2, 1080/2))
         self.videoScene = QGraphicsScene(self)
         self.videoScene.setItemIndexMethod(QGraphicsScene.NoIndex)
-        self.videoScene.setSceneRect(QRectF(0, 0, 1920, 1080))
+        self.videoScene.setSceneRect(QRectF(0, 0, w,h))#1920, 1080))
+        self.videoScene.setBackgroundBrush(QBrush(Qt.black))
         
         self.videoView.setScene(self.videoScene)
         #self.videoView.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -419,7 +436,7 @@ class videoPlayer(QMainWindow):
         fps = 25.0
         updateRate = 33.0 * 12
         
-        print "start Video"
+        cfg.log.debug("start Video")
         
         i = 0
         t = time.time()
@@ -439,7 +456,7 @@ class videoPlayer(QMainWindow):
                 
             if (i % 1760) == 0:
                 dt = time.time() - t
-                print("fps: {0}".format(1760 / dt))
+                cfg.log.debug("fps: {0}".format(1760 / dt))
                 t = time.time()
                     
             i += 1
@@ -447,7 +464,7 @@ class videoPlayer(QMainWindow):
     def providePosList(self, path):
         fileList  = []
         posList = []
-        print "scaning files..."
+        cfg.log.debug("scaning files...")
         for root,  dirs,  files in os.walk(path):
             for f in files:
                 if f.endswith('npy'):
@@ -455,12 +472,21 @@ class videoPlayer(QMainWindow):
                     fileList.append(path)
                     
         self.fileList = sorted(fileList)
-        print "scaning files done"
+        cfg.log.debug("scaning files done")
         return posList
         
         
+    def close(self):
+        self.stopVideo()
+        
+    def closeEvent(self, event):
+        self.stopVideo()        
+        event.accept()        
+        
     def stopVideo(self):
+        cfg.log.debug("stop video")
         self.play = False
+        self.stop = True
         
     def generatePatchVideoPath(self, posPath, vialNo):
         """
@@ -473,9 +499,9 @@ class videoPlayer(QMainWindow):
     def setVideo(self, idx):
         self.ui.lv_paths.setCurrentIndex(self.lm.index(idx,0))
         self.ui.sldr_paths.setSliderPosition(idx)
-        for i in range(len(self.vEs)):
-            f = self.generatePatchVideoPath(self.fileList[idx], i)
-            self.vEs[i].setVideoStream(f, info=False, frameMode='RGB')
+#         for i in range(len(self.vEs)):
+#             f = self.generatePatchVideoPath(self.fileList[idx], i)
+#             self.vEs[i].setVideoStream(f, info=False, frameMode='RGB')
             
         self.pos = self.posList[idx]
         
@@ -511,23 +537,23 @@ class videoPlayer(QMainWindow):
         
     def selectFrame(self, mdl):
         idx = mdl.row()       
-        print "select frame", idx
+        cfg.log.debug("select frame {0}".format(idx))
         self.setFrame(idx)
         
     def selectFrameJump(self, mdl):
         idx = mdl.row()       
-        print "select frame idx", idx, self.jmpIdx[idx]
+        cfg.log.debug("select frame idx {0}. {1}".format( idx, self.jmpIdx[idx]))
         self.setFrame(self.jmpIdx[idx])
         
     def compDistances(self):
         posList, idx = self.vh.getCurrentPosList()
-        print "start computing the distances..."
+        cfg.log.debug("start computing the distances...")
         self.dists = computeDistancesFromPosList(posList, self.fileList)
-        print "finished computing distances"
+        cfg.log.debug("finished computing distances")
         
-        print "start computing the jumps..."
+        cfg.log.debug("start computing the jumps...")
         self.filterList = filterJumps(posList, self.dists, 25)
-        print "finished computing jumps"
+        cfg.log.debug("finished computing jumps")
         
         #idx = 0
         lst = self.filterList[0][idx]
@@ -573,14 +599,14 @@ class videoPlayer(QMainWindow):
     
     @pyqtSlot(list)
     def addVideo(self, videoList):
-        print "slot"
+        cfg.log.debug("slot")
         self.videoList += videoList
         
-        print self.videoList
+        cfg.log.debug("{0}".format(self.videoList))
         
     @pyqtSlot(str)
     def changeVideo(self, filePath):
-        print "Change video to", filePath
+        cfg.log.debug("Change video to {0}".format(filePath))
         posInLst = self.fileList.index(filePath)
                 
         self.ui.lv_paths.setCurrentIndex(self.lm.index(posInLst,0))
@@ -592,7 +618,7 @@ class videoPlayer(QMainWindow):
         self.vl.loadVideos(posPath)
         
     def testFunction(self):
-        print "testFunction"
+        cfg.log.debug("testFunction")
         self.vh.saveAll()
         
     def addAnno(self):
@@ -602,7 +628,7 @@ class videoPlayer(QMainWindow):
         self.vh.eraseAnnotation(0, "peter", "just testing")
         
     def escapeAnnotationAlteration(self):
-        print "escape annotation"
+        cfg.log.debug("escape annotation")
         self.vh.escapeAnnotationAlteration()
         
 class AnnoView(QGraphicsView):
@@ -675,7 +701,7 @@ class AnnoView(QGraphicsView):
     @pyqtSlot(list)
     def addPrefetchedAnnoToScene(self, lst):
         t = time.time()
-        print "addPrefetchedAnnoToScene: begin"
+        cfg.log.debug("begin")
         for key in lst[0].keys():
             self.chunks[key] = QGraphicsRectItem(lst[0][key])
             self.absIdx[key] = deepcopy(lst[1][key])
@@ -684,7 +710,7 @@ class AnnoView(QGraphicsView):
             self.scene.addItem(self.chunks[key])
             
         lst[-1].processedSignal = True
-        print "addPrefetchedAnnoToScene: end", time.time() - t
+        cfg.log.debug("end {0}".format(time.time() - t))
         
     def removeAnnotation(self, key):
         ######################################################################## TODO shift only if absIdx goes out of int range
@@ -722,6 +748,7 @@ class AnnoView(QGraphicsView):
         """
         Key needs to be in self.annotationDict !!
         """
+        cfg.log.debug("(AnnoView) - begin")
         keys = sorted(self.annotationDict.keys())
         
         if key == keys[0]:
@@ -736,14 +763,14 @@ class AnnoView(QGraphicsView):
                 # should never happen anyway
                 i = 0
         else:
-            print("addAnnotationToScene: tried to insert an annotation in the middle." + 
+            cfg.log.debug("tried to insert an annotation in the middle." + 
                  " It only makes sense to append, or prepend. Trying to clear and" +
                  " repopulate entirely")
             self.clearScene()
             self.populateScene()
             return
         
-        print "i", i, "key", key
+        cfg.log.debug("i: {i}, key: {key}".format(i=i, key=key))
         
         boxHeight = self.boxHeight
         
@@ -781,11 +808,12 @@ class AnnoView(QGraphicsView):
                 self.frames[key] += [item]
                                                     
             i += 1
-            
+        
+        cfg.log.debug("(AnnoView) - end")
     
     def populateScene(self):
         t = time.time()
-        print "populate Scene: begin"
+        cfg.log.debug("begin")
         keys = sorted(self.annotationDict.keys())
         i = 0
         
@@ -832,7 +860,7 @@ class AnnoView(QGraphicsView):
         
     def shiftScene(self, shift):
         t = time.time()
-        print "shift Scene: begin"
+        cfg.log.debug("begin")
         keys = sorted(self.annotationDict.keys())        
         trans = QTransform().translate(shift, 0)
         
@@ -840,7 +868,6 @@ class AnnoView(QGraphicsView):
             self.chunks[key].setTransform(trans)        
             self.absIdx[key] += shift
                 
-        print "shift Scene: end", time.time() - t
         
         
     def addFramesToAnnotation(self, key, frames, annotator, behaviour):
@@ -917,6 +944,7 @@ class AnnoView(QGraphicsView):
     addingAnno = False
     tempAnno = dict()
     def addAnno(self):
+        cfg.log.debug("(AnnoView) - begin")
         if not self.addingAnno:
             #self.tempStart = [self.selKey, self.idx]
             self.tempStart = FramePosition(self.annotationDict, self.selKey, 
@@ -939,9 +967,11 @@ class AnnoView(QGraphicsView):
             self.tempAnno = dict()
             
         self.addTempAnno()
+        cfg.log.debug("(AnnoView) - end")
             
     erasingAnno = False
     def eraseAnno(self):
+        cfg.log.debug("(AnnoView) - begin")
         if not self.erasingAnno:
             #self.tempStart = [self.selKey, self.idx]
             self.tempStart = FramePosition(self.annotationDict, self.selKey, 
@@ -963,6 +993,7 @@ class AnnoView(QGraphicsView):
             # erase in original annotation
             # save to file
             self.tempAnno = dict()      
+        cfg.log.debug("(AnnoView) - end")
             
     def resetAnno(self):
         if self.addingAnno:
@@ -1023,7 +1054,7 @@ class BaseThread(QThread):
         self.exiting = False
 
     def __del__(self):        
-        print "deleting"
+        cfg.log.debug("deleting")
         self.exiting = True
         self.wait()
         
@@ -1036,14 +1067,14 @@ class VideoLoader(BaseThread):
     finished = pyqtSignal()   
 
     def __del__(self):        
-        print "deleting"
+        cfg.log.debug("deleting")
         self.exiting = True
         self.wait()
                 
         if self.annotation is not None:
             self.annotation.saveToFile(self.posPath.split('.pos')[0] + '.bhvr')
     
-    def __init__(self, posPath):
+    def __init__(self, posPath, selectedVials=[0]):
         BaseThread.__init__(self)        
         
         self.loading = False
@@ -1055,6 +1086,8 @@ class VideoLoader(BaseThread):
         
         self.posPath = posPath      
         self.loadVideos()
+        
+        self.selectedVials = selectedVials
 
     def loadVideos(self):    
         self.exiting = False
@@ -1062,9 +1095,9 @@ class VideoLoader(BaseThread):
         self.start()        
         
     def run(self):
-        print "loadVideos"
+        cfg.log.debug("loadVideos")
         rc = Client()
-        print rc.ids
+        cfg.log.debug("rc.ids : {0}".format(rc.ids))
         
         dview = rc[:]        
         lbview = rc.load_balanced_view()   
@@ -1078,9 +1111,9 @@ class VideoLoader(BaseThread):
             vE = videoExplorer()        
             
             
-            qi = [vE.getFrame(f, info=False, frameMode='RGB')]
+            qi = [np.rot90(vE.getFrame(f, info=False, frameMode='RGB'))]
             for frame in vE:
-                qi += [frame]
+                qi += [np.rot90(frame)]
                         
             ret = dict()
             
@@ -1098,7 +1131,7 @@ class VideoLoader(BaseThread):
                 try:
                     out.loadFromFile(f)
                 except:
-                    print("load annotation of "+f+" failed, reset annotaions")
+                    cfg.log.debug("load annotation of "+f+" failed, reset annotaions")
                     out = Annotation(frameNo=videoLength, vialNames=["Abeta +RU",
                                                                  "ABeta -RU",
                                                                  "dilp",
@@ -1111,11 +1144,11 @@ class VideoLoader(BaseThread):
             return out
             
         results = []
-        for i in range(4):
+        for i in self.selectedVials:
             f = self.posPath.split('.pos')[0] + '.v{0}.{1}'.format(i, 'avi')
             results += [lbview.apply_async(loadVideo, f, i)]
         
-        print "videoLoader: waiting for process..."
+        cfg.log.debug("videoLoader: waiting for process...")
         allReady = False
         while not allReady:
             if self.exiting:
@@ -1135,8 +1168,8 @@ class VideoLoader(BaseThread):
                 
             self.msleep(10)
         
-        self.frameList = [0]*4
-        for i in range(4):
+        self.frameList = [0]*len(self.selectedVials)
+        for i in range(len(self.selectedVials)):
             # copy data
             ar = results[i].get()
             self.frameList[ar["vialNo"]] = ar["qi"]
@@ -1156,7 +1189,7 @@ class VideoLoader(BaseThread):
         if not self.exiting:
             self.annotation = loadAnnotation(self.posPath, self.videoLength)
         
-        print "finished computing, emiting signal"
+        cfg.log.debug("finished computing, emiting signal")
         
         self.loading = False
         self.finished.emit()  
@@ -1197,8 +1230,10 @@ class VideoLoader(BaseThread):
             raise RuntimeError("calling posList, before video finished loading")
             
     def addAnnotation(self, vialNo, frames, behaviour, annotator):
+        cfg.log.debug("(VideoLoader) - begin")
         if not self.loading:
             self.annotation.addAnnotation(vialNo, frames, behaviour, annotator)
+        cfg.log.debug("(VideoLoader) - end")
 
 class VideoHandler(QObject):       
     
@@ -1265,7 +1300,7 @@ class VideoHandler(QObject):
         except KeyError:
             pass
         except RuntimeError:
-            print "something went wrong during the fetching procedure"
+            cfg.log.debug("something went wrong during the fetching procedure")
                 
         self.idx = idx
         self.posPath = path
@@ -1276,12 +1311,12 @@ class VideoHandler(QObject):
         try:
             frame = self.videoDict[self.posPath].getFrame(self.idx)
         except KeyError:
-            print "accessing video out of scope, fetching..."
+            cfg.log.exception("accessing video out of scope, fetching...")
             self.fetchVideo(self.posPath)
             #self.getFrame(self.posPath, idx)
             self.getCurrentFrame()
         except RuntimeError:
-            print "something went wrong during the fetching procedure"
+            cfg.log.error("something went wrong during the fetching procedure")
         
         
         if doBufferCheck:
@@ -1300,6 +1335,7 @@ class VideoHandler(QObject):
         return frame
                 
     def getNextFrame(self, increment=1, doBufferCheck=True, emitFileChange=True):
+        cfg.log.debug("(videohander) - begin")
         self.idx += increment
         if self.idx >= self.videoDict[self.posPath].getVideoLength():
             pos = sorted(self.videoDict.keys())
@@ -1314,11 +1350,13 @@ class VideoHandler(QObject):
                     else:
                         self.idx = self.videoDict[self.posPath].getVideoLength() -1
                         if doBufferCheck:
-                            print "This is the very last frame, cannot advance further"
+                            cfg.log.warning("This is the very last frame, cannot advance further")
                         
+        cfg.log.debug("(videohander) - end")
         return self.getCurrentFrame(doBufferCheck=doBufferCheck)
         
     def getPrevFrame(self, decrement=1, doBufferCheck=True, emitFileChange=True):
+        cfg.log.debug("(videohander) - begin")
         self.idx -= decrement
         if self.idx < 0:
             pos = sorted(self.videoDict.keys())
@@ -1333,8 +1371,9 @@ class VideoHandler(QObject):
                     else:
                         self.idx = 0
                         if doBufferCheck:
-                            print "This is the very first frame, cannot go back further"
+                            cfg.log.warning("This is the very first frame, cannot go back further")
                         
+        cfg.log.debug("(videohander) - end")
         return self.getCurrentFrame(doBufferCheck=doBufferCheck)
                 
     def checkBuffer(self):        
@@ -1378,7 +1417,7 @@ class VideoHandler(QObject):
         
         
     def fetchVideo(self, path):
-        print "fetching", path
+        cfg.log.debug("fetching {0}".format(path))
         vL = VideoLoader(path)
         vL.loadedAnnotation.connect(self.updateNewAnnotation)
         self.videoDict[path] = vL
@@ -1398,9 +1437,12 @@ class VideoHandler(QObject):
             aV.setPosition(self.posPath, self.idx)
         
     @pyqtSlot(list)
-    def updateNewAnnotation(self, annotationBundle):
+    def updateNewAnnotation(self, annotationBundle):        
+        cfg.log.debug("(videohander) - begin")
         for aV in self.annoViewList:
             aV.addAnnotation(annotationBundle[0], annotationBundle[1])
+        
+        cfg.log.debug("(videohander) - end")
             
     def addFrameToAnnotation(self, vialNo, annotator, behaviour):
         for aV in self.annoViewList:
@@ -1416,6 +1458,7 @@ class VideoHandler(QObject):
             aV.setZoom(zoomLevel)
         
     def addAnnotation(self, vial, annotator, behaviour, confidence):
+        cfg.log.debug("(videohander) - begin")
         for aV in self.annoViewList:
             if (aV.behaviourName == None) \
             or (behaviour == aV.behaviourName) \
@@ -1424,7 +1467,7 @@ class VideoHandler(QObject):
                 or (annotator == aV.annotator) \
                 or (annotator in aV.annotator):
                     if vial == aV.vialNo:
-                        print "addAnnotation"
+                        cfg.log.debug("calling aV.addAnno()")
                         aV.addAnno()
                         
         if self.annoAltStart == None:
@@ -1448,9 +1491,13 @@ class VideoHandler(QObject):
                 self.videoDict[key].annotation.addAnnotation(vial, rng[key], 
                                         annotator, behaviour, confidence)
                                         
-                print "add annotation", vial, rng[key], annotator, behaviour, confidence
+                cfg.log.info("add annotation vial {v}| range {r}| annotator {a}| behaviour {b}| confidence {c}".format(
+                              v=vial, r=rng[key], a=annotator,
+                              b=behaviour, c=confidence))
                 tmpFilename = key.split(".pos")[0] + ".bhvr~"
                 self.videoDict[key].annotation.saveToFile(tmpFilename)
+        
+        cfg.log.debug("(videohander) - end")
         
     def eraseAnnotation(self, vial, annotator, behaviour):
         for aV in self.annoViewList:
@@ -1461,7 +1508,7 @@ class VideoHandler(QObject):
                 or annotator == aV.annotator \
                 or annotator in aV.annotator:
                     if vial == aV.vialNo:
-                        print "eraseAnnotation"
+                        cfg.log.debug("eraseAnnotation")
                         aV.eraseAnno()
                         
         if self.annoAltStart == None:
@@ -1535,14 +1582,14 @@ class AnnotationItemLoader(BaseThread):
                     # should never happen anyway
                     i = 0
             else:
-                print("addAnnotationToScene: tried to insert an annotation in the middle." + 
+                cfg.log.debug("tried to insert an annotation in the middle." + 
                      " It only makes sense to append, or prepend. Trying to clear and" +
                      " repopulate entirely")
                 self.clearScene()
                 self.populateScene()
                 return
             
-            print "i", i, "key", key
+            cfg.log.debug("i: {i} key: {key}".format(i=i, key=key))
             
             boxHeight = 10
             
@@ -1581,7 +1628,7 @@ class AnnotationItemLoader(BaseThread):
             self.annotationStuff.emit([self.chunks, self.absIdx, self.lines, 
                                     self.frames, self])
             
-            print "end of worker thread for", key
+            cfg.log.debug("end of worker thread for {key}".format(key=key))
             
             #~ while(True):
                 #~ if self.processedSignal:
@@ -1590,10 +1637,15 @@ class AnnotationItemLoader(BaseThread):
                     #~ self.msleep(100)
         
 if __name__ == "__main__":
+    # settings    
+    
+    # set qt stuff up and lunch the thing
     
     app = QApplication(sys.argv)
     
     path = '/run/media/peter/Elements/peter/data/tmp-20130506'
     w = videoPlayer(path, videoFormat='avi')
+    
+    app.connect(app, SIGNAL("aboutToQuit()"), w.stopVideo)
     
     sys.exit(app.exec_())
