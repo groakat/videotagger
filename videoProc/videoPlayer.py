@@ -165,7 +165,7 @@ class videoPlayer(QMainWindow):
         yPos = 450
         xPos = 70 
         height = 20
-        width = 701
+        width = 1000
         
         self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["just testing"],  color = QColor(0,0,255,150), geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
