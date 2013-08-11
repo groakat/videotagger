@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Sat Jun  1 21:41:04 2013
+# Created: Sun Aug 11 21:03:19 2013
 #      by: PyQt4 UI code generator 4.10.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -34,20 +34,20 @@ class Ui_Form(object):
         self.label.setGeometry(QtCore.QRect(10, 10, 1000, 550))
         self.label.setObjectName(_fromUtf8("label"))
         self.lbl_v0 = QtGui.QLabel(Form)
-        self.lbl_v0.setGeometry(QtCore.QRect(180, 500, 57, 14))
+        self.lbl_v0.setGeometry(QtCore.QRect(160, 720, 57, 14))
         self.lbl_v0.setFrameShape(QtGui.QFrame.Box)
         self.lbl_v0.setLineWidth(1)
         self.lbl_v0.setObjectName(_fromUtf8("lbl_v0"))
         self.lbl_v1 = QtGui.QLabel(Form)
-        self.lbl_v1.setGeometry(QtCore.QRect(520, 500, 57, 14))
+        self.lbl_v1.setGeometry(QtCore.QRect(500, 720, 57, 14))
         self.lbl_v1.setFrameShape(QtGui.QFrame.Box)
         self.lbl_v1.setObjectName(_fromUtf8("lbl_v1"))
         self.lbl_v2 = QtGui.QLabel(Form)
-        self.lbl_v2.setGeometry(QtCore.QRect(360, 490, 57, 14))
+        self.lbl_v2.setGeometry(QtCore.QRect(340, 710, 57, 14))
         self.lbl_v2.setFrameShape(QtGui.QFrame.Box)
         self.lbl_v2.setObjectName(_fromUtf8("lbl_v2"))
         self.lbl_v3 = QtGui.QLabel(Form)
-        self.lbl_v3.setGeometry(QtCore.QRect(660, 500, 57, 14))
+        self.lbl_v3.setGeometry(QtCore.QRect(640, 720, 57, 14))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
