@@ -11,7 +11,7 @@ from videoPlayer_auto import Ui_Form
 from pyTools.system.videoExplorer import *
 from pyTools.imgProc.imgViewer import *
 from pyTools.videoProc.annotation import *
-from pyTools.misc.basic import *
+import pyTools.misc.basic as bsc 
 import pyTools.misc.config as cfg
 import copy
 
@@ -23,6 +23,8 @@ import time
 
 from qimage2ndarray import *
 from PyQt4.uic.Compiler.qtproxies import QtCore
+
+from collections import namedtuple
 
 
 
@@ -47,7 +49,7 @@ class MyListModel(QAbstractListModel):
 
 #################################################################### 
 
-
+KeyIdxPair = namedtuple('KeyIdxPair', ['key', 'idx'])
 
 class videoPlayer(QMainWindow):      
     quit = pyqtSignal()
@@ -68,7 +70,6 @@ class videoPlayer(QMainWindow):
         self.ui.setupUi(self)
         
         self.connectSignals()       
-        self.show()
         
         self.posList = self.providePosList(path)    
         
@@ -113,6 +114,7 @@ class videoPlayer(QMainWindow):
         self.timer.timeout.connect(self.showNextFrame)
         self.timerID = None
         
+        self.show()
 #         self.exec_()
         
         
@@ -160,21 +162,21 @@ class videoPlayer(QMainWindow):
     def createAnnoViews(self):
         self.annoViewList = []
         
-            
-             
-        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["falling"],  color = QColor(0,0,255,150))]
-        self.annoViewList[-1].setGeometry(QRect(70, 715, 701, 23))
+        yPos = 450
+        height = 30
+        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["just testing"],  color = QColor(0,0,255,150))]
+        self.annoViewList[-1].setGeometry(QRect(70, yPos, 701, height))
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1]) 
         
         
         self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["struggle"], color = QColor(0,255,0,150))]
-        self.annoViewList[-1].setGeometry(QRect(70, 730, 701, 23))
+        self.annoViewList[-1].setGeometry(QRect(70, yPos + height + 1, 701, height))
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1])        
         
         self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["flying"], color = QColor(255,0,0,150))]
-        self.annoViewList[-1].setGeometry(QRect(70, 745, 701, 23))
+        self.annoViewList[-1].setGeometry(QRect(70, yPos + (2*height+1), 701, height))
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1])      
         
@@ -211,7 +213,7 @@ class videoPlayer(QMainWindow):
             self.play = True
             
         if key == Qt.Key_V:
-            self.increment = 40
+            self.increment = 60
             #self.vh.annoViewZoom(0)
             self.play = True
         
@@ -507,7 +509,9 @@ class videoPlayer(QMainWindow):
                      
 #             i += 1
             if not(QTime.currentTime() < dieTime):
-                cfg.log.warning("no realtime display!!! mainloop overflow before processEvents(): {0}ms".format(
+                cfg.log.warning("no realtime display!!! " + 
+                                cfg.Back.BLUE + 
+                                "mainloop overflow before processEvents(): {0}ms".format(
                                         dieTime.msecsTo(QTime.currentTime())))
             elif(QTime.currentTime() < dieTime.addMSecs(15)):
                 frameNo = self.vh.getCurrentFrameNo()
@@ -521,7 +525,9 @@ class videoPlayer(QMainWindow):
                 cfg.log.debug("processEvents() - end")
                  
             if not(QTime.currentTime() < (dieTime.addMSecs(1))):
-                cfg.log.warning("no realtime display!!! mainloop overflow after processEvents(): {0}ms".format(
+                cfg.log.warning("no realtime display!!! " + 
+                                cfg.Back.YELLOW + 
+                                "mainloop overflow after processEvents(): {0}ms".format(
                                         dieTime.msecsTo(QTime.currentTime())))
             cfg.log.debug("---------------------------------------  while loop() - end")
              
@@ -609,18 +615,18 @@ class videoPlayer(QMainWindow):
         #self.setVideo(self.idx)
         self.vh.getFrame(self.fileList[idx], 0)
         
-    @cfg.logClassFunction
+#     @cfg.logClassFunction
     def selectVideoLV(self, mdl):
         self.idx = mdl.row()   
         self.selectVideo(self.idx)
         
-    @cfg.logClassFunction
+#     @cfg.logClassFunction
     def selectFrame(self, mdl):
         idx = mdl.row()       
         cfg.log.debug("select frame {0}".format(idx))
         self.setFrame(idx)
         
-    @cfg.logClassFunction
+#     @cfg.logClassFunction
     def selectFrameJump(self, mdl):
         idx = mdl.row()       
         cfg.log.debug("select frame idx {0}. {1}".format( idx, self.jmpIdx[idx]))
@@ -712,17 +718,17 @@ class videoPlayer(QMainWindow):
         self.showNextFrame(0)
         self.vh.loadProgressive = True
         
-    @cfg.logClassFunction
+#     @cfg.logClassFunction
     def addAnno(self):
         self.vh.addAnnotation(0, "peter", "just testing", confidence=1)
         
-    @cfg.logClassFunction
+#     @cfg.logClassFunction
     def eraseAnno(self):
         self.vh.eraseAnnotation(0, "peter", "just testing")
         
-    @cfg.logClassFunction
+#     @cfg.logClassFunction
     def escapeAnnotationAlteration(self):
-        cfg.log.debug("escape annotation")
+        cfg.log.info("escape annotation")
         self.vh.escapeAnnotationAlteration()
         
         
@@ -776,9 +782,10 @@ class AnnoView(QGraphicsView):
         
         # initialization of parameters
         self.annotationDict = dict()
+        self.annotationUnfiltered = dict()
         self.color = QColor(0,255,0,150)
         self.zoomLevels = [0.5, 0.6, 0.8, 1, 2, 5, 10]
-        self.zoom = 4
+        self.zoom = 2
         self.lines = dict()
         self.frames = dict()
         self.absIdx = dict()
@@ -788,20 +795,25 @@ class AnnoView(QGraphicsView):
         self.selKey = None
         self.idx = None
         
-        self.boxHeight = 10
+        self.boxHeight = self.geometry().height()
         
         #filters
         self.vialNo = None
         self.behaviourName=None
         self.annotator=None
         
-        geo = self.geometry()
-        geo.setHeight(self.boxHeight + 6)
-        self.setGeometry(geo)
+        
+        self.erasingAnno = False
+        self.addingAnno = False
+        self.tempAnno = dict()
+        
+#         geo = self.geometry()
+#         geo.setHeight(self.boxHeight + 6)
+#         self.setGeometry(geo)
         
         # setting values
         self.scene = QGraphicsScene(parent)
-        self.scene.setSceneRect(QRectF(-50000, -20, 100000, 20))
+#         self.scene.setSceneRect(QRectF(-50000, -20, 100000, 20))
         self.setScene(self.scene)
         
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -814,30 +826,55 @@ class AnnoView(QGraphicsView):
         self.setViewport(QGLWidget(parent))
         
         if color == None:
-            color = QColor(0,255,0,150)
+            self.color = QColor(0,255,0,150)
+        else:
+            self.color = color
             
-        self.color = color
+        colI = QColor(0,0,0,0)
+                    
+        self.penA = QPen(colI)
+        self.brushA = QBrush(self.color)    
+              
+        self.penI = QPen(colI)
+        self.brushI = QBrush(colI)
         
         self.addList = []  #{key: (string), range: slice}
         self.removeList = []  #{key: (string), range: slice}
+        
+        self.frameAmount = 201 ## odd number please
+        
+        self.confidenceList = []
+        self.tempRng = dict()
+        self.lines = []
+        self.frames = []
+        for i in range(self.frameAmount):
+            self.lines += [(self.scene.addLine(i+0.5, 0, i+0.5, self.boxHeight,  QPen(QColor(100,100,100))))]                
+            self.frames += [(self.scene.addRect(QRectF(i, 0, 1, self.boxHeight)))]
+        
+        center = self.frameAmount / 2 + 1
+        self.centerOn(self.frames[center])
+        self.setZoom(self.zoom)
+#         self.centerOn(self.frames[0])
+            
         
     @cfg.logClassFunction
     def addAnnotation(self, annotation, key, addAllAtOnce=True):
         """
         adds an annotation to a scene
         """
-        cfg.log.debug("(AnnoView) - begin: addAllAtOnce: {0}".format(addAllAtOnce))
         filt = AnnotationFilter([self.vialNo], self.annotator, 
                                                         self.behaviourName)
+        self.annotationUnfiltered[key] = annotation
         self.annotationDict[key] = annotation.filterFrameList(filt)
-            
-        if addAllAtOnce:
-            self.addAnnotationToScene(key, slice(0,1))         
-        else:
-            rng = slice(0, len(self.annotationDict[key].frameList))
-            self.addList.append({"key":key, "range": rng})
-            
-        cfg.log.debug("(AnnoView) - end")
+        
+        return
+#         if addAllAtOnce:
+#             self.addAnnotationToScene(key, slice(0,1))         
+#         else:
+#             rng = slice(0, len(self.annotationDict[key].frameList))
+#             self.addList.append({"key":key, "range": rng})
+#             
+#         cfg.log.debug("(AnnoView) - end")
 #             # does not work. An idea would be to update a second scene
 #             # and swap the scenes, rather than adding the items to
 #             # the scene in addPrefetchedAnnoToScene
@@ -846,271 +883,274 @@ class AnnoView(QGraphicsView):
 #             aL.annotationStuff.connect(self.addPrefetchedAnnoToScene)
 #             aL.start()
         
-    @cfg.logClassFunction
-    @pyqtSlot(list)
-    def addPrefetchedAnnoToScene(self, lst):
-        t = time.time()
-        cfg.log.debug("begin")
-        for key in lst[0].keys():
-            self.chunks[key] = QGraphicsRectItem(lst[0][key])
-            self.absIdx[key] = deepcopy(lst[1][key])
-            self.lines[key] = deepcopy(lst[2][key])
-            self.frames[key] = deepcopy(lst[3][key])
-            self.scene.addItem(self.chunks[key])
-            
-        lst[-1].processedSignal = True
-        cfg.log.debug("end {0}".format(time.time() - t))
-        
-    @cfg.logClassFunction
-    def removeAnnotation(self, key, rng=None):
-        """
-        removes annotation from scene
-        """
-        rng = slice(0, len(self.annotationDict[key].frameList))
-        self.removeList.append({"key":key, "range": rng})
-                
-    @cfg.logClassFunction
-    def clearScene(self):
-        keys = self.chunks.keys()
-        for key in keys:
-            self.scene.removeItem(self.chunks[key])       
-                
-        self.chunks.clear()
-        self.lines.clear()
-        self.frames.clear()
-        self.absIdx.clear()
-            
-        # ignore any non-custom warnings that may be in the list            
-                
-        self.lines = dict()
-        self.frames = dict()
-        self.absIdx = dict()
-        self.chunks = dict()      
-        
-    @cfg.logClassFunction
-    def addAnnotationToSceneIncrement(self, no=50):
-        if len(self.addList) > 0:
-#             if len(self.removeList) > 1:
-#                 # remove all clutter first to avoid memory leaks                
-#                 item = self.removeList.pop(0)
-#                 self.removeAnnotationFromScene(item["key"], rng=None)
-                
-            rng = copy.copy(self.addList[0]["range"])
-            lastRange = False
-            if (rng.stop - rng.start) > no:
-                rng = slice(rng.start, rng.start + no)
-                self.addList[0]["range"] = slice(rng.stop, 
-                                              self.addList[0]["range"].stop)
-            else:
-                rng = slice(rng.start, rng.stop)
-                lastRange = True
-                
-            key = self.addList[0]["key"]
-            cfg.log.debug("(AnnoView) - add {0}: {1} ... left {2}".format(key, rng, self.addList[0]["range"] ))
-            self.addAnnotationToScene(key, rng)
-            
-            if lastRange:
-                self.addList.pop(0)
-#         elif len(self.removeList) > 0:    
-#             no *= 2         
-#             rng = copy.copy(self.removeList[0]["range"])
+#     @cfg.logClassFunction
+#     @pyqtSlot(list)
+#     def addPrefetchedAnnoToScene(self, lst):
+#         t = time.time()
+#         cfg.log.debug("begin")
+#         for key in lst[0].keys():
+#             self.chunks[key] = QGraphicsRectItem(lst[0][key])
+#             self.absIdx[key] = deepcopy(lst[1][key])
+#             self.lines[key] = deepcopy(lst[2][key])
+#             self.frames[key] = deepcopy(lst[3][key])
+#             self.scene.addItem(self.chunks[key])
+#             
+#         lst[-1].processedSignal = True
+#         cfg.log.debug("end {0}".format(time.time() - t))
+#         
+#     @cfg.logClassFunction
+#     def removeAnnotation(self, key, rng=None):
+#         """
+#         removes annotation from scene
+#         """
+#         rng = slice(0, len(self.annotationDict[key].frameList))
+#         self.removeList.append({"key":key, "range": rng})
+#                 
+#     @cfg.logClassFunction
+#     def clearScene(self):
+#         keys = self.chunks.keys()
+#         for key in keys:
+#             self.scene.removeItem(self.chunks[key])       
+#                 
+#         self.chunks.clear()
+#         self.lines.clear()
+#         self.frames.clear()
+#         self.absIdx.clear()
+#             
+#         # ignore any non-custom warnings that may be in the list            
+#                 
+#         self.lines = dict()
+#         self.frames = dict()
+#         self.absIdx = dict()
+#         self.chunks = dict()      
+#         
+#     @cfg.logClassFunction
+#     def addAnnotationToSceneIncrement(self, no=50):
+#         if len(self.addList) > 0:
+# #             if len(self.removeList) > 1:
+# #                 # remove all clutter first to avoid memory leaks                
+# #                 item = self.removeList.pop(0)
+# #                 self.removeAnnotationFromScene(item["key"], rng=None)
+#                 
+#             rng = copy.copy(self.addList[0]["range"])
 #             lastRange = False
 #             if (rng.stop - rng.start) > no:
 #                 rng = slice(rng.start, rng.start + no)
-#                 self.removeList[0]["range"] = slice(rng.stop, 
-#                                               self.removeList[0]["range"].stop)
+#                 self.addList[0]["range"] = slice(rng.stop, 
+#                                               self.addList[0]["range"].stop)
 #             else:
 #                 rng = slice(rng.start, rng.stop)
 #                 lastRange = True
-#                  
-#             key = self.removeList[0]["key"]
-#             cfg.log.debug("(AnnoView) - remove {0}: {1} ... left {2}".format(key, rng, self.removeList[0]["range"] ))
-#             self.removeAnnotationFromScene(key, rng)
-#              
+#                 
+#             key = self.addList[0]["key"]
+#             cfg.log.debug("(AnnoView) - add {0}: {1} ... left {2}".format(key, rng, self.addList[0]["range"] ))
+#             self.addAnnotationToScene(key, rng)
+#             
 #             if lastRange:
-#                 self.removeList.pop(0)
-#                 # remove all clutter
-#                 self.removeAnnotationFromScene(key, rng=None)
-    
-        
+#                 self.addList.pop(0)
+# #         elif len(self.removeList) > 0:    
+# #             no *= 2         
+# #             rng = copy.copy(self.removeList[0]["range"])
+# #             lastRange = False
+# #             if (rng.stop - rng.start) > no:
+# #                 rng = slice(rng.start, rng.start + no)
+# #                 self.removeList[0]["range"] = slice(rng.stop, 
+# #                                               self.removeList[0]["range"].stop)
+# #             else:
+# #                 rng = slice(rng.start, rng.stop)
+# #                 lastRange = True
+# #                  
+# #             key = self.removeList[0]["key"]
+# #             cfg.log.debug("(AnnoView) - remove {0}: {1} ... left {2}".format(key, rng, self.removeList[0]["range"] ))
+# #             self.removeAnnotationFromScene(key, rng)
+# #              
+# #             if lastRange:
+# #                 self.removeList.pop(0)
+# #                 # remove all clutter
+# #                 self.removeAnnotationFromScene(key, rng=None)
+#     
+#         
+#     @cfg.logClassFunction
+#     def addAnnotationToScene(self, key, rng=None):
+#         """
+#         Key needs to be in self.annotationDict !!
+#         """
+#         cfg.log.debug("(AnnoView) - begin {0}: {1}".format(key, rng))
+#         if rng is None:
+#             rng = slice(0, len(self.annotationDict[key].frameList))
+#         
+#         
+#         keys = sorted(self.annotationDict.keys())
+#         
+#         if key == keys[0]:
+#             if len(keys) > 1:
+#                 i = self.absIdx[keys[1]][0] - len(self.annotationDict[key].frameList)
+#             else:
+#                 i = 0
+#         elif key == keys[-1]:
+#             if len(keys) > 1:
+#                 i = self.absIdx[keys[-2]][-1] + 1
+#             else: 
+#                 # should never happen anyway
+#                 i = 0
+#         else:
+#             cfg.log.debug("tried to insert an annotation in the middle." + 
+#                  " It only makes sense to append, or prepend. Trying to clear and" +
+#                  " repopulate entirely")
+#             self.clearScene()
+#             self.populateScene()
+#             return
+#         
+#         cfg.log.debug("i: {i}, key: {key}".format(i=i, key=key))
+#         
+#         boxHeight = self.boxHeight
+#         
+#         aCol = self.color
+#         uCol = QColor(0,0,0,0)
+#         
+#         aBrush = QBrush(aCol)
+#         aPen = QPen(uCol)
+#         
+#         uPen = QPen(uCol)
+#         uBrush = QBrush(uCol)
+#         
+#         if key not in self.frames.keys():
+#             self.lines[key] = []
+#             self.frames[key] = []
+#             chunkLength = len(self.annotationDict[key].frameList)
+#             self.chunks[key] = self.scene.addRect(QRectF(i, 0, chunkLength, boxHeight))        
+#             self.absIdx[key] = np.arange(chunkLength) + i
+#         
+#         for f in range(rng.start, rng.stop):#len(self.annotationDict[key].frameList)):
+#             line = QGraphicsLineItem(f+i+0.5, 0, f+i+0.5, boxHeight,
+#                                      self.chunks[key])
+#             line.setPen(QPen(QColor(100,100,100)))
+#             self.lines[key] += [line]
+#             if self.annotationDict[key].frameList[f] is not None:
+#                 item = QGraphicsRectItem(   QRectF(f+i, 0, 1, boxHeight), 
+#                                             self.chunks[key])
+#                 item.setPen(aPen)
+#                 item.setBrush(aBrush)
+#                 self.frames[key] += [item]
+#             else:
+#                 item = QGraphicsRectItem(   QRectF(f+i, 0, 1, boxHeight), 
+#                                             self.chunks[key])
+#                 item.setPen(uPen)
+#                 item.setBrush(uBrush)
+#                 self.frames[key] += [item]
+#                                                     
+#             #i += 1
+#         
+#         cfg.log.debug("(AnnoView) - end")
+#         
     @cfg.logClassFunction
-    def addAnnotationToScene(self, key, rng=None):
-        """
-        Key needs to be in self.annotationDict !!
-        """
-        cfg.log.debug("(AnnoView) - begin {0}: {1}".format(key, rng))
-        if rng is None:
-            rng = slice(0, len(self.annotationDict[key].frameList))
-        
-        
-        keys = sorted(self.annotationDict.keys())
-        
-        if key == keys[0]:
-            if len(keys) > 1:
-                i = self.absIdx[keys[1]][0] - len(self.annotationDict[key].frameList)
-            else:
-                i = 0
-        elif key == keys[-1]:
-            if len(keys) > 1:
-                i = self.absIdx[keys[-2]][-1] + 1
-            else: 
-                # should never happen anyway
-                i = 0
-        else:
-            cfg.log.debug("tried to insert an annotation in the middle." + 
-                 " It only makes sense to append, or prepend. Trying to clear and" +
-                 " repopulate entirely")
-            self.clearScene()
-            self.populateScene()
-            return
-        
-        cfg.log.debug("i: {i}, key: {key}".format(i=i, key=key))
-        
-        boxHeight = self.boxHeight
-        
-        aCol = self.color
-        uCol = QColor(0,0,0,0)
-        
-        aBrush = QBrush(aCol)
-        aPen = QPen(uCol)
-        
-        uPen = QPen(uCol)
-        uBrush = QBrush(uCol)
-        
-        if key not in self.frames.keys():
-            self.lines[key] = []
-            self.frames[key] = []
-            chunkLength = len(self.annotationDict[key].frameList)
-            self.chunks[key] = self.scene.addRect(QRectF(i, 0, chunkLength, boxHeight))        
-            self.absIdx[key] = np.arange(chunkLength) + i
-        
-        for f in range(rng.start, rng.stop):#len(self.annotationDict[key].frameList)):
-            line = QGraphicsLineItem(f+i+0.5, 0, f+i+0.5, boxHeight,
-                                     self.chunks[key])
-            line.setPen(QPen(QColor(100,100,100)))
-            self.lines[key] += [line]
-            if self.annotationDict[key].frameList[f] is not None:
-                item = QGraphicsRectItem(   QRectF(f+i, 0, 1, boxHeight), 
-                                            self.chunks[key])
-                item.setPen(aPen)
-                item.setBrush(aBrush)
-                self.frames[key] += [item]
-            else:
-                item = QGraphicsRectItem(   QRectF(f+i, 0, 1, boxHeight), 
-                                            self.chunks[key])
-                item.setPen(uPen)
-                item.setBrush(uBrush)
-                self.frames[key] += [item]
-                                                    
-            #i += 1
-        
-        cfg.log.debug("(AnnoView) - end")
-        
-    @cfg.logClassFunction
-    def removeAnnotationFromScene(self, key, rng=None):        
-        cfg.log.debug("(AnnotationView) - begin")
-        if rng is None:
-            self.scene.removeItem(self.chunks[key])    
-            del self.chunks[key] 
-            del self.lines[key] 
-            del self.frames[key]
-            del self.absIdx[key]
-            del self.annotationDict[key]
-        else:
-            del self.lines[key][rng]
-            del self.frames[key][rng]
-            
-        cfg.log.debug("(AnnotationView) - end")
-    
-    @cfg.logClassFunction
-    def populateScene(self):
-        t = time.time()
-        cfg.log.debug("begin")
-        keys = sorted(self.annotationDict.keys())
-        i = 0
-        
-        boxHeight = self.boxHeight
-        
-        aCol = self.color
-        uCol = QColor(0,0,0,0)
-        
-        aBrush = QBrush(aCol)
-        aPen = QPen(uCol)
-        
-        uPen = QPen(uCol)
-        uBrush = QBrush(uCol)
-        
-        for key in keys:
-            self.lines[key] = []
-            self.frames[key] = []
-            self.absIdx[key] = []
-            chunkLength = len(self.annotationDict[key].frameList)
-            self.chunks[key] = self.scene.addRect(QRectF(i, 0, chunkLength, boxHeight)   )         
-            self.absIdx[key] = np.arange(chunkLength) + i
-            
-            for f in range(len(self.annotationDict[key].frameList)):
-                line = QGraphicsLineItem(i+0.5, 0, i+0.5, boxHeight,
-                                         self.chunks[key])
-                line.setPen(QPen(QColor(100,100,100)))
-                self.lines[key] += [line]
-                
-                if self.annotationDict[key].frameList[f] is not None:
-                    item = QGraphicsRectItem(   QRectF(i, 0, 1, boxHeight), 
-                                                self.chunks[key])
-                    item.setPen(aPen)
-                    item.setBrush(aBrush)
-                    self.frames[key] += [item]
-                else:
-                    item = QGraphicsRectItem(   QRectF(i, 0, 1, boxHeight), 
-                                                self.chunks[key])
-                    item.setPen(uPen)
-                    item.setBrush(uBrush)
-                    self.frames[key] += [item]
-                                                        
-                i += 1
-        
-        
-    @cfg.logClassFunction
-    def shiftScene(self, shift):
-        t = time.time()
-        cfg.log.debug("begin")
-        keys = sorted(self.annotationDict.keys())        
-        trans = QTransform().translate(shift, 0)
-        
-        for key in keys:                
-            self.chunks[key].setTransform(trans)        
-            self.absIdx[key] += shift
-                
-        
-        
-    @cfg.logClassFunction
-    def addFramesToAnnotation(self, key, frames, annotator, behaviour):
-        """
-        
-        Args:
-            frames (list of int)
-        """
-        inScope = False
-        if self.annotator is not None:
-            if annotator == self.annotator:
-                inScope = True
-        else:
-            inScope = True
-        if self.behaviourName is not None:
-            if behaviour == self.behaviourName:
-                inScope = True
-        else:
-            inScope = True
-                
-        if inScope:
-            for frame in frames:                    
-                self.scene.removeItem(self.frames[key][frame])
-                col = self.color
-                i = self.absIdx[key][frame]
-                boxHeight = self.boxHeight
-                self.frames[key][frame] = \
-                            (self.scene.addRect(QRectF(i, 0, 1, boxHeight), 
-                                                QPen(col), QBrush(col)))
+    def removeAnnotation(self, key, rng=None):
+        if key in self.annotationDict.keys():
+            del self.annotationDict[key]   
+            del self.annotationUnfiltered[key]   
+#         cfg.log.debug("(AnnotationView) - begin")
+#         if rng is None:
+#             self.scene.removeItem(self.chunks[key])    
+#             del self.chunks[key] 
+#             del self.lines[key] 
+#             del self.frames[key]
+#             del self.absIdx[key]
+#             del self.annotationDict[key]
+#         else:
+#             del self.lines[key][rng]
+#             del self.frames[key][rng]
+#             
+#         cfg.log.debug("(AnnotationView) - end")
+#     
+#     @cfg.logClassFunction
+#     def populateScene(self):
+#         t = time.time()
+#         cfg.log.debug("begin")
+#         keys = sorted(self.annotationDict.keys())
+#         i = 0
+#         
+#         boxHeight = self.boxHeight
+#         
+#         aCol = self.color
+#         uCol = QColor(0,0,0,0)
+#         
+#         aBrush = QBrush(aCol)
+#         aPen = QPen(uCol)
+#         
+#         uPen = QPen(uCol)
+#         uBrush = QBrush(uCol)
+#         
+#         for key in keys:
+#             self.lines[key] = []
+#             self.frames[key] = []
+#             self.absIdx[key] = []
+#             chunkLength = len(self.annotationDict[key].frameList)
+#             self.chunks[key] = self.scene.addRect(QRectF(i, 0, chunkLength, boxHeight)   )         
+#             self.absIdx[key] = np.arange(chunkLength) + i
+#             
+#             for f in range(len(self.annotationDict[key].frameList)):
+#                 line = QGraphicsLineItem(i+0.5, 0, i+0.5, boxHeight,
+#                                          self.chunks[key])
+#                 line.setPen(QPen(QColor(100,100,100)))
+#                 self.lines[key] += [line]
+#                 
+#                 if self.annotationDict[key].frameList[f] is not None:
+#                     item = QGraphicsRectItem(   QRectF(i, 0, 1, boxHeight), 
+#                                                 self.chunks[key])
+#                     item.setPen(aPen)
+#                     item.setBrush(aBrush)
+#                     self.frames[key] += [item]
+#                 else:
+#                     item = QGraphicsRectItem(   QRectF(i, 0, 1, boxHeight), 
+#                                                 self.chunks[key])
+#                     item.setPen(uPen)
+#                     item.setBrush(uBrush)
+#                     self.frames[key] += [item]
+#                                                         
+#                 i += 1
+#         
+#         
+#     @cfg.logClassFunction
+#     def shiftScene(self, shift):
+#         t = time.time()
+#         cfg.log.debug("begin")
+#         keys = sorted(self.annotationDict.keys())        
+#         trans = QTransform().translate(shift, 0)
+#         
+#         for key in keys:                
+#             self.chunks[key].setTransform(trans)        
+#             self.absIdx[key] += shift
+#                 
+#         
+#         
+#     @cfg.logClassFunction
+#     def addFramesToAnnotation(self, key, frames, annotator, behaviour):
+#         """
+#         
+#         Args:
+#             frames (list of int)
+#         """
+#         inScope = False
+#         if self.annotator is not None:
+#             if annotator == self.annotator:
+#                 inScope = True
+#         else:
+#             inScope = True
+#         if self.behaviourName is not None:
+#             if behaviour == self.behaviourName:
+#                 inScope = True
+#         else:
+#             inScope = True
+#                 
+#         if inScope:
+#             for frame in frames:                    
+#                 self.scene.removeItem(self.frames[key][frame])
+#                 col = self.color
+#                 i = self.absIdx[key][frame]
+#                 boxHeight = self.boxHeight
+#                 self.frames[key][frame] = \
+#                             (self.scene.addRect(QRectF(i, 0, 1, boxHeight), 
+#                                                 QPen(col), QBrush(col)))
             
         
     @cfg.logClassFunction
@@ -1118,6 +1158,8 @@ class AnnoView(QGraphicsView):
         self.selKey = key
         self.idx = idx
         self.addTempAnno()
+        
+        self.updateConfidenceList(key, idx)
         self.updateGraphicView()
         
     @cfg.logClassFunction
@@ -1131,13 +1173,11 @@ class AnnoView(QGraphicsView):
         #scale absolute
         scale = self.zoomLevels[self.zoom]
         if self.zoom < 4:
-            for key in self.lines:
-                for line in self.lines[key]:
-                    line.setVisible(False)
+            for line in self.lines:
+                line.setVisible(False)
         else:
-            for key in self.lines:
-                for line in self.lines[key]:
-                    line.setVisible(True)
+            for line in self.lines:
+                line.setVisible(True)
         
         self.setTransform(QTransform().scale(scale, 1))
         
@@ -1151,70 +1191,162 @@ class AnnoView(QGraphicsView):
         self.populateScene()
         
     @cfg.logClassFunction
-    def updateGraphicView(self):
-        
-        if self.selKey is not None:
-            self.centerOn(self.frames[self.selKey][self.idx])
+    def updateConfidenceList(self, key=None, idx=None):
+        """
+        Args:
+            lst ([KeyIdxPair])
             
-        #self.update()
+        """
+        if key is None:
+            key = self.selKey
+        if idx is None:
+            idx = self.idx
+        
+        cfg.log.debug("updateConfidenceList {0} \n [{1}]".format(key, idx))
+        self.confidenceList = []
+        # for first frame annotation within the range        
+        dist2first = (self.frameAmount - 1) / 2
+        remainingFrames = idx     
+        keyList = sorted(self.annotationDict.keys())
+        # find position of key in the annotationList
+        # (expect each key to be present only once)
+        curKeyPos =  [i for i,x in enumerate(keyList) if x == key][0]
+        startIdx = None
+        startKey = None
+        while dist2first > 0:
+            if (remainingFrames - dist2first) < 0:
+                dist2first -= remainingFrames
+                curKeyPos -= 1
+                if curKeyPos < 0:
+                    curKeyPos = 0
+                    startIdx = 0
+                    startKey = keyList[curKeyPos]
+                    cfg.log.debug("distFirst {0}".format(dist2first))
+                    for i in range(dist2first):
+                        self.confidenceList += [None]
+                    break
+                else:
+                    remainingFrames = \
+                         len(self.annotationDict[keyList[curKeyPos]].frameList)
+            else:
+                startIdx = remainingFrames - dist2first
+                startKey = keyList[curKeyPos]
+                break
+        
+        # fill confidence list
+        curIdx = startIdx
+        curKey = startKey
+        
+        tempKeys = self.tempRng.keys()
+        if self.addingAnno:
+            cfg.log.debug("{0}".format(self.tempRng))
+        
+        for i in range(self.frameAmount - len(self.confidenceList)):
+            if curIdx >= len(self.annotationDict[curKey].frameList):
+                curKeyPos += 1
+                curKey = keyList[curKeyPos]
+                curIdx = 0
+                            
+            if (self.addingAnno 
+                            and (curKey in tempKeys) 
+                            and (curIdx in self.tempRng[curKey])):
+                conf = 1
+            elif (self.erasingAnno 
+                            and (curKey in tempKeys) 
+                            and (curIdx in self.tempRng[curKey])):
+                conf = None
+            else:
+                conf = KeyIdxPair(curKey, curIdx)
+                  
+            self.confidenceList += [conf]            
+            curIdx += 1     
+        
+    @cfg.logClassFunction
+    def updateGraphicView(self):
+        for i in range(len(self.confidenceList)):   
+            kip = self.confidenceList[i]
+            if kip == None:
+                conf = None
+            elif kip == 1:
+                conf = 1
+            else:
+                conf = self.annotationDict[kip.key].frameList[kip.idx]
+#             cfg.log.warning("{0}".format(conf))
+            if conf is not None:
+                self.frames[i].setBrush(self.brushA)
+                self.frames[i].setPen(self.penA)
+            else:                
+                self.frames[i].setBrush(self.brushI)
+                self.frames[i].setPen(self.penI)
         
     
+#     @cfg.logClassFunction
+#     def refreshAnnotations(self):
+#         filt = AnnotationFilter([self.vialNo], self.annotator, 
+#                                                     self.behaviourName)
+#         for key in self.annotationUnfiltered:
+#             self.annotationDict[key] = \
+#                             self.annotationUnfiltered[key].filterFrameList(filt)
+#                             
+#         self.updateConfidenceList()
     
-    addingAnno = False
-    tempAnno = dict()
     @cfg.logClassFunction
     def addAnno(self):
-        cfg.log.debug("(AnnoView) - begin")
         if not self.addingAnno:
             #self.tempStart = [self.selKey, self.idx]
-            self.tempStart = FramePosition(self.annotationDict, self.selKey, 
+            self.tempStart = bsc.FramePosition(self.annotationDict, self.selKey, 
                                                                     self.idx)
             self.addingAnno = True
         else:
             self.addingAnno = False  
-            for key in self.tempAnno:
-                for i in  self.tempAnno[key]:
-                    idx = self.absIdx[key][i]
-                    self.scene.removeItem(self.frames[key][i])
-                    col = self.color
-                    self.frames[key][i] = \
-                            (self.scene.addRect(QRectF(idx, 0, 1, self.boxHeight),
-                            QPen(QColor(0,0,0,0)), QBrush(col)))
-                    self.scene.removeItem(self.tempAnno[key][i])
-            
+            self.tempRng = dict()
+#             for key in self.tempAnno:
+#                 for i in  self.tempAnno[key]:
+#                     idx = self.absIdx[key][i]
+#                     self.scene.removeItem(self.frames[key][i])
+#                     col = self.color
+#                     self.frames[key][i] = \
+#                             (self.scene.addRect(QRectF(idx, 0, 1, self.boxHeight),
+#                             QPen(QColor(0,0,0,0)), QBrush(col)))
+#                     self.scene.removeItem(self.tempAnno[key][i])
+             
             # save range to original annotation
             # saveToFile
             self.tempAnno = dict()
-            
-        self.addTempAnno()
-        cfg.log.debug("(AnnoView) - end")
-            
-    erasingAnno = False
+             
+#         self.addTempAnno()
+        cfg.log.error("TODO: did not yet implement refresh of annodict")
+#         self.refreshAnnotations()
+        self.updateConfidenceList()    
+             
     @cfg.logClassFunction
     def eraseAnno(self):
-        cfg.log.debug("(AnnoView) - begin")
         if not self.erasingAnno:
             #self.tempStart = [self.selKey, self.idx]
-            self.tempStart = FramePosition(self.annotationDict, self.selKey, 
+            self.tempStart = bsc.FramePosition(self.annotationDict, self.selKey, 
                                                                     self.idx)
             self.erasingAnno = True
             self.tempAnno = dict()
-            self.addTempAnno()
+#             self.addTempAnno()
         else:
             self.erasingAnno = False
-            for key in self.tempAnno:
-                for i in  self.tempAnno[key]:
-                    idx = self.absIdx[key][i]
-                    self.scene.removeItem(self.frames[key][i])
-                    col = QColor(0,0,0,0)
-                    self.frames[key][i] = \
-                            (self.scene.addRect(QRectF(idx, 0, 1, self.boxHeight),
-                            QPen(QColor(0,0,0,0)), QBrush(col)))
-                
+            self.tempRng = dict()
+#             for key in self.tempAnno:
+#                 for i in  self.tempAnno[key]:
+#                     idx = self.absIdx[key][i]
+#                     self.scene.removeItem(self.frames[key][i])
+#                     col = QColor(0,0,0,0)
+#                     self.frames[key][i] = \
+#                             (self.scene.addRect(QRectF(idx, 0, 1, self.boxHeight),
+#                             QPen(QColor(0,0,0,0)), QBrush(col)))
+                 
             # erase in original annotation
             # save to file
-            self.tempAnno = dict()      
-        cfg.log.debug("(AnnoView) - end")
+            self.tempAnno = dict()
+            
+        cfg.log.error("TODO: did not yet implement refresh of annodict")
+#         self.refreshAnnotations()
+        self.updateConfidenceList()      
             
     @cfg.logClassFunction
     def resetAnno(self):
@@ -1222,19 +1354,19 @@ class AnnoView(QGraphicsView):
             for key in self.tempAnno:
                 for idx in  self.tempAnno[key]:
                     self.scene.removeItem(self.tempAnno[key][idx])            
-                    
+                     
         if self.erasingAnno:            
             for key in self.tempAnno:
                 for idx in self.tempAnno[key]:
                     self.frames[key][idx].setVisible(True)  
-    
+     
     @cfg.logClassFunction
     def escapeAnno(self):
         self.resetAnno()
         self.erasingAnno = False
         self.addingAnno = False
-            
-            
+             
+             
     @cfg.logClassFunction
     def addTempAnno(self):
         self.resetAnno()
@@ -1242,35 +1374,35 @@ class AnnoView(QGraphicsView):
             #~ for key in self.tempAnno:
                 #~ for idx in  self.tempAnno[key]:
                     #~ self.scene.removeItem(self.tempAnno[key][idx])
-            
-            tempEnd = FramePosition(self.annotationDict, self.selKey, self.idx)            
-            rng = generateRangeValuesFromKeys(self.tempStart, tempEnd) 
-                                                    
-            self.tempAnno = dict()
-            for key in rng:
-                self.tempAnno[key] = dict()
-                for i in rng[key]:
-                    idx = self.absIdx[key][i]
-                    col = self.color
-                    self.tempAnno[key][i] = \
-                        (self.scene.addRect(QRectF(idx, 0, 1, self.boxHeight),
-                        QPen(QColor(0,0,0,0)), QBrush(col)))
-                
+             
+            tempEnd = bsc.FramePosition(self.annotationDict, self.selKey, self.idx)            
+            self.tempRng = bsc.generateRangeValuesFromKeys(self.tempStart, tempEnd) 
+                                                     
+#             self.tempAnno = dict()
+#             for key in rng:
+#                 self.tempAnno[key] = dict()
+#                 for i in rng[key]:
+#                     idx = self.absIdx[key][i]
+#                     col = self.color
+#                     self.tempAnno[key][i] = \
+#                         (self.scene.addRect(QRectF(idx, 0, 1, self.boxHeight),
+#                         QPen(QColor(0,0,0,0)), QBrush(col)))
+                 
         if self.erasingAnno:            
             #~ for key in self.tempAnno:
                 #~ for idx in self.tempAnno[key]:
                     #~ self.frames[key][idx].setVisible(True)  
-            
-            tempEnd = FramePosition(self.annotationDict, self.selKey, self.idx)            
-            rng = generateRangeValuesFromKeys(self.tempStart, tempEnd)                                                                  
-            
-            self.tempAnno = dict()
-            for key in rng:
-                self.tempAnno[key] = dict()
-                for i in rng[key]:
-                    idx = self.absIdx[key][i]
-                    self.tempAnno[key][i] = self.frames[key][idx]
-                    self.frames[key][idx].setVisible(False)
+             
+            tempEnd = bsc.FramePosition(self.annotationDict, self.selKey, self.idx)            
+            self.tempRng = bsc.generateRangeValuesFromKeys(self.tempStart, tempEnd)                                                                  
+             
+#             self.tempAnno = dict()
+#             for key in rng:
+#                 self.tempAnno[key] = dict()
+#                 for i in rng[key]:
+#                     idx = self.absIdx[key][i]
+#                     self.tempAnno[key][i] = self.frames[key][idx]
+#                     self.frames[key][idx].setVisible(False)
         
 class BaseThread(QThread):
     @cfg.logClassFunction
@@ -1511,7 +1643,7 @@ class VideoHandler(QObject):
         self.posPath = ''
         self.idx = 0
         self.pathIdx = 0
-        self.dictLength = 31         # should be odd, otherwise fix checkBuffers()!
+        self.dictLength = 51         # should be odd, otherwise fix checkBuffers()!
         
         self.posList = sorted(posList)
         self.posPath = posList[0]
@@ -1609,10 +1741,9 @@ class VideoHandler(QObject):
         
         
         if doBufferCheck:
-            self.checkBuffer(updateAnnotationViews)
-            
-        if updateAnnotationViews:
-            self.updateAnnoViewPositions()
+            self.checkBuffer(updateAnnotationViews)            
+            if updateAnnotationViews:
+                self.updateAnnoViewPositions()
             
             
         return frame
@@ -1649,8 +1780,8 @@ class VideoHandler(QObject):
                             cfg.log.warning("This is the very last frame, cannot advance further")
                         
         
-        for aV in self.annoViewList:
-            aV.addAnnotationToSceneIncrement(increment * 2)
+#         for aV in self.annoViewList:
+#             aV.addAnnotationToSceneIncrement(increment * 2)
             
         cfg.log.debug("(videohander) - end")
         return self.getCurrentFrame(doBufferCheck=doBufferCheck)
@@ -1675,8 +1806,8 @@ class VideoHandler(QObject):
                         if doBufferCheck:
                             cfg.log.warning("This is the very first frame, cannot go back further")
                         
-        for aV in self.annoViewList:
-            aV.addAnnotationToSceneIncrement(decrement * 2)
+#         for aV in self.annoViewList:
+#             aV.addAnnotationToSceneIncrement(decrement * 2)
             
         cfg.log.debug("(videohander) - end")
         return self.getCurrentFrame(doBufferCheck=doBufferCheck)
@@ -1757,6 +1888,7 @@ class VideoHandler(QObject):
     def addAnnoView(self, annoView):
         for vidPath in self.videoDict:
             if not self.videoDict[vidPath].loading:
+                cfg.log.debug("annotation id: {0}".format(id(self.videoDict[vidPath].annotation)))
                 annoView.addAnnotation(self.videoDict[vidPath].annotation, vidPath)
                 
         self.annoViewList += [annoView]
@@ -1768,8 +1900,8 @@ class VideoHandler(QObject):
     @cfg.logClassFunction
     def updateAnnoViewPositions(self):
         if self.loadingFinished:
-            self.loadAnnotationBundle()
             self.loadingFinished = False
+            self.loadAnnotationBundle()
             
         for aV in self.annoViewList:
             aV.setPosition(self.posPath, self.idx)
@@ -1777,14 +1909,11 @@ class VideoHandler(QObject):
     @cfg.logClassFunction
     @pyqtSlot(list)
     def updateNewAnnotation(self, annotationBundle):  
-        cfg.log.debug("(videohander) - begin")       
         self.annotationBundle += [annotationBundle]
         self.loadingFinished = True
-        cfg.log.debug("(videohander) - end")      
         
     @cfg.logClassFunction
-    def loadAnnotationBundle(self):
-        cfg.log.debug("(videohander) - begin")      
+    def loadAnnotationBundle(self):   
         self.annotationBundle = sorted(self.annotationBundle, key=lambda x: x[1])
         
         for annotationBundle in self.annotationBundle:
@@ -1793,11 +1922,9 @@ class VideoHandler(QObject):
                                  addAllAtOnce=(not self.loadProgressive))
             
         self.annotationBundle = []
-        cfg.log.debug("(videohander) - end")
             
     @cfg.logClassFunction
-    def addFrameToAnnotation(self, vialNo, annotator, behaviour):       
-        cfg.log.debug("(videohander) - begin")
+    def addFrameToAnnotation(self, vialNo, annotator, behaviour):   
         for aV in self.annoViewList:
             aV.addFramesToAnnotation(self.posPath, [self.idx], annotator, 
                                                                     behaviour)
@@ -1805,7 +1932,6 @@ class VideoHandler(QObject):
         
         self.videoDict[self.posPath].addAnnotation(vialNo, [self.idx], 
                                                    behaviour, annotator)
-        cfg.log.debug("(videohander) - end")
                                                                     
     @cfg.logClassFunction
     def annoViewZoom(self, zoomLevel):
@@ -1814,7 +1940,6 @@ class VideoHandler(QObject):
         
     @cfg.logClassFunction
     def addAnnotation(self, vial, annotator, behaviour, confidence):
-        cfg.log.debug("(videohander) - begin")
         for aV in self.annoViewList:
             if (aV.behaviourName == None) \
             or (behaviour == aV.behaviourName) \
@@ -1827,7 +1952,7 @@ class VideoHandler(QObject):
                         aV.addAnno()
                         
         if self.annoAltStart == None:
-            self.annoAltStart = FramePosition(self.videoDict, self.posPath, 
+            self.annoAltStart = bsc.FramePosition(self.videoDict, self.posPath, 
                                                                     self.idx)
             self.annoAltFilter = AnnotationFilter([vial], [annotator], 
                                                                     [behaviour])
@@ -1839,8 +1964,8 @@ class VideoHandler(QObject):
             if not sameAnnotationFilter:
                 self.escapeAnnotationAlteration()
             else:
-                annoEnd = FramePosition(self.videoDict, self.posPath, self.idx)            
-                rng = generateRangeValuesFromKeys(self.annoAltStart, annoEnd)
+                annoEnd = bsc.FramePosition(self.videoDict, self.posPath, self.idx)            
+                rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd)
                 self.annoAltStart = None
             
             for key in rng:
@@ -1852,8 +1977,20 @@ class VideoHandler(QObject):
                               b=behaviour, c=confidence))
                 tmpFilename = key.split(".pos")[0] + ".bhvr~"
                 self.videoDict[key].annotation.saveToFile(tmpFilename)
+                
+                # refresh annotation in anno view
+                for aV in self.annoViewList:
+                    if (aV.behaviourName == None) \
+                    or (behaviour == aV.behaviourName) \
+                    or (behaviour in aV.behaviourName):
+                        if (aV.annotator == None) \
+                        or (annotator == aV.annotator) \
+                        or (annotator in aV.annotator):
+                            if vial == aV.vialNo:
+                                cfg.log.debug("refreshing annotation")
+                                aV.addAnnotation(self.videoDict[key].annotation,
+                                                 key)
         
-        cfg.log.debug("(videohander) - end")
         
     @cfg.logClassFunction
     def eraseAnnotation(self, vial, annotator, behaviour):
@@ -1869,7 +2006,7 @@ class VideoHandler(QObject):
                         aV.eraseAnno()
                         
         if self.annoAltStart == None:
-            self.annoAltStart = FramePosition(self.videoDict, self.posPath, 
+            self.annoAltStart = bsc.FramePosition(self.videoDict, self.posPath, 
                                                                     self.idx)
             self.annoAltFilter = AnnotationFilter([vial], [annotator], 
                                                                     [behaviour])
@@ -1881,8 +2018,8 @@ class VideoHandler(QObject):
             if not sameAnnotationFilter:
                 self.escapeAnnotationAlteration()
             else:
-                annoEnd = FramePosition(self.videoDict, self.posPath, self.idx)            
-                rng = generateRangeValuesFromKeys(self.annoAltStart, annoEnd)
+                annoEnd = bsc.FramePosition(self.videoDict, self.posPath, self.idx)            
+                rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd)
                 self.annoAltStart == None
                 
                 for key in rng:
@@ -1890,6 +2027,19 @@ class VideoHandler(QObject):
                                             annotator, behaviour)
                     tmpFilename = key.split(".pos")[0] + ".bhvr~"
                     self.videoDict[key].annotation.saveToFile(tmpFilename)
+                
+                # refresh annotation in anno view
+                for aV in self.annoViewList:
+                    if (aV.behaviourName == None) \
+                    or (behaviour == aV.behaviourName) \
+                    or (behaviour in aV.behaviourName):
+                        if (aV.annotator == None) \
+                        or (annotator == aV.annotator) \
+                        or (annotator in aV.annotator):
+                            if vial == aV.vialNo:
+                                cfg.log.debug("refreshing annotation")
+                                aV.addAnnotation(self.videoDict[key].annotation,
+                                                 key)
     
                         
     @cfg.logClassFunction
