@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Mon Aug 12 00:28:34 2013
+# Created: Mon Aug 12 14:27:09 2013
 #      by: PyQt4 UI code generator 4.10.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -76,6 +76,9 @@ class Ui_Form(object):
         self.pb_addAnno = QtGui.QPushButton(Form)
         self.pb_addAnno.setGeometry(QtCore.QRect(940, 680, 151, 23))
         self.pb_addAnno.setObjectName(_fromUtf8("pb_addAnno"))
+        self.speed_lbl = QtGui.QLabel(Form)
+        self.speed_lbl.setGeometry(QtCore.QRect(1020, 530, 91, 16))
+        self.speed_lbl.setObjectName(_fromUtf8("speed_lbl"))
 
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
@@ -93,4 +96,5 @@ class Ui_Form(object):
         self.cb_trajectory.setText(_translate("Form", "Show Trajectory", None))
         self.pb_eraseAnno.setText(_translate("Form", "erase annotation", None))
         self.pb_addAnno.setText(_translate("Form", "add annotation", None))
+        self.speed_lbl.setText(_translate("Form", "TextLabel", None))
 

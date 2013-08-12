@@ -83,7 +83,8 @@ class videoPlayer(QMainWindow):
         self.play = False
         self.frameIdx = -1
         self.showTraject = False
-        self.trajNo = 1
+        self.tempTrajSwap = False
+        self.trajNo = 0
         self.trajLabels = []
         self.frames = []
         self.increment = 0
@@ -114,7 +115,10 @@ class videoPlayer(QMainWindow):
         self.timer.timeout.connect(self.showNextFrame)
         self.timerID = None
         
+        
+        self.ui.lbl_v0.setText("current file: {0}".format(self.vh.posPath))
         self.show()
+        self.selectVideo(0)
         self.startVideo()
 #         self.exec_()
         
@@ -159,12 +163,12 @@ class videoPlayer(QMainWindow):
     def createAnnoViews(self):
         self.annoViewList = []
         
-        yPos = 450
-        xPos = 70 
+        yPos = 420
+        xPos = 60 
         height = 20
         width = 1000
         
-        self.createPrevFrames(xPos - 15, yPos - 70)
+        self.createPrevFrames(xPos - 15, yPos - 95)
         
         self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["just testing"],  color = QColor(0,0,255,150), geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
@@ -191,10 +195,15 @@ class videoPlayer(QMainWindow):
         
         self.noPrevFrames = 15
         self.prevFrameLbls = []
+        self.prevConnectHooks = []
         
         for i in range(self.noPrevFrames):
             self.prevFrameLbls += [QLabel(self)]
             self.prevFrameLbls[-1].setGeometry(QRect(xPos, yPos, 64, 64))
+            
+            self.prevConnectHooks += [[QPoint(xPos + 32, yPos + 64), 
+                                       QPoint(xPos + 32, yPos + 66)]]
+            
             if i == (self.noPrevFrames - 1) / 2:
                 self.prevFrameLbls[-1].setLineWidth(3)
                 self.prevFrameLbls[-1].setFrameShape(QFrame.Box)
@@ -203,62 +212,113 @@ class videoPlayer(QMainWindow):
     @cfg.logClassFunction
     def keyPressEvent(self, event):
         key = event.key()
+        
+        self.showTrajectTemp = True
                 
         if key == Qt.Key_S:
             self.increment = 0
             self.play = True
+            if self.tempTrajSwap:
+                self.tempTrajSwap = False
+                self.showTrajectories(True)
             
         if key == Qt.Key_D:
             self.increment = 1
             self.showNextFrame(self.increment)
             self.vh.annoViewZoom(6)
             self.play = False
+            if self.tempTrajSwap:
+                self.tempTrajSwap = False
+                self.showTrajectories(True)
             
         if key == Qt.Key_E:
             self.increment = 1
             self.vh.annoViewZoom(4)
             self.play = True
+            if self.tempTrajSwap:
+                self.tempTrajSwap = False
+                self.showTrajectories(True)
             
         if key == Qt.Key_Y:
             self.increment = 3
             self.vh.annoViewZoom(2)
             self.play = True
+            if self.tempTrajSwap:
+                self.tempTrajSwap = False
+                self.showTrajectories(True)
             
         if key == Qt.Key_C:
             self.increment = 10
             #self.vh.annoViewZoom(1)
             self.play = True
+            if self.tempTrajSwap:
+                self.tempTrajSwap = False
+                self.showTrajectories(True)
             
         if key == Qt.Key_V:
             self.increment = 40
             #self.vh.annoViewZoom(0)
             self.play = True
+            if self.tempTrajSwap:
+                self.tempTrajSwap = False
+                self.showTrajectories(True)
+            
+        if key == Qt.Key_M:
+            self.increment = 60
+            #self.vh.annoViewZoom(0)
+            self.play = True
+            if not self.tempTrajSwap:
+                self.tempTrajSwap = True
+                self.showTrajectories(False)
         
         if key == Qt.Key_A:
             self.increment = -1
             self.showNextFrame(self.increment)
             self.vh.annoViewZoom(6)
             self.play = False
+            if self.tempTrajSwap:
+                self.tempTrajSwap = False
+                self.showTrajectories(True)
             
         if key == Qt.Key_Q:
             self.increment = -1
             self.vh.annoViewZoom(4)
             self.play = True
+            if self.tempTrajSwap:
+                self.tempTrajSwap = False
+                self.showTrajectories(True)
             
         if key == Qt.Key_T:
             self.increment = -3
             self.vh.annoViewZoom(2)
             self.play = True
+            if self.tempTrajSwap:
+                self.tempTrajSwap = False
+                self.showTrajectories(True)
             
         if key == Qt.Key_X:
             self.increment = -10
             #self.vh.annoViewZoom(1)
             self.play = True
+            if self.tempTrajSwap:
+                self.tempTrajSwap = False
+                self.showTrajectories(True)
             
         if key == Qt.Key_Z:
             self.increment = -40
             #self.vh.annoViewZoom(0)
             self.play = True
+            if self.tempTrajSwap:
+                self.tempTrajSwap = False
+                self.showTrajectories(True)
+            
+        if key == Qt.Key_N:
+            self.increment = -60
+            #self.vh.annoViewZoom(0)
+            self.play = True
+            if not self.tempTrajSwap:
+                self.tempTrajSwap = True
+                self.showTrajectories(False)
             
         if key == Qt.Key_I:
             cfg.log.debug("position length: {0}".format(self.vh.getCurrentPositionLength()))
@@ -275,7 +335,30 @@ class videoPlayer(QMainWindow):
             
         if key == Qt.Key_3:
             self.vh.addAnnotation(0, "peter", "flying", confidence=1)
+            
+        self.ui.speed_lbl.setText("Speed: {0}x".format(self.increment))
         
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        pen = QPen(QColor(100,100,100))
+        pen.setWidth(0.2)
+        
+        painter.setPen(pen)
+        
+        avHooks = self.annoViewList[0].prevConnectHooks
+        midAVHook = len(avHooks) / 2
+        startAVHook = midAVHook - (len(self.prevConnectHooks) - 1) / 2
+        
+        for i in range(0,len(self.prevConnectHooks),2):            
+            aVi = startAVHook + i
+            
+            painter.drawLine(self.prevConnectHooks[i][0], self.prevConnectHooks[i][1])   
+            painter.drawLine(self.prevConnectHooks[i][1], avHooks[aVi][1])            
+
+            painter.drawLine(avHooks[aVi][0], avHooks[aVi][1])            
+            
         
     @cfg.logClassFunction
     def updateFrameList(self, intList):
@@ -353,6 +436,7 @@ class videoPlayer(QMainWindow):
         #if self.frames != []:
         #    self.frames.pop(0)
         self.frames = []    
+        sv = self.selectedVial
         
         offset = 5  
         
@@ -365,24 +449,24 @@ class videoPlayer(QMainWindow):
             increment = 8
             offset = (self.trajNo / 2) 
         
-        i = 0
-        while len(self.frames) < self.trajNo:
-            i += 1
+        frame = self.frames[0]
+        self.updateLabel(self.lbl_v0, frame[0][0], frame[1][sv])
+        
+        self.frames = []
+        for i in range(self.trajNo):
             self.frames += [self.vh.getTempFrame(increment * (i - offset))] 
         
-        sv = self.selectedVial
         
-        for i in range(self.trajNo-1, -1, -1):
+        for i in range(len(self.frames)-1, -1, -1):
             frame = self.frames[i]
-            if i == 0:
-                self.updateLabel(self.lbl_v0, frame[0][0], frame[1][sv])
-#                 self.updateLabel(self.lbl_v1, frame[0][1], frame[1][1])
-#                 self.updateLabel(self.lbl_v2, frame[0][2], frame[1][2])
-#                 self.updateLabel(self.lbl_v3, frame[0][3], frame[1][3])
-            
-#                 self.updateOriginalLabel(self.ui.lbl_v3_full, frame[1][3])
-            else:
-                self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
+#             if i == 0:
+# #                 self.updateLabel(self.lbl_v1, frame[0][1], frame[1][1])
+# #                 self.updateLabel(self.lbl_v2, frame[0][2], frame[1][2])
+# #                 self.updateLabel(self.lbl_v3, frame[0][3], frame[1][3])
+#             
+# #                 self.updateOriginalLabel(self.ui.lbl_v3_full, frame[1][3])
+#             else:
+            self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
 #                 self.updateLabel(self.trajLabels[i][1], frame[0][1], None)
 #                 self.updateLabel(self.trajLabels[i][2], frame[0][2], None)
 #                 self.updateLabel(self.trajLabels[i][3], frame[0][3], None)
@@ -451,6 +535,7 @@ class videoPlayer(QMainWindow):
         #~ self.ui.label.setPixmap(px)
         
         self.videoView = QGraphicsView(self)        
+        self.videoView.setFrameStyle(QFrame.NoFrame)
         self.videoView.setGeometry(QRect(10, 10, w, h))#1920/2, 1080/2))
         self.videoScene = QGraphicsScene(self)
         self.videoScene.setItemIndexMethod(QGraphicsScene.NoIndex)
@@ -666,7 +751,7 @@ class videoPlayer(QMainWindow):
         if self.showTraject:
             self.trajNo = 50
         else:
-            self.trajNo = 1
+            self.trajNo = 0
             
         if self.trajLabels != []:
             for i in range(len(self.trajLabels)):
@@ -678,7 +763,7 @@ class videoPlayer(QMainWindow):
         self.trajLabels = []
         for i in range(self.trajNo):
             lbl = []
-            for k in range(4):
+            for k in range(1):
                 #l = QLabel(self)
                 geo = QRectF(0, 0, 64, 64)
                 penCol = QColor()
@@ -777,7 +862,7 @@ class AnnoViewManager(QObject):
     
     
     
-class AnnoView(QGraphicsView):
+class AnnoView(QWidget):
     
     @cfg.logClassFunction
     def __init__(self, parent, vialNo=None, behaviourName=None, annotator=None,
@@ -787,14 +872,27 @@ class AnnoView(QGraphicsView):
         
         # draw center markers of graphics view
         
-        self.setFrameStyle(QFrame.NoFrame)
         if geo is not None:
             self.setGeometry(geo)
+            
+        self.setStyleSheet("* {margin: 0px; border-width: 0px; padding: 0px}")
+        self.gV = QGraphicsView(self)
+        self.gV.setGeometry(QRect(-5, 0, geo.width(), geo.height()))
+        self.gV.setFrameStyle(QFrame.NoFrame)
+        self.gV.setStyleSheet("* {margin: 0px; border-width: 0px; padding: 0px}")
         
         self.cMarker1 = QLabel(parent)
         self.cMarker1.setGeometry(QRect(geo.x() + geo.width() / 2, 
                                        geo.y() -15, 1, geo.height() + 30))
         self.cMarker1.setFrameShape(QFrame.Box)
+        
+        self.prevConnectHooks = []
+        parPos = self.mapToParent(QPoint(0,0))
+        for i in range(100):
+            self.prevConnectHooks += [[QPoint(parPos.x(), parPos.y()), 
+                                       QPoint(parPos.x(), parPos.y() - 3)]]
+            parPos.setX(parPos.x() + 10)
+            
         
 #         self.cMarker2 = QLabel(parent)
 #         self.cMarker2.setGeometry(QRect(geo.x() + geo.width() / 2 + 6, 
@@ -838,18 +936,18 @@ class AnnoView(QGraphicsView):
 #         self.setGeometry(geo)
         
         # setting values
-        self.scene = QGraphicsScene(parent)
+        self.scene = QGraphicsScene(self.gV)
 #         self.scene.setSceneRect(QRectF(-50000, -20, 100000, 20))
-        self.setScene(self.scene)
+        self.gV.setScene(self.scene)
         
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.gV.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.gV.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         
         self.vialNo = vialNo
         self.behaviourName = behaviourName
         self.annotator = annotator
         
-        self.setViewport(QGLWidget(parent))
+#         self.gV.setViewport(QGLWidget(parent))
         
         if color == None:
             self.color = QColor(0,255,0,150)
@@ -867,7 +965,7 @@ class AnnoView(QGraphicsView):
         self.addList = []  #{key: (string), range: slice}
         self.removeList = []  #{key: (string), range: slice}
         
-        self.frameAmount = 201 ## odd number please
+        self.frameAmount = 101 ## odd number please
         
         self.confidenceList = []
         self.tempRng = dict()
@@ -878,7 +976,7 @@ class AnnoView(QGraphicsView):
             self.frames += [(self.scene.addRect(QRectF(i, 0, 1, self.boxHeight)))]
         
         center = self.frameAmount / 2 + 1
-        self.centerOn(self.frames[center])
+        self.gV.centerOn(self.frames[center])
         self.setZoom(self.zoom)
 #         self.centerOn(self.frames[0])
             
@@ -933,7 +1031,7 @@ class AnnoView(QGraphicsView):
             for line in self.lines:
                 line.setVisible(True)
         
-        self.setTransform(QTransform().scale(scale, 1))
+        self.gV.setTransform(QTransform().scale(scale, 1))
         
         self.zoom = zoomLevel
         self.updateGraphicView()
