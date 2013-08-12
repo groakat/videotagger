@@ -88,6 +88,7 @@ class videoPlayer(QMainWindow):
         self.trajLabels = []
         self.frames = []
         self.increment = 0
+        self.tempIncrement = 0
         self.stop = False
         
         self.vh = VideoHandler(self.fileList, self.changeVideo)
@@ -349,15 +350,18 @@ class videoPlayer(QMainWindow):
         
         avHooks = self.annoViewList[0].prevConnectHooks
         midAVHook = len(avHooks) / 2
-        startAVHook = midAVHook - (len(self.prevConnectHooks) - 1) / 2
-        
+        startAVHook = midAVHook - (len(self.prevConnectHooks) - 1) / 2 + \
+                        self.tempIncrement
+                                
         for i in range(0,len(self.prevConnectHooks),2):            
             aVi = startAVHook + i
             
             painter.drawLine(self.prevConnectHooks[i][0], self.prevConnectHooks[i][1])   
             painter.drawLine(self.prevConnectHooks[i][1], avHooks[aVi][1])            
 
-            painter.drawLine(avHooks[aVi][0], avHooks[aVi][1])            
+            painter.drawLine(avHooks[aVi][0], avHooks[aVi][1])       
+            
+        
             
         
     @cfg.logClassFunction
@@ -427,9 +431,22 @@ class videoPlayer(QMainWindow):
         
         lbl.update()
         
+        
+    @cfg.logClassFunction
+    def showTempFrame(self, increment):
+        self.tempIncrement = increment
+        self.showNextFrame(self.tempIncrement, checkBuffer=False)
+        self.update()
+        
+        
+    @cfg.logClassFunction
+    def resetTempFrame(self):
+        self.showNextFrame(-self.tempIncrement, checkBuffer=False)
+        self.tempIncrement = 0
+        self.update()
     
     @cfg.logClassFunction
-    def showNextFrame(self, increment=None):
+    def showNextFrame(self, increment=None, checkBuffer=True):
         if increment is None:
             increment = self.increment
         
@@ -441,9 +458,9 @@ class videoPlayer(QMainWindow):
         offset = 5  
         
         if increment > 0:
-            self.frames += [self.vh.getNextFrame(increment)]
+            self.frames += [self.vh.getNextFrame(increment, checkBuffer)]
         elif increment < 0:
-            self.frames += [self.vh.getPrevFrame(-increment)]
+            self.frames += [self.vh.getPrevFrame(-increment, checkBuffer)]
         else:
             self.frames += [self.vh.getCurrentFrame()]
             increment = 8
@@ -809,8 +826,10 @@ class videoPlayer(QMainWindow):
         self.vh.loadProgressive = True
         
 #     @cfg.logClassFunction
-    def addAnno(self):
-        self.vh.addAnnotation(0, "peter", "just testing", confidence=1)
+    def addAnno(self, annotator="peter", behaviour="just testing", confidence=1):
+        self.vh.addAnnotation(0, annotator, behaviour, confidence=confidence)
+#     @cfg.logClassFunction
+
         
 #     @cfg.logClassFunction
     def eraseAnno(self):
@@ -861,18 +880,27 @@ class AnnoViewManager(QObject):
         
     
     
-class AnnoViewRect(QGraphicsRectItem):
-    def __init__(self, parent, rect):
-        super(AnnoViewRect, self).__init__(rect, parent=parent)
-        self.acceptHoverEvents(True)
-        
+class AnnoViewItem(QGraphicsRectItem):
+    def __init__(self, annoView, rect):
+        QGraphicsRectItem.__init__(self)
+        self.setRect(rect)
+        self.setAcceptHoverEvents(True)
+        self.annoView = annoView
+
     def hoverEnterEvent(self, event):
-        pen = QPen(QColor(255,0,0))
-        self.setPen(pen)
-        
+        self.setPen(Qt.red)
+        self.annoView.centerAt(self)
+        QGraphicsRectItem.hoverEnterEvent(self, event)
+    
     def hoverLeaveEvent(self, event):
-        pen = QPen(QColor(0,0,0, 255))
-        self.setPen(pen)
+        self.setPen(QColor(0,0,0,0))
+        self.annoView.centerAt(None)
+        QGraphicsRectItem.hoverLeaveEvent(self, event)
+        
+    def mousePressEvent(self, event):
+        self.annoView.alterAnnotation(self)
+        QGraphicsRectItem.mousePressEvent(self, event)
+
     
     
 class AnnoView(QWidget):
@@ -984,15 +1012,38 @@ class AnnoView(QWidget):
         self.tempRng = dict()
         self.lines = []
         self.frames = []
+        self.annoViewRects = []
+        
+        
         for i in range(self.frameAmount):
-            self.lines += [(self.scene.addLine(i, 0, i, self.boxHeight,  QPen(QColor(100,100,100))))]                
-            self.frames += [(self.scene.addItem(AnnoViewRect(QRectF(i, 0, 1, self.boxHeight))))]
+            self.lines += [(self.scene.addLine(i, 0, i, self.boxHeight,  QPen(QColor(100,100,100))))]
+            
+        for i in range(self.frameAmount):
+            self.frames += [AnnoViewItem(self, QRectF(i, 0, 1, self.boxHeight))]#self, QRectF(i, 0, 1, self.boxHeight))]                
+            self.scene.addItem(self.frames[-1])
         
         center = self.frameAmount / 2 + 1
         self.gV.centerOn(self.frames[center])
         self.setZoom(self.zoom)
 #         self.centerOn(self.frames[0])
             
+    def centerAt(self, avItem):        
+        for i in range(len(self.frames)):
+            if avItem is self.frames[i]:
+                mid = (self.frameAmount + 1) / 2
+                cfg.log.info("centering at {0} - {1}".format(i, mid))
+                self.parent().showTempFrame(i-mid)
+                
+        if avItem is None:
+            self.parent().resetTempFrame()
+            
+    def alterAnnotation(self, avItem):        
+        for i in range(len(self.frames)):
+            if avItem is self.frames[i]:
+                self.parent().addAnno(annotator="peter", behaviour="just testing", confidence=1)
+                
+        if avItem is None:
+            self.parent().resetTempFrame()
         
     @cfg.logClassFunction
     def addAnnotation(self, annotation, key, addAllAtOnce=True):
