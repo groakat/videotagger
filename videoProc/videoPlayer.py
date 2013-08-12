@@ -115,6 +115,7 @@ class videoPlayer(QMainWindow):
         self.timerID = None
         
         self.show()
+        self.startVideo()
 #         self.exec_()
         
         
@@ -146,10 +147,6 @@ class videoPlayer(QMainWindow):
         self.xOffset = -32 + (self.xFactor*64) / 2
         self.yOffset = -32 + (self.yFactor*64) / 2
         
-        self.ui.lbl_v0.resize(self.xFactor*64, self.yFactor*64)
-        self.ui.lbl_v1.resize(self.xFactor*64, self.yFactor*64)
-        self.ui.lbl_v2.resize(self.xFactor*64, self.yFactor*64)
-        self.ui.lbl_v3.resize(self.xFactor*64, self.yFactor*64)
         
         self.ui.lbl_v0.setStyleSheet("background-color: rgba(255, 255, 255, 10);")
         
@@ -166,6 +163,8 @@ class videoPlayer(QMainWindow):
         xPos = 70 
         height = 20
         width = 1000
+        
+        self.createPrevFrames(xPos - 15, yPos - 70)
         
         self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["just testing"],  color = QColor(0,0,255,150), geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
@@ -186,6 +185,20 @@ class videoPlayer(QMainWindow):
         
         for aV in self.annoViewList:
             cfg.log.debug("av: {aV}".format(aV=aV))
+            
+            
+    def createPrevFrames(self, xPos, yPos):
+        
+        self.noPrevFrames = 15
+        self.prevFrameLbls = []
+        
+        for i in range(self.noPrevFrames):
+            self.prevFrameLbls += [QLabel(self)]
+            self.prevFrameLbls[-1].setGeometry(QRect(xPos, yPos, 64, 64))
+            if i == (self.noPrevFrames - 1) / 2:
+                self.prevFrameLbls[-1].setLineWidth(3)
+                self.prevFrameLbls[-1].setFrameShape(QFrame.Box)
+            xPos += 64 + 5
         
     @cfg.logClassFunction
     def keyPressEvent(self, event):
@@ -217,7 +230,7 @@ class videoPlayer(QMainWindow):
             self.play = True
             
         if key == Qt.Key_V:
-            self.increment = 60
+            self.increment = 40
             #self.vh.annoViewZoom(0)
             self.play = True
         
@@ -367,15 +380,27 @@ class videoPlayer(QMainWindow):
 #                 self.updateLabel(self.lbl_v2, frame[0][2], frame[1][2])
 #                 self.updateLabel(self.lbl_v3, frame[0][3], frame[1][3])
             
-                self.updateOriginalLabel(self.ui.lbl_v0_full, frame[1][sv])
-#                 self.updateOriginalLabel(self.ui.lbl_v1_full, frame[1][1])
-#                 self.updateOriginalLabel(self.ui.lbl_v2_full, frame[1][2])
 #                 self.updateOriginalLabel(self.ui.lbl_v3_full, frame[1][3])
             else:
                 self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
 #                 self.updateLabel(self.trajLabels[i][1], frame[0][1], None)
 #                 self.updateLabel(self.trajLabels[i][2], frame[0][2], None)
 #                 self.updateLabel(self.trajLabels[i][3], frame[0][3], None)
+
+
+        offset = (len(self.prevFrameLbls) - 1) / 2
+        self.prevFrames = []
+        for i in range(len(self.prevFrameLbls)):
+            self.prevFrames += [self.vh.getTempFrame(i - offset)]
+            self.updateOriginalLabel(self.prevFrameLbls[i], self.prevFrames[i][1][sv])
+#             
+#         self.prevFrames += [self.vh.getTempFrame(-1)]
+#         self.prevFrames += [self.vh.getTempFrame(0)]
+#         self.prevFrames += [self.vh.getTempFrame(1)]
+#         
+#         self.updateOriginalLabel(self.ui.lbl_v0_full, prevFrames[0][1][sv])
+#         self.updateOriginalLabel(self.ui.lbl_v1_full, prevFrames[1][1][sv])
+#         self.updateOriginalLabel(self.ui.lbl_v2_full, prevFrames[2][1][sv])
         
         
         
@@ -677,9 +702,11 @@ class videoPlayer(QMainWindow):
     @pyqtSlot(str)
     def changeVideo(self, filePath):
         cfg.log.debug("Change video to {0}".format(filePath))
-        posInLst = self.fileList.index(filePath)
+        
+        self.ui.lbl_v0.setText("current file: {0}".format(filePath))
+#         posInLst = self.fileList.index(filePath)
                 
-        self.ui.lv_paths.setCurrentIndex(self.lm.index(posInLst,0))
+#         self.ui.lv_paths.setCurrentIndex(self.lm.index(posInLst,0))
         #self.updateFrameList(range(self.vh.getCurrentVideoLength()))
         
         cfg.log.debug("end")
@@ -783,7 +810,7 @@ class AnnoView(QGraphicsView):
         self.annotationDict = dict()
         self.annotationUnfiltered = dict()
         self.color = QColor(0,255,0,150)
-        self.zoomLevels = [0.5, 0.6, 0.8, 1, 2, 5, 10]
+        self.zoomLevels = [10,10,10,10,10,10,10]#[0.5, 0.6, 0.8, 1, 2, 5, 10]
         self.zoom = 2
         self.lines = dict()
         self.frames = dict()
