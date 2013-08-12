@@ -861,6 +861,19 @@ class AnnoViewManager(QObject):
         
     
     
+class AnnoViewRect(QGraphicsRectItem):
+    def __init__(self, parent, rect):
+        super(AnnoViewRect, self).__init__(rect, parent=parent)
+        self.acceptHoverEvents(True)
+        
+    def hoverEnterEvent(self, event):
+        pen = QPen(QColor(255,0,0))
+        self.setPen(pen)
+        
+    def hoverLeaveEvent(self, event):
+        pen = QPen(QColor(0,0,0, 255))
+        self.setPen(pen)
+    
     
 class AnnoView(QWidget):
     
@@ -973,7 +986,7 @@ class AnnoView(QWidget):
         self.frames = []
         for i in range(self.frameAmount):
             self.lines += [(self.scene.addLine(i, 0, i, self.boxHeight,  QPen(QColor(100,100,100))))]                
-            self.frames += [(self.scene.addRect(QRectF(i, 0, 1, self.boxHeight)))]
+            self.frames += [(self.scene.addItem(AnnoViewRect(QRectF(i, 0, 1, self.boxHeight))))]
         
         center = self.frameAmount / 2 + 1
         self.gV.centerOn(self.frames[center])
