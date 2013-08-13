@@ -49,7 +49,7 @@ class MyListModel(QAbstractListModel):
 
 #################################################################### 
 
-KeyIdxPair = namedtuple('KeyIdxPair', ['key', 'idx'])
+KeyIdxPair = namedtuple('KeyIdxPair', ['key', 'idx', 'conf'])
 
 class videoPlayer(QMainWindow):      
     quit = pyqtSignal()
@@ -68,6 +68,7 @@ class videoPlayer(QMainWindow):
         # Set up the user interface from Designer.
         self.ui = Ui_Form()
         self.ui.setupUi(self)
+        self.ui.cb_trajectory.setChecked(True)
         
         self.connectSignals()       
         
@@ -82,7 +83,7 @@ class videoPlayer(QMainWindow):
         self.idx = 0       
         self.play = False
         self.frameIdx = -1
-        self.showTraject = False
+        self.showTraject = True
         self.tempTrajSwap = False
         self.trajNo = 0
         self.trajLabels = []
@@ -104,7 +105,7 @@ class videoPlayer(QMainWindow):
         
         self.updateFrameList(range(2000))
         
-        self.configureUI() 
+        self.configureUI()
         
         self.vialRoi = [[350, 660], [661, 960], [971, 1260], [1270, 1600]]
         
@@ -118,6 +119,8 @@ class videoPlayer(QMainWindow):
         
         
         self.ui.lbl_v0.setText("current file: {0}".format(self.vh.posPath))
+        self.ui.cb_trajectory.setChecked(True)
+        self.showTrajectories(True)
         self.show()
         self.selectVideo(0)
         self.startVideo()
@@ -329,7 +332,7 @@ class videoPlayer(QMainWindow):
             self.escapeAnnotationAlteration()
             
         if key == Qt.Key_1:
-            self.vh.addAnnotation(0, "peter", "falling", confidence=1)
+            self.vh.addAnnotation(0, "peter", "just testing", confidence=1)
             
         if key == Qt.Key_2:
             self.vh.addAnnotation(0, "peter", "struggle", confidence=1)
@@ -832,8 +835,8 @@ class videoPlayer(QMainWindow):
 
         
 #     @cfg.logClassFunction
-    def eraseAnno(self):
-        self.vh.eraseAnnotation(0, "peter", "just testing")
+    def eraseAnno(self, annotator="peter", behaviour="just testing"):
+        self.vh.eraseAnnotation(0, annotator, behaviour)
         
 #     @cfg.logClassFunction
     def escapeAnnotationAlteration(self):
@@ -1033,6 +1036,9 @@ class AnnoView(QWidget):
                 mid = (self.frameAmount + 1) / 2
                 cfg.log.info("centering at {0} - {1}".format(i, mid))
                 self.parent().showTempFrame(i-mid)
+                self.setPosition(self.confidenceList[i].key, 
+                                 self.confidenceList[i].idx,
+                                 tempPositionOnly=True)
                 
         if avItem is None:
             self.parent().resetTempFrame()
@@ -1040,7 +1046,26 @@ class AnnoView(QWidget):
     def alterAnnotation(self, avItem):        
         for i in range(len(self.frames)):
             if avItem is self.frames[i]:
-                self.parent().addAnno(annotator="peter", behaviour="just testing", confidence=1)
+                if self.addingAnno:
+                    self.parent().addAnno(annotator=self.annotator[0], 
+                                          behaviour=self.behaviourName[0],
+                                          confidence=1)
+                elif self.erasingAnno:
+                    self.parent().eraseAnno(annotator=self.annotator[0], 
+                                          behaviour=self.behaviourName[0])
+                else:                  
+                    key = self.confidenceList[i].key
+                    idx = self.confidenceList[i].idx  
+                    if self.annotationDict[key].frameList[idx] is not None:
+                        self.parent().eraseAnno(annotator=self.annotator[0], 
+                                              behaviour=self.behaviourName[0])
+                    else: 
+                        self.parent().addAnno(annotator=self.annotator[0], 
+                                              behaviour=self.behaviourName[0],
+                                              confidence=1)
+#                 
+#                 self.addAnno(self.confidenceList[i].key, 
+#                                  self.confidenceList[i].idx)
                 
         if avItem is None:
             self.parent().resetTempFrame()
@@ -1065,17 +1090,18 @@ class AnnoView(QWidget):
             del self.annotationUnfiltered[key]   
         
     @cfg.logClassFunction
-    def setPosition(self, key=None, idx=None):
+    def setPosition(self, key=None, idx=None, tempPositionOnly=False):
         if key is None:
             key = self.selKey
         if idx is None:
             idx = self.idx
                     
-        self.selKey = key
-        self.idx = idx
-        self.addTempAnno()
-        
-        self.updateConfidenceList(key, idx)
+        if not tempPositionOnly:
+            self.selKey = key
+            self.idx = idx
+            
+        self.addTempAnno(key, idx)        
+        self.updateConfidenceList()#(key, idx)
         self.updateGraphicView()
         
     @cfg.logClassFunction
@@ -1139,7 +1165,7 @@ class AnnoView(QWidget):
                     startKey = keyList[curKeyPos]
                     cfg.log.debug("distFirst {0}".format(dist2first))
                     for i in range(dist2first + 1):
-                        self.confidenceList += [None]
+                        self.confidenceList += [KeyIdxPair(None, None, None)]
                     break
                 else:
                     remainingFrames = \
@@ -1172,21 +1198,21 @@ class AnnoView(QWidget):
                             and (curIdx in self.tempRng[curKey])):
                 conf = None
             else:
-                conf = KeyIdxPair(curKey, curIdx)
-                  
-            self.confidenceList += [conf]            
+                conf = self.annotationDict[curKey].frameList[curIdx]
+                                  
+            self.confidenceList += [KeyIdxPair(curKey, curIdx, conf)]            
             curIdx += 1     
         
     @cfg.logClassFunction
     def updateGraphicView(self):
         for i in range(len(self.confidenceList)):   
-            kip = self.confidenceList[i]
-            if kip == None:
-                conf = None
-            elif kip == 1:
-                conf = 1
-            else:
-                conf = self.annotationDict[kip.key].frameList[kip.idx]
+            conf = self.confidenceList[i].conf
+#             if kip == None:
+#                 conf = None
+#             elif kip == 1:
+#                 conf = 1
+#             else:
+#                 conf = self.annotationDict[kip.key].frameList[kip.idx]
 #             cfg.log.warning("{0}".format(conf))
             if conf is not None:
                 self.frames[i].setBrush(self.brushA)
@@ -1196,13 +1222,21 @@ class AnnoView(QWidget):
                 self.frames[i].setPen(self.penI)
                 
     @cfg.logClassFunction
-    def addAnno(self):
-        if not self.addingAnno:
+    def addAnno(self, key=None, idx=None):
+        if key is None:
+            key = self.selKey
+        if idx is None:
+            idx = self.idx
+            
+#         if self.erasingAnno:
+#             self.eraseAnno(key, idx)
+#             return
+        
+        if not self.addingAnno:            
             self.addingAnno = True
             #self.tempStart = [self.selKey, self.idx]
-            self.tempStart = bsc.FramePosition(self.annotationDict, self.selKey, 
-                                                                    self.idx)
-            self.setPosition()  
+            self.tempStart = bsc.FramePosition(self.annotationDict, key, idx)
+            self.setPosition(key, idx, tempPositionOnly=True)
         else:
             self.addingAnno = False  
             self.tempRng = dict()
@@ -1210,13 +1244,17 @@ class AnnoView(QWidget):
 
              
     @cfg.logClassFunction
-    def eraseAnno(self):
+    def eraseAnno(self, key=None, idx=None):
+        if key is None:
+            key = self.selKey
+        if idx is None:
+            idx = self.idx
+            
         if not self.erasingAnno:
             self.erasingAnno = True
-            self.tempStart = bsc.FramePosition(self.annotationDict, self.selKey, 
-                                                                    self.idx)
+            self.tempStart = bsc.FramePosition(self.annotationDict, key, idx)
             self.tempAnno = dict()
-            self.setPosition()   
+            self.setPosition(key, idx, tempPositionOnly=True)
         else:
             self.erasingAnno = False
             self.tempRng = dict()
@@ -1243,15 +1281,21 @@ class AnnoView(QWidget):
              
              
     @cfg.logClassFunction
-    def addTempAnno(self):
+    def addTempAnno(self, key=None, idx=None):
+        if key is None:
+            key = self.selKey
+        if idx is None:
+            idx = self.idx
+            
         self.resetAnno()
-        if self.addingAnno:
-            tempEnd = bsc.FramePosition(self.annotationDict, self.selKey, self.idx)            
+        if self.addingAnno or self.erasingAnno:
+            tempEnd = bsc.FramePosition(self.annotationDict, key, idx)            
             self.tempRng = bsc.generateRangeValuesFromKeys(self.tempStart, tempEnd) 
-
-        if self.erasingAnno:                         
-            tempEnd = bsc.FramePosition(self.annotationDict, self.selKey, self.idx)            
-            self.tempRng = bsc.generateRangeValuesFromKeys(self.tempStart, tempEnd)                    
+# 
+#         if self.erasingAnno:                         
+#             tempEnd = bsc.FramePosition(self.annotationDict, self.selKey, self.idx)            
+#             self.tempRng = bsc.generateRangeValuesFromKeys(self.tempStart, tempEnd)      
+                          
         
 class BaseThread(QThread):
     @cfg.logClassFunction
@@ -1592,6 +1636,7 @@ class VideoHandler(QObject):
         
         if doBufferCheck:
             self.checkBuffer(updateAnnotationViews)            
+        
             if updateAnnotationViews:
                 self.updateAnnoViewPositions()
             
@@ -1748,13 +1793,16 @@ class VideoHandler(QObject):
         self.annoViewList.pop(idx)
         
     @cfg.logClassFunction
-    def updateAnnoViewPositions(self):
+    def updateAnnoViewPositions(self, updateOnlyTempPosition=False):
         if self.loadingFinished:
             self.loadingFinished = False
             self.loadAnnotationBundle()
             
         for aV in self.annoViewList:
-            aV.setPosition(self.posPath, self.idx)
+            aV.setPosition(self.posPath, self.idx, 
+                           tempPositionOnly= updateOnlyTempPosition)
+        
+    
         
     @cfg.logClassFunction
     @pyqtSlot(list)
@@ -1799,7 +1847,7 @@ class VideoHandler(QObject):
                 or (annotator in aV.annotator):
                     if vial == aV.vialNo:
                         cfg.log.debug("calling aV.addAnno()")
-                        aV.addAnno()
+                        aV.addAnno(self.posPath, self.idx)
                         
         if self.annoAltStart == None:
             self.annoAltStart = bsc.FramePosition(self.videoDict, self.posPath, 
@@ -1858,7 +1906,7 @@ class VideoHandler(QObject):
                 or annotator in aV.annotator:
                     if vial == aV.vialNo:
                         cfg.log.debug("eraseAnnotation")
-                        aV.eraseAnno()
+                        aV.eraseAnno(self.posPath, self.idx)
                         
         if self.annoAltStart == None:
             self.annoAltStart = bsc.FramePosition(self.videoDict, self.posPath, 
