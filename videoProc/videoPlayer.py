@@ -27,6 +27,20 @@ from PyQt4.uic.Compiler.qtproxies import QtCore
 from collections import namedtuple
 
 
+import json
+import logging, logging.handlers
+
+logGUI = logging.getLogger("GUI")
+logGUI.setLevel(logging.DEBUG)
+hGUI = logging.FileHandler("/tmp/videoPlayer.log")
+fGUI = logging.Formatter('{time: "%(asctime)s", func:"%(funcName)s", args:%(message)s}')
+hGUI.setFormatter(fGUI)
+for handler in logGUI.handlers:
+    logGUI.removeHandler(handler)
+    
+logGUI.addHandler(hGUI)
+
+
 
 #################################################################### 
 class MyListModel(QAbstractListModel): 
@@ -121,9 +135,11 @@ class videoPlayer(QMainWindow):
         self.ui.lbl_v0.setText("current file: {0}".format(self.vh.posPath))
         self.ui.cb_trajectory.setChecked(True)
         self.showTrajectories(True)
-        self.show()
+        self.show()        
+        logGUI.info("--------- opened GUI ------------")
         self.selectVideo(0)
         self.startVideo()
+        
 #         self.exec_()
         
         
@@ -216,131 +232,145 @@ class videoPlayer(QMainWindow):
     @cfg.logClassFunction
     def keyPressEvent(self, event):
         key = event.key()
-        
-        self.showTrajectTemp = True
                 
-        if key == Qt.Key_S:
-            self.increment = 0
-            self.play = True
-            if self.tempTrajSwap:
-                self.tempTrajSwap = False
-                self.showTrajectories(True)
-            
-        if key == Qt.Key_D:
-            self.increment = 1
-            self.showNextFrame(self.increment)
-            self.vh.annoViewZoom(6)
-            self.play = False
-            if self.tempTrajSwap:
-                self.tempTrajSwap = False
-                self.showTrajectories(True)
-            
-        if key == Qt.Key_E:
-            self.increment = 1
-            self.vh.annoViewZoom(4)
-            self.play = True
-            if self.tempTrajSwap:
-                self.tempTrajSwap = False
-                self.showTrajectories(True)
-            
-        if key == Qt.Key_Y:
-            self.increment = 3
-            self.vh.annoViewZoom(2)
-            self.play = True
-            if self.tempTrajSwap:
-                self.tempTrajSwap = False
-                self.showTrajectories(True)
-            
-        if key == Qt.Key_C:
-            self.increment = 10
-            #self.vh.annoViewZoom(1)
-            self.play = True
-            if self.tempTrajSwap:
-                self.tempTrajSwap = False
-                self.showTrajectories(True)
-            
-        if key == Qt.Key_V:
-            self.increment = 40
-            #self.vh.annoViewZoom(0)
-            self.play = True
-            if self.tempTrajSwap:
-                self.tempTrajSwap = False
-                self.showTrajectories(True)
-            
-        if key == Qt.Key_M:
-            self.increment = 60
-            #self.vh.annoViewZoom(0)
-            self.play = True
-            if not self.tempTrajSwap:
-                self.tempTrajSwap = True
-                self.showTrajectories(False)
+        if(event.modifiers() == Qt.ControlModifier):
+            if(key == Qt.Key_S):
+                cfg.log.info('saving all annotations')
+                event.setAccepted(True)
         
-        if key == Qt.Key_A:
-            self.increment = -1
-            self.showNextFrame(self.increment)
-            self.vh.annoViewZoom(6)
-            self.play = False
-            if self.tempTrajSwap:
-                self.tempTrajSwap = False
-                self.showTrajectories(True)
+        else:
+            self.showTrajectTemp = True
+                   
+                    
+            if key == Qt.Key_F:
+                # stop playback
+                self.increment = 0
+                self.play = True
+                if self.tempTrajSwap:
+                    self.tempTrajSwap = False
+                    self.showTrajectories(True)
+                
+            if key == Qt.Key_G:
+                # step-wise forward
+                self.increment = 1
+                self.showNextFrame(self.increment)
+                self.vh.annoViewZoom(6)
+                self.play = False
+                if self.tempTrajSwap:
+                    self.tempTrajSwap = False
+                    self.showTrajectories(True)
             
-        if key == Qt.Key_Q:
-            self.increment = -1
-            self.vh.annoViewZoom(4)
-            self.play = True
-            if self.tempTrajSwap:
-                self.tempTrajSwap = False
-                self.showTrajectories(True)
-            
-        if key == Qt.Key_T:
-            self.increment = -3
-            self.vh.annoViewZoom(2)
-            self.play = True
-            if self.tempTrajSwap:
-                self.tempTrajSwap = False
-                self.showTrajectories(True)
-            
-        if key == Qt.Key_X:
-            self.increment = -10
-            #self.vh.annoViewZoom(1)
-            self.play = True
-            if self.tempTrajSwap:
-                self.tempTrajSwap = False
-                self.showTrajectories(True)
-            
-        if key == Qt.Key_Z:
-            self.increment = -40
-            #self.vh.annoViewZoom(0)
-            self.play = True
-            if self.tempTrajSwap:
-                self.tempTrajSwap = False
-                self.showTrajectories(True)
-            
-        if key == Qt.Key_N:
-            self.increment = -60
-            #self.vh.annoViewZoom(0)
-            self.play = True
-            if not self.tempTrajSwap:
-                self.tempTrajSwap = True
-                self.showTrajectories(False)
-            
-        if key == Qt.Key_I:
-            cfg.log.debug("position length: {0}".format(self.vh.getCurrentPositionLength()))
-            cfg.log.debug("video length: {0}".format(self.vh.getCurrentVideoLength()))
-            
-        if key == Qt.Key_Escape:
-            self.escapeAnnotationAlteration()
-            
-        if key == Qt.Key_1:
-            self.vh.addAnnotation(0, "peter", "just testing", confidence=1)
-            
-        if key == Qt.Key_2:
-            self.vh.addAnnotation(0, "peter", "struggle", confidence=1)
-            
-        if key == Qt.Key_3:
-            self.vh.addAnnotation(0, "peter", "flying", confidence=1)
-            
-        self.ui.speed_lbl.setText("Speed: {0}x".format(self.increment))
+            if key == Qt.Key_D:
+                # step-wise backward
+                self.increment = -1
+                self.showNextFrame(self.increment)
+                self.vh.annoViewZoom(6)
+                self.play = False
+                if self.tempTrajSwap:
+                    self.tempTrajSwap = False
+                    self.showTrajectories(True)
+                
+            if key == Qt.Key_T:
+                # real-time playback
+                self.increment = 1
+                self.vh.annoViewZoom(4)
+                self.play = True
+                if self.tempTrajSwap:
+                    self.tempTrajSwap = False
+                    self.showTrajectories(True)
+                    
+            if key == Qt.Key_E:
+                # real-time playback
+                self.increment = -1
+                self.vh.annoViewZoom(4)
+                self.play = True
+                if self.tempTrajSwap:
+                    self.tempTrajSwap = False
+                    self.showTrajectories(True)
+                
+            if key == Qt.Key_V:
+                # 
+                self.increment = 3
+                self.vh.annoViewZoom(2)
+                self.play = True
+                if self.tempTrajSwap:
+                    self.tempTrajSwap = False
+                    self.showTrajectories(True)
+                
+            if key == Qt.Key_B:
+                self.increment = 10
+                #self.vh.annoViewZoom(1)
+                self.play = True
+                if self.tempTrajSwap:
+                    self.tempTrajSwap = False
+                    self.showTrajectories(True)
+                
+            if key == Qt.Key_N:
+                self.increment = 40
+                #self.vh.annoViewZoom(0)
+                self.play = True
+                if self.tempTrajSwap:
+                    self.tempTrajSwap = False
+                    self.showTrajectories(True)
+                
+            if key == Qt.Key_H:
+                self.increment = 60
+                #self.vh.annoViewZoom(0)
+                self.play = True
+                if not self.tempTrajSwap:
+                    self.tempTrajSwap = True
+                    self.showTrajectories(False)
+                
+                
+            if key == Qt.Key_X:
+                self.increment = -3
+                self.vh.annoViewZoom(2)
+                self.play = True
+                if self.tempTrajSwap:
+                    self.tempTrajSwap = False
+                    self.showTrajectories(True)
+                
+            if key == Qt.Key_Z:
+                self.increment = -10
+                #self.vh.annoViewZoom(1)
+                self.play = True
+                if self.tempTrajSwap:
+                    self.tempTrajSwap = False
+                    self.showTrajectories(True)
+                
+            if key == Qt.Key_Backslash:
+                self.increment = -40
+                #self.vh.annoViewZoom(0)
+                self.play = True
+                if self.tempTrajSwap:
+                    self.tempTrajSwap = False
+                    self.showTrajectories(True)
+                
+            if key == Qt.Key_S:
+                self.increment = -60
+                #self.vh.annoViewZoom(0)
+                self.play = True
+                if not self.tempTrajSwap:
+                    self.tempTrajSwap = True
+                    self.showTrajectories(False)
+                
+            if key == Qt.Key_I:
+                cfg.log.debug("position length: {0}".format(self.vh.getCurrentPositionLength()))
+                cfg.log.debug("video length: {0}".format(self.vh.getCurrentVideoLength()))
+                
+            if key == Qt.Key_Escape:
+                self.escapeAnnotationAlteration()
+                
+            if key == Qt.Key_1:
+                self.vh.addAnnotation(0, "peter", "just testing", confidence=1)
+                
+            if key == Qt.Key_2:
+                self.vh.addAnnotation(0, "peter", "struggle", confidence=1)
+                
+            if key == Qt.Key_3:
+                self.vh.addAnnotation(0, "peter", "flying", confidence=1)
+                
+            self.ui.speed_lbl.setText("Speed: {0}x".format(self.increment))
         
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -450,6 +480,9 @@ class videoPlayer(QMainWindow):
     
     @cfg.logClassFunction
     def showNextFrame(self, increment=None, checkBuffer=True):
+        logGUI.debug(json.dumps({"increment":increment, 
+                                 "checkBuffer":checkBuffer}))
+        
         if increment is None:
             increment = self.increment
         
@@ -602,7 +635,8 @@ class videoPlayer(QMainWindow):
         
         self.stop = False
         
-         
+        
+        logGUI.info("--------- start mainloop ------------")
          
         while not self.stop:
             cfg.log.debug("begin   --------------------------------------- main loop")
@@ -642,6 +676,7 @@ class videoPlayer(QMainWindow):
             cfg.log.debug("end   ------------------------------------------ main loop")
          
         self.vh.loadProgressive = False
+        logGUI.info("--------- stopped mainloop ------------")
         
     @cfg.logClassFunction
     def providePosList(self, path):
@@ -829,13 +864,18 @@ class videoPlayer(QMainWindow):
         self.vh.loadProgressive = True
         
 #     @cfg.logClassFunction
-    def addAnno(self, annotator="peter", behaviour="just testing", confidence=1):
+    def addAnno(self, annotator="peter", behaviour="just testing", confidence=1):        
+        logGUI.info(json.dumps({"annotator": annotator,
+                                "behaviour": behaviour,
+                                "confidence": confidence}))
         self.vh.addAnnotation(0, annotator, behaviour, confidence=confidence)
 #     @cfg.logClassFunction
 
         
 #     @cfg.logClassFunction
-    def eraseAnno(self, annotator="peter", behaviour="just testing"):
+    def eraseAnno(self, annotator="peter", behaviour="just testing"):      
+        logGUI.info(json.dumps({"annotator": annotator,
+                                "behaviour": behaviour}))
         self.vh.eraseAnnotation(0, annotator, behaviour)
         
 #     @cfg.logClassFunction
@@ -1030,17 +1070,27 @@ class AnnoView(QWidget):
         self.setZoom(self.zoom)
 #         self.centerOn(self.frames[0])
             
-    def centerAt(self, avItem):        
+    def centerAt(self, avItem):
         for i in range(len(self.frames)):
             if avItem is self.frames[i]:
-                mid = (self.frameAmount + 1) / 2
-                cfg.log.info("centering at {0} - {1}".format(i, mid))
-                self.parent().showTempFrame(i-mid)
-                self.setPosition(self.confidenceList[i].key, 
-                                 self.confidenceList[i].idx,
-                                 tempPositionOnly=True)
+                mid = (self.frameAmount + 1) / 2                
+                [key, idx, conf] = self.confidenceList[i]
                 
-        if avItem is None:
+                logGUI.debug(json.dumps({"selectedItem":True,
+                                         "key":key, 
+                                         "idx":idx,
+                                         "annotator":self.annotator,
+                                         "behaviour":self.behaviourName}))
+                
+                self.parent().showTempFrame(i-mid)
+                self.setPosition(key, idx, tempPositionOnly=True)
+                
+        if avItem is None:                
+            logGUI.debug(json.dumps({"selectedItem":False,
+                                     "key":None, 
+                                     "idx":None,
+                                     "annotator":self.annotator,
+                                     "behaviour":self.behaviourName}))
             self.parent().resetTempFrame()
             
     def alterAnnotation(self, avItem):        
@@ -1640,6 +1690,9 @@ class VideoHandler(QObject):
             if updateAnnotationViews:
                 self.updateAnnoViewPositions()
             
+            logGUI.debug(json.dumps({"key":self.posPath, 
+                                     "idx":self.idx}))
+            
             
         return frame
         
@@ -1874,8 +1927,9 @@ class VideoHandler(QObject):
                                             annotator, behaviour, confidence)
                                             
                     cfg.log.info("add annotation vial {v}| range {r}| annotator {a}| behaviour {b}| confidence {c}".format(
-                                  v=vial, r=rng[key], a=annotator,
+                                v=vial, r=rng[key], a=annotator,
                                   b=behaviour, c=confidence))
+                    
                     tmpFilename = key.split(".pos")[0] + ".bhvr~"
                     self.videoDict[key].annotation.saveToFile(tmpFilename)
                     
@@ -1892,6 +1946,12 @@ class VideoHandler(QObject):
                                     aV.addAnnotation(\
                                                 self.videoDict[key].annotation,
                                                      key)
+                
+                logGUI.info(json.dumps({"vial":vial,
+                                       "key-range":rng, 
+                                       "annotator":annotator,
+                                       "behaviour":behaviour, 
+                                       "confidence":confidence}))
                 
                 self.annoAltStart = None
         
@@ -1948,6 +2008,13 @@ class VideoHandler(QObject):
                                     aV.addAnnotation(\
                                                 self.videoDict[key].annotation,
                                                      key)
+                                    
+                logGUI.info(json.dumps({"vial":vial,
+                                       "key-range":rng, 
+                                       "annotator":annotator,
+                                       "behaviour":behaviour}))
+                
+                self.annoAltStart = None
         
                         
     @cfg.logClassFunction
