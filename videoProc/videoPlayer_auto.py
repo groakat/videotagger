@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Mon Aug 12 14:27:09 2013
+# Created: Tue Aug 13 19:42:27 2013
 #      by: PyQt4 UI code generator 4.10.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -79,6 +79,12 @@ class Ui_Form(object):
         self.speed_lbl = QtGui.QLabel(Form)
         self.speed_lbl.setGeometry(QtCore.QRect(1020, 530, 91, 16))
         self.speed_lbl.setObjectName(_fromUtf8("speed_lbl"))
+        self.lbl_eraser = QtGui.QLabel(Form)
+        self.lbl_eraser.setGeometry(QtCore.QRect(10, 500, 51, 61))
+        self.lbl_eraser.setText(_fromUtf8(""))
+        self.lbl_eraser.setPixmap(QtGui.QPixmap(_fromUtf8("Actions-draw-eraser-icon.png")))
+        self.lbl_eraser.setScaledContents(True)
+        self.lbl_eraser.setObjectName(_fromUtf8("lbl_eraser"))
 
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)

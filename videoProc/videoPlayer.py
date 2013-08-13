@@ -105,6 +105,8 @@ class videoPlayer(QMainWindow):
         self.increment = 0
         self.tempIncrement = 0
         self.stop = False
+        self.addingAnnotations = True
+        self.ui.lbl_eraser.setVisible(False)
         
         self.vh = VideoHandler(self.fileList, self.changeVideo)
 #         self.vh.changedFile.connect(self.changeVideo)
@@ -254,7 +256,6 @@ class videoPlayer(QMainWindow):
                 # step-wise forward
                 self.increment = 1
                 self.showNextFrame(self.increment)
-                self.vh.annoViewZoom(6)
                 self.play = False
                 if self.tempTrajSwap:
                     self.tempTrajSwap = False
@@ -264,7 +265,6 @@ class videoPlayer(QMainWindow):
                 # step-wise backward
                 self.increment = -1
                 self.showNextFrame(self.increment)
-                self.vh.annoViewZoom(6)
                 self.play = False
                 if self.tempTrajSwap:
                     self.tempTrajSwap = False
@@ -273,7 +273,6 @@ class videoPlayer(QMainWindow):
             if key == Qt.Key_T:
                 # real-time playback
                 self.increment = 1
-                self.vh.annoViewZoom(4)
                 self.play = True
                 if self.tempTrajSwap:
                     self.tempTrajSwap = False
@@ -282,7 +281,6 @@ class videoPlayer(QMainWindow):
             if key == Qt.Key_E:
                 # real-time playback
                 self.increment = -1
-                self.vh.annoViewZoom(4)
                 self.play = True
                 if self.tempTrajSwap:
                     self.tempTrajSwap = False
@@ -291,7 +289,6 @@ class videoPlayer(QMainWindow):
             if key == Qt.Key_V:
                 # 
                 self.increment = 3
-                self.vh.annoViewZoom(2)
                 self.play = True
                 if self.tempTrajSwap:
                     self.tempTrajSwap = False
@@ -299,7 +296,6 @@ class videoPlayer(QMainWindow):
                 
             if key == Qt.Key_B:
                 self.increment = 10
-                #self.vh.annoViewZoom(1)
                 self.play = True
                 if self.tempTrajSwap:
                     self.tempTrajSwap = False
@@ -307,7 +303,6 @@ class videoPlayer(QMainWindow):
                 
             if key == Qt.Key_N:
                 self.increment = 40
-                #self.vh.annoViewZoom(0)
                 self.play = True
                 if self.tempTrajSwap:
                     self.tempTrajSwap = False
@@ -315,7 +310,6 @@ class videoPlayer(QMainWindow):
                 
             if key == Qt.Key_H:
                 self.increment = 60
-                #self.vh.annoViewZoom(0)
                 self.play = True
                 if not self.tempTrajSwap:
                     self.tempTrajSwap = True
@@ -324,7 +318,6 @@ class videoPlayer(QMainWindow):
                 
             if key == Qt.Key_X:
                 self.increment = -3
-                self.vh.annoViewZoom(2)
                 self.play = True
                 if self.tempTrajSwap:
                     self.tempTrajSwap = False
@@ -332,7 +325,6 @@ class videoPlayer(QMainWindow):
                 
             if key == Qt.Key_Z:
                 self.increment = -10
-                #self.vh.annoViewZoom(1)
                 self.play = True
                 if self.tempTrajSwap:
                     self.tempTrajSwap = False
@@ -340,7 +332,6 @@ class videoPlayer(QMainWindow):
                 
             if key == Qt.Key_Backslash:
                 self.increment = -40
-                #self.vh.annoViewZoom(0)
                 self.play = True
                 if self.tempTrajSwap:
                     self.tempTrajSwap = False
@@ -348,7 +339,6 @@ class videoPlayer(QMainWindow):
                 
             if key == Qt.Key_S:
                 self.increment = -60
-                #self.vh.annoViewZoom(0)
                 self.play = True
                 if not self.tempTrajSwap:
                     self.tempTrajSwap = True
@@ -362,13 +352,26 @@ class videoPlayer(QMainWindow):
                 self.escapeAnnotationAlteration()
                 
             if key == Qt.Key_1:
-                self.vh.addAnnotation(0, "peter", "just testing", confidence=1)
+                self.alterAnnotation("peter", "just testing", confidence=1)
                 
             if key == Qt.Key_2:
-                self.vh.addAnnotation(0, "peter", "struggle", confidence=1)
+                self.alterAnnotation("peter", "struggle", confidence=1)
                 
             if key == Qt.Key_3:
-                self.vh.addAnnotation(0, "peter", "flying", confidence=1)
+                self.alterAnnotation("peter", "flying", confidence=1)
+                
+            if key == Qt.Key_Q:
+                self.addingAnnotations = not self.addingAnnotations
+                if not self.addingAnnotations:
+                    cfg.log.info("changed to erasing mode")
+                    self.ui.lbl_eraser.setVisible(True)                      
+                             
+                else:
+                    cfg.log.info("changed to adding mode")                    
+                    self.ui.lbl_eraser.setVisible(False)
+                
+                logGUI.info(json.dumps({"addingAnnotations": 
+                                        self.addingAnnotations}))
                 
             self.ui.speed_lbl.setText("Speed: {0}x".format(self.increment))
         
@@ -619,7 +622,7 @@ class videoPlayer(QMainWindow):
         fmt.setOverlay(True)
         fmt.setDoubleBuffer(True);                 
         fmt.setDirectRendering(True);
-        
+         
         self.videoView.setViewport(QGLWidget(fmt))
         self.videoView.show()
         self.videoView.fitInView(self.bgImg, Qt.KeepAspectRatio)
@@ -863,6 +866,12 @@ class videoPlayer(QMainWindow):
         self.showNextFrame(0)
         self.vh.loadProgressive = True
         
+    def alterAnnotation(self, annotator="peter", behaviour="just testing", confidence=1):
+        if self.addingAnnotations:
+            self.addAnno(annotator, behaviour, confidence)
+        else:
+            self.eraseAnno(annotator, behaviour)
+            
 #     @cfg.logClassFunction
     def addAnno(self, annotator="peter", behaviour="just testing", confidence=1):        
         logGUI.info(json.dumps({"annotator": annotator,
@@ -1067,7 +1076,7 @@ class AnnoView(QWidget):
         
         center = self.frameAmount / 2 + 1
         self.gV.centerOn(self.frames[center])
-        self.setZoom(self.zoom)
+        self.setZoom(0)
 #         self.centerOn(self.frames[0])
             
     def centerAt(self, avItem):
@@ -1164,12 +1173,12 @@ class AnnoView(QWidget):
     def setZoom(self, zoomLevel):
         #scale absolute
         scale = self.zoomLevels[self.zoom]
-        if self.zoom < 4:
-            for line in self.lines:
-                line.setVisible(False)
-        else:
-            for line in self.lines:
-                line.setVisible(True)
+#         if self.zoom < 4:
+#             for line in self.lines:
+#                 line.setVisible(False)
+#         else:
+        for line in self.lines:
+            line.setVisible(True)
         
         self.gV.setTransform(QTransform().scale(scale, 1))
         
