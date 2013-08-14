@@ -29,16 +29,7 @@ from collections import namedtuple
 
 import json
 import logging, logging.handlers
-
-logGUI = logging.getLogger("GUI")
-logGUI.setLevel(logging.DEBUG)
-hGUI = logging.FileHandler("/tmp/videoPlayer.log")
-fGUI = logging.Formatter('{time: "%(asctime)s", func:"%(funcName)s", args:%(message)s}')
-hGUI.setFormatter(fGUI)
-for handler in logGUI.handlers:
-    logGUI.removeHandler(handler)
-    
-logGUI.addHandler(hGUI)
+import os
 
 
 
@@ -192,13 +183,13 @@ class videoPlayer(QMainWindow):
         
         self.createPrevFrames(xPos - 15, yPos - 95)
         
-        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["just testing"],  color = QColor(0,0,255,150), geo=QRect(xPos, yPos, width, height))]
+        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["falling"],  color = QColor(0,0,255,150), geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1]) 
         yPos += height + 5
         
-        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["struggle"], color = QColor(0,255,0,150), geo=QRect(xPos, yPos, width, height))]
+        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["dropping"], color = QColor(0,255,0,150), geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry()
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1])       
@@ -238,6 +229,7 @@ class videoPlayer(QMainWindow):
         if(event.modifiers() == Qt.ControlModifier):
             if(key == Qt.Key_S):
                 cfg.log.info('saving all annotations')
+                self.saveAll()
                 event.setAccepted(True)
         
         else:
@@ -352,10 +344,10 @@ class videoPlayer(QMainWindow):
                 self.escapeAnnotationAlteration()
                 
             if key == Qt.Key_1:
-                self.alterAnnotation("peter", "just testing", confidence=1)
+                self.alterAnnotation("peter", "falling", confidence=1)
                 
             if key == Qt.Key_2:
-                self.alterAnnotation("peter", "struggle", confidence=1)
+                self.alterAnnotation("peter", "dropping", confidence=1)
                 
             if key == Qt.Key_3:
                 self.alterAnnotation("peter", "flying", confidence=1)
@@ -855,6 +847,11 @@ class videoPlayer(QMainWindow):
         cfg.log.debug("end")
         
     @cfg.logClassFunction
+    def saveAll(self):
+        logGUI.info("")
+        self.vh.saveAll()
+        
+    @cfg.logClassFunction
     def prefetchVideo(self, posPath):        
         self.vl = VideoLoader()
         self.vl.loadedVideos.connect(self.addVideo)
@@ -889,7 +886,8 @@ class videoPlayer(QMainWindow):
         
 #     @cfg.logClassFunction
     def escapeAnnotationAlteration(self):
-        cfg.log.info("escape annotation")
+        cfg.log.info("escape annotation")    
+        logGUI.info("")
         self.vh.escapeAnnotationAlteration()
         
         
@@ -1801,6 +1799,11 @@ class VideoHandler(QObject):
                 if updateAnnoViewPositions:
                     for aV in self.annoViewList:
                         aV.removeAnnotation(vidPath)
+                        
+                
+                cfg.log.debug("save annotation")
+                tmpFilename = vidPath.split(".pos")[0] + ".bhvr"
+                self.videoDict[vidPath].annotation.saveToFile(tmpFilename)
                                     
                 cfg.log.debug("delete video dict")
 #                 self.dump = self.videoDict[vidPath]
@@ -2028,7 +2031,7 @@ class VideoHandler(QObject):
                         
     @cfg.logClassFunction
     def escapeAnnotationAlteration(self):
-        self.annoAltStart == None
+        self.annoAltStart = None
         
         for aV in self.annoViewList:
             aV.escapeAnno()
@@ -2198,6 +2201,21 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     
     path = '/run/media/peter/Elements/peter/data/tmp-20130506'
+    
+    logGUI = logging.getLogger("GUI")
+    logGUI.setLevel(logging.DEBUG)
+    hGUI = logging.FileHandler(os.path.join(path, 
+                    "videoPlayer." + \
+                    time.strftime("%Y-%m-%d.%H-%M-%S", time.localtime()) +\
+                    ".log"))
+    fGUI = logging.Formatter('{time: "%(asctime)s", func:"%(funcName)s", args:%(message)s}')
+    hGUI.setFormatter(fGUI)
+    for handler in logGUI.handlers:
+        logGUI.removeHandler(handler)
+        
+    logGUI.addHandler(hGUI)
+    
+    
     w = videoPlayer(path, videoFormat='avi')
     
     app.connect(app, SIGNAL("aboutToQuit()"), w.stopVideo)
