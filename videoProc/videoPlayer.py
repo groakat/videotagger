@@ -2243,26 +2243,21 @@ class VideoLoaderLuncher(QObject):
             cfg.log.info("create new VideoLoader {0}".format(path))                  
             videoLoaderThread = MyThread("videoLoader {0}".format(path))
             vL = VideoLoader(path, vH, thread=videoLoaderThread)      
-            vL.moveToThread(videoLoaderThread)  
-            videoLoaderThread.started.connect(vL.loadVideos)          
+            vL.moveToThread(videoLoaderThread)         
             videoLoaderThread.start()
-#             signal = pyqtSignal
-#             signal.connect(vL.loadVideos)
-            self.threads[vL] = videoLoaderThread
+
+            signal = "loadVideo {0}".format(len(self.threads.keys()))
+            self.connect(self, SIGNAL(signal), vL.loadVideos) 
+            self.emit(SIGNAL(signal))
+            self.threads[vL] = [videoLoaderThread, signal]
             
         else:
             vL = self.availableVLs.pop()
             cfg.log.info("recycle new VideoLoader {0}, was previous: {1}".format(path, vL.posPath))
-            del self.threads[vL]       
-#             thread.quit()
-            videoLoaderThread = MyThread("videoLoader {0}".format(path))
-            vL.__init__(path, vH,thread=videoLoaderThread)     
-            vL.moveToThread(videoLoaderThread)  
-            videoLoaderThread.started.connect(vL.loadVideos)          
-            videoLoaderThread.start()
-#             signal = pyqtSignal
-#             signal.connect(vL.loadVideos)
-            self.threads[vL] = videoLoaderThread
+            thread, signal = self.threads[vL]
+            vL.__init__(path, vH,thread=thread)     
+            self.emit(SIGNAL(signal))
+
             
 #         vL.loadedAnnotation.connect(cb)
         self.createdVideoLoader.emit([path, vL])
