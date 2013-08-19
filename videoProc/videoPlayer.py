@@ -1271,7 +1271,7 @@ class AnnoView(QWidget):
         
         for i in range(self.frameAmount - len(self.confidenceList)):
             if curIdx >= len(self.annotationDict[curKey].frameList):
-                curKeyPos += 1
+#                 curKeyPos += 1
                 curKey = keyList[curKeyPos]
                 curIdx = 0
                             
@@ -1794,7 +1794,7 @@ class VideoHandler(QObject):
             changedFile = False
             while self.idx >= \
                     self.videoDict[self.posPath].getVideoLength(): 
-                if pos != len(keys):
+                if pos != len(keys) - 1:
                     self.idx -= self.videoDict[self.posPath].getVideoLength()                                         
                     self.posPath = keys[pos+1]
                     pos += 1 
