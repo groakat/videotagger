@@ -1794,7 +1794,7 @@ class VideoHandler(QObject):
             changedFile = False
             while self.idx >= \
                     self.videoDict[self.posPath].getVideoLength(): 
-                if pos != self.dictLength:
+                if pos != len(keys):
                     self.idx -= self.videoDict[self.posPath].getVideoLength()                                         
                     self.posPath = keys[pos+1]
                     pos += 1 
@@ -2328,7 +2328,7 @@ if __name__ == "__main__":
                     "videoPlayer." + \
                     time.strftime("%Y-%m-%d.%H-%M-%S", time.localtime()) +\
                     ".log"))
-    fGUI = logging.Formatter('{time: "%(asctime)s", func:"%(funcName)s", args:%(message)s}')
+    fGUI = logging.Formatter('{"time": "%(asctime)s", "func":"%(funcName)s", "args":%(message)s}')
     hGUI.setFormatter(fGUI)
     for handler in logGUI.handlers:
         logGUI.removeHandler(handler)
