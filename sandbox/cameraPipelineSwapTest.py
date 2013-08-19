@@ -389,10 +389,10 @@ class pipelineSwap(object):
     def resetBin(self, bin):         
         bin.set_state(Gst.State.NULL)    
         
-        if bin == self.elements["recBin1"]:
-            self.generateRecBin1()
-        else:
-            self.generateRecBin2()        
+#         if bin == self.elements["recBin1"]:
+#             self.generateRecBin1()
+#         else:
+#             self.generateRecBin2()        
         
     
 def blockActiveQueuePad(pad, probeInfo, userData):   

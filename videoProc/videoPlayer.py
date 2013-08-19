@@ -99,7 +99,11 @@ class videoPlayer(QMainWindow):
         self.addingAnnotations = True
         self.ui.lbl_eraser.setVisible(False)
         
-        self.vh = VideoHandler(self.fileList, self.changeVideo)
+        
+        self.vialRoi = [[350, 660], [661, 960], [971, 1260], [1270, 1600]]
+        
+        self.selectedVial = 1
+                
 #         self.vh.changedFile.connect(self.changeVideo)
         
         
@@ -108,15 +112,12 @@ class videoPlayer(QMainWindow):
         
         #self.setVideo(0)
         
+        self.vh = VideoHandler(self.fileList, self.changeVideo, [self.selectedVial])
         
         
         self.updateFrameList(range(2000))
         
         self.configureUI()
-        
-        self.vialRoi = [[350, 660], [661, 960], [971, 1260], [1270, 1600]]
-        
-        self.selectedVial = 0
         
         self.setBackground("/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
         
@@ -182,19 +183,19 @@ class videoPlayer(QMainWindow):
         
         self.createPrevFrames(xPos - 15, yPos - 95)
         
-        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["falling"],  color = QColor(0,0,255,150), geo=QRect(xPos, yPos, width, height))]
+        self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, annotator=["peter"], behaviourName=["falling"],  color = QColor(0,0,255,150), geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1]) 
         yPos += height + 5
         
-        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["dropping"], color = QColor(0,255,0,150), geo=QRect(xPos, yPos, width, height))]
+        self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, annotator=["peter"], behaviourName=["dropping"], color = QColor(0,255,0,150), geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry()
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1])       
         yPos += height + 5 
         
-        self.annoViewList += [AnnoView(self, vialNo=0, annotator=["peter"], behaviourName=["flying"], color = QColor(255,0,0,150), geo=QRect(xPos, yPos, width, height))]
+        self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, annotator=["peter"], behaviourName=["struggling"], color = QColor(255,0,0,150), geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1])      
@@ -367,7 +368,7 @@ class videoPlayer(QMainWindow):
                 self.alterAnnotation("peter", "dropping", confidence=1)
                 
             if key == Qt.Key_3:
-                self.alterAnnotation("peter", "flying", confidence=1)
+                self.alterAnnotation("peter", "struggling", confidence=1)
                 
             if key == Qt.Key_Q:
                 self.addingAnnotations = not self.addingAnnotations
@@ -457,7 +458,7 @@ class videoPlayer(QMainWindow):
             
                 
         newX = p[0] - 32#lblOrigin.x() + p[1] * self.xFactor + self.xOffset
-        newY = self.vialRoi[0][1] - p[1] - 32 #lblOrigin.y() + (p[0] * self.yFactor) + self.yOffset
+        newY = self.vialRoi[self.selectedVial][1] - p[1] - 32 #lblOrigin.y() + (p[0] * self.yFactor) + self.yOffset
         
         
         lbl.setPos(newX,newY)
@@ -515,7 +516,8 @@ class videoPlayer(QMainWindow):
             offset = (self.trajNo / 2) 
         
         frame = self.frames[0]
-        self.updateLabel(self.lbl_v0, frame[0][0], frame[1][sv])
+        self.updateLabel(self.lbl_v0, frame[0][sv], frame[1][sv])
+        
         
         self.frames = []
         for i in range(self.trajNo):
@@ -893,7 +895,7 @@ class videoPlayer(QMainWindow):
         logGUI.info(json.dumps({"annotator": annotator,
                                 "behaviour": behaviour,
                                 "confidence": confidence}))
-        self.vh.addAnnotation(0, annotator, behaviour, confidence=confidence)
+        self.vh.addAnnotation(self.selectedVial, annotator, behaviour, confidence=confidence)
 #     @cfg.logClassFunction
 
         
@@ -901,7 +903,7 @@ class videoPlayer(QMainWindow):
     def eraseAnno(self, annotator="peter", behaviour="just testing"):      
         logGUI.info(json.dumps({"annotator": annotator,
                                 "behaviour": behaviour}))
-        self.vh.eraseAnnotation(0, annotator, behaviour)
+        self.vh.eraseAnnotation(self.selectedVial, annotator, behaviour)
         
 #     @cfg.logClassFunction
     def escapeAnnotationAlteration(self):
@@ -1422,7 +1424,7 @@ class VideoLoader(QObject):
             self.annotation.saveToFile(self.posPath.split('.pos')[0] + '.bhvr')
     
     @cfg.logClassFunction
-    def __init__(self, posPath, videoHandler, selectedVials=[0], thread=None):
+    def __init__(self, posPath, videoHandler, selectedVials=[1], thread=None):
         super(VideoLoader, self).__init__()
         
         self.loading = False
@@ -1455,7 +1457,7 @@ class VideoLoader(QObject):
         self.exiting = False
         self.loading = True
 
-        cfg.log.info("loadVideos: {0} @ {1}".format(self.posPath, QThread.currentThread().objectName()))
+        cfg.log.debug("loadVideos: {0} @ {1}".format(self.posPath, QThread.currentThread().objectName()))
         #         print "RUN", QThread.currentThread().objectName(), QApplication.instance().thread().objectName(), '\n'
         rc = Client()
         cfg.log.debug("rc.ids : {0}".format(rc.ids))
@@ -1535,11 +1537,13 @@ class VideoLoader(QObject):
             self.thread.msleep(10)
         
         cfg.log.debug("videoLoader: copy results")
-        self.frameList = [0 for i in range(len(self.selectedVials))]
-        for i in range(len(self.selectedVials)):
+        self.frameList = [[] for i in range(max(self.selectedVials) + 1)]
+        for i in range(len(results)):
             # copy data
             ar = results[i].get()
-            self.frameList[ar["vialNo"]] = ar["qi"]
+            # TODO: make it dynamic again for later
+            self.frameList[ar["vialNo"]] = ar["qi"] 
+#             self.frameList[0] = ar["qi"]
             # delete data from cluster
             msgId = results[i].msg_id
             #~ del lbview.results[msgId]
@@ -1553,7 +1557,9 @@ class VideoLoader(QObject):
         if True:#not self.exiting:
             cfg.log.debug("videoLoader: load positions")
             self.pos = np.load(self.posPath)
-            self.videoLength = len(self.frameList[0])
+            # using max(self.selectedVials) to make sure that the list entry
+            # has actually some frames and is no dummy
+            self.videoLength = len(self.frameList[max(self.selectedVials)])
         
         if True:#not self.exiting:
             cfg.log.debug("videoLoader: load annotations")
@@ -1602,7 +1608,10 @@ class VideoLoader(QObject):
         if idx < self.videoLength:
             out = []
             for i in range(len(self.frameList)):
-                out += [self.frameList[i][idx]]
+                if not idx >= len(self.frameList[i]):
+                    out += [self.frameList[i][idx]]
+                else:
+                    out += [[]]
                 
             return [self.pos[idx], out]
         else:
@@ -1628,7 +1637,7 @@ class VideoHandler(QObject):
     changedFile = pyqtSignal(str)
     
     @cfg.logClassFunction
-    def __init__(self, posList, fileChangeCb):
+    def __init__(self, posList, fileChangeCb, selectedVials=[0]):
         super(VideoHandler, self).__init__()        
         
         self.videoDict = dict()
@@ -1664,6 +1673,7 @@ class VideoHandler(QObject):
         
         self.fileChangeCB = fileChangeCb
         
+        self.selectedVials = selectedVials
         
         # always do that at the end
         self.checkBuffer()
@@ -1815,7 +1825,7 @@ class VideoHandler(QObject):
             changedFile = False
             while self.idx < 0:
                 if pos != 0:
-                    self.idx += self.videoDict[self.posPath].getVideoLength() 
+                    self.idx += self.videoDict[self.posPath].getVideoLength()
                     self.posPath = keys[pos-1] 
                     pos -= 1              
                     changedFile = True
@@ -1888,7 +1898,7 @@ class VideoHandler(QObject):
         cfg.log.info("fetching {0}".format(path))
 #         vL = VideoLoader(path)
 #         vL.loadedAnnotation.connect(self.updateNewAnnotation)
-        self.newVideoLoader.emit([path, self])
+        self.newVideoLoader.emit([path, self, self.selectedVials])
         self.videoDict[path] = None
         
         
@@ -1936,7 +1946,7 @@ class VideoHandler(QObject):
         self.loadingFinished = True
         
     @cfg.logClassFunction
-    def loadAnnotationBundle(self):   
+    def loadAnnotationBundle(self): 
         self.annotationBundle = sorted(self.annotationBundle, key=lambda x: x[1])
         
         for annotationBundle in self.annotationBundle:
@@ -2217,6 +2227,7 @@ class VideoLoaderLuncher(QObject):
         super(VideoLoaderLuncher, self).__init__(parent)
             
         self.availableVLs = []
+        self.dumpingPlace = []
         self.threads = dict()
         
 #         self.start()
@@ -2239,10 +2250,11 @@ class VideoLoaderLuncher(QObject):
 #         print "RUN", QThread.currentThread().objectName(), QApplication.instance().thread().objectName(), '\n'
         path = lst[0]
         vH = lst[1]
+        selectedVials = lst[2]
         if len(self.availableVLs) == 0:
             cfg.log.info("create new VideoLoader {0}".format(path))                  
-            videoLoaderThread = MyThread("videoLoader {0}".format(path))
-            vL = VideoLoader(path, vH, thread=videoLoaderThread)      
+            videoLoaderThread = MyThread("videoLoader {0}".format(len(self.threads.keys())))
+            vL = VideoLoader(path, vH, thread=videoLoaderThread, selectedVials=selectedVials)      
             vL.moveToThread(videoLoaderThread)         
             videoLoaderThread.start()
 
@@ -2255,7 +2267,7 @@ class VideoLoaderLuncher(QObject):
             vL = self.availableVLs.pop()
             cfg.log.info("recycle new VideoLoader {0}, was previous: {1}".format(path, vL.posPath))
             thread, signal = self.threads[vL]
-            vL.__init__(path, vH,thread=thread)     
+            vL.__init__(path, vH,thread=thread, selectedVials=selectedVials)     
             self.emit(SIGNAL(signal))
 
             
@@ -2265,6 +2277,11 @@ class VideoLoaderLuncher(QObject):
             
     @cfg.logClassFunction
     def deleteVideoLoader(self, lst):
+        for vL in self.dumpingPlace:
+            if vL is not None and not vL.loading and vL.annotation is not None:                 
+                self.availableVLs += [vL]
+                self.dumpingPlace.remove(vL)
+                
         vL = lst[0]
         vidPath = lst[1]
         
@@ -2276,6 +2293,8 @@ class VideoLoaderLuncher(QObject):
                 vL.annotation.saveToFile(tmpFilename)
             
             self.availableVLs += [vL]
+        else:
+            self.dumpingPlace += [vL]
             
     def aboutToQuit(self):
         for key in self.threads:
