@@ -99,10 +99,18 @@ class videoPlayer(QMainWindow):
         self.addingAnnotations = True
         self.ui.lbl_eraser.setVisible(False)
         
+        self.annotations = [{"annot": "peter",
+                             "behav": "falling"},
+                            {"annot": "peter",
+                             "behav": "dropping"},
+                            {"annot": "peter",
+                             "behav": "struggling"},
+                            ]
+        
         
         self.vialRoi = [[350, 660], [661, 960], [971, 1260], [1270, 1600]]
         
-        self.selectedVial = 1
+        self.selectedVial = 2
                 
 #         self.vh.changedFile.connect(self.changeVideo)
         
@@ -129,7 +137,13 @@ class videoPlayer(QMainWindow):
         self.ui.cb_trajectory.setChecked(self.showTraject)
         self.showTrajectories(self.showTraject)
         self.show()        
-        logGUI.info("--------- opened GUI ------------")
+        logGUI.info(json.dumps(
+                            {"message":'"--------- opened GUI ------------"'})) 
+        logGUI.info(json.dumps({"args":
+                                    {"selectedVial":self.selectedVial,
+                                     "annotations":self.annotations
+                                    }\
+                                }))
         self.selectVideo(0)
         self.startVideo()
         
@@ -183,19 +197,31 @@ class videoPlayer(QMainWindow):
         
         self.createPrevFrames(xPos - 15, yPos - 95)
         
-        self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, annotator=["peter"], behaviourName=["falling"],  color = QColor(0,0,255,150), geo=QRect(xPos, yPos, width, height))]
+        self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
+                                       annotator=[self.annotations[0]["annot"]], 
+                                       behaviourName=[self.annotations[0]["behav"]], 
+                                       color = QColor(0,0,255,150),
+                                       geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1]) 
         yPos += height + 5
         
-        self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, annotator=["peter"], behaviourName=["dropping"], color = QColor(0,255,0,150), geo=QRect(xPos, yPos, width, height))]
+        self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
+                                       annotator=[self.annotations[1]["annot"]], 
+                                       behaviourName=[self.annotations[1]["behav"]], 
+                                       color = QColor(0,255,0,150), 
+                                       geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry()
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1])       
         yPos += height + 5 
         
-        self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, annotator=["peter"], behaviourName=["struggling"], color = QColor(255,0,0,150), geo=QRect(xPos, yPos, width, height))]
+        self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
+                                       annotator=[self.annotations[2]["annot"]], 
+                                       behaviourName=[self.annotations[2]["behav"]], 
+                                       color = QColor(255,0,0,150), 
+                                       geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1])      
@@ -238,26 +264,27 @@ class videoPlayer(QMainWindow):
                     
             if key == Qt.Key_F:
                 # stop playback
+                self.play = False
                 self.increment = 0
-                self.play = True
                 if self.tempTrajSwap:
                     self.tempTrajSwap = False
                     self.showTrajectories(True)
                 
             if key == Qt.Key_G:
                 # step-wise forward
-                self.increment = 1
-                self.showNextFrame(self.increment)
                 self.play = False
+#                 self.increment = 1
+#                 self.showNextFrame(self.increment)
+                self.showNextFrame(1)
                 if self.tempTrajSwap:
                     self.tempTrajSwap = False
                     self.showTrajectories(True)
             
             if key == Qt.Key_D:
                 # step-wise backward
-                self.increment = -1
-                self.showNextFrame(self.increment)
                 self.play = False
+#                 self.increment = -1
+                self.showNextFrame(-1)
                 if self.tempTrajSwap:
                     self.tempTrajSwap = False
                     self.showTrajectories(True)
@@ -362,13 +389,22 @@ class videoPlayer(QMainWindow):
                 self.escapeAnnotationAlteration()
                 
             if key == Qt.Key_1:
-                self.alterAnnotation("peter", "falling", confidence=1)
+                self.alterAnnotation(self.annotations[0]["annot"], 
+                                     self.annotations[0]["behav"],
+                                     confidence=1)
+#                 self.alterAnnotation(self.annotations[0]["annot"], 
+#                                      self.annotations[0]["behav"],
+#                                      confidence=1)
                 
             if key == Qt.Key_2:
-                self.alterAnnotation("peter", "dropping", confidence=1)
+                self.alterAnnotation(self.annotations[1]["annot"], 
+                                     self.annotations[1]["behav"],
+                                     confidence=1)
                 
             if key == Qt.Key_3:
-                self.alterAnnotation("peter", "struggling", confidence=1)
+                self.alterAnnotation(self.annotations[2]["annot"], 
+                                     self.annotations[2]["behav"],
+                                     confidence=1)
                 
             if key == Qt.Key_Q:
                 self.addingAnnotations = not self.addingAnnotations
@@ -495,6 +531,9 @@ class videoPlayer(QMainWindow):
     def showNextFrame(self, increment=None, checkBuffer=True):
         logGUI.debug(json.dumps({"increment":increment, 
                                  "checkBuffer":checkBuffer}))
+                
+        
+        cfg.log.info("increment: {0}, checkBuffer: {1}".format(increment, checkBuffer))
         
         if increment is None:
             increment = self.increment
@@ -650,10 +689,10 @@ class videoPlayer(QMainWindow):
         self.stop = False
         
         
-        logGUI.info("--------- start mainloop ------------")
+        logGUI.info('"--------- start mainloop ------------"')
          
         while not self.stop:
-            cfg.log.debug("begin   --------------------------------------- main loop")
+#             cfg.log.debug("begin   --------------------------------------- main loop")
             self.vh.loadProgressive = True
              
             dieTime = QTime.currentTime().addMSecs(33)
@@ -674,23 +713,23 @@ class videoPlayer(QMainWindow):
                 self.ui.lbl_v1.setText("no: {0}".format(frameNo))
 #                 self.ui.lv_frames.setCurrentIndex(self.frameList.index(frameNo,0))
              
-            cfg.log.debug("---------------------------------------- while loop() - begin")
+#             cfg.log.debug("---------------------------------------- while loop() - begin")
             while(QTime.currentTime() < dieTime):
-                cfg.log.debug("processEvents() - begin")
+#                 cfg.log.debug("processEvents() - begin")
                 QApplication.processEvents(QEventLoop.AllEvents)#, QTime.currentTime().msecsTo(dieTime)
-                cfg.log.debug("processEvents() - end")
+#                 cfg.log.debug("processEvents() - end")
                  
             if not(QTime.currentTime() < (dieTime.addMSecs(1))):
                 cfg.log.warning("no realtime display!!! " + 
                                 cfg.Back.YELLOW + 
                                 "mainloop overflow after processEvents(): {0}ms".format(
                                         dieTime.msecsTo(QTime.currentTime())))
-            cfg.log.debug("---------------------------------------  while loop() - end")
+#             cfg.log.debug("---------------------------------------  while loop() - end")
              
-            cfg.log.debug("end   ------------------------------------------ main loop")
+#             cfg.log.debug("end   ------------------------------------------ main loop")
          
         self.vh.loadProgressive = False
-        logGUI.info("--------- stopped mainloop ------------")
+        logGUI.info('"--------- stopped mainloop ------------"')
         
     @cfg.logClassFunction
     def providePosList(self, path):
@@ -699,7 +738,7 @@ class videoPlayer(QMainWindow):
         cfg.log.debug("scaning files...")
         for root,  dirs,  files in os.walk(path):
             for f in files:
-                if f.endswith('npy'):
+                if f.endswith('.pos.npy'):
                     path = root + '/' + f
                     fileList.append(path)
                     
@@ -869,7 +908,7 @@ class videoPlayer(QMainWindow):
         
     @cfg.logClassFunction
     def saveAll(self):
-        logGUI.info("")
+        logGUI.info('""')
         self.vh.saveAll()
         
     @cfg.logClassFunction
@@ -908,7 +947,7 @@ class videoPlayer(QMainWindow):
 #     @cfg.logClassFunction
     def escapeAnnotationAlteration(self):
         cfg.log.info("escape annotation")    
-        logGUI.info("")
+        logGUI.info('"------escape annotation--------"')
         self.vh.escapeAnnotationAlteration()
         
         
@@ -1018,7 +1057,6 @@ class AnnoView(QWidget):
         
         # initialization of parameters
         self.annotationDict = dict()
-        self.annotationUnfiltered = dict()
         self.color = QColor(0,255,0,150)
         self.zoomLevels = [10,10,10,10,10,10,10]#[0.5, 0.6, 0.8, 1, 2, 5, 10]
         self.zoom = 2
@@ -1155,7 +1193,7 @@ class AnnoView(QWidget):
         """
         filt = AnnotationFilter([self.vialNo], self.annotator, 
                                                         self.behaviourName)
-        self.annotationUnfiltered[key] = annotation
+
         self.annotationDict[key] = annotation.filterFrameList(filt)
         
         
@@ -1165,7 +1203,6 @@ class AnnoView(QWidget):
     def removeAnnotation(self, key, rng=None):
         if key in self.annotationDict.keys():
             del self.annotationDict[key]   
-            del self.annotationUnfiltered[key]   
         
     @cfg.logClassFunction
     def setPosition(self, key=None, idx=None, tempPositionOnly=False):
@@ -1234,7 +1271,7 @@ class AnnoView(QWidget):
         if len(keyPosList):
             curKeyPos = keyPosList[0]
         else:
-            # was not loaded yet, yet put all frames to None
+            # was not loaded yet, therefore set all frames to None
             for i in range(self.frameAmount):
                 self.confidenceList += [KeyIdxPair(None, None, None)]
             return
@@ -1249,7 +1286,7 @@ class AnnoView(QWidget):
                     curKeyPos = 0
                     startIdx = 0
                     startKey = keyList[curKeyPos]
-                    cfg.log.debug("distFirst {0}".format(dist2first))
+                    cfg.log.debug("dist2First {0}".format(dist2first))
                     for i in range(dist2first + 1):
                         self.confidenceList += [KeyIdxPair(None, None, None)]
                     break
@@ -1271,7 +1308,7 @@ class AnnoView(QWidget):
         
         for i in range(self.frameAmount - len(self.confidenceList)):
             if curIdx >= len(self.annotationDict[curKey].frameList):
-#                 curKeyPos += 1
+                curKeyPos += 1
                 curKey = keyList[curKeyPos]
                 curIdx = 0
                             
@@ -2003,7 +2040,7 @@ class VideoHandler(QObject):
                 lenFunc = lambda x: len(x.frameList[0])
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
-            
+                            
                 for key in rng:
                     self.videoDict[key].annotation.addAnnotation(vial, rng[key], 
                                             annotator, behaviour, confidence)
