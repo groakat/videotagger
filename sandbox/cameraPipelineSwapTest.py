@@ -229,7 +229,8 @@ class pipelineSwap(object):
         # register function that initiates swap of filename in Gtk mainloop #
         # make sure that that it will be called at the beginning of the next 
         # minute 
-        GLib.timeout_add_seconds(60 - localtime().tm_sec, self.blockFirstFrame)
+        self.timeoutSec = 60
+        GLib.timeout_add_seconds(self.timeoutSec - localtime().tm_sec, self.blockFirstFrame)
         
     def run(self):        
         self.log.debug("start pipeline")
@@ -372,7 +373,7 @@ class pipelineSwap(object):
             False (to unregister itself from a GLib.timout_add())
         """   
         if self.inFirstMinute:
-            GLib.timeout_add_seconds(60, self.blockOnNextKeyframe)
+            GLib.timeout_add_seconds(self.timeoutSec, self.blockOnNextKeyframe)
             
         self.blockOnNextKeyframe()
         return False
@@ -388,11 +389,11 @@ class pipelineSwap(object):
     
     def resetBin(self, bin):         
         bin.set_state(Gst.State.NULL)    
-        
-#         if bin == self.elements["recBin1"]:
-#             self.generateRecBin1()
-#         else:
-#             self.generateRecBin2()        
+         
+        if bin == self.elements["recBin1"]:
+            self.generateRecBin1()
+        else:
+            self.generateRecBin2()        
         
     
 def blockActiveQueuePad(pad, probeInfo, userData):   

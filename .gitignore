@@ -42,12 +42,27 @@ sandbox/*
 # python environment files
 startEnv
 pyToolsEnv/*
+pyToolsEnvCopy/*
 
 # bin files
 libs/*
+
 
 # IPython notebooks
 *.ipynb
 
 # sphinx documentation system
 doc/sphinx/build/*
+*.pdf
+
+# media files
+*.png
+*.ogv
+*.mp4
+
+# archives
+*.tgz
+*.json
+
+# metadata
+.metadata

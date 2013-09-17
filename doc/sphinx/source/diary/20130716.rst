@@ -1,0 +1,20 @@
+==========
+16/07/2013
+==========
+
+rebuilding pipeline swapping using an mp4 file instead of camera
+################################################################
+
+* need to wait for EOS to be processed before stopping pipeline
+
+.. code-block:: python
+
+    self.log.debug("send EOS")
+    self.pipelines["main"].send_event(Gst.Event.new_eos())           
+    bus = self.pipelines["main"].get_bus()        
+    msg = bus.timed_pop_filtered (Gst.CLOCK_TIME_NONE, Gst.MessageType.EOS | Gst.MessageType.ERROR)
+            
+    self.log.debug("null pipeline")
+    self.pipelines["main"].set_state(Gst.State.NULL)    
+    
+* setting fakebin to PLAYING uses huge amounts of RAM. Might be the problem for the memory leak in the old code

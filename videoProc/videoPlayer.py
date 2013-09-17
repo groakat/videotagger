@@ -108,9 +108,9 @@ class videoPlayer(QMainWindow):
                             ]
         
         
-        self.vialRoi = [[350, 660], [661, 960], [971, 1260], [1270, 1600]]
+        self.vialRoi = [[350, 660], [661, 960], [971, 1260], [1290, 1590]]
         
-        self.selectedVial = 2
+        self.selectedVial = 3
                 
 #         self.vh.changedFile.connect(self.changeVideo)
         
@@ -533,7 +533,7 @@ class videoPlayer(QMainWindow):
                                  "checkBuffer":checkBuffer}))
                 
         
-        cfg.log.info("increment: {0}, checkBuffer: {1}".format(increment, checkBuffer))
+#         cfg.log.info("increment: {0}, checkBuffer: {1}".format(increment, checkBuffer))
         
         if increment is None:
             increment = self.increment
@@ -1308,6 +1308,11 @@ class AnnoView(QWidget):
         
         for i in range(self.frameAmount - len(self.confidenceList)):
             if curIdx >= len(self.annotationDict[curKey].frameList):
+                if (curKeyPos + 1) >= len(keyList):
+                    # end of file list
+                    self.confidenceList += [KeyIdxPair(None, None, None)]
+                    continue                  
+                    
                 curKeyPos += 1
                 curKey = keyList[curKeyPos]
                 curIdx = 0
@@ -1443,7 +1448,7 @@ class BaseThread(QThread):
         while(QTime.currentTime() < dieTime ):
             self.processEvents(QEventLoop.AllEvents, 100)
         
-from IPython.parallel import Client
+from IPython.parallel import Client, dependent
 # Subclassing QObject and using moveToThread
 # http://labs.qt.nokia.com/2007/07/05/qthreads-no-longer-abstract/
 class VideoLoader(QObject):        
@@ -1652,6 +1657,7 @@ class VideoLoader(QObject):
                 
             return [self.pos[idx], out]
         else:
+            cfg.log.error("error in fetching key {0}, idx {1}".format(self.posPath, idx))
             raise RuntimeError("Video frame was not available (index out of range (requested {0} of {1} @ {2})".format(idx, len(self.frameList), self.posPath))
             
     @cfg.logClassFunction
@@ -1794,7 +1800,7 @@ class VideoHandler(QObject):
             self.getCurrentFrame()
         except RuntimeError as e:
             cfg.log.error("something went wrong during the fetching procedure: error message {0}".format(e.message))
-            frame = [[[0,0]], np.zeros((64,64,3))]
+            frame = [[[0,0]] * (max(self.selectedVials) + 1), np.zeros((64,64,3))]
             
         if doBufferCheck:
             self.checkBuffer(updateAnnotationViews)            

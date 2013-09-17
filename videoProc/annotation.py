@@ -41,8 +41,8 @@ class Annotation():
             if frameList[fN] is None:
                 continue
                 
-            for vN in range(len(frameList[fN])):
-                if "behaviour" in  frameList[fN][vN]:
+            for vN in [i for i in range(len(frameList[fN])) if frameList[fN][i] is not None]:
+                if "behaviour" in frameList[fN][vN]:
                     bhvr = frameList[fN][vN]["behaviour"].keys()
                     behaviours = behaviours.union(bhvr)
                     for bhvrName in bhvr:
@@ -189,12 +189,14 @@ class Annotation():
                         newVials += [vNew]
                         behaviourPresent = True
                     else:
-                        newVials += [None]                            
+                        newVials += [None]  
+                else:
+                    newVials += [None]                            
                         
             if behaviourPresent:
                 filteredList += [newVials]
             else:
-                filteredList += [None]
+                filteredList += [[None for i in range(len(vials))]]
         
         out = Annotation()
         out.setFrameList(filteredList)
