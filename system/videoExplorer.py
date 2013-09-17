@@ -342,6 +342,9 @@ class videoExplorer(object):
         self.vs = VideoStream(file, frame_mode=frameMode)  
         
     def __iter__(self):
+        # rewind ffvideo thingy
+        self.vs.__iter__()
+        
         return self
     
     @staticmethod
