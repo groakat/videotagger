@@ -6,14 +6,16 @@ http://bazaar.launchpad.net/~jderose/+junk/gst-examples/view/head:/webcam-1.0
 import time,sys
 
 from time import localtime, strftime
+import datetime as dt
 import os
 import subprocess as sp 
+import textwrap
 
 import gc
 
 import socket, struct
 
-import pyTools.videoCapture.relay as relay
+# import pyTools.videoCapture.relay as relay
 
 
 # gc.set_debug(gc.DEBUG_LEAK)
@@ -38,11 +40,44 @@ Gst.init(None)
 
 class pipelineSwap(object):
     
-    def __init__(self):
-        self.baseDir = "/run/media/peter/Elements/peter/data/tmp-20130801/"
-        self.device = "/dev/video1"
-        self.timeoutSec = 60 * 60
+    def __init__(self, 
+                baseDir="/run/media/peter/Elements/peter/data/tmp-20130801/",
+                device="/dev/video1",
+                timeoutSec=3600,
+                relayPowerSwitch=6,
+                relayLightSwitch=7,
+                dayFocus=100,
+                dayExposure=98,
+                dayGain=0,      
+                nightFocus=130,
+                nightExposure=98,
+                nightGain=0):
+        
+        # user parameters #
+        self.baseDir = baseDir
+        self.device = device
+        self.timeoutSec = timeoutSec
+        
+        self.relayPowerSwitch = relayPowerSwitch
+        self.relayLightSwitch = relayLightSwitch
+    
+        self.dayFocus = dayFocus
+        self.dayExposure = dayExposure
+        self.dayGain = dayGain
+    
+        self.nightFocus = nightFocus
+        self.nightExposure = nightExposure
+        self.nightGain = nightGain
+        
+        # end user parameters #
+        
         self.inFirstMinute = True
+        
+        # assuming the vials are changed at day time, otherwise it will be 
+        # changed back after the first minute        
+        self.setDay()
+        
+        
         
         import logging, logging.handlers        
         # Make a global logging object.
@@ -239,6 +274,8 @@ class pipelineSwap(object):
         # minute 
         GLib.timeout_add_seconds(self.timeoutSec - localtime().tm_sec, self.blockFirstFrame)
         
+        
+        
     def run(self):        
         self.log.debug("start pipeline")
         self.cnt = 0
@@ -398,6 +435,8 @@ class pipelineSwap(object):
         self.pipelines['main'].send_event(GstVideo.video_event_new_upstream_force_key_unit(Gst.CLOCK_TIME_NONE, True, self.cnt))  
         tp.add_probe(Gst.PadProbeType.BUFFER, blockActiveQueuePad, self)
                 
+        self.updateLight()
+        
         return True
     
     def resetBin(self, bin):         
@@ -519,6 +558,40 @@ class pipelineSwap(object):
         s.send(val)
         s.disconnect()
         
+    def updateLight(self):
+        now = dt.datetime.now()
+        
+        if now.hour < 10 or now.hour > 21:
+            if not self.isSetToNightTime:
+                self.setNight()
+        else:
+            if self.isSetToNightTime:
+                self.setDay()
+                
+    def setNight(self):
+        try:
+            self.switchRelayOn(self.relayPowerSwitch)
+            self.switchRelayOn(self.relayLightSwitch)
+            
+            self.setAbsoluteExposure(self.nightExposure)
+            self.setAbsoluteFocus(self.nightFocus)
+            self.setGain(self.nightGain)
+            self.isSetToNightTime = True
+        except:
+            pass
+                
+    def setDay(self):
+        try:
+            self.switchRelayOn(self.relayPowerSwitch)
+            self.switchRelayOff(self.relayLightSwitch)
+            
+            self.setAbsoluteExposure(self.dayExposure)
+            self.setAbsoluteFocus(self.dayFocus)
+            self.setGain(self.dayGain)
+            self.isSetToNightTime = False
+        except:
+            pass
+            
     
 def blockActiveQueuePad(pad, probeInfo, userData):   
     self = userData
@@ -664,7 +737,113 @@ def link_many(elements, debug=True):
     
     
 if __name__ == "__main__":
-    vC = pipelineSwap()
+    import argparse
+    parser = argparse.ArgumentParser(\
+    formatter_class=argparse.RawDescriptionHelpFormatter,\
+    description=textwrap.dedent(\
+    """
+    Program to capture days-long H264 encoded video from webcams and other 
+    cameras that support the UVC driver spec and H264 on-chip encoding.
+    
+    To avoid massive data-loss in case of power-failure or other catastrophic 
+    events, the program saves the video in smaller partititions (called chunks)
+    of given length. The user can specify the length of the chunks with the 
+    --swapInterval parameter.
+    
+    This program was developed to record continuously over several days while
+    simulating day/night lighting of the scene. To change the lighting, a relay
+    switch is controlled with the relay-module. The relay uses two switches 
+    for each light setup. One switch to turn the light on and off and another
+    switch to switch between day and night lighting setup.
+    
+    Furthermore the program uses the linux program uvcdynctrl to control camera
+    parameters such as focus and exposure dynamically. In the example setup the
+    program was tested with, an blueish and an IR light source were used to
+    simulate day and night illumination. Because of the different wavelengths
+    and intensity emitted from the ligth sources the focus and the exposure have
+    to set differently for day and night.    
+    """),
+    epilog=textwrap.dedent(\
+    """
+    Written and tested by Peter Rennert in 2013 as part of his PhD project at
+    the University College London.
+    
+    You can contact the author via p.rennert@cs.ucl.ac.uk
+    
+    I did my best to avoid errors and bugs, but I cannot privide any reliability
+    with respect to software or hardware or data (including fidelity and potential
+    data-loss), nor any issues it may cause with your experimental setup.
+    
+    <Licence missing>
+    """))
+    
+    
+    parser.add_argument('-b', '--baseDir', 
+                help="path to the directory the files are saved to", 
+                default="/run/media/peter/Elements/peter/data/tmp-20130801/")
+    
+    parser.add_argument('-d', '--device', 
+                        help="camera",
+                        default='/dev/video1')
+    
+    
+    parser.add_argument('-lS', '--relayLightSwitch', 
+                        help="relay port for light switch",
+                        type=int, default=7)
+    
+    parser.add_argument('-pS', '--relayPowerSwitch', 
+                        help="relay port to turn light on",
+                        type=int, default=6)
+    
+    parser.add_argument('-dF', '--dayFocus', 
+                        help="camera focus for day",
+                        type=int, default=100)
+    
+    parser.add_argument('-dE', '--dayExposure', 
+                        help="camera exposure for day",
+                        type=int, default=98)
+    
+    parser.add_argument('-dG', '--dayGain', 
+                        help="camera gain for day",
+                        type=int, default=0)
+    
+    parser.add_argument('-nF', '--nightFocus', 
+                        help="camera focus for night",
+                        type=int, default=130)
+    
+    parser.add_argument('-nE', '--nightExposure', 
+                        help="camera exposure for night",
+                        type=int, default=98)
+    
+    parser.add_argument('-nG', '--nightGain', 
+                        help="camera gain for night",
+                        type=int, default=0)
+    
+    parser.add_argument('-sI', '--swapInterval', 
+                        help="seconds to pass between swaps of file destinations",
+                        type=int, default=3600)
+    
+    parser.add_argument('-dS', '--directStart', 
+                        help="start capture straight after program start",
+                        dest='directStart',action='store_true')
+#     
+    
+    parser.set_defaults(directStart=False)
+        
+    args = parser.parse_args()
+    
+    
+    vC = pipelineSwap(args.baseDir, 
+                      args.device, 
+                      args.swapInterval, 
+                      args.relayPowerSwitch, 
+                      args.relayLightSwitch, 
+                      args.dayFocus, 
+                      args.dayExposure, 
+                      args.dayGain, 
+                      args.nightFocus, 
+                      args.nightExposure, 
+                      args.nightGain)
     vC.run()
 
 
