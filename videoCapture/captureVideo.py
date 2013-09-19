@@ -10,6 +10,7 @@ import datetime as dt
 import os
 import subprocess as sp 
 import textwrap
+from multiprocessing import Process
 
 import gc
 
@@ -51,7 +52,8 @@ class pipelineSwap(object):
                 dayGain=0,      
                 nightFocus=130,
                 nightExposure=98,
-                nightGain=0):
+                nightGain=0,
+                selfTermination=0):
         
         # user parameters #
         self.baseDir = baseDir
@@ -69,9 +71,12 @@ class pipelineSwap(object):
         self.nightExposure = nightExposure
         self.nightGain = nightGain
         
+        self.selfTermination = selfTermination
+        
         # end user parameters #
         
         self.inFirstMinute = True
+        self.exitByTimer = False
         
         # assuming the vials are changed at day time, otherwise it will be 
         # changed back after the first minute        
@@ -91,17 +96,20 @@ class pipelineSwap(object):
             
         self.log.addHandler(h)
 
-        self.mainloop = GObject.MainLoop()
         
         # create gtk interface
         self.log.debug("create Gtk interface")
         self.window = Gtk.Window()
+        self.log.debug("create Gtk interface 1")
         self.window.connect('destroy', self.quit)
+        self.log.debug("create Gtk interface 2")
         self.window.set_default_size(800, 450)
         
+        self.log.debug("create Gtk interface 3")
         self.box = Gtk.Box(homogeneous=False, spacing=6)
         self.window.add(self.box)
         
+        self.log.debug("create Gtk interface 4")
         self.drawingarea = Gtk.DrawingArea()
         self.drawingarea.set_size_request(800, 350)
         self.box.pack_start(self.drawingarea, True, True, 0)        
@@ -250,6 +258,8 @@ class pipelineSwap(object):
         self.elements["src"].set_property("fixed-framerate", True)
         self.elements["src"].set_property("async-handling", False)
         self.elements["src"].set_property("iframe-period", 30)
+        self.elements["src"].set_property("initial-bitrate", 12000000)
+#         self.elements["src"].set_property("usage-type", 3)
 #         self.elements["src"].set_property("num-clock-samples", -1)
         self.elements["src"].set_property("device", self.device)
         
@@ -272,13 +282,19 @@ class pipelineSwap(object):
         # register function that initiates swap of filename in Gtk mainloop #
         # make sure that that it will be called at the beginning of the next 
         # minute 
-        GLib.timeout_add_seconds(self.timeoutSec - localtime().tm_sec, self.blockFirstFrame)
+        if self.timeoutSec == 3600:
+            GLib.timeout_add_seconds(self.timeoutSec - (localtime().tm_sec + 
+                                     localtime().tm_min * 60), self.blockFirstFrame)            
+        else:
+            GLib.timeout_add_seconds(self.timeoutSec - localtime().tm_sec, self.blockFirstFrame)
         
+#         GLib.timeout_add_seconds(60, self.requestKeyframe)
         
         
     def run(self):        
         self.log.debug("start pipeline")
         self.cnt = 0
+        
         self.window.show_all()
         # You need to get the XID after window.show_all().  You shouldn't get it
         # in the on_sync_message() handler because threading issues will cause
@@ -289,6 +305,7 @@ class pipelineSwap(object):
         self.pipelines["main"].set_state(Gst.State.PLAYING)
 #         self.pipelines["catch"].set_state(Gst.State.PLAYING)
         Gtk.main()
+        self.updateLight()
 
     def elementRefcounting(self):
         for k in self.elements.keys():
@@ -336,6 +353,9 @@ class pipelineSwap(object):
     def quit(self, window):
         self.pipeline2Null(self.pipelines["main"])            
         Gtk.main_quit()
+        if self.exitByTimer:
+            self.log.info("exit by timer")
+        
         
     def kill(self):
         self.quit(self.window)
@@ -428,7 +448,11 @@ class pipelineSwap(object):
         self.blockOnNextKeyframe()
         return False
             
-    def blockOnNextKeyframe(self):       
+    def blockOnNextKeyframe(self):      
+        if self.selfTermination:
+            if self.cnt >= self.selfTermination:
+                self.exitByTimer = True
+                self.window.destroy()
             
         tp = self.elements["srcQueue"].get_static_pad("sink")    
 #         tp = self.elements["queue_preview"].get_static_pad("sink")    
@@ -438,6 +462,12 @@ class pipelineSwap(object):
         self.updateLight()
         
         return True
+    
+    def requestKeyframe(self):
+        print "request keyframe"        
+        self.pipelines['main'].send_event(GstVideo.video_event_new_upstream_force_key_unit(Gst.CLOCK_TIME_NONE, True, self.cnt))
+        
+        return True  
     
     def resetBin(self, bin):         
         bin.set_state(Gst.State.NULL)    
@@ -510,53 +540,56 @@ class pipelineSwap(object):
         
     def switchRelayOn(self, relay):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(('127.0.0.1', 17494))
+        s.settimeout(1)
+        s.connect(('192.168.0.200', 17494))
         if relay == 0:
-            val = struct.pack('!i', 101)
+            val = 101
         elif relay == 1:
-            val = struct.pack('!i', 102)
+            val = 102
         elif relay == 2:
-            val = struct.pack('!i', 103)
+            val = 103
         elif relay == 3:
-            val = struct.pack('!i', 104)
+            val = 104
         elif relay == 4:
-            val = struct.pack('!i', 105)
+            val = 105
         elif relay == 5:
-            val = struct.pack('!i', 106)
+            val = 106
         elif relay == 6:
-            val = struct.pack('!i', 107)
+            val = 107
         elif relay == 7:
-            val = struct.pack('!i', 108)
+            val = 108
         else:
             raise ValueError('relay has to be an int in 0..7')
-        
-        s.send(val)
-        s.disconnect()
+        s.send(chr(val))
+        time.sleep(0.01)
+        s.close()
         
     def switchRelayOff(self, relay):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(('127.0.0.1', 17494))
+        s.settimeout(1)
+        s.connect(('192.168.0.200', 17494))
         if relay == 0:
-            val = struct.pack('!i', 111)
+            val = 111
         elif relay == 1:
-            val = struct.pack('!i', 112)
+            val = 112
         elif relay == 2:
-            val = struct.pack('!i', 113)
+            val = 113
         elif relay == 3:
-            val = struct.pack('!i', 114)
+            val = 114
         elif relay == 4:
-            val = struct.pack('!i', 115)
+            val = 115
         elif relay == 5:
-            val = struct.pack('!i', 116)
+            val = 116
         elif relay == 6:
-            val = struct.pack('!i', 117)
+            val = 117
         elif relay == 7:
-            val = struct.pack('!i', 118)
+            val = 118
         else:
             raise ValueError('relay has to be an int in 0..7')
         
-        s.send(val)
-        s.disconnect()
+        s.send(chr(val))
+        time.sleep(0.01)
+        s.close()
         
     def updateLight(self):
         now = dt.datetime.now()
@@ -735,6 +768,24 @@ def link_many(elements, debug=True):
     
     
     
+def startVC(args):
+    
+    mainloop = GObject.MainLoop()
+    vC = pipelineSwap(args.baseDir, 
+                  args.device, 
+                  args.swapInterval, 
+                  args.relayPowerSwitch, 
+                  args.relayLightSwitch, 
+                  args.dayFocus, 
+                  args.dayExposure, 
+                  args.dayGain, 
+                  args.nightFocus, 
+                  args.nightExposure, 
+                  args.nightGain,
+                  args.selfTermination)
+    vC.run()
+    del vC
+    del mainloop
     
 if __name__ == "__main__":
     import argparse
@@ -821,7 +872,13 @@ if __name__ == "__main__":
     
     parser.add_argument('-sI', '--swapInterval', 
                         help="seconds to pass between swaps of file destinations",
-                        type=int, default=3600)
+                        type=int, default=60)
+    
+    parser.add_argument('-sT', '--selfTermination', 
+                        help=textwrap.dedent(\
+                        """after how many swaps the capture should stop and the program should terminate 
+                        if set to 0, program will not shut down itself"""),
+                        type=int, default=0)
     
     parser.add_argument('-dS', '--directStart', 
                         help="start capture straight after program start",
@@ -832,18 +889,15 @@ if __name__ == "__main__":
         
     args = parser.parse_args()
     
+    startVC(args)
     
-    vC = pipelineSwap(args.baseDir, 
-                      args.device, 
-                      args.swapInterval, 
-                      args.relayPowerSwitch, 
-                      args.relayLightSwitch, 
-                      args.dayFocus, 
-                      args.dayExposure, 
-                      args.dayGain, 
-                      args.nightFocus, 
-                      args.nightExposure, 
-                      args.nightGain)
-    vC.run()
+#     while(1):
+#         startVC(args)
+#         p = Process(target=startVC, args=(args,))            
+#         p.start()
+#         p.join()        
+#         time.sleep(1)        
+#         p.terminate()
+#         del p
 
 
