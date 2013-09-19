@@ -265,7 +265,7 @@ for i in range(len(recRngs)):
     bgModel.updateModelWithBgImages(vE.getPathsOfList(rngBgImgs[i]))
     
     for files in bsc.chunks(fileList, chunkSize):   
-        curI += chunkSize   
+        curI += len(files)   
         try:            
 
             logStream = StringIO()
@@ -280,10 +280,10 @@ for i in range(len(recRngs)):
             
             vial = Vials(roi, gaussWeight=2000, sigma=20,  xoffsetFact=0.6, clfyFunc=flyClassify, acceptPosFunc=Vials.acceptPosFunc, acceptPosFuncArgs=acceptArgs)
             vial.extractPatches(files, bgModel, baseSaveDir=baseSaveDirPath)
-          
+            
             currentTime = dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))
             
-            progress = curI / totI
+            progress = curI / float(totI)
             if progress == 0:
 	      progress = 1
             passedTime = currentTime - startTime
@@ -296,7 +296,7 @@ for i in range(len(recRngs)):
             
             Processed: \t\t {2} / {3} files ({4}%).
             Processing time: \t {5}
-            ETA: \t\t\t {6}
+            ETA: \t\t {6}
             estimated finish: \t {7}
             ==============================================
             """
@@ -316,7 +316,7 @@ for i in range(len(recRngs)):
             
             currentTime = dt.datetime.fromtimestamp(time.mktime(time.localtime(time.time())))
             
-            progress = curI / totI
+            progress = curI / float(totI)
             if progress == 0:
 	      progress = 1
             passedTime = currentTime - startTime

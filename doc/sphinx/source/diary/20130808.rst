@@ -1,0 +1,9 @@
+==========
+08/08/2013
+==========
+
+Redesign of video annotation software
+#####################################
+
+look at git commit 9cbe25b616a9eee9f7346f1dffb4b9dcec055ffe
+to get old things back

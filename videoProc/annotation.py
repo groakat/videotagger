@@ -7,14 +7,14 @@ AnnotationFilter = \
         namedtuple("AnnotationFilter", ["vials", "annotators", "behaviours"])
 
 class Annotation():
-    frameList = []
-    annotators = []
-    behaviours = []
-    children = []
     
     def __init__(self, frameNo=0, vialNames=['','','','']):
         
-        frameList = []
+        self.frameList = []
+        self.annotators = []
+        self.behaviours = []
+        self.children = []
+        self.hasChanged = True # will be a new one until
         
         for frame in range(frameNo):
             v = []
@@ -23,14 +23,15 @@ class Annotation():
                 d["name"] = vialNames[vial]
                 v += [d]
                 
-            frameList += [v]
+            self.frameList += [v]
             
-        self.setFrameList(frameList)
+        self.setFrameList(self.frameList)
             
     def setFrameList(self, frameList):
         """
         Sets frameList and updates internal lists of annotators and behaviours
         """
+        self.hasChanged = True
         self.frameList = frameList
         annotators = set()
         behaviours = set()
@@ -40,8 +41,8 @@ class Annotation():
             if frameList[fN] is None:
                 continue
                 
-            for vN in range(len(frameList[fN])):
-                if "behaviour" in  frameList[fN][vN]:
+            for vN in [i for i in range(len(frameList[fN])) if frameList[fN][i] is not None]:
+                if "behaviour" in frameList[fN][vN]:
                     bhvr = frameList[fN][vN]["behaviour"].keys()
                     behaviours = behaviours.union(bhvr)
                     for bhvrName in bhvr:
@@ -52,10 +53,10 @@ class Annotation():
         self.behaviours = list(behaviours)
             
     def getFrame(self, frameNo):
-        return frameList[frameNo]
+        return self.frameList[frameNo]
     
     def getVialAt(self, frameNo, vialNo):
-        return frameList[frameNo][vialNo]
+        return self.frameList[frameNo][vialNo]
         
     def saveToFile(self, filename):
         f = open(filename, 'w')
@@ -65,6 +66,7 @@ class Annotation():
     def loadFromFile(self, filename):
         f = open(filename, 'r')
         self.setFrameList(json.load(f))
+        self.hasChanged = False
         f.close()
     
     def getFramesWithBehaviour(self, behaviourName, vialNo=None):
@@ -187,12 +189,14 @@ class Annotation():
                         newVials += [vNew]
                         behaviourPresent = True
                     else:
-                        newVials += [None]                            
+                        newVials += [None]  
+                else:
+                    newVials += [None]                            
                         
             if behaviourPresent:
                 filteredList += [newVials]
             else:
-                filteredList += [None]
+                filteredList += [[None for i in range(len(vials))]]
         
         out = Annotation()
         out.setFrameList(filteredList)
@@ -204,6 +208,7 @@ class Annotation():
         """
         frames list of ints
         """
+        self.hasChanged = True
         if len(self.frameList) < max(frames):
             raise ValueError("Trying to add annotation to frame that" +
                              " exceeds length of existing annotation")
@@ -230,6 +235,7 @@ class Annotation():
         """
         frames list of ints
         """
+        self.hasChanged = True
         if len(self.frameList) < max(frames):
             raise ValueError("Trying to remove annotation to frame that" +
                              " exceeds length of existing annotation")

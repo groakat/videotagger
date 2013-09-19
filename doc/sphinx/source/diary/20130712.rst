@@ -1,0 +1,28 @@
+==========
+12/07/2013
+==========
+
+Alphons stopped because of memory allocation problem
+    
+Mount remote drive with ssh and sshfs
+#####################################
+
+* tunnel port
+
+.. code-block:: bash
+
+    $ ssh -f prennert@newgate.cs.ucl.ac.uk -L 2223:128.16.9.147:22 -N
+
+* mount `save` drive
+.. code-block:: bash
+
+    $ sshfs -p 2222 alphons@localhost:/run/media/alphons/e9a5be53-d6ef-4cec-9460-1cbe194aa43c/ /home/peter/mount/dest
+    
+* mount `root` drive
+
+.. code-block:: bash
+
+    $ sshfs -p 2222 alphons@localhost:/run/media/alphons/6386e03a-a78b-4f85-84d9-a5b67e20a777/ /home/peter/mount/source/
+    
+    
+Fixed some bugs in the processing code for the clusters
