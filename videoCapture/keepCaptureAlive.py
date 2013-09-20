@@ -7,7 +7,7 @@ if __name__ == "__main__":
     cnt = 0
     while(1):
         if cnt == 0:
-            args = rawArgs + ['-sT', str(9 - localtime().tm_min)]
+            args = rawArgs + ['-sT', str(59 - localtime().tm_min)]
         else:
             args = rawArgs + ['-sT', str(59)]
         cnt += 1
