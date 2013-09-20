@@ -80,7 +80,8 @@ class pipelineSwap(object):
         
         # assuming the vials are changed at day time, otherwise it will be 
         # changed back after the first minute        
-        self.setDay()
+        self.isSetToNightTime = None
+        self.updateLight()
         
         
         
@@ -594,12 +595,13 @@ class pipelineSwap(object):
     def updateLight(self):
         now = dt.datetime.now()
         
-        if now.hour < 10 or now.hour > 21:
-            if not self.isSetToNightTime:
-                self.setNight()
-        else:
-            if self.isSetToNightTime:
-                self.setDay()
+        if not self.isSetToNightTime is None:
+            if now.hour < 10 or now.hour > 21:
+                if not self.isSetToNightTime:
+                    self.setNight()
+            else:
+                if self.isSetToNightTime:
+                    self.setDay()
                 
     def setNight(self):
         try:
