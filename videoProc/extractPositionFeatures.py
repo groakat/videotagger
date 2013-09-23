@@ -53,6 +53,9 @@ def providePosList(path):
     print("scaning files done")
     return fileList
 
+def partition ( lst, n ):
+    return [ lst[i::n] for i in range(n) ]
+
 if __name__ == '__main__':
     fileList = providePosList('/run/media/peter/Elements/peter/data/tmp-20130506')
     
@@ -61,11 +64,11 @@ if __name__ == '__main__':
 #     noOfProgress = 100
     curProgress = 0
     
-    for chunk in bsc.chunks(range(len(fileList)), 6):
+    for part in partition(range(len(fileList), 6)):
         procs = []
-        for c in range(6):
+        for c in range(len(part)):
             procs += [Process(target=extractPosFeatfromVideo, 
-                                args=(fileList,chunk[c]))]
+                                args=(fileList,part[c]))]
             
         for p in procs:
             p.start()
@@ -74,9 +77,9 @@ if __name__ == '__main__':
         for p in procs:
             p.terminate()
             
-        if np.floor(chunk[-1] / len(fileList) * 100) > curProgress:
-            print "finished", chunk[-1] / len(fileList), "in", time.time() - t, "sec"
-            curProgress = np.floor(chunk[-1] / len(fileList))
+#         if np.floor(part[0] / part * 100) > curProgress:
+#             print "finished", chunk[-1] / len(fileList), "in", time.time() - t, "sec"
+#             curProgress = np.floor(chunk[-1] / len(fileList))
             
     print "finished all"
     
