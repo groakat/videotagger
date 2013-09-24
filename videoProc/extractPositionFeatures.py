@@ -10,14 +10,20 @@ import pyTools.misc.basic as bsc
 def extractPosFeatfromVideo(pathList, idx):    
     posList = []
     if idx != 0:
-        posList += [np.load(pathList[idx - 1])[-1].reshape((1,4,2))]
+        try:
+            posList += [np.load(pathList[idx - 1])[-1].reshape((1,4,2))]
+        except:
+            print idx - 1
     else:
         posList += [np.zeros((1,4,2))]
         
     posList += [np.load(pathList[idx])]
     
     if idx != len(pathList) -1:
-        posList += [np.load(pathList[idx + 1])[-1].reshape((1,4,2))]
+        try:
+            posList += [np.load(pathList[idx + 1])[-1].reshape((1,4,2))]
+        except:
+            print idx  + 1
     else:
         posList += [np.zeros((1,4,2))]
         
@@ -35,7 +41,7 @@ def extractPosFeatfromVideo(pathList, idx):
                            )).transpose()
                    
         np.save(pathList[idx].split('.pos.npy')[0] + \
-                '.v{vial}.feat.{ending}.npy'.format(ending='pos', vial=v),
+                '.v{vial}.feat.{ending}.npy'.format(ending='position', vial=v),
                 feat)
     
         
@@ -62,24 +68,8 @@ if __name__ == '__main__':
     t = time.time()
 #     for chunk in bsc.chunks(range(1, 1965, 60): #
 #     noOfProgress = 100
-    curProgress = 0
-    
-    for part in partition(range(len(fileList), 6)):
-        procs = []
-        for c in range(len(part)):
-            procs += [Process(target=extractPosFeatfromVideo, 
-                                args=(fileList,part[c]))]
-            
-        for p in procs:
-            p.start()
-        for p in procs:
-            p.join()                
-        for p in procs:
-            p.terminate()
-            
-#         if np.floor(part[0] / part * 100) > curProgress:
-#             print "finished", chunk[-1] / len(fileList), "in", time.time() - t, "sec"
-#             curProgress = np.floor(chunk[-1] / len(fileList))
+    for i in range(len(fileList)):
+        extractPosFeatfromVideo(fileList, i)
             
     print "finished all"
     
