@@ -13,6 +13,10 @@ def chunks(l, n):
 
     for i in range(0, len(l), n):
         yield l[i:i+n]
+        
+def partition ( lst, n ):
+    for i in range(n):
+        yield lst[i::]
 
 FramePosition = namedtuple('FramePosition', ['dicnry', 'key', 'idx'])
 
