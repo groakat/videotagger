@@ -1289,7 +1289,7 @@ class AnnoView(QWidget):
         else:
             # was not loaded yet, therefore set all frames to None
             for i in range(self.frameAmount):
-                self.confidenceList += [KeyIdxPair(None, None, None)]
+                self.confidenceList += [KeyIdxPair(None, None, [None])]
             return
             
         startIdx = None
@@ -1304,7 +1304,7 @@ class AnnoView(QWidget):
                     startKey = keyList[curKeyPos]
                     cfg.log.debug("dist2First {0}".format(dist2first))
                     for i in range(dist2first + 1):
-                        self.confidenceList += [KeyIdxPair(None, None, None)]
+                        self.confidenceList += [KeyIdxPair(None, None, [None])]
                     break
                 else:
                     remainingFrames = \
@@ -1326,7 +1326,7 @@ class AnnoView(QWidget):
             if curIdx >= len(self.annotationDict[curKey].frameList):
                 if (curKeyPos + 1) >= len(keyList):
                     # end of file list
-                    self.confidenceList += [KeyIdxPair(None, None, None)]
+                    self.confidenceList += [KeyIdxPair(None, None, [None])]
                     continue                  
                     
                 curKeyPos += 1
@@ -1340,13 +1340,13 @@ class AnnoView(QWidget):
             elif (self.erasingAnno 
                             and (curKey in tempKeys) 
                             and (curIdx in self.tempRng[curKey])):
-                conf = None
+                conf = [None]
             else:
                 conf = self.annotationDict[curKey].frameList[curIdx]
                                   
             self.confidenceList += [KeyIdxPair(curKey, curIdx, conf)]            
             curIdx += 1     
-        
+
     @cfg.logClassFunction
     def updateGraphicView(self):
         for i in range(len(self.confidenceList)):   
@@ -1358,7 +1358,7 @@ class AnnoView(QWidget):
 #             else:
 #                 conf = self.annotationDict[kip.key].frameList[kip.idx]
 #             cfg.log.warning("{0}".format(conf))
-            if conf is not None:
+            if conf is [True for c in conf if c != None]:
                 self.frames[i].setBrush(self.brushA)
                 self.frames[i].setPen(self.penA)
             else:                
@@ -1483,8 +1483,10 @@ class VideoLoader(QObject):
     
     @cfg.logClassFunction
     def __init__(self, posPath, videoHandler, selectedVials=[1], thread=None):
-        super(VideoLoader, self).__init__()
+        super(VideoLoader, self).__init__()        
+        self.init(posPath, videoHandler, selectedVials, thread)
         
+    def init(self, posPath, videoHandler, selectedVials=[1], thread=None):
         self.loading = False
         
         self.videoLength = -1
@@ -1662,9 +1664,9 @@ class VideoLoader(QObject):
             
     @cfg.logClassFunction
     def getFrame(self, idx):
-        while self.loading:
+        if self.loading:
             cfg.log.warning("------------------- waiting for frame because its not buffered yet")
-            time.sleep(0.5)
+            return False
             
 
 #         if self.exiting:
@@ -1815,7 +1817,12 @@ class VideoHandler(QObject):
             time.sleep(0.05)
                          
         try:
-            frame = self.videoDict[self.posPath].getFrame(self.idx)
+            while 1:
+                frame = self.videoDict[self.posPath].getFrame(self.idx)
+                if frame:
+                    break
+                else:
+                    time.sleep(0.03)
         except KeyError:
             cfg.log.exception("accessing video out of scope, fetching...")
             self.fetchVideo(self.posPath)
@@ -2333,7 +2340,7 @@ class VideoLoaderLuncher(QObject):
             vL = self.availableVLs.pop()
             cfg.log.info("recycle new VideoLoader {0}, was previous: {1}".format(path, vL.posPath))
             thread, signal = self.threads[vL]
-            vL.__init__(path, vH,thread=thread, selectedVials=selectedVials)     
+            vL.init(path, vH,thread=thread, selectedVials=selectedVials)     
             self.emit(SIGNAL(signal))
 
             
