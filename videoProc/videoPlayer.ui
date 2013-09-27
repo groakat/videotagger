@@ -240,6 +240,19 @@
     <bool>true</bool>
    </property>
   </widget>
+  <widget class="QLabel" name="lbl_vial">
+   <property name="geometry">
+    <rect>
+     <x>980</x>
+     <y>520</y>
+     <width>57</width>
+     <height>14</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>TextLabel</string>
+   </property>
+  </widget>
  </widget>
  <resources/>
  <connections/>

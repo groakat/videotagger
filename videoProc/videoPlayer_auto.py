@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Fri Sep 27 01:56:07 2013
+# Created: Fri Sep 27 03:32:38 2013
 #      by: pyside-uic 0.2.13 running on PySide 1.1.0
 #
 # WARNING! All changes made in this file will be lost!
@@ -71,6 +71,9 @@ class Ui_Form(object):
         self.lbl_eraser.setPixmap(QtGui.QPixmap("Actions-draw-eraser-icon.png"))
         self.lbl_eraser.setScaledContents(True)
         self.lbl_eraser.setObjectName("lbl_eraser")
+        self.lbl_vial = QtGui.QLabel(Form)
+        self.lbl_vial.setGeometry(QtCore.QRect(980, 520, 57, 14))
+        self.lbl_vial.setObjectName("lbl_vial")
 
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
@@ -89,4 +92,5 @@ class Ui_Form(object):
         self.pb_eraseAnno.setText(QtGui.QApplication.translate("Form", "erase annotation", None, QtGui.QApplication.UnicodeUTF8))
         self.pb_addAnno.setText(QtGui.QApplication.translate("Form", "add annotation", None, QtGui.QApplication.UnicodeUTF8))
         self.speed_lbl.setText(QtGui.QApplication.translate("Form", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
+        self.lbl_vial.setText(QtGui.QApplication.translate("Form", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
 

@@ -70,7 +70,12 @@ def np2qimage(a):
 class videoPlayer(QMainWindow):      
     quit = Signal()
      
-    def __init__(self, path, videoFormat='avi'):
+    def __init__(self, path, 
+                        annotations,
+                        backgroundPath,
+                        selectedVial,
+                        vialROI,
+                        videoFormat='avi'):
         """
         
         args:
@@ -110,18 +115,20 @@ class videoPlayer(QMainWindow):
         self.addingAnnotations = True
         self.ui.lbl_eraser.setVisible(False)
         
-        self.annotations = [{"annot": "peter",
-                             "behav": "falling"},
-                            {"annot": "peter",
-                             "behav": "dropping"},
-                            {"annot": "peter",
-                             "behav": "struggling"},
-                            ]
+        self.annotations = annotations 
+#                             [{"annot": "peter",
+#                              "behav": "falling"},
+#                             {"annot": "peter",
+#                              "behav": "dropping"},
+#                             {"annot": "peter",
+#                              "behav": "struggling"},
+#                             ]
         
         
-        self.vialRoi = [[350, 660], [661, 960], [971, 1260], [1290, 1590]]
+        self.vialRoi = vialROI#[[350, 660], [661, 960], [971, 1260], [1290, 1590]]
         
-        self.selectedVial = 3
+        self.selectedVial = selectedVial#3
+        self.ui.lbl_vial.setText("vial: {0}".format(self.selectedVial))
                 
 #         self.vh.changedFile.connect(self.changeVideo)
         
@@ -138,7 +145,7 @@ class videoPlayer(QMainWindow):
         
         self.configureUI()
         
-        self.setBackground("/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
+        self.setBackground(backgroundPath)#"/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
         
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.showNextFrame)
@@ -2405,13 +2412,92 @@ class MyThread(QThread):
         print "RUN DONE", QThread.currentThread().objectName()
         
 if __name__ == "__main__":
-    # settings    
     
-    # set qt stuff up and lunch the thing
+    import argparse
+    import textwrap
+    import json
+    parser = argparse.ArgumentParser(\
+    formatter_class=argparse.RawDescriptionHelpFormatter,\
+    description=textwrap.dedent(\
+    """
+    Program to playback and annotate fly life-spans.
     
-    app = QApplication(sys.argv)
+    This program can be configured with a configuration file that is specified
+    in the command-line argument. An example file should have been distributed
+    with this program. It should be a json file like this (remember that 
+    numbers, especially vials, start with 0):
     
-    path = '/run/media/peter/Elements/peter/data/tmp-20130506'
+    {
+    "vial": 3,
+    "vialROI": [
+        [
+            350,
+            660
+        ],
+        [
+            661,
+            960
+        ],
+        [
+            971,
+            1260
+        ],
+        [
+            1290,
+            1590
+        ]
+    ],
+    "annotations": [
+        {
+            "annot": "peter",
+            "behav": "falling"
+        },
+        {
+            "annot": "peter",
+            "behav": "dropping"
+        },
+        {
+            "annot": "peter",
+            "behav": "struggling"
+        }
+    ],
+    "background": "/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png",
+    "videoPath": "/run/media/peter/Elements/peter/data/tmp-20130506"
+    }
+    
+    If you do not have the example file, you can simply copy and paste the 
+    lines above (including the first and last { } ) in a text file and specify
+    it as config-file path in the arguments.    
+    """),
+    epilog=textwrap.dedent(\
+    """
+    ============================================================================
+    Written and tested by Peter Rennert in 2013 as part of his PhD project at
+    University College London.
+    
+    You can contact the author via p.rennert@cs.ucl.ac.uk
+    
+    I did my best to avoid errors and bugs, but I cannot privide any reliability
+    with respect to software or hardware or data (including fidelity and potential
+    data-loss), nor any issues it may cause with your experimental setup.
+    
+    <Licence missing>
+    """))
+    
+    parser.add_argument('-c', '--config-file', 
+                help="path to file containing configuration")
+    
+    args = parser.parse_args()
+    with open(args.config_file, 'r') as f:
+        config = json.load(f)
+    
+    
+    path = config['videoPath']
+    annotations = config['annotations']
+    backgroundPath = config['background']
+    selectedVial = config['vial']
+    vialROI = config['vialROI']
+    
     
     logGUI = logging.getLogger("GUI")
     logGUI.setLevel(logging.DEBUG)
@@ -2427,7 +2513,11 @@ if __name__ == "__main__":
     logGUI.addHandler(hGUI)
     
     
-    w = videoPlayer(path, videoFormat='avi')
+    
+    app = QApplication(sys.argv)
+    
+    w = videoPlayer(path, annotations, backgroundPath, selectedVial, vialROI,
+                     videoFormat='avi')
     
     app.connect(app, SIGNAL("aboutToQuit()"), w.stopVideo)
     w.quit.connect(app.quit)
