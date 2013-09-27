@@ -1836,13 +1836,9 @@ class VideoHandler(QObject):
             time.sleep(0.05)
                          
         try:
-            while 1:
-                frame = self.videoDict[self.posPath].getFrame(self.idx)
-                if frame:
-                    break
-                else:
-                    QApplication.processEvents(QEventLoop.AllEvents)
-                    time.sleep(0.05)
+            frame = self.videoDict[self.posPath].getFrame(self.idx)
+            if not frame:
+                frame = [[[0,0]] * (max(self.selectedVials) + 1), np.zeros((64,64,3))]
                     
         except KeyError:
             cfg.log.exception("accessing video out of scope, fetching...")
