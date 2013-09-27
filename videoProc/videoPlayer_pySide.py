@@ -200,6 +200,7 @@ class videoPlayer(QMainWindow):
     @cfg.logClassFunction
     def createAnnoViews(self):
         self.annoViewList = []
+        self.annoViewLabel = []
         
         yPos = 420
         xPos = 60 
@@ -216,6 +217,12 @@ class videoPlayer(QMainWindow):
 #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1]) 
+        self.annoViewLabel += [QLabel(self)]
+        self.annoViewLabel[-1].setText("{0}: {1}".format(\
+                                            self.annotations[0]["annot"],
+                                            self.annotations[0]["behav"]))
+        self.annoViewLabel[-1].move(xPos + width + 10, yPos)        
+        self.annoViewLabel[-1].adjustSize()       
         yPos += height + 5
         
         self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
@@ -226,6 +233,12 @@ class videoPlayer(QMainWindow):
 #         self.annoViewList[-1].setGeometry()
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1])       
+        self.annoViewLabel += [QLabel(self)]
+        self.annoViewLabel[-1].setText("{0}: {1}".format(\
+                                            self.annotations[1]["annot"],
+                                            self.annotations[1]["behav"]))
+        self.annoViewLabel[-1].move(xPos + width + 10, yPos)         
+        self.annoViewLabel[-1].adjustSize()       
         yPos += height + 5 
         
         self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
@@ -235,7 +248,13 @@ class videoPlayer(QMainWindow):
                                        geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
         self.annoViewList[-1].show()
-        self.vh.addAnnoView(self.annoViewList[-1])      
+        self.vh.addAnnoView(self.annoViewList[-1])     
+        self.annoViewLabel += [QLabel(self)]
+        self.annoViewLabel[-1].setText("{0}: {1}".format(\
+                                            self.annotations[2]["annot"],
+                                            self.annotations[2]["behav"]))
+        self.annoViewLabel[-1].move(xPos + width + 10, yPos)          
+        self.annoViewLabel[-1].adjustSize()       
         
         for aV in self.annoViewList:
             cfg.log.debug("av: {aV}".format(aV=aV))
@@ -1822,7 +1841,9 @@ class VideoHandler(QObject):
                 if frame:
                     break
                 else:
-                    time.sleep(0.03)
+                    QApplication.processEvents(QEventLoop.AllEvents)
+                    time.sleep(0.05)
+                    
         except KeyError:
             cfg.log.exception("accessing video out of scope, fetching...")
             self.fetchVideo(self.posPath)
