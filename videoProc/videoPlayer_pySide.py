@@ -505,28 +505,32 @@ class videoPlayer(QMainWindow):
         
     
         
-#    def paintEvent(self, event):
-#        painter = QPainter(self)
-#        painter.setRenderHint(QPainter.Antialiasing)
-#        
-#        pen = QPen(QColor(100,100,100))
-#        pen.setWidth(0.2)
-#        
-#        painter.setPen(pen)
-#        
-#        avHooks = self.annoViewList[0].prevConnectHooks
-#        midAVHook = len(avHooks) / 2
-#        startAVHook = midAVHook - (len(self.prevConnectHooks) - 1) / 2 + \
-#                        self.tempIncrement
-#                                
-#        for i in range(0,len(self.prevConnectHooks),2):            
-#            aVi = startAVHook + i
-#            
-#            painter.drawLine(self.prevConnectHooks[i][0], self.prevConnectHooks[i][1])   
-#            painter.drawLine(self.prevConnectHooks[i][1], avHooks[aVi][1])            
-#
-#            painter.drawLine(avHooks[aVi][0], avHooks[aVi][1])       
-            
+    def paintEvent(self, event):
+        painter = QPainter()
+        painter.begin(self) 
+        painter.resetTransform() 
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        pen = QPen(QColor(100,100,100))
+        pen.setWidth(0.2)
+        
+        painter.setPen(pen)
+        
+        avHooks = self.annoViewList[0].prevConnectHooks
+        midAVHook = len(avHooks) / 2
+        startAVHook = midAVHook - (len(self.prevConnectHooks) - 1) / 2 + \
+                        self.tempIncrement
+                                    
+        for i in range(0,len(self.prevConnectHooks),2):            
+            aVi = startAVHook + i
+            try:
+                painter.drawLine(self.prevConnectHooks[i][0], self.prevConnectHooks[i][1])   
+                painter.drawLine(self.prevConnectHooks[i][1], avHooks[aVi][1])            
+                
+                painter.drawLine(avHooks[aVi][0], avHooks[aVi][1])  
+            except:
+                pass
+        painter.end()
         
             
         
