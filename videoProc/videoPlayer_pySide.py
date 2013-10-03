@@ -809,7 +809,7 @@ class videoPlayer(QMainWindow):
 #             cfg.log.debug("---------------------------------------- while loop() - begin")
             while(QTime.currentTime() < dieTime):
 #                 cfg.log.debug("processEvents() - begin")
-                QApplication.processEvents(QEventLoop.AllEvents)#, QTime.currentTime().msecsTo(dieTime)
+                QApplication.processEvents(QEventLoop.AllEvents, QTime.currentTime().msecsTo(dieTime))
 #                 cfg.log.debug("processEvents() - end")
                  
             if not(QTime.currentTime() < (dieTime.addMSecs(1))):
@@ -1131,7 +1131,8 @@ class AnnoView(QWidget):
         self.cMarker1 = QLabel(parent)
         self.cMarker1.setGeometry(QRect(geo.x() + geo.width() / 2, 
                                        geo.y() -15, 1, geo.height() + 30))
-        self.cMarker1.setFrameShape(QFrame.Box)
+        self.cMarker1.setFrameStyle(QFrame.VLine)
+        self.cMarker1.raise_()
         
         self.prevConnectHooks = []
         parPos = self.mapToParent(QPoint(0,0))
