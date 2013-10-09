@@ -2487,7 +2487,17 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--config-file', 
                 help="path to file containing configuration")
     
+       
     args = parser.parse_args()
+    
+    if args.config_file == None:
+        print textwrap.dedent(\
+            """
+            Expect configuration file (-c option). 
+            Run 'python videoPlayer_pySide.py -h' for more information
+            """)
+        sys.exit()
+    
     with open(args.config_file, 'r') as f:
         config = json.load(f)
     
