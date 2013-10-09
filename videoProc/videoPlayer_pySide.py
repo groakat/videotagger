@@ -22,7 +22,7 @@ import time
 import copy
 
 
-from qimage2ndarray import *
+#from qimage2ndarray import *
 # from PyQt4.uic.Compiler.qtproxies import QtCore
 
 from collections import namedtuple
@@ -30,9 +30,15 @@ from collections import namedtuple
 
 import json
 import logging, logging.handlers
-import os
+import os, sys
 
 
+            
+#################################################################### 
+
+KeyIdxPair = namedtuple('KeyIdxPair', ['key', 'idx', 'conf'])
+
+####################################################################
 
 #################################################################### 
 class MyListModel(QAbstractListModel): 
@@ -54,11 +60,204 @@ class MyListModel(QAbstractListModel):
             
             
 
-#################################################################### 
-
-KeyIdxPair = namedtuple('KeyIdxPair', ['key', 'idx', 'conf'])
-
-####################################################################
+class filterObj(QObject):
+    def __init__(self, parent):
+        QObject.__init__(self)
+        self.parent = parent
+    
+    #def eventFilter(self, obj, event):
+    #    if (event.type() == QEvent.KeyPress):
+    #        key = event.key()
+    #                
+    #                
+    #        if(event.modifiers() == Qt.ControlModifier):
+    #            if(key == Qt.Key_S):
+    #                print('saving all annotations')
+    #        
+    #        else:                    
+    #            if key == Qt.Key_F:
+    #                self.windowObj.test(obj)
+    #    
+    #        return True
+    #    else:
+    #        return False   
+            
+    @cfg.logClassFunction
+    def eventFilter(self, obj, event):
+        if (event.type() == QEvent.KeyPress):
+            key = event.key()
+                    
+            if(event.modifiers() == Qt.ControlModifier):
+                if(key == Qt.Key_S):
+                    cfg.log.info('saving all annotations')
+                    self.parent.saveAll()
+                    event.setAccepted(True)
+            
+            else:
+                self.parent.showTrajectTemp = True
+                    
+                        
+                if key == Qt.Key_F:
+                    # stop playback
+                    self.parent.play = False
+                    self.parent.increment = 0
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == Qt.Key_G:
+                    # step-wise forward
+                    self.parent.play = False
+    #                 self.parent.increment = 1
+    #                 self.parent.showNextFrame(self.increment)
+                    self.parent.showNextFrame(1)
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                
+                if key == Qt.Key_D:
+                    # step-wise backward
+                    self.parent.play = False
+    #                 self.increment = -1
+                    self.parent.showNextFrame(-1)
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == Qt.Key_T:
+                    # real-time playback
+                    self.parent.increment = 1
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                        
+                if key == Qt.Key_E:
+                    # real-time playback
+                    self.parent.increment = -1
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == Qt.Key_V:
+                    # 
+                    self.parent.increment = 3
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == Qt.Key_B:
+                    self.parent.increment = 10
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == Qt.Key_N:
+                    self.parent.increment = 20
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == Qt.Key_H:
+                    self.parent.increment = 40
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == Qt.Key_J:
+                    self.parent.increment = 60
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+    #                     self.tempTrajSwap = True
+    #                     self.showTrajectories(False)
+                    
+                    
+                if key == Qt.Key_X:
+                    self.parent.increment = -3
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == Qt.Key_Z:
+                    self.parent.increment = -10
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == Qt.Key_Backslash:
+                    self.parent.increment = -20
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == Qt.Key_S:
+                    self.parent.increment = -40
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == Qt.Key_A:
+                    self.parent.increment = -60
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+    #                     self.tempTrajSwap = True
+    #                     self.showTrajectories(False)
+                    
+                if key == Qt.Key_I:
+                    cfg.log.debug("position length: {0}".format(self.parent.vh.getCurrentPositionLength()))
+                    cfg.log.debug("video length: {0}".format(self.parent.vh.getCurrentVideoLength()))
+                    
+                if key == Qt.Key_Escape:
+                    self.parent.escapeAnnotationAlteration()
+                    
+                if key == Qt.Key_1:
+                    self.parent.alterAnnotation(self.parent.annotations[0]["annot"], 
+                                        self.parent.annotations[0]["behav"],
+                                        confidence=1)
+    #                 self.alterAnnotation(self.annotations[0]["annot"], 
+    #                                      self.annotations[0]["behav"],
+    #                                      confidence=1)
+                    
+                if key == Qt.Key_2:
+                    self.parent.alterAnnotation(self.parent.annotations[1]["annot"], 
+                                        self.parent.annotations[1]["behav"],
+                                        confidence=1)
+                    
+                if key == Qt.Key_3:
+                    self.parent.alterAnnotation(self.parent.annotations[2]["annot"], 
+                                        self.parent.annotations[2]["behav"],
+                                        confidence=1)
+                    
+                if key == Qt.Key_Q:
+                    self.parent.addingAnnotations = not self.parent.addingAnnotations
+                    if not self.parent.addingAnnotations:
+                        cfg.log.info("changed to erasing mode")
+                        self.parent.ui.lbl_eraser.setVisible(True)                      
+                                
+                    else:
+                        cfg.log.info("changed to adding mode")                    
+                        self.parent.ui.lbl_eraser.setVisible(False)
+                    
+                    logGUI.info(json.dumps({"addingAnnotations": 
+                                            self.parent.addingAnnotations}))
+                    
+                self.parent.ui.speed_lbl.setText("Speed: {0}x".format(self.parent.increment)) 
+            
+        
+        return False
 
 def np2qimage(a):
     import numpy as np  
@@ -66,6 +265,8 @@ def np2qimage(a):
     qi = (255 << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
     return QImage(qi, a.shape[1], a.shape[0], 
                   QImage.Format_ARGB32)
+                  
+#########################################################################
 
 class videoPlayer(QMainWindow):      
     quit = Signal()
@@ -91,6 +292,9 @@ class videoPlayer(QMainWindow):
         self.ui.setupUi(self)
         self.ui.cb_trajectory.setChecked(True)
         
+        
+        self.eventFilter = filterObj(self)
+        self.installEventFilter(self.eventFilter)
         self.connectSignals()       
         
         self.posList = self.providePosList(path)    
@@ -187,6 +391,20 @@ class videoPlayer(QMainWindow):
         self.ui.lv_paths.activated.connect(self.selectVideoLV)
         
         self.ui.cb_trajectory.stateChanged.connect(self.showTrajectories)
+        
+        
+        
+        self.ui.pb_startVideo.installEventFilter(self.eventFilter)
+        self.ui.pb_stopVideo.installEventFilter(self.eventFilter)
+        self.ui.pb_compDist.installEventFilter(self.eventFilter)
+        self.ui.pb_test.installEventFilter(self.eventFilter)
+        self.ui.pb_addAnno.installEventFilter(self.eventFilter)
+        self.ui.pb_eraseAnno.installEventFilter(self.eventFilter)
+        self.ui.sldr_paths.installEventFilter(self.eventFilter)
+        self.ui.lv_frames.installEventFilter(self.eventFilter)
+        self.ui.lv_jmp.installEventFilter(self.eventFilter)
+        self.ui.lv_paths.installEventFilter(self.eventFilter)
+        self.ui.cb_trajectory.installEventFilter(self.eventFilter)
         
     @cfg.logClassFunction
     def configureUI(self):
@@ -285,181 +503,12 @@ class videoPlayer(QMainWindow):
                 self.prevFrameLbls[-1].setFrameShape(QFrame.Box)
             xPos += 64 + 5
         
-    @cfg.logClassFunction
-    def keyPressEvent(self, event):
-        key = event.key()
-                
-        if(event.modifiers() == Qt.ControlModifier):
-            if(key == Qt.Key_S):
-                cfg.log.info('saving all annotations')
-                self.saveAll()
-                event.setAccepted(True)
-        
-        else:
-            self.showTrajectTemp = True
-                   
-                    
-            if key == Qt.Key_F:
-                # stop playback
-                self.play = False
-                self.increment = 0
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-                
-            if key == Qt.Key_G:
-                # step-wise forward
-                self.play = False
-#                 self.increment = 1
-#                 self.showNextFrame(self.increment)
-                self.showNextFrame(1)
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-            
-            if key == Qt.Key_D:
-                # step-wise backward
-                self.play = False
-#                 self.increment = -1
-                self.showNextFrame(-1)
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-                
-            if key == Qt.Key_T:
-                # real-time playback
-                self.increment = 1
-                self.play = True
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-                    
-            if key == Qt.Key_E:
-                # real-time playback
-                self.increment = -1
-                self.play = True
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-                
-            if key == Qt.Key_V:
-                # 
-                self.increment = 3
-                self.play = True
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-                
-            if key == Qt.Key_B:
-                self.increment = 10
-                self.play = True
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-                
-            if key == Qt.Key_N:
-                self.increment = 20
-                self.play = True
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-                
-            if key == Qt.Key_H:
-                self.increment = 40
-                self.play = True
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-                
-            if key == Qt.Key_J:
-                self.increment = 60
-                self.play = True
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-#                     self.tempTrajSwap = True
-#                     self.showTrajectories(False)
-                
-                
-            if key == Qt.Key_X:
-                self.increment = -3
-                self.play = True
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-                
-            if key == Qt.Key_Z:
-                self.increment = -10
-                self.play = True
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-                
-            if key == Qt.Key_Backslash:
-                self.increment = -20
-                self.play = True
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-                
-            if key == Qt.Key_S:
-                self.increment = -40
-                self.play = True
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-                
-            if key == Qt.Key_A:
-                self.increment = -60
-                self.play = True
-                if self.tempTrajSwap:
-                    self.tempTrajSwap = False
-                    self.showTrajectories(True)
-#                     self.tempTrajSwap = True
-#                     self.showTrajectories(False)
-                
-            if key == Qt.Key_I:
-                cfg.log.debug("position length: {0}".format(self.vh.getCurrentPositionLength()))
-                cfg.log.debug("video length: {0}".format(self.vh.getCurrentVideoLength()))
-                
-            if key == Qt.Key_Escape:
-                self.escapeAnnotationAlteration()
-                
-            if key == Qt.Key_1:
-                self.alterAnnotation(self.annotations[0]["annot"], 
-                                     self.annotations[0]["behav"],
-                                     confidence=1)
-#                 self.alterAnnotation(self.annotations[0]["annot"], 
-#                                      self.annotations[0]["behav"],
-#                                      confidence=1)
-                
-            if key == Qt.Key_2:
-                self.alterAnnotation(self.annotations[1]["annot"], 
-                                     self.annotations[1]["behav"],
-                                     confidence=1)
-                
-            if key == Qt.Key_3:
-                self.alterAnnotation(self.annotations[2]["annot"], 
-                                     self.annotations[2]["behav"],
-                                     confidence=1)
-                
-            if key == Qt.Key_Q:
-                self.addingAnnotations = not self.addingAnnotations
-                if not self.addingAnnotations:
-                    cfg.log.info("changed to erasing mode")
-                    self.ui.lbl_eraser.setVisible(True)                      
-                             
-                else:
-                    cfg.log.info("changed to adding mode")                    
-                    self.ui.lbl_eraser.setVisible(False)
-                
-                logGUI.info(json.dumps({"addingAnnotations": 
-                                        self.addingAnnotations}))
-                
-            self.ui.speed_lbl.setText("Speed: {0}x".format(self.increment))
+    
         
     def paintEvent(self, event):
-        painter = QPainter(self)
+        painter = QPainter()
+        painter.begin(self) 
+        painter.resetTransform() 
         painter.setRenderHint(QPainter.Antialiasing)
         
         pen = QPen(QColor(100,100,100))
@@ -471,15 +520,17 @@ class videoPlayer(QMainWindow):
         midAVHook = len(avHooks) / 2
         startAVHook = midAVHook - (len(self.prevConnectHooks) - 1) / 2 + \
                         self.tempIncrement
-                                
+                                    
         for i in range(0,len(self.prevConnectHooks),2):            
             aVi = startAVHook + i
-            
-            painter.drawLine(self.prevConnectHooks[i][0], self.prevConnectHooks[i][1])   
-            painter.drawLine(self.prevConnectHooks[i][1], avHooks[aVi][1])            
-
-            painter.drawLine(avHooks[aVi][0], avHooks[aVi][1])       
-            
+            try:
+                painter.drawLine(self.prevConnectHooks[i][0], self.prevConnectHooks[i][1])   
+                painter.drawLine(self.prevConnectHooks[i][1], avHooks[aVi][1])            
+                
+                painter.drawLine(avHooks[aVi][0], avHooks[aVi][1])  
+            except:
+                pass
+        painter.end()
         
             
         
@@ -720,7 +771,7 @@ class videoPlayer(QMainWindow):
         self.videoView.fitInView(self.bgImg, Qt.KeepAspectRatio)
         
     def startVideo(self):
-        #self.play = True
+        self.play = True
         #self.setBackground("/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
         
         
@@ -734,7 +785,7 @@ class videoPlayer(QMainWindow):
         logGUI.info('"--------- start mainloop ------------"')
          
         while not self.stop:
-#             cfg.log.debug("begin   --------------------------------------- main loop")
+            #cfg.log.info("begin   --------------------------------------- main loop")
             self.vh.loadProgressive = True
              
             dieTime = QTime.currentTime().addMSecs(33)
@@ -758,7 +809,7 @@ class videoPlayer(QMainWindow):
 #             cfg.log.debug("---------------------------------------- while loop() - begin")
             while(QTime.currentTime() < dieTime):
 #                 cfg.log.debug("processEvents() - begin")
-                QApplication.processEvents(QEventLoop.AllEvents)#, QTime.currentTime().msecsTo(dieTime)
+                QApplication.processEvents(QEventLoop.AllEvents, QTime.currentTime().msecsTo(dieTime))
 #                 cfg.log.debug("processEvents() - end")
                  
             if not(QTime.currentTime() < (dieTime.addMSecs(1))):
@@ -962,8 +1013,9 @@ class videoPlayer(QMainWindow):
     def testFunction(self):
         cfg.log.debug("testFunction")
 #         self.vh.saveAll()
-        self.showNextFrame(0)
-        self.vh.loadProgressive = True
+        #self.showNextFrame(0)
+        #self.vh.loadProgressive = True
+        self.increment = 40
         
     def alterAnnotation(self, annotator="peter", behaviour="just testing", confidence=1):
         if self.addingAnnotations:
@@ -1040,12 +1092,14 @@ class AnnoViewItem(QGraphicsRectItem):
         self.annoView = annoView
 
     def hoverEnterEvent(self, event):
-        self.setPen(Qt.red)
+        pen = QPen(Qt.red)
+        self.setPen(pen)
         self.annoView.centerAt(self)
         QGraphicsRectItem.hoverEnterEvent(self, event)
     
     def hoverLeaveEvent(self, event):
-        self.setPen(QColor(0,0,0,0))
+        pen = QPen(QColor(0,0,0,0))
+        self.setPen(pen)
         self.annoView.centerAt(None)
         QGraphicsRectItem.hoverLeaveEvent(self, event)
         
@@ -1077,7 +1131,8 @@ class AnnoView(QWidget):
         self.cMarker1 = QLabel(parent)
         self.cMarker1.setGeometry(QRect(geo.x() + geo.width() / 2, 
                                        geo.y() -15, 1, geo.height() + 30))
-        self.cMarker1.setFrameShape(QFrame.Box)
+        self.cMarker1.setFrameStyle(QFrame.VLine)
+        self.cMarker1.raise_()
         
         self.prevConnectHooks = []
         parPos = self.mapToParent(QPoint(0,0))
@@ -1362,7 +1417,7 @@ class AnnoView(QWidget):
             if (self.addingAnno 
                             and (curKey in tempKeys) 
                             and (curIdx in self.tempRng[curKey])):
-                conf = 1
+                conf = [1]
             elif (self.erasingAnno 
                             and (curKey in tempKeys) 
                             and (curIdx in self.tempRng[curKey])):
@@ -1384,13 +1439,15 @@ class AnnoView(QWidget):
 #             else:
 #                 conf = self.annotationDict[kip.key].frameList[kip.idx]
 #             cfg.log.warning("{0}".format(conf))
-            if conf is [True for c in conf if c != None]:
+            if [True for c in conf if c != None]:
                 self.frames[i].setBrush(self.brushA)
                 self.frames[i].setPen(self.penA)
-            else:                
+            else:              
                 self.frames[i].setBrush(self.brushI)
                 self.frames[i].setPen(self.penI)
                 
+            self.frames[i].update()
+        
     @cfg.logClassFunction
     def addAnno(self, key=None, idx=None):
         if key is None:
@@ -1551,12 +1608,14 @@ class VideoLoader(QObject):
         dview = rc[:]        
         dview['np2qimage'] = np2qimage
         dview['QImage'] = QImage
+        dview['pth'] = sys.path
 #         dview['np'] = np
         lbview = rc.load_balanced_view()   
         
         #@lbview.parallel(block=True)
         def loadVideo(f, vialNo):    
 #             from qimage2ndarray import array2qimage
+            import sys
             from pyTools.system.videoExplorer import videoExplorer
             import numpy as np    
             from PySide.QtGui import QImage
