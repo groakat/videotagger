@@ -1,4 +1,5 @@
 import numpy as np
+import pylab as plt
 
 import os
 import pyTools.videoProc.annotation as annotation
@@ -26,7 +27,7 @@ def extractAnnotatedFrames(vials=None, annotator="peter", behaviour="struggling"
     a = [[] for i in range(4)]
     
     for root, dirs, files in os.walk(dataFolder):
-        for file in files:
+        for file in sorted(files):
             if file.endswith(".bhvr"):
                 # load annotation and filter it #
                 path = os.path.join(root,file)
@@ -566,6 +567,332 @@ def crossValidateSectionSetsMIL(sets, classifier, additionalFrames=100, negative
         cnt += 1
     
     return cmat, predict, trainSets, testSets, selectionSet
+
+def timeBiasedFold(pseudoLabel, aS, idx, behaviour):
+    train = []
+    test = []
+    for i in range(max(pseudoLabel) + 1):
+        vIndeces = np.where(pseudoLabel == i)[0]
+        if i == behaviour:
+            train += list(vIndeces[:idx])
+            test += list(vIndeces[idx:])
+        else:
+            inces = np.random.permutation(vIndeces)
+            train += list(inces[:len(inces)/2])
+            test += list(inces[len(inces)/2:])
+                    
+    return [[train, test]]
+
+def validateSectionSetsIncremental(sets, classifier, aS, timePos, behaviour=0):
+    """
+    Args:
+        data (list of np.arrays)
+                list of feature matrices, one for each class
+        labels (list of np.arrays)
+                list of labels corresponding feature matrices in data
+        sets (list of [begin (int), end (int)])
+                list of indeces of sets of groups of samples in feature
+                matrices
+                
+                
+    """
+    
+    # construct pseudo feature matrix that in reality contains 
+    # indices to sections in the sets, which will then be used
+    # to sample from the samples within the choosen sections
+    # to create unbiased training and test set
+    
+#     pseudoFeat = np.asarray([f for s in sets for f in range(len(s))])
+#     pseudoLabel = np.asarray([i for i in range(len(sets)) for f in range(len(sets[i]))])
+    
+    pseudoFeat, pseudoLabel = lE.getPseudoIndeces(sets)
+    
+    idx = np.max(pseudoLabel) + 1
+    cmat = np.zeros((idx, idx), dtype=np.int32)
+    
+    #kf = KFold(len(labels), n_folds=Nfolds, indices=True)
+    kf = timeBiasedFold(pseudoLabel, aS, timePos, behaviour)
+    
+    cnt = 1
+    
+    predict = []
+    testLbl = []
+    testPos = []
+    trainSets = []
+    testSets = []
+    selectionSet = []
+    
+    for train, test in kf:
+        trainSets += [train]
+        testSets += [test]
+        
+        
+        # create balanced training set
+        cFeat = []
+        for c in range(idx):
+            abc = [sets[pseudoLabel[t]][pseudoFeat[t]] \
+                                               for t in train \
+                                                   if pseudoLabel[t] == c ]
+#             for a in abc:
+#                 print a.shape
+            if abc:
+                cFeat += [np.concatenate(abc)]
+        
+        
+        maxSamples = min([a.shape[0] for a in cFeat])
+        
+        feats = []
+        lbls= []
+        selection = []
+        for c in range(len(cFeat)):
+            idces = np.random.permutation(np.arange(cFeat[c].shape[0]))[:maxSamples]
+            feats += [cFeat[c][idces]]
+            lbls += [[c] * maxSamples]
+            selection += [idces]
+            
+                
+        trainSet = np.concatenate(tuple(feats)) #data[train]
+        selectionSet += [selection]
+        trainLbl = np.concatenate(tuple(lbls)) #labels[train]
+        
+        
+        # create test set from all samples in sets choosen for testing
+        # (class imbalance does not matter)
+        cFeat = []
+        for c in range(idx):
+            cFeat += [np.concatenate(tuple([sets[pseudoLabel[t]][pseudoFeat[t]] \
+                                               for t in test \
+                                                   if pseudoLabel[t] == c ]))]
+        
+        feats = []
+        lbls= []
+        for c in range(len(cFeat)):
+            feats += [cFeat[c]]
+            lbls += [[c] * cFeat[c].shape[0]]
+            
+                
+        testSet = np.concatenate(tuple(feats)) #data[train]
+        testLbl.append(np.concatenate(tuple(lbls))) #labels[train]
+        
+        
+        # train classifier and test 
+        wclf = classifier
+        wclf.fit(trainSet, trainLbl)
+        
+        predict.append(wclf.predict(testSet))
+        
+        cmat += computeConfusionMatrix(predict[-1], testLbl[-1])
+        cnt += 1
+    
+    return cmat, predict, trainSets, testSets, selectionSet
+
+
+def timeBiasedSplit(pseudoLabel, aS, idx, behaviour):
+    normalSet = []
+    testOnlySet = []
+    for i in range(max(pseudoLabel) + 1):
+        vIndeces = np.where(pseudoLabel == i)[0]
+        if i == behaviour:
+            normalSet += list(vIndeces[:idx])
+            testOnlySet += list(vIndeces[idx:])
+        else:
+            normalSet += list(vIndeces)
+                    
+    return normalSet, testOnlySet
+
+
+def crossValidateSectionSetsIncremental(sets, classifier, aS, timePos, behaviour=0, nFolds=10):
+    """
+    Args:
+        data (list of np.arrays)
+                list of feature matrices, one for each class
+        labels (list of np.arrays)
+                list of labels corresponding feature matrices in data
+        sets (list of [begin (int), end (int)])
+                list of indeces of sets of groups of samples in feature
+                matrices
+                
+                
+    """
+    
+    # construct pseudo feature matrix that in reality contains 
+    # indices to sections in the sets, which will then be used
+    # to sample from the samples within the choosen sections
+    # to create unbiased training and test set
+    
+#     pseudoFeat = np.asarray([f for s in sets for f in range(len(s))])
+#     pseudoLabel = np.asarray([i for i in range(len(sets)) for f in range(len(sets[i]))])
+    
+    pseudoFeat, pseudoLabel = lE.getPseudoIndeces(sets)
+    
+    idx = np.max(pseudoLabel) + 1
+    cmat = np.zeros((idx, idx), dtype=np.int32)
+    
+    #kf = KFold(len(labels), n_folds=Nfolds, indices=True)
+    normalSet, testOnlySet = timeBiasedSplit(pseudoLabel, aS, timePos, behaviour)
+    print len(testOnlySet)
+    
+    testParts = []
+    kf = None
+    #kf = KFold(len(labels), n_folds=Nfolds, indices=True)
+    if timePos > nFolds:
+        kf = StratifiedKFold(pseudoLabel[normalSet], n_folds=nFolds, indices=True)
+        # distribute test only part into test sets of folds
+        testParts = list(partition(np.random.permutation(testOnlySet), nFolds))
+    else:
+        kf = StratifiedKFold(pseudoLabel[normalSet], n_folds=timePos, indices=True)        
+        # distribute test only part into test sets of folds
+        testParts = list(partition(np.random.permutation(testOnlySet), timePos))
+    
+    
+        
+    # rest is business as usual
+    
+    cnt = 0
+    
+    predict = []
+    testLbl = []
+    testPos = []
+    trainSets = []
+    testSets = []
+    selectionSet = []
+    
+    for train, test in kf:
+        test = np.asarray(normalSet)[np.asarray(test)]
+        train = np.asarray(normalSet)[np.asarray(train)]
+        if len(testParts) > cnt:
+            test = np.append(test,  testParts[cnt])
+            
+        trainSets += [train]
+        testSets += [test]
+        cnt += 1
+        
+        
+        # create balanced training set
+        cFeat = []
+        for c in range(idx):
+            abc = [sets[pseudoLabel[t]][pseudoFeat[t]] \
+                                               for t in train \
+                                                   if pseudoLabel[t] == c ]
+#             for a in abc:
+#                 print a.shape
+            if abc:
+                cFeat += [np.concatenate(abc)]
+        
+        
+        maxSamples = min([a.shape[0] for a in cFeat])
+        
+        feats = []
+        lbls= []
+        selection = []
+        for c in range(len(cFeat)):
+            idces = np.random.permutation(np.arange(cFeat[c].shape[0]))[:maxSamples]
+            feats += [cFeat[c][idces]]
+            lbls += [[c] * maxSamples]
+            selection += [idces]
+            
+                
+        trainSet = np.concatenate(tuple(feats)) #data[train]
+        selectionSet += [selection]
+        trainLbl = np.concatenate(tuple(lbls)) #labels[train]
+        
+        
+        # create test set from all samples in sets choosen for testing
+        # (class imbalance does not matter)
+        cFeat = []
+        for c in range(idx):
+            normalFeatSet = [sets[pseudoLabel[t]][pseudoFeat[t]] \
+                                               for t in test \
+                                                   if pseudoLabel[t] == c ]
+#             testOnlyFeatSet = [sets[pseudoLabel[t]][pseudoFeat[t]] \
+#                                                for t in testOnlySet \
+#                                                    if pseudoLabel[t] == c ]
+#             cFeat += [np.concatenate(tuple(normalFeatSet + testOnlyFeatSet))]
+            cFeat += [np.concatenate(tuple(normalFeatSet))]
+        
+        feats = []
+        lbls= []
+        for c in range(len(cFeat)):
+            feats += [cFeat[c]]
+            lbls += [[c] * cFeat[c].shape[0]]
+            
+                
+        testSet = np.concatenate(tuple(feats)) #data[train]
+        testLbl.append(np.concatenate(tuple(lbls))) #labels[train]
+        
+        
+        # train classifier and test 
+        wclf = classifier
+        wclf.fit(trainSet, trainLbl)
+        
+        predict.append(wclf.predict(testSet))
+        
+        cmat += computeConfusionMatrix(predict[-1], testLbl[-1])
+    
+    return cmat, predict, trainSets, testSets, selectionSet
+
+def reduceMulticlassCMat(cmat, c):
+    """
+    Args:
+        cmat (numpy array):
+                multi-class confision matrix
+        c (int):
+                active class 
+    """
+    redCMat = np.zeros((2,2))
+    redCMat[0,0] = cmat[c,c]
+    redCMat[0,1] = np.sum(cmat[c,:]) - cmat[c,c]
+    redCMat[1,1] = np.sum(cmat.diagonal()) - cmat[c,c]
+    redCMat[1,0] = np.sum(cmat.flatten()) - np.sum(redCMat.flatten())
+    
+    return redCMat
+
+
+def calcBaseStatsFromCMat(cmat):
+    """
+    
+    Returns:
+        accuracy, presicion, recall, f1Score
+        of confusion matrix cmat
+    """
+    accuracy = np.sum(cmat.diagonal()) / np.sum(cmat.flatten() + 0.0)
+    precision = cmat[0,0] / (cmat[0,0] + cmat[0,1] + 0.0)
+    recall = cmat[0,0] / (cmat[0,0] + cmat[1,0] + 0.0)
+    f1Score = 2 * ((precision * recall) / (precision + recall + 0.0))
+    
+    return accuracy, precision, recall, f1Score
+
+def plotCmatsPerformance(cmats):    
+    stats = []
+    for i in range(len(cmats)):
+        stats += [[]]
+        for cmat in cmats[i]:
+            stats[-1] += [calcBaseStatsFromCMat(reduceMulticlassCMat(cmat,i))]
+            
+    for i in range(len(stats)):
+        fig = plt.figure(figsize=(20,10))
+        axes = fig.add_subplot(111)
+        plt.plot(np.arange(len(stats[i])), [s[0] for s in stats[i]], 
+                                                            color='red', 
+                                                            label='accuracy')
+        plt.plot(np.arange(len(stats[i])), [s[3] for s in stats[i]], 
+                                                            color='blue', 
+                                                            label='F1 score')
+        axes.set_ylim([0,1])
+        plt.title("class {i}".format(i=i))
+        plt.legend()
+    
+def saveCMatsToJson(cmats, fn):
+    cmatLst = [[a.tolist() for a in b] for b in cmats]
+    with open(fn, 'w') as f:
+        json.dump(cmatLst,f, indent=4)
+    
+def loadJsonToCMats(fn):
+    with open(fn, 'r') as f:
+        cmatLst = json.load(f)
+    cmats = [[np.asarray(a) for a in b] for b in cmatLst]
+    return cmats    
+
 
 def getMissClassified(predict, labels, pathList, cl):
     out = []

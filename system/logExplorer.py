@@ -21,7 +21,7 @@ def getTime(t, ref=None):
     else:
         return a + b
 
-def convertFrame2Date(arg, ref=None):
+def convertFrame2Date(key, idx=0, ref=None):
     """
     Args:
         arg ({"idx":int, "key": string})
@@ -33,15 +33,15 @@ def convertFrame2Date(arg, ref=None):
         datedelta object
     """
     # calculate how many ms the idx represents in the current video file #
-    if arg["idx"] > 0:
-        totalF = np.load(arg["key"]).shape[0]
+    if idx > 0:
+        totalF = np.load(key).shape[0]
         musPerIdx = 60.0 / totalF * 1000
-        idxInMs = datetime.timedelta(milliseconds=(arg["idx"] * musPerIdx))
+        idxInMs = datetime.timedelta(milliseconds=(idx * musPerIdx))
     else:
         idxInMs = datetime.timedelta(milliseconds=(0))
     
     # retrieve video file timestamp #
-    t = arg["key"].split('/')[-1].split(".")[0:2]
+    t = key.split('/')[-1].split(".")[0:2]
     t = t[0] + "." + t[1]
     d = datetime.datetime.strptime(t, "%Y-%m-%d.%H-%M-%S")
     
@@ -115,7 +115,8 @@ def parseLogFiles(dataFolder, lineThreshold=2000):
             line = clearLog[i]
             annoA = annoActive[i]
             timings += [getTime(line["time"], refDate)]
-            accFrames += [convertFrame2Date(line["args"])]
+            accFrames += [convertFrame2Date(line["args"]["key"],
+                                            line["args"]["idx"])]
             
             aA, behaviour = annoActive[i]
             if isAnnoActive is not aA:
@@ -160,7 +161,7 @@ def constructContinuousLabelData(plotDatas):
     contSpans = [correctSpanTiming(x,os) for x in d[2]]
     
     for d in plotDatas[1:]:
-        print os
+#         print os
         # define offset #
         contDataX += [datetime.datetime(2001,1,1) + x + os for x in d[0]]
         contDataY += d[1]

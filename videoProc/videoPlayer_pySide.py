@@ -843,10 +843,16 @@ class videoPlayer(QMainWindow):
     @cfg.logClassFunction
     def close(self):
         self.stop = True
+        self.exit()  
+            
+    def exit(self):
+        print "-----------------exit---------------"
+        self.stopVideo()
+        self.vh.aboutToQuit()
         
     @cfg.logClassFunction
     def closeEvent(self, event):
-        self.close()        
+        self.close()      
         event.accept()   
         self.quit.emit()
         
@@ -1043,6 +1049,12 @@ class videoPlayer(QMainWindow):
         cfg.log.info("escape annotation")    
         logGUI.info('"------escape annotation--------"')
         self.vh.escapeAnnotationAlteration()
+        
+        
+        
+    
+    def aboutToQuit(self):
+        self.exit()
         
         
 class AnnoViewManager(QObject):
@@ -1813,6 +1825,9 @@ class VideoHandler(QObject):
         self.vLL.moveToThread(self.videoLoaderLuncherThread)
         
         self.videoLoaderLuncherThread.start()
+        self.videoLoaderLuncherThread.wrapUp.connect(
+                                    self.vLL.aboutToQuit)
+        
 #         time.sleep(10)
         self.vLL.createdVideoLoader.connect(self.linkToAnnoview)
         self.newVideoLoader.connect(self.vLL.lunchVideoLoader)
@@ -1833,7 +1848,6 @@ class VideoHandler(QObject):
     
     def aboutToQuit(self):
         self.videoLoaderLuncherThread.quit()
-        time.sleep(1)
     
     @cfg.logClassFunction
     def setFrameIdx(self, idx):
@@ -2410,6 +2424,8 @@ class VideoLoaderLuncher(QObject):
         if len(self.availableVLs) == 0:
             cfg.log.info("create new VideoLoader {0}".format(path))                  
             videoLoaderThread = MyThread("videoLoader {0}".format(len(self.threads.keys())))
+            
+            
             vL = VideoLoader(path, vH, thread=videoLoaderThread, selectedVials=selectedVials)      
             vL.moveToThread(videoLoaderThread)         
             videoLoaderThread.start()
@@ -2451,24 +2467,40 @@ class VideoLoaderLuncher(QObject):
             self.availableVLs += [vL]
         else:
             self.dumpingPlace += [vL]
-            
+        
+    @Slot()    
     def aboutToQuit(self):
+        print "video-launcher, about to quit"
         for key in self.threads:
             self.threads[key].quit()
+            
+        
+class MyThread(QThread):    
+    finished = Signal()
+    wrapUp = Signal()
     
-        time.sleep(1)
-        
-        
-class MyThread(QThread):
     def __init__(self, name):
         super(MyThread, self).__init__()
-        self.setObjectName(name)
+        self.setObjectName(name)    
+        
+        
+        self.finished.connect(self.deleteLater)
+#         self.finished.connect(self.deleteLater)        
+        self.exiting = False
+
+    @cfg.logClassFunction
+    def __del__(self):        
+        cfg.log.debug("deleting")
+        self.exiting = True
+        self.wrapUp.emit()
+        self.wait()
 
     def run(self):
         cfg.log.debug("RUN THREAD {0} {1}".format(QThread.currentThread().objectName(),
                                                  QApplication.instance().thread().objectName()))
         self.exec_()
-        print "RUN DONE", QThread.currentThread().objectName()
+        print "RUN DONE", QThread.currentThread().objectName()        
+        self.finished.emit()
         
 if __name__ == "__main__":
     
@@ -2588,7 +2620,7 @@ if __name__ == "__main__":
     w = videoPlayer(path, annotations, backgroundPath, selectedVial, vialROI,
                      videoFormat='avi')
     
-    app.connect(app, SIGNAL("aboutToQuit()"), w.stopVideo)
+    app.connect(app, SIGNAL("aboutToQuit()"), w.exit)
     w.quit.connect(app.quit)
     
     sys.exit(app.exec_())
