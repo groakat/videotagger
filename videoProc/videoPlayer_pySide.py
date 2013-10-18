@@ -384,6 +384,7 @@ class videoPlayer(QMainWindow):
         self.ui.pb_test.clicked.connect(self.testFunction)
         self.ui.pb_addAnno.clicked.connect(self.addAnno)
         self.ui.pb_eraseAnno.clicked.connect(self.eraseAnno)
+        self.ui.pb_jmp2frame.clicked.connect(self.jump2selectedVideo)
         
         self.ui.sldr_paths.valueChanged.connect(self.selectVideo)
         self.ui.lv_frames.activated.connect(self.selectFrame)
@@ -916,6 +917,9 @@ class videoPlayer(QMainWindow):
     def selectVideoLV(self, mdl):
         self.idx = mdl.row()   
         self.selectVideo(self.idx)
+        
+    def jump2selectedVideo(self):
+        self.selectVideoLV(self.ui.lv_paths.selectionModel().currentIndex())
         
 #     @cfg.logClassFunction
     def selectFrame(self, mdl):
