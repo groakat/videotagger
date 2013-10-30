@@ -61,9 +61,59 @@ class MyListModel(QAbstractListModel):
             
 
 class filterObj(QObject):
-    def __init__(self, parent):
+    def __init__(self, parent, keyMap=None, stepSize=None, oneClickAnnotation=None):
         QObject.__init__(self)
         self.parent = parent
+        
+        if keyMap is None:
+            self.keyMap = { "stop": Qt.Key_F,
+                            "step-f": Qt.Key_G,
+                            "step-b": Qt.Key_D,
+                            "fwd-1": Qt.Key_T,
+                            "fwd-2": Qt.Key_V,
+                            "fwd-3": Qt.Key_B,
+                            "fwd-4": Qt.Key_N,
+                            "fwd-5": Qt.Key_H,
+                            "fwd-6": Qt.Key_J,
+                            "bwd-1": Qt.Key_E,
+                            "bwd-2": Qt.Key_X,
+                            "bwd-3": Qt.Key_Z,
+                            "bwd-4": Qt.Key_Backslash,
+                            "bwd-5": Qt.Key_S,
+                            "bwd-6": Qt.Key_A,
+                            "escape": Qt.Key_Escape,
+                            "anno-1": Qt.Key_1,
+                            "anno-2": Qt.Key_2,
+                            "anno-3": Qt.Key_3,
+                            "quit-anno": Qt.Key_Q,
+                            "info": Qt.Key_I}
+        else:
+            self.keyMap = keyMap
+                        
+        if stepSize is None:
+            self.stepSize = { "stop": 0,
+                            "step-f": 1,
+                            "step-b": -1,
+                            "fwd-1": 1,
+                            "fwd-2": 3,
+                            "fwd-3": 10,
+                            "fwd-4": 20,
+                            "fwd-5": 40,
+                            "fwd-6": 60,
+                            "bwd-1": -1,
+                            "bwd-2": -3,
+                            "bwd-3": -10,
+                            "bwd-4": -20,
+                            "bwd-5": -40,
+                            "bwd-6": -60}
+        else:
+            self.stepSize = stepSize
+                    
+        if oneClickAnnotation is None:
+            self.oneClickAnnotation = [False, False, False]            
+        else:
+            self.oneClickAnnotation = oneClickAnnotation
+                        
     
     #def eventFilter(self, obj, event):
     #    if (event.type() == QEvent.KeyPress):
@@ -97,118 +147,80 @@ class filterObj(QObject):
                 self.parent.showTrajectTemp = True
                     
                         
-                if key == Qt.Key_F:
+                if key == self.keyMap["stop"]:
                     # stop playback
                     self.parent.play = False
-                    self.parent.increment = 0
+                    self.parent.increment = self.stepSize["stop"]
                     if self.parent.tempTrajSwap:
                         self.parent.tempTrajSwap = False
                         self.parent.showTrajectories(True)
                     
-                if key == Qt.Key_G:
+                if key == self.keyMap["step-f"]:
                     # step-wise forward
                     self.parent.play = False
-    #                 self.parent.increment = 1
+                    self.parent.increment = self.stepSize["step-f"]
     #                 self.parent.showNextFrame(self.increment)
-                    self.parent.showNextFrame(1)
+                    self.parent.showNextFrame(self.stepSize["step-f"])
                     if self.parent.tempTrajSwap:
                         self.parent.tempTrajSwap = False
                         self.parent.showTrajectories(True)
                 
-                if key == Qt.Key_D:
+                if key == self.keyMap["step-b"]:
                     # step-wise backward
                     self.parent.play = False
-    #                 self.increment = -1
-                    self.parent.showNextFrame(-1)
+                    self.increment = self.stepSize["step-b"]
+                    self.parent.showNextFrame(self.stepSize["step-b"])
                     if self.parent.tempTrajSwap:
                         self.parent.tempTrajSwap = False
                         self.parent.showTrajectories(True)
                     
-                if key == Qt.Key_T:
+                if key == self.keyMap["fwd-1"]:
                     # real-time playback
-                    self.parent.increment = 1
+                    self.parent.increment = self.stepSize["fwd-1"]
                     self.parent.play = True
                     if self.parent.tempTrajSwap:
                         self.parent.tempTrajSwap = False
                         self.parent.showTrajectories(True)
                         
-                if key == Qt.Key_E:
+                if key == self.keyMap["bwd-1"]:
                     # real-time playback
-                    self.parent.increment = -1
+                    self.parent.increment = self.stepSize["bwd-1"]
                     self.parent.play = True
                     if self.parent.tempTrajSwap:
                         self.parent.tempTrajSwap = False
                         self.parent.showTrajectories(True)
                     
-                if key == Qt.Key_V:
+                if key == self.keyMap["fwd-2"]:
                     # 
-                    self.parent.increment = 3
+                    self.parent.increment = self.stepSize["fwd-2"]
                     self.parent.play = True
                     if self.parent.tempTrajSwap:
                         self.parent.tempTrajSwap = False
                         self.parent.showTrajectories(True)
                     
-                if key == Qt.Key_B:
-                    self.parent.increment = 10
+                if key == self.keyMap["fwd-3"]:
+                    self.parent.increment = self.stepSize["fwd-3"]
                     self.parent.play = True
                     if self.parent.tempTrajSwap:
                         self.parent.tempTrajSwap = False
                         self.parent.showTrajectories(True)
                     
-                if key == Qt.Key_N:
-                    self.parent.increment = 20
+                if key == self.keyMap["fwd-4"]:
+                    self.parent.increment = self.stepSize["fwd-4"]
                     self.parent.play = True
                     if self.parent.tempTrajSwap:
                         self.parent.tempTrajSwap = False
                         self.parent.showTrajectories(True)
                     
-                if key == Qt.Key_H:
-                    self.parent.increment = 40
+                if key == self.keyMap["fwd-5"]:
+                    self.parent.increment = self.stepSize["fwd-5"]
                     self.parent.play = True
                     if self.parent.tempTrajSwap:
                         self.parent.tempTrajSwap = False
                         self.parent.showTrajectories(True)
                     
-                if key == Qt.Key_J:
-                    self.parent.increment = 60
-                    self.parent.play = True
-                    if self.parent.tempTrajSwap:
-                        self.parent.tempTrajSwap = False
-                        self.parent.showTrajectories(True)
-    #                     self.tempTrajSwap = True
-    #                     self.showTrajectories(False)
-                    
-                    
-                if key == Qt.Key_X:
-                    self.parent.increment = -3
-                    self.parent.play = True
-                    if self.parent.tempTrajSwap:
-                        self.parent.tempTrajSwap = False
-                        self.parent.showTrajectories(True)
-                    
-                if key == Qt.Key_Z:
-                    self.parent.increment = -10
-                    self.parent.play = True
-                    if self.parent.tempTrajSwap:
-                        self.parent.tempTrajSwap = False
-                        self.parent.showTrajectories(True)
-                    
-                if key == Qt.Key_Backslash:
-                    self.parent.increment = -20
-                    self.parent.play = True
-                    if self.parent.tempTrajSwap:
-                        self.parent.tempTrajSwap = False
-                        self.parent.showTrajectories(True)
-                    
-                if key == Qt.Key_S:
-                    self.parent.increment = -40
-                    self.parent.play = True
-                    if self.parent.tempTrajSwap:
-                        self.parent.tempTrajSwap = False
-                        self.parent.showTrajectories(True)
-                    
-                if key == Qt.Key_A:
-                    self.parent.increment = -60
+                if key == self.keyMap["fwd-6"]:
+                    self.parent.increment = self.stepSize["fwd-6"]
                     self.parent.play = True
                     if self.parent.tempTrajSwap:
                         self.parent.tempTrajSwap = False
@@ -216,32 +228,71 @@ class filterObj(QObject):
     #                     self.tempTrajSwap = True
     #                     self.showTrajectories(False)
                     
-                if key == Qt.Key_I:
+                    
+                if key == self.keyMap["bwd-2"]:
+                    self.parent.increment = self.stepSize["bwd-2"]
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == self.keyMap["bwd-3"]:
+                    self.parent.increment = self.stepSize["bwd-3"]
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == self.keyMap["bwd-4"]:
+                    self.parent.increment = self.stepSize["bwd-4"]
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == self.keyMap["bwd-5"]:
+                    self.parent.increment = self.stepSize["bwd-5"]
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+                    
+                if key == self.keyMap["bwd-6"]:
+                    self.parent.increment = self.stepSize["bwd-6"]
+                    self.parent.play = True
+                    if self.parent.tempTrajSwap:
+                        self.parent.tempTrajSwap = False
+                        self.parent.showTrajectories(True)
+    #                     self.tempTrajSwap = True
+    #                     self.showTrajectories(False)
+                    
+                        
+                if key == self.keyMap["info"]:
                     cfg.log.debug("position length: {0}".format(self.parent.vh.getCurrentPositionLength()))
                     cfg.log.debug("video length: {0}".format(self.parent.vh.getCurrentVideoLength()))
                     
-                if key == Qt.Key_Escape:
+                if key == self.keyMap["escape"]:
                     self.parent.escapeAnnotationAlteration()
                     
-                if key == Qt.Key_1:
+                if key == self.keyMap["anno-1"]:
                     self.parent.alterAnnotation(self.parent.annotations[0]["annot"], 
                                         self.parent.annotations[0]["behav"],
-                                        confidence=1)
-    #                 self.alterAnnotation(self.annotations[0]["annot"], 
-    #                                      self.annotations[0]["behav"],
-    #                                      confidence=1)
+                                        confidence=1, 
+                                        oneClickAnnotation=self.oneClickAnnotation[0])
                     
-                if key == Qt.Key_2:
+                if key == self.keyMap["anno-2"]:
                     self.parent.alterAnnotation(self.parent.annotations[1]["annot"], 
                                         self.parent.annotations[1]["behav"],
-                                        confidence=1)
+                                        confidence=1, 
+                                        oneClickAnnotation=self.oneClickAnnotation[1])
                     
-                if key == Qt.Key_3:
+                if key == self.keyMap["anno-3"]:
                     self.parent.alterAnnotation(self.parent.annotations[2]["annot"], 
                                         self.parent.annotations[2]["behav"],
-                                        confidence=1)
+                                        confidence=1, 
+                                        oneClickAnnotation=self.oneClickAnnotation[2])
                     
-                if key == Qt.Key_Q:
+                if key == self.keyMap["quit-anno"]:
                     self.parent.addingAnnotations = not self.parent.addingAnnotations
                     if not self.parent.addingAnnotations:
                         cfg.log.info("changed to erasing mode")
@@ -276,7 +327,9 @@ class videoPlayer(QMainWindow):
                         backgroundPath,
                         selectedVial,
                         vialROI,
-                        videoFormat='avi'):
+                        videoFormat='avi',
+                        filterObjArgs=None
+                        ):
         """
         
         args:
@@ -293,7 +346,11 @@ class videoPlayer(QMainWindow):
         self.ui.cb_trajectory.setChecked(True)
         
         
-        self.eventFilter = filterObj(self)
+        if filterObjArgs is None:
+            filterObjArgs = {"keyMap":None, "stepSize":None,
+                             "oneClickAnnotation":None}
+        
+        self.eventFilter = filterObj(self, **filterObjArgs)
         self.installEventFilter(self.eventFilter)
         self.connectSignals()       
         
@@ -394,7 +451,7 @@ class videoPlayer(QMainWindow):
         
         
         
-        self.ui.pb_startVideo.installEventFilter(self.eventFilter)
+        #~ self.ui.pb_startVideo.installEventFilter(self.eventFilter)
         self.ui.pb_stopVideo.installEventFilter(self.eventFilter)
         self.ui.pb_compDist.installEventFilter(self.eventFilter)
         self.ui.pb_test.installEventFilter(self.eventFilter)
@@ -619,11 +676,10 @@ class videoPlayer(QMainWindow):
     
     @cfg.logClassFunction
     def showNextFrame(self, increment=None, checkBuffer=True):
-        logGUI.debug(json.dumps({"increment":increment, 
-                                 "checkBuffer":checkBuffer}))
+        #~ logGUI.debug(json.dumps({"increment":increment, 
+                                 #~ "checkBuffer":checkBuffer}))
                 
         
-#         cfg.log.info("increment: {0}, checkBuffer: {1}".format(increment, checkBuffer))
         
         if increment is None:
             increment = self.increment
@@ -634,6 +690,8 @@ class videoPlayer(QMainWindow):
         sv = self.selectedVial
         
         offset = 5  
+        
+        cfg.log.debug("increment: {0}, checkBuffer: {1}".format(increment, checkBuffer))
         
         if increment > 0:
             self.frames += [self.vh.getNextFrame(increment, checkBuffer)]
@@ -1023,11 +1081,16 @@ class videoPlayer(QMainWindow):
         #self.vh.loadProgressive = True
         self.increment = 40
         
-    def alterAnnotation(self, annotator="peter", behaviour="just testing", confidence=1):
+    def alterAnnotation(self, annotator="peter", behaviour="just testing", 
+                        confidence=1, oneClickAnnotation=False):
         if self.addingAnnotations:
             self.addAnno(annotator, behaviour, confidence)
         else:
             self.eraseAnno(annotator, behaviour)
+            
+        if oneClickAnnotation:
+            self.alterAnnotation(annotator, behaviour, confidence,
+                            oneClickAnnotation=False)
             
 #     @cfg.logClassFunction
     def addAnno(self, annotator="peter", behaviour="just testing", confidence=1):        
@@ -2599,6 +2662,31 @@ if __name__ == "__main__":
     selectedVial = config['vial']
     vialROI = config['vialROI']
     
+    filterObjArgs = dict()
+    
+    try:
+        keyMap = dict()
+        for key in config['keyMap']:
+            keyMap[key] = eval("Qt." + config['keyMap'][key], {"Qt":Qt})
+    except KeyError:
+        keyMap = None
+    
+    filterObjArgs["keyMap"] = keyMap
+    
+    try:
+        stepSize = config['stepSize']
+    except KeyError:
+        stepSize = None
+        
+    filterObjArgs["stepSize"] = stepSize
+
+    try:
+        oneClickAnnotation = config['oneClickAnnotation']
+    except KeyError:
+        oneClickAnnotation = None
+    
+    filterObjArgs["oneClickAnnotation"] = oneClickAnnotation
+    
     
     logGUI = logging.getLogger("GUI")
     logGUI.setLevel(logging.DEBUG)
@@ -2614,11 +2702,10 @@ if __name__ == "__main__":
     logGUI.addHandler(hGUI)
     
     
-    
     app = QApplication(sys.argv)
     
     w = videoPlayer(path, annotations, backgroundPath, selectedVial, vialROI,
-                     videoFormat='avi')
+                     videoFormat='avi', filterObjArgs=filterObjArgs)
     
     app.connect(app, SIGNAL("aboutToQuit()"), w.exit)
     w.quit.connect(app.quit)

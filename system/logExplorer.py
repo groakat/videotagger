@@ -169,4 +169,7 @@ def constructContinuousLabelData(plotDatas):
         os += d[0][-1]
     
     return contDataX, contDataY
+
+if __name__ == "__main__":
+    pass
     

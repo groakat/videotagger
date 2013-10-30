@@ -921,6 +921,9 @@ def extractContinuousAnnotationSections(aF, fileList):
         sect += [[]]
         for v in range(len(aF[b])):
             vSec = []
+            if not aF[b][v]:
+                sect[b] += [vSec]
+                continue
             start = 0
             end = None
             for a in range(1, len(aF[b][v])):
@@ -1359,4 +1362,6 @@ if __name__ == "__main__":
     nFolds = 2
     
     gridSearch(feat, classifiers, classSets, nFolds, noAddFeat, additionalFrames)
+    
+    
     
