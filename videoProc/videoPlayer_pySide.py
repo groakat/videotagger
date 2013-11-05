@@ -94,6 +94,7 @@ class filterObj(QObject):
             self.stepSize = { "stop": 0,
                             "step-f": 1,
                             "step-b": -1,
+                            "allow-steps": True,
                             "fwd-1": 1,
                             "fwd-2": 3,
                             "fwd-3": 10,
@@ -149,27 +150,40 @@ class filterObj(QObject):
                         
                 if key == self.keyMap["stop"]:
                     # stop playback
-                    self.parent.play = False
+                    if self.stepSize["allow-steps"] == "true":
+                        self.parent.play = False
+                    else:
+                        self.parent.play = True
+                        
                     self.parent.increment = self.stepSize["stop"]
+                    
                     if self.parent.tempTrajSwap:
                         self.parent.tempTrajSwap = False
                         self.parent.showTrajectories(True)
                     
                 if key == self.keyMap["step-f"]:
                     # step-wise forward
-                    self.parent.play = False
+                    if self.stepSize["allow-steps"]:
+                        self.parent.play = False
+                        self.parent.showNextFrame(self.stepSize["step-f"])
+                    else:
+                        self.parent.play = True
+                        
                     self.parent.increment = self.stepSize["step-f"]
     #                 self.parent.showNextFrame(self.increment)
-                    self.parent.showNextFrame(self.stepSize["step-f"])
                     if self.parent.tempTrajSwap:
                         self.parent.tempTrajSwap = False
                         self.parent.showTrajectories(True)
                 
                 if key == self.keyMap["step-b"]:
                     # step-wise backward
-                    self.parent.play = False
+                    if self.stepSize["allow-steps"]:
+                        self.parent.play = False
+                        self.parent.showNextFrame(self.stepSize["step-b"])
+                    else:
+                        self.parent.play = True
+                        
                     self.increment = self.stepSize["step-b"]
-                    self.parent.showNextFrame(self.stepSize["step-b"])
                     if self.parent.tempTrajSwap:
                         self.parent.tempTrajSwap = False
                         self.parent.showTrajectories(True)
@@ -328,7 +342,8 @@ class videoPlayer(QMainWindow):
                         selectedVial,
                         vialROI,
                         videoFormat='avi',
-                        filterObjArgs=None
+                        filterObjArgs=None,
+                        startVideoName=None
                         ):
         """
         
@@ -354,12 +369,12 @@ class videoPlayer(QMainWindow):
         self.installEventFilter(self.eventFilter)
         self.connectSignals()       
         
-        self.posList = self.providePosList(path)    
+        self.fileList = self.providePosList(path)    
         
         self.lm = MyListModel(self.fileList, self)        
         self.ui.lv_paths.setModel(self.lm)
         
-        self.ui.sldr_paths.setMaximum(len(self.posList))
+        self.ui.sldr_paths.setMaximum(len(self.fileList))
         
         self.videoFormat = videoFormat
         self.idx = 0       
@@ -398,8 +413,20 @@ class videoPlayer(QMainWindow):
         
         
         #self.setVideo(0)
+        if startVideoName == None:
+            startIdx = 0
+        else:            
+            startIdx = [i for i in range(len(self.fileList)) 
+                            if self.fileList[i].find(startVideoName) != -1]
+            if not startIdx:
+                raise ValueError("startVideo not found in videoPath")
+            elif  len(startIdx) > 1:
+                raise ValueError("startVideo not unique")
+            
+            startIdx = startIdx[0]
         
-        self.vh = VideoHandler(self.fileList, self.changeVideo, [self.selectedVial])
+        self.vh = VideoHandler(self.fileList, self.changeVideo, 
+                               [self.selectedVial], startIdx=startIdx)
         
         
         self.updateFrameList(range(2000))
@@ -423,8 +450,8 @@ class videoPlayer(QMainWindow):
                                      "annotations":self.annotations
                                     }\
                                 }))
-        self.selectVideo(0)
-        self.startVideo()
+        
+        self.selectVideo(startIdx)
         
 #         self.exec_()
         
@@ -638,6 +665,9 @@ class videoPlayer(QMainWindow):
             px = QPixmap.fromImage(qi)        
             #lbl.setScaledContents(True)
             lbl.setPixmap(px)
+#         else:
+#             pixmap = QPixmap()
+#             lbl.setPixmap(pixmap)
             
                 
         newX = p[0] - 32#lblOrigin.x() + p[1] * self.xFactor + self.xOffset
@@ -896,7 +926,7 @@ class videoPlayer(QMainWindow):
                     
         self.fileList = sorted(fileList)
         cfg.log.debug("scaning files done")
-        return posList
+        return self.fileList
         
         
     @cfg.logClassFunction
@@ -1072,11 +1102,11 @@ class videoPlayer(QMainWindow):
         logGUI.info('""')
         self.vh.saveAll()
         
-    @cfg.logClassFunction
-    def prefetchVideo(self, posPath):        
-        self.vl = VideoLoader()
-        self.vl.loadedVideos.connect(self.addVideo)
-        self.vl.loadVideos(posPath)
+#     @cfg.logClassFunction
+#     def prefetchVideo(self, posPath):        
+#         self.vl = VideoLoader()
+#         self.vl.loadedVideos.connect(self.addVideo)
+#         self.vl.loadVideos(posPath)
         
     def testFunction(self):
         cfg.log.debug("testFunction")
@@ -1633,6 +1663,7 @@ class VideoLoader(QObject):
     loadedVideos = Signal(list) 
     loadedAnnotation = Signal(list)
     finished = Signal()   
+    startLoading = Signal()
 
     @cfg.logClassFunction
     def __del__(self):        
@@ -1645,7 +1676,7 @@ class VideoLoader(QObject):
     
     @cfg.logClassFunction
     def __init__(self, posPath, videoHandler, selectedVials=[1], thread=None):
-        super(VideoLoader, self).__init__()        
+        super(VideoLoader, self).__init__(None)        
         self.init(posPath, videoHandler, selectedVials, thread)
         
     def init(self, posPath, videoHandler, selectedVials=[1], thread=None):
@@ -1666,7 +1697,7 @@ class VideoLoader(QObject):
         # call at the end
 #         self.loadVideos()
 
-    @cfg.logClassFunction
+#     @cfg.logClassFunction
 #     @Slot
 #     def run(self):    
 #         self.exiting = False
@@ -1679,7 +1710,7 @@ class VideoLoader(QObject):
         self.exiting = False
         self.loading = True
 
-        cfg.log.debug("loadVideos: {0} @ {1}".format(self.posPath, QThread.currentThread().objectName()))
+        cfg.log.info("loadVideos: {0} @ {1}".format(self.posPath, QThread.currentThread().objectName()))
         #         print "RUN", QThread.currentThread().objectName(), QApplication.instance().thread().objectName(), '\n'
         rc = Client()
         cfg.log.debug("rc.ids : {0}".format(rc.ids))
@@ -1807,6 +1838,8 @@ class VideoLoader(QObject):
         
         self.loading = False
         
+        cfg.log.info("finsihed loadVideos: {0} @ {1}".format(self.posPath, QThread.currentThread().objectName()))
+        
         
     @cfg.logClassFunction
     def getVideoLength(self):        
@@ -1869,7 +1902,7 @@ class VideoHandler(QObject):
     changedFile = Signal(str)
     
     @cfg.logClassFunction
-    def __init__(self, posList, fileChangeCb, selectedVials=[0]):
+    def __init__(self, posList, fileChangeCb, selectedVials=[0], startIdx=0):
         super(VideoHandler, self).__init__()        
         
         self.videoDict = dict()
@@ -1882,7 +1915,7 @@ class VideoHandler(QObject):
         self.delBuffer = 5
         
         self.posList = sorted(posList)
-        self.posPath = posList[0]
+        self.posPath = posList[startIdx]
         
         self.annoAltStart = None
         
@@ -1985,7 +2018,9 @@ class VideoHandler(QObject):
         try:
             frame = self.videoDict[self.posPath].getFrame(self.idx)
             if not frame:
-                frame = [[[0,0]] * (max(self.selectedVials) + 1), np.zeros((64,64,3))]
+                frame = [[[0,0]] * (max(self.selectedVials) + 1), 
+                          [np.zeros((64,64,3))] * (max(self.selectedVials) + 1)]
+                #[[[0,0]] * (max(self.selectedVials) + 1), np.zeros((64,64,3))]
                     
         except KeyError:
             cfg.log.exception("accessing video out of scope, fetching...")
@@ -1994,7 +2029,8 @@ class VideoHandler(QObject):
             self.getCurrentFrame()
         except RuntimeError as e:
             cfg.log.error("something went wrong during the fetching procedure: error message {0}".format(e.message))
-            frame = [[[0,0]] * (max(self.selectedVials) + 1), np.zeros((64,64,3))]
+            frame = [[[0,0]] * (max(self.selectedVials) + 1), 
+                     [np.zeros((64,64,3))] * (max(self.selectedVials) + 1)]
             
         if doBufferCheck:
             self.checkBuffer(updateAnnotationViews)            
@@ -2489,25 +2525,31 @@ class VideoLoaderLuncher(QObject):
         vH = lst[1]
         selectedVials = lst[2]
         if len(self.availableVLs) == 0:
-            cfg.log.info("create new VideoLoader {0}".format(path))                  
+            cfg.log.info("create new VideoLoader {0}".format(path))     
+            
+#             vL = VideoLoader(path, vH, selectedVials=selectedVials) 
+                                     
             videoLoaderThread = MyThread("videoLoader {0}".format(len(self.threads.keys())))
             
-            
-            vL = VideoLoader(path, vH, thread=videoLoaderThread, selectedVials=selectedVials)      
+            vL = VideoLoader(path, vH,thread=videoLoaderThread, selectedVials=selectedVials)                 
             vL.moveToThread(videoLoaderThread)         
             videoLoaderThread.start()
-
-            signal = "loadVideo {0}".format(len(self.threads.keys()))
-            self.connect(self, SIGNAL(signal), vL.loadVideos) 
-            self.emit(SIGNAL(signal))
-            self.threads[vL] = [videoLoaderThread, signal]
             
+#             signal = "loadVideo {0}".format(len(self.threads.keys()))
+#             self.connect(self, SIGNAL(signal), vL.loadVideos) 
+            vL.startLoading.connect(vL.loadVideos)
+            cfg.log.info("finished thread coonecting signal create new VideoLoader {0}".format(path)) 
+            vL.startLoading.emit()
+            cfg.log.info("finished thread emit create new VideoLoader {0}".format(path)) 
+            self.threads[vL] = [videoLoaderThread, vL.startLoading]
+            
+            cfg.log.info("finished create new VideoLoader {0}".format(path))  
         else:
             vL = self.availableVLs.pop()
             cfg.log.info("recycle new VideoLoader {0}, was previous: {1}".format(path, vL.posPath))
             thread, signal = self.threads[vL]
             vL.init(path, vH,thread=thread, selectedVials=selectedVials)     
-            self.emit(SIGNAL(signal))
+            signal.emit()
 
             
 #         vL.loadedAnnotation.connect(cb)
@@ -2563,7 +2605,7 @@ class MyThread(QThread):
         self.wait()
 
     def run(self):
-        cfg.log.debug("RUN THREAD {0} {1}".format(QThread.currentThread().objectName(),
+        cfg.log.info("RUN THREAD {0} {1}".format(QThread.currentThread().objectName(),
                                                  QApplication.instance().thread().objectName()))
         self.exec_()
         print "RUN DONE", QThread.currentThread().objectName()        
@@ -2691,6 +2733,13 @@ if __name__ == "__main__":
     
     filterObjArgs["oneClickAnnotation"] = oneClickAnnotation
     
+    try:
+        startVideo = config['startVideo']
+    except KeyError:
+        startVideo = None
+        
+        
+    
     
     logGUI = logging.getLogger("GUI")
     logGUI.setLevel(logging.DEBUG)
@@ -2709,7 +2758,8 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     
     w = videoPlayer(path, annotations, backgroundPath, selectedVial, vialROI,
-                     videoFormat='avi', filterObjArgs=filterObjArgs)
+                     videoFormat='avi', filterObjArgs=filterObjArgs,
+                     startVideoName=startVideo)
     
     app.connect(app, SIGNAL("aboutToQuit()"), w.exit)
     w.quit.connect(app.quit)
