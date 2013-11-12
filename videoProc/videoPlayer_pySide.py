@@ -814,7 +814,12 @@ class videoPlayer(QMainWindow):
         
 #         a *= 255
         
-        im = np2qimage(a)
+        b = a[:,:,0] * 0.2126 + a[:,:,1] * 0.7152 + a[:,:,2] * 0.0722
+        a[:,:,0] = b
+        a[:,:,1] = b
+        a[:,:,2] = b
+        
+        im = np2qimage(a).convertToFormat(QImage.Format_RGB32, Qt.MonoOnly)
         
         pixmap = QPixmap()
         px = QPixmap.fromImage(im)
@@ -1068,7 +1073,7 @@ class videoPlayer(QMainWindow):
                 #l = QLabel(self)
                 geo = QRectF(0, 0, 64, 64)
                 penCol = QColor()
-                penCol.setHsv(i / 50.0 * 255, 200, 150, 15)
+                penCol.setHsv(i / 50.0 * 255, 255, 150, 50)
                 lbl += [self.videoScene.addRect(geo, QPen(penCol))]
                 #l.setLineWidth(1)
                 #l.setStyleSheet("border: 1px solid hsva({0}, 200, 150, 15%);".format(i / 50.0 * 255));
