@@ -115,7 +115,7 @@ class pipelineSwap(object):
         self.drawingarea.set_size_request(800, 350)
         self.box.pack_start(self.drawingarea, True, True, 0)        
 
-        self.button = Gtk.Button(label="stop recording")
+        self.button = Gtk.Button(label="start recording")
         self.button.connect("clicked", self.on_button_clicked)
         self.box.pack_start(self.button, True, True, 0)  
 
@@ -160,9 +160,7 @@ class pipelineSwap(object):
          
         self.elements["recBin2"] = Gst.Bin.new("recoding bin 2")
         self.elements["fileQueue2"] = Gst.ElementFactory.make( "queue", "fileQueue2")
-        self.elements["ph264_2"] = Gst.ElementFactory.make ("h264parse", "ph264_2")
-        self.elements["mux_2"] = Gst.ElementFactory.make("mp4mux", "mux2")
-        self.elements["filesink2"] = Gst.ElementFactory.make( "filesink", "filesink2")
+        self.elements["fakeSink2"] = Gst.ElementFactory.make( "fakesink", "fakesink2")
          
         self.elements["recBin3"] = Gst.Bin.new("recoding bin 3")
         self.elements["fileQueue3"] = Gst.ElementFactory.make( "queue", "fileQueue3")
@@ -225,14 +223,11 @@ class pipelineSwap(object):
         
         self.log.debug("populate recBin2")          
         self.elements["recBin2"].add(self.elements["fileQueue2"])
-        self.elements["recBin2"].add(self.elements["ph264_2"])
-        self.elements["recBin2"].add(self.elements["mux_2"])
-        self.elements["recBin2"].add(self.elements["filesink2"])
+        self.elements["recBin2"].add(self.elements["fakeSink2"])
+        
         
         self.log.debug("link elements in recBin2")   
-        assert(self.elements["fileQueue2"].link(self.elements["ph264_2"])) 
-        assert(self.elements["ph264_2"].link(self.elements["mux_2"])) 
-        assert(self.elements["mux_2"].link(self.elements["filesink2"]))
+        assert(self.elements["fileQueue2"].link(self.elements["fakeSink2"]))
         
         self.log.debug("create ghost pad for recBin2")
         self.elements["recBin2"].add_pad(
@@ -241,13 +236,14 @@ class pipelineSwap(object):
         
         
         self.log.debug("add recBin1 to main pipeline")
-        self.pipelines["main"].add(self.elements["recBin1"])
+        self.pipelines["main"].add(self.elements["recBin2"])
           
           
         self.log.debug("link srcQueue --> recBin to tee")
         self.pads["tPad2"] = Gst.Element.get_request_pad(self.elements["t"], 'src_%u')
         self.pads["tPad2"].link(self.elements["srcQueue"].get_static_pad("sink"))  
-        self.elements["srcQueue"].link(self.elements["recBin1"])  
+        
+        self.elements["srcQueue"].link(self.elements["recBin2"])  
            
          
         self.log.debug("set filesink1 location")   
@@ -369,14 +365,16 @@ class pipelineSwap(object):
 
     def on_button_clicked(self, widget):
         #~ print "Hello World"
-        #~ #self.blockOnNextKeyframe()
+        self.blockOnNextKeyframe()
+        
+        
         #~ self.setAutoFocus(False)
         #~ self.setAbsoluteFocus(30)
         #~ self.setGain(1)
         #~ self.setAutoExposure(1)
         #~ self.setAbsoluteExposure(100)
         
-        self.pipeline2Null(self.pipelines["main"]) 
+        #~ self.pipeline2Null(self.pipelines["main"]) 
         
         
         
@@ -404,31 +402,30 @@ class pipelineSwap(object):
         self.elements["recBin1"].add_pad(
                                 Gst.GhostPad.new("sink",
                                 self.elements["fileQueue1"].get_static_pad("sink")))
+                                
+                                
+        self.button.set_label("Stop Recording")
         
     def generateRecBin2(self):
         self.elementRefcounting()
         self.elements["recBin2"] = Gst.Bin.new("recoding bin 2")
         self.elements["fileQueue2"] = Gst.ElementFactory.make( "queue", "fileQueue{0}".format(self.cnt))
-        self.elements["ph264_2"] = Gst.ElementFactory.make ("h264parse", "ph264_{0}".format(self.cnt))
-        self.elements["mux_2"] = Gst.ElementFactory.make("mp4mux", "mux{0}".format(self.cnt))
-        self.elements["filesink2"] = Gst.ElementFactory.make( "filesink", "filesink{0}".format(self.cnt))
-
+        self.elements["fakeSink2"] = Gst.ElementFactory.make( "fakesink", "fakesink{0}".format(self.cnt))
+#~ 
 
         self.log.debug("populate recBin2")          
         self.elements["recBin2"].add(self.elements["fileQueue2"])
-        self.elements["recBin2"].add(self.elements["ph264_2"])
-        self.elements["recBin2"].add(self.elements["mux_2"])
-        self.elements["recBin2"].add(self.elements["filesink2"])
+        self.elements["recBin2"].add(self.elements["fakeSink2"])
         
         self.log.debug("link elements in recBin2")   
-        assert(self.elements["fileQueue2"].link(self.elements["ph264_2"])) 
-        assert(self.elements["ph264_2"].link(self.elements["mux_2"])) 
-        assert(self.elements["mux_2"].link(self.elements["filesink2"]))
+        assert(self.elements["fileQueue2"].link(self.elements["fakeSink2"])) 
         
         self.log.debug("create ghost pad for recBin2")
         self.elements["recBin2"].add_pad(
                                 Gst.GhostPad.new("sink",
                                 self.elements["fileQueue2"].get_static_pad("sink")))
+                                
+        self.button.set_label("Start Recording")
         
     def blockFirstFrame(self):     
         """
@@ -672,9 +669,9 @@ def preparePipeline(pad, probeInfo, userData):
         self.resetBin(self.elements["recBin2"])
         
         binN = self.elements["recBin2"]
-        fs = self.elements["filesink2"]
-        mux = self.elements["mux_2"]
-        fqN = self.elements["fileQueue2"]
+        #~ fs = self.elements["filesink2"]
+        #~ mux = self.elements["mux_2"]
+        #~ fqN = self.elements["fileQueue2"]
         fqC = self.elements["fileQueue1"]
     else:
         self.log.debug("replace recBin2 by recBin1")    
@@ -687,10 +684,11 @@ def preparePipeline(pad, probeInfo, userData):
         fs = self.elements["filesink1"]
         mux = self.elements["mux_1"]
         fqN = self.elements["fileQueue1"]
-        fqC = self.elements["fileQueue2"]       
+        fqC = self.elements["fileQueue2"]  
+        
+        self.updateFilesinkLocation(fs, mux)     
     
         
-    self.updateFilesinkLocation(fs, mux)
     self.log.debug("remove current recBin from main and prepare catch")
     self.elements["srcQueue"].unlink(fqC)  
     self.pipelines["main"].remove(binC)   
@@ -707,10 +705,10 @@ def preparePipeline(pad, probeInfo, userData):
     assert(self.elements["srcQueue"].link(binN))
         
     
-    self.log.debug("change file location of next recBin")
-    for pad in mux.pads:
-        if pad.get_name().startswith("video"):
-            pad.push_event(Gst.Event.new_reconfigure())
+    #~ self.log.debug("change file location of next recBin")
+    #~ for pad in mux.pads:
+        #~ if pad.get_name().startswith("video"):
+            #~ pad.push_event(Gst.Event.new_reconfigure())
             
     binN.set_state(Gst.State.PLAYING)
     
