@@ -104,7 +104,7 @@ class pipelineSwap(object):
         self.log.debug("create Gtk interface 1")
         self.window.connect('destroy', self.quit)
         self.log.debug("create Gtk interface 2")
-        self.window.set_default_size(800, 450)
+        self.window.set_default_size(1200, 600)
         
         self.log.debug("create Gtk interface 3")
         self.box = Gtk.Box(homogeneous=False, spacing=6)
@@ -112,12 +112,12 @@ class pipelineSwap(object):
         
         self.log.debug("create Gtk interface 4")
         self.drawingarea = Gtk.DrawingArea()
-        self.drawingarea.set_size_request(800, 400)
+        self.drawingarea.set_size_request(1200, 530)
         self.box.pack_start(self.drawingarea, True, True, 0)        
 
         self.button = Gtk.Button(label="start recording")
         self.button.connect("clicked", self.on_button_clicked)
-        self.box.pack_start(self.button, True, True, 0)  
+        self.box.pack_start(self.button, False, True, 0)  
 
         self.log.debug("create self.pipelines")
         self.pipelines = dict()
@@ -430,7 +430,7 @@ class pipelineSwap(object):
                                 self.elements["fileQueue1"].get_static_pad("sink")))
                                 
                                 
-        self.button.set_label("Stop Recording")
+        self.button.set_label("Recording... \n\n\nClick to\nStop Recording")
         
     def generateRecBin2(self):
         self.elementRefcounting()
