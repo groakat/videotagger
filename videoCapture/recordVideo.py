@@ -112,7 +112,7 @@ class pipelineSwap(object):
         
         self.log.debug("create Gtk interface 4")
         self.drawingarea = Gtk.DrawingArea()
-        self.drawingarea.set_size_request(800, 350)
+        self.drawingarea.set_size_request(800, 400)
         self.box.pack_start(self.drawingarea, True, True, 0)        
 
         self.button = Gtk.Button(label="start recording")
