@@ -113,25 +113,39 @@ class filterObj(QObject):
         if oneClickAnnotation is None:
             self.oneClickAnnotation = [False, False, False]            
         else:
-            self.oneClickAnnotation = oneClickAnnotation
-                        
-    
-    #def eventFilter(self, obj, event):
-    #    if (event.type() == QEvent.KeyPress):
-    #        key = event.key()
-    #                
-    #                
-    #        if(event.modifiers() == Qt.ControlModifier):
-    #            if(key == Qt.Key_S):
-    #                print('saving all annotations')
-    #        
-    #        else:                    
-    #            if key == Qt.Key_F:
-    #                self.windowObj.test(obj)
-    #    
-    #        return True
-    #    else:
-    #        return False   
+            self.oneClickAnnotation = oneClickAnnotation  
+            
+        self.inConstantSpeed = False
+        self.orignalStepSize = self.stepSize
+            
+    def swapToConstantSpeed(self, speed):
+        
+        if self.inConstantSpeed:
+            return
+        
+        self.orignalStepSize = self.stepSize
+        
+        self.stepSize = { "stop": speed,
+                        "step-f": speed,
+                        "step-b": speed,
+                        "allow-steps": False,
+                        "fwd-1": speed,
+                        "fwd-2": speed,
+                        "fwd-3": speed,
+                        "fwd-4": speed,
+                        "fwd-5": speed,
+                        "fwd-6": speed,
+                        "bwd-1": speed,
+                        "bwd-2": speed,
+                        "bwd-3": speed,
+                        "bwd-4": speed,
+                        "bwd-5": speed,
+                        "bwd-6": speed}
+        
+    def swapFromConstantSpeed(self):
+        if not self.inConstantSpeed:
+            self.stepSize = self.orignalStepSize
+        
             
     @cfg.logClassFunction
     def eventFilter(self, obj, event):
@@ -343,7 +357,8 @@ class videoPlayer(QMainWindow):
                         vialROI,
                         videoFormat='avi',
                         filterObjArgs=None,
-                        startVideoName=None
+                        startVideoName=None,
+                        rewindOnClick=False
                         ):
         """
         
@@ -390,6 +405,15 @@ class videoPlayer(QMainWindow):
         self.stop = False
         self.addingAnnotations = True
         self.ui.lbl_eraser.setVisible(False)
+        
+        
+        self.rewindOnClick = rewindOnClick
+        self.rewindStepSize = 500
+        self.rewinding = False
+        self.rewindCnt = 0
+        
+        if self.rewindOnClick:
+            self.eventFilter.oneClickAnnotation = [True, True, True]
         
         self.annotations = annotations 
 #                             [{"annot": "peter",
@@ -564,10 +588,17 @@ class videoPlayer(QMainWindow):
                                             self.annotations[2]["annot"],
                                             self.annotations[2]["behav"]))
         self.annoViewLabel[-1].move(xPos + width + 10, yPos)          
-        self.annoViewLabel[-1].adjustSize()       
+        self.annoViewLabel[-1].adjustSize()    
+               
+        yPos += height + 5  
         
         for aV in self.annoViewList:
             cfg.log.debug("av: {aV}".format(aV=aV))
+            
+            
+        #~ width = 
+        self.ui.progBar.setVisible(False)        
+        self.ui.progBar.move(xPos + 220, yPos + 3)
             
             
     def createPrevFrames(self, xPos, yPos):
@@ -714,6 +745,8 @@ class videoPlayer(QMainWindow):
         
         if increment is None:
             increment = self.increment
+            
+        self.rewindIncrement()
         
         #if self.frames != []:
         #    self.frames.pop(0)
@@ -1120,23 +1153,72 @@ class videoPlayer(QMainWindow):
         #self.vh.loadProgressive = True
         self.increment = 40
         
+    def initRewind(self):        
+        self.rewinding = True
+        ## set filterObj to normal playback
+        self.eventFilter.swapToConstantSpeed(1)
+        ## rewind
+        self.rewindCnt = 0
+        self.increment = 1
+        self.ui.progBar.setMaximum(self.rewindStepSize)
+        self.ui.progBar.setValue(0)
+        self.ui.progBar.setVisible(True)        
+        self.showNextFrame(-self.rewindStepSize)
+        self.startVideo()    
+        
+    def stopRewind(self):        
+        self.rewinding = False               
+        ## set filterObj to normal playback
+        self.eventFilter.swapFromConstantSpeed()
+        self.ui.progBar.setVisible(False)
+    
+    def rewindIncrement(self):        
+        if self.rewinding:
+            if self.rewindCnt >= self.rewindStepSize: 
+                self.stopRewind()
+            else:                
+                self.rewindCnt += 1
+                self.ui.progBar.setValue(self.rewindCnt)
+                
+        
     def alterAnnotation(self, annotator="peter", behaviour="just testing", 
                         confidence=1, oneClickAnnotation=False):
         if self.addingAnnotations:
-            self.addAnno(annotator, behaviour, confidence)
+            self.addAnno(annotator, behaviour, confidence, oneClickAnnotation)
         else:
-            self.eraseAnno(annotator, behaviour)
+            self.eraseAnno(annotator, behaviour)           
             
-        if oneClickAnnotation:
-            self.alterAnnotation(annotator, behaviour, confidence,
-                            oneClickAnnotation=False)
-            
+    
 #     @cfg.logClassFunction
-    def addAnno(self, annotator="peter", behaviour="just testing", confidence=1):        
+    def addAnno(self, annotator="peter", behaviour="just testing", 
+                confidence=1, oneClickAnnotation=False):        
         logGUI.info(json.dumps({"annotator": annotator,
                                 "behaviour": behaviour,
                                 "confidence": confidence}))
-        self.vh.addAnnotation(self.selectedVial, annotator, behaviour, confidence=confidence)
+                                
+        if self.rewindOnClick:
+            if not self.rewinding:
+                self.initRewind()
+                
+                ##
+            else:
+                self.vh.addAnnotation(self.selectedVial, annotator, 
+                                      behaviour, confidence=confidence)
+                
+                if oneClickAnnotation:                
+                    self.vh.addAnnotation(self.selectedVial, annotator, 
+                                      behaviour, confidence=confidence)
+                
+                self.stopRewind()
+                    
+        
+        else:    
+            self.vh.addAnnotation(self.selectedVial, annotator, 
+                                  behaviour, confidence=confidence)
+                
+            if oneClickAnnotation:                
+                self.vh.addAnnotation(self.selectedVial, annotator, 
+                                  behaviour, confidence=confidence)
 #     @cfg.logClassFunction
 
         
@@ -2743,6 +2825,11 @@ if __name__ == "__main__":
     except KeyError:
         startVideo = None
         
+    try:
+        rewindOnClick = config['rewind-on-click']
+    except KeyError:
+        rewindOnClick = False
+        
         
     
     
@@ -2764,7 +2851,7 @@ if __name__ == "__main__":
     
     w = videoPlayer(path, annotations, backgroundPath, selectedVial, vialROI,
                      videoFormat='avi', filterObjArgs=filterObjArgs,
-                     startVideoName=startVideo)
+                     startVideoName=startVideo, rewindOnClick=rewindOnClick)
     
     app.connect(app, SIGNAL("aboutToQuit()"), w.exit)
     w.quit.connect(app.quit)
