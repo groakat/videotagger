@@ -157,6 +157,18 @@ class pipelineSwap(object):
         self.elements["ph264_1"] = Gst.ElementFactory.make ("h264parse", "ph264_1")
         self.elements["mux_1"] = Gst.ElementFactory.make("mp4mux", "mux1")
         self.elements["filesink1"] = Gst.ElementFactory.make( "filesink", "filesink1")
+         
+        self.elements["recBin2"] = Gst.Bin.new("recoding bin 2")
+        self.elements["fileQueue2"] = Gst.ElementFactory.make( "queue", "fileQueue2")
+        self.elements["ph264_2"] = Gst.ElementFactory.make ("h264parse", "ph264_2")
+        self.elements["mux_2"] = Gst.ElementFactory.make("mp4mux", "mux2")
+        self.elements["filesink2"] = Gst.ElementFactory.make( "filesink", "filesink2")
+         
+        self.elements["recBin3"] = Gst.Bin.new("recoding bin 3")
+        self.elements["fileQueue3"] = Gst.ElementFactory.make( "queue", "fileQueue3")
+        self.elements["ph264_3"] = Gst.ElementFactory.make ("h264parse", "ph264_3")
+        self.elements["mux_3"] = Gst.ElementFactory.make("mp4mux", "mux3")
+        self.elements["filesink3"] = Gst.ElementFactory.make( "filesink", "filesink3")
 
 
 
@@ -209,6 +221,23 @@ class pipelineSwap(object):
         self.elements["recBin1"].add_pad(
                                 Gst.GhostPad.new("sink",
                                 self.elements["fileQueue1"].get_static_pad("sink")))
+        
+        
+        self.log.debug("populate recBin2")          
+        self.elements["recBin2"].add(self.elements["fileQueue2"])
+        self.elements["recBin2"].add(self.elements["ph264_2"])
+        self.elements["recBin2"].add(self.elements["mux_2"])
+        self.elements["recBin2"].add(self.elements["filesink2"])
+        
+        self.log.debug("link elements in recBin2")   
+        assert(self.elements["fileQueue2"].link(self.elements["ph264_2"])) 
+        assert(self.elements["ph264_2"].link(self.elements["mux_2"])) 
+        assert(self.elements["mux_2"].link(self.elements["filesink2"]))
+        
+        self.log.debug("create ghost pad for recBin2")
+        self.elements["recBin2"].add_pad(
+                                Gst.GhostPad.new("sink",
+                                self.elements["fileQueue2"].get_static_pad("sink")))
         
         
         self.log.debug("add recBin1 to main pipeline")
@@ -350,6 +379,56 @@ class pipelineSwap(object):
         self.pipeline2Null(self.pipelines["main"]) 
         
         
+        
+    def generateRecBin1(self):      
+        self.elementRefcounting()  
+        self.elements["recBin1"] = Gst.Bin.new("recoding bin 1")
+        self.elements["fileQueue1"] = Gst.ElementFactory.make( "queue", "fileQueue{0}".format(self.cnt))
+        self.elements["ph264_1"] = Gst.ElementFactory.make ("h264parse", "ph264_{0}".format(self.cnt))
+        self.elements["mux_1"] = Gst.ElementFactory.make("mp4mux", "mux{0}".format(self.cnt))
+        self.elements["filesink1"] = Gst.ElementFactory.make( "filesink", "filesink{0}".format(self.cnt))
+
+
+        self.log.debug("populate recBin1")          
+        self.elements["recBin1"].add(self.elements["fileQueue1"])
+        self.elements["recBin1"].add(self.elements["ph264_1"])
+        self.elements["recBin1"].add(self.elements["mux_1"])
+        self.elements["recBin1"].add(self.elements["filesink1"])
+        
+        self.log.debug("link elements in recBin1")   
+        assert(self.elements["fileQueue1"].link(self.elements["ph264_1"])) 
+        assert(self.elements["ph264_1"].link(self.elements["mux_1"])) 
+        assert(self.elements["mux_1"].link(self.elements["filesink1"]))
+        
+        self.log.debug("create ghost pad for recBin1")
+        self.elements["recBin1"].add_pad(
+                                Gst.GhostPad.new("sink",
+                                self.elements["fileQueue1"].get_static_pad("sink")))
+        
+    def generateRecBin2(self):
+        self.elementRefcounting()
+        self.elements["recBin2"] = Gst.Bin.new("recoding bin 2")
+        self.elements["fileQueue2"] = Gst.ElementFactory.make( "queue", "fileQueue{0}".format(self.cnt))
+        self.elements["ph264_2"] = Gst.ElementFactory.make ("h264parse", "ph264_{0}".format(self.cnt))
+        self.elements["mux_2"] = Gst.ElementFactory.make("mp4mux", "mux{0}".format(self.cnt))
+        self.elements["filesink2"] = Gst.ElementFactory.make( "filesink", "filesink{0}".format(self.cnt))
+
+
+        self.log.debug("populate recBin2")          
+        self.elements["recBin2"].add(self.elements["fileQueue2"])
+        self.elements["recBin2"].add(self.elements["ph264_2"])
+        self.elements["recBin2"].add(self.elements["mux_2"])
+        self.elements["recBin2"].add(self.elements["filesink2"])
+        
+        self.log.debug("link elements in recBin2")   
+        assert(self.elements["fileQueue2"].link(self.elements["ph264_2"])) 
+        assert(self.elements["ph264_2"].link(self.elements["mux_2"])) 
+        assert(self.elements["mux_2"].link(self.elements["filesink2"]))
+        
+        self.log.debug("create ghost pad for recBin2")
+        self.elements["recBin2"].add_pad(
+                                Gst.GhostPad.new("sink",
+                                self.elements["fileQueue2"].get_static_pad("sink")))
         
     def blockFirstFrame(self):     
         """
