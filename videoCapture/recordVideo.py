@@ -141,15 +141,23 @@ class pipelineSwap(object):
         # gst-launch-1.0 -e filesrc location="/run/media/peter/home/tmp/webcam/Video 66.mp4" ! qtdemux ! queue ! tee name=t ! queue ! h264parse ! avdec_h264 ! autovideosink t. ! queue ! h264parse ! mp4mux ! filesink location=/run/media/peter/home/tmp/webcam/test.mp4
         self.elements = dict()
         self.pads = dict()
-        self.elements["src"] = Gst.ElementFactory.make("uvch264src", "src")
+        self.elements["src"] = Gst.ElementFactory.make("uvch264src", "src")       
         
-        self.elements["prevQueue"] = Gst.ElementFactory.make("queue", "prevQueue")  
-        self.elements["vfcaps"] = Gst.ElementFactory.make("capsfilter", "vfcaps")
-        self.elements["preview_sink"] = Gst.ElementFactory.make( "autovideosink", "previewsink")
+        
+        self.elements["preview_fake_queue"] = Gst.ElementFactory.make( "queue", "previewfakequeue")
+        self.elements["preview_fake_sink"] = Gst.ElementFactory.make( "fakesink", "previewfakesink")
+        
         
         self.elements["vidQueue"] = Gst.ElementFactory.make( "queue", "vidQueue")  
         self.elements["vidcaps"] = Gst.ElementFactory.make("capsfilter", "vidcaps")
-        self.elements["t"] = Gst.ElementFactory.make( "tee", "t")
+        self.elements["t"] = Gst.ElementFactory.make( "tee", "t")        
+        
+        self.elements["prevQueue"] = Gst.ElementFactory.make("queue", "prevQueue")  
+        #~ self.elements["vfcaps"] = Gst.ElementFactory.make("capsfilter", "vfcaps")
+        self.elements["preview_parse"] = Gst.ElementFactory.make( "h264parse", "previewparse")
+        self.elements["preview_dec"] = Gst.ElementFactory.make( "avdec_h264", "previewdec")
+        self.elements["preview_sink"] = Gst.ElementFactory.make( "autovideosink", "previewsink")
+        
         
         self.elements["srcQueue"] = Gst.ElementFactory.make( "queue", "srcQueue")       
         self.elements["recBin1"] = Gst.Bin.new("recoding bin 1")
@@ -176,13 +184,17 @@ class pipelineSwap(object):
         self.log.debug("populate main pipeline")
         self.pipelines["main"].add(self.elements["src"])
         
-        self.pipelines["main"].add(self.elements["prevQueue"])  
-        self.pipelines["main"].add(self.elements["vfcaps"])
-        self.pipelines["main"].add(self.elements["preview_sink"])
+        self.pipelines["main"].add(self.elements["preview_fake_queue"])
+        self.pipelines["main"].add(self.elements["preview_fake_sink"])
         
         self.pipelines["main"].add(self.elements["vidQueue"])  
         self.pipelines["main"].add(self.elements["vidcaps"])
         self.pipelines["main"].add(self.elements["t"])
+        
+        self.pipelines["main"].add(self.elements["prevQueue"])  
+        self.pipelines["main"].add(self.elements["preview_parse"])
+        self.pipelines["main"].add(self.elements["preview_dec"])
+        self.pipelines["main"].add(self.elements["preview_sink"])
         
         self.pipelines["main"].add(self.elements["srcQueue"])
 
@@ -190,10 +202,12 @@ class pipelineSwap(object):
         self.log.debug("link self.elements in main pipeline")
         self.log.debug("1. linking preview branch...")
         srcP2 = self.elements["src"].get_static_pad('vfsrc')
-        tP2 = self.elements["prevQueue"].get_static_pad("sink")
+        tP2 = self.elements["preview_fake_queue"].get_static_pad("sink")
         assert(srcP2.link(tP2) ==  Gst.PadLinkReturn.OK)
-        assert(self.elements["prevQueue"].link(self.elements["vfcaps"]))
-        assert(self.elements["vfcaps"].link(self.elements["preview_sink"]))
+        assert(self.elements["preview_fake_queue"].link(self.elements["preview_fake_sink"]))
+        
+        
+        
         
         
         self.log.debug("2. linking H264 branch until tee...")                        
@@ -244,7 +258,19 @@ class pipelineSwap(object):
         self.pads["tPad2"].link(self.elements["srcQueue"].get_static_pad("sink"))  
         
         self.elements["srcQueue"].link(self.elements["recBin2"])  
-           
+        
+                
+        self.log.debug("link preview-branch to tee")
+        srcP3 = Gst.Element.get_request_pad(self.elements["t"], 'src_%u')
+        tP3 = self.elements["prevQueue"].get_static_pad("sink")
+        assert(srcP3.link(tP3) ==  Gst.PadLinkReturn.OK)
+        
+        self.log.debug("link self.elements in preview branch")
+        assert(self.elements["prevQueue"].link(self.elements["preview_parse"]))
+        assert(self.elements["preview_parse"].link(self.elements["preview_dec"]))
+        assert(self.elements["preview_dec"].link(self.elements["preview_sink"]))
+        
+        
          
         self.log.debug("set filesink1 location")   
         self.updateFilesinkLocation(self.elements["filesink1"], self.elements["mux_1"])
@@ -263,8 +289,8 @@ class pipelineSwap(object):
         self.log.debug("set caps")           
         caps = Gst.Caps.from_string("video/x-h264,width=1920,height=1080,framerate=30/1,profile=constrained-baseline")
         self.elements["vidcaps"].props.caps = caps
-        caps2 = Gst.Caps.from_string('video/x-raw,width=320,height=240,framerate=15/1')
-        self.elements["vfcaps"].props.caps = caps2
+        #~ caps2 = Gst.Caps.from_string('video/x-raw,width=320,height=240,framerate=15/1')
+        #~ self.elements["vfcaps"].props.caps = caps2
         
         
 #         self.elements["mux_1"].set_property("dts-method", 2)
