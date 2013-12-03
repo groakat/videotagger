@@ -21,6 +21,9 @@ import pylab as plt
 import time
 import copy
 
+from qimage2ndarray import *
+
+
 
 #from qimage2ndarray import *
 # from PyQt4.uic.Compiler.qtproxies import QtCore
@@ -40,6 +43,45 @@ KeyIdxPair = namedtuple('KeyIdxPair', ['key', 'idx', 'conf'])
 
 ####################################################################
 
+# def np2qimage(a):
+#     import numpy as np  
+#     a = a.astype(np.uint32, order='C', copy=True)  
+# #     qi = (255 << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
+# #     return QImage(qi, a.shape[1], a.shape[0], 
+# #                   QImage.Format_ARGB32)
+# #     import Image
+# #     im = Image.fromarray(a.astype(np.uint8))
+# #     data = im.convert("RGBA").tostring("raw", "RGBA")
+#     
+# #     data = (np.uint8(255) << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
+#     data = (255 << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
+#     image = QImage(data.data, a.shape[1], a.shape[0], QImage.Format_ARGB32)
+#     
+#     return image
+
+def np2qimage(a):
+    import numpy as np  
+    a = a.astype(np.uint32)  
+#     qi = (255 << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
+#     return QImage(qi, a.shape[1], a.shape[0], 
+#                   QImage.Format_ARGB32)
+#     import Image
+#     im = Image.fromarray(a.astype(np.uint8))
+#     data = im.convert("RGBA").tostring("raw", "RGBA")
+    
+    data = (np.uint32(255) << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
+#     data = (np.uint8(255) << 24 | np.bitwise_or(np.bitwise_or(a[:,:,0] << 16, a[:,:,1] << 8), a[:,:,2])).flatten()
+    image = QImage(data.data, a.shape[1], a.shape[0], QImage.Format_ARGB32)
+    
+    return image
+
+def maxOfSelectedVials(selectedVials):
+    if selectedVials is None:
+        return 0
+    else:
+        return max(selectedVials)
+
+
 #################################################################### 
 class MyListModel(QAbstractListModel): 
     def __init__(self, datain, parent=None, *args): 
@@ -57,7 +99,7 @@ class MyListModel(QAbstractListModel):
             return self.listdata[index.row()]
         else: 
             return None
-            
+    
             
 
 class filterObj(QObject):
@@ -338,12 +380,6 @@ class filterObj(QObject):
         
         return False
 
-def np2qimage(a):
-    import numpy as np  
-    a = a.astype(np.uint32)  
-    qi = (255 << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
-    return QImage(qi, a.shape[1], a.shape[0], 
-                  QImage.Format_ARGB32)
                   
 #########################################################################
 
@@ -358,7 +394,9 @@ class videoPlayer(QMainWindow):
                         videoFormat='avi',
                         filterObjArgs=None,
                         startVideoName=None,
-                        rewindOnClick=False
+                        rewindOnClick=False,
+                        videoOnly=True,
+                        videoEnding='.avi' #'.v0.avi'
                         ):
         """
         
@@ -384,7 +422,7 @@ class videoPlayer(QMainWindow):
         self.installEventFilter(self.eventFilter)
         self.connectSignals()       
         
-        self.fileList = self.providePosList(path)    
+        self.fileList = self.providePosList(path, ending=videoEnding)    
         
         self.lm = MyListModel(self.fileList, self)        
         self.ui.lv_paths.setModel(self.lm)
@@ -427,9 +465,14 @@ class videoPlayer(QMainWindow):
         
         self.vialRoi = vialROI#[[350, 660], [661, 960], [971, 1260], [1290, 1590]]
         
-        self.selectedVial = selectedVial#3
+        if type(selectedVial) == int:
+            self.selectedVial = [selectedVial]
+        else:
+            self.selectedVial = selectedVial#3
         self.ui.lbl_vial.setText("vial: {0}".format(self.selectedVial))
                 
+                
+        self.videoOnly = videoOnly
 #         self.vh.changedFile.connect(self.changeVideo)
         
         
@@ -450,14 +493,17 @@ class videoPlayer(QMainWindow):
             startIdx = startIdx[0]
         
         self.vh = VideoHandler(self.fileList, self.changeVideo, 
-                               [self.selectedVial], startIdx=startIdx)
+                               self.selectedVial, startIdx=startIdx)
         
         
         self.updateFrameList(range(2000))
         
         self.configureUI()
         
-        self.setBackground(backgroundPath)#"/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
+        if not self.videoOnly:
+            self.setBackground(backgroundPath)#"/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
+        else:
+            self.setBackground()
         
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.showNextFrame)
@@ -688,21 +734,45 @@ class videoPlayer(QMainWindow):
         return img
         
     @cfg.logClassFunction
-    def updateLabel(self, lbl, p, img):
+    def loadImageIntoLabel(self, lbl, img):
         if img is not None:
-#             qi = array2qimage(img)
-            qi = np2qimage(img)
-            pixmap = QPixmap()
-            px = QPixmap.fromImage(qi)        
+            qi = array2qimage(img)
+#             a = np.ones(img.shape, dtype=np.float64) * 254
+#               
+#             s1 = a.strides
+#             s2 = img.astype(np.uint32).flatten().strides
+#             
+#             cfg.log.info("strides {0} {1}".format(s1, s2))
+# 
+#             qi = np2qimage(img)#.astype(np.float64, order='F', copy=True))
+            cfg.log.debug("copy image to pixmap")
+#             1/0
+#             qi = QImage(500,350, QImage.Format_ARGB32)
+            px = QPixmap().fromImage(qi)        
             #lbl.setScaledContents(True)
+            cfg.log.debug("set pixmap")
             lbl.setPixmap(px)
+        
+    @cfg.logClassFunction
+    def updateLabel(self, lbl, p, img):
+        self.loadImageIntoLabel(lbl, img)
+#         if img is not None:
+# #             qi = array2qimage(img)
+#             qi = np2qimage(img)
+#             pixmap = QPixmap()
+#             px = QPixmap.fromImage(qi)        
+#             #lbl.setScaledContents(True)
+#             lbl.setPixmap(px)
 #         else:
 #             pixmap = QPixmap()
 #             lbl.setPixmap(pixmap)
             
                 
         newX = p[0] - 32#lblOrigin.x() + p[1] * self.xFactor + self.xOffset
-        newY = self.vialRoi[self.selectedVial][1] - p[1] - 32 #lblOrigin.y() + (p[0] * self.yFactor) + self.yOffset
+        if self.selectedVial is None:
+            newY = self.vialRoi[0][1] - p[1] - 32
+        else:
+            newY = self.vialRoi[self.selectedVial][1] - p[1] - 32 #lblOrigin.y() + (p[0] * self.yFactor) + self.yOffset
         
         
         lbl.setPos(newX,newY)
@@ -712,15 +782,48 @@ class videoPlayer(QMainWindow):
         
     @cfg.logClassFunction
     def updateOriginalLabel(self, lbl, img):
-#         qi = array2qimage(img)
-        qi = np2qimage(img)
-        pixmap = QPixmap()
-        px = QPixmap.fromImage(qi)
+        qi = array2qimage(img)
+
+        cfg.log.debug("converting img to QImage")
+#         qi = np2qimage(img)
         
+        def millis():
+            import datetime as dt
+            dt = dt.datetime.now() - dt.datetime(1970, 1,1)
+            ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
+            return ms
+        
+        from scipy.misc import imsave
+        
+#         imsave('/tmp/ol/' + str(millis()) + '.png', img)
+        
+        cfg.log.debug("creating pixmap")
+        pixmap = QPixmap()
+        
+        cfg.log.debug("copy image to pixmap")
+        px = QPixmap.fromImage(qi)
+                
+        cfg.log.debug("configure label")
         lbl.setScaledContents(False)
         lbl.setPixmap(px)
-        
+                
+        cfg.log.debug("update label")
         lbl.update()
+        
+        
+    @cfg.logClassFunctionInfo
+    def updateMainLabel(self, lbl, img):
+        h = img.shape[0]
+        w = img.shape[1]
+        if self.sceneRect != QRectF(0, 0, w,h):
+            cfg.log.info("changing background")
+            self.videoView.setGeometry(QRect(10, 10, w, h))#1920/2, 1080/2))
+            self.videoScene.setSceneRect(QRectF(0, 0, w,h))            
+            self.videoScene.setBackgroundBrush(QBrush(Qt.black))
+            lbl.setPos(0,0)
+            self.sceneRect = QRectF(0, 0, w,h)
+                    
+        self.loadImageIntoLabel(lbl, img)
         
         
     @cfg.logClassFunction
@@ -751,7 +854,11 @@ class videoPlayer(QMainWindow):
         #if self.frames != []:
         #    self.frames.pop(0)
         self.frames = []    
-        sv = self.selectedVial
+        
+        if self.selectedVial is None:
+            sv = 0            
+        else:
+            sv = self.selectedVial
         
         offset = 5  
         
@@ -767,7 +874,10 @@ class videoPlayer(QMainWindow):
             offset = (self.trajNo / 2) 
         
         frame = self.frames[0]
-        self.updateLabel(self.lbl_v0, frame[0][sv], frame[1][sv])
+        if self.videoOnly:
+            self.updateMainLabel(self.lbl_v0, frame[1][sv][0])
+        else:
+            self.updateLabel(self.lbl_v0, frame[0][sv], frame[1][sv][0])
         
         
         self.frames = []
@@ -792,10 +902,23 @@ class videoPlayer(QMainWindow):
 
         offset = (len(self.prevFrameLbls) - 1) / 2
         self.prevFrames = []
+        
+        
+        
+        
         for i in range(len(self.prevFrameLbls)):
             self.prevFrames += [self.vh.getTempFrame(i - offset)]
-            self.updateOriginalLabel(self.prevFrameLbls[i], self.prevFrames[i][1][sv])
+            self.updateOriginalLabel(self.prevFrameLbls[i], self.prevFrames[i][1][sv][1])
 #             
+
+
+
+
+
+
+
+
+
 #         self.prevFrames += [self.vh.getTempFrame(-1)]
 #         self.prevFrames += [self.vh.getTempFrame(0)]
 #         self.prevFrames += [self.vh.getTempFrame(1)]
@@ -835,44 +958,59 @@ class videoPlayer(QMainWindow):
         return img
         
     @cfg.logClassFunction
-    def setBackground(self, path):
-        a = plt.imread(path) * 255
+    def setBackground(self, path=None):
         
-        # crop and rotate background image to show only one vial
-        rng = slice(*self.vialRoi[self.selectedVial])
-        a = np.rot90(a[:, rng]).astype(np.uint32)
-        
-        h = a.shape[0]
-        w = a.shape[1]
-        
-#         a *= 255
-        
-        b = a[:,:,0] * 0.2126 + a[:,:,1] * 0.7152 + a[:,:,2] * 0.0722
-        a[:,:,0] = b
-        a[:,:,1] = b
-        a[:,:,2] = b
-        
-        im = np2qimage(a).convertToFormat(QImage.Format_RGB32, Qt.MonoOnly)
-        
-        pixmap = QPixmap()
-        px = QPixmap.fromImage(im)
+        if path:        
+            a = plt.imread(path) * 255
+            
+            # crop and rotate background image to show only one vial
+            rng = slice(*self.vialRoi[self.selectedVial])
+            a = np.rot90(a[:, rng]).astype(np.uint32)
+            
+            h = a.shape[0]
+            w = a.shape[1]
+            
+    #         a *= 255
+            # grey conversion
+            b = a[:,:,0] * 0.2126 + a[:,:,1] * 0.7152 + a[:,:,2] * 0.0722
+            a[:,:,0] = b
+            a[:,:,1] = b
+            a[:,:,2] = b
+            
+            im = np2qimage(a).convertToFormat(QImage.Format_RGB32, Qt.MonoOnly)
+            
+            pixmap = QPixmap()
+            px = QPixmap.fromImage(im)
+            
+        else:
+            h = 0
+            w = 0            
+            
         #~ 
         #~ self.ui.label.setScaledContents(True)
         #~ self.ui.label.setPixmap(px)
+        
+        self.sceneRect = QRectF(0, 0, w,h)
         
         self.videoView = QGraphicsView(self)        
         self.videoView.setFrameStyle(QFrame.NoFrame)
         self.videoView.setGeometry(QRect(10, 10, w, h))#1920/2, 1080/2))
         self.videoScene = QGraphicsScene(self)
         self.videoScene.setItemIndexMethod(QGraphicsScene.NoIndex)
-        self.videoScene.setSceneRect(QRectF(0, 0, w,h))#1920, 1080))
+        self.videoScene.setSceneRect(self.sceneRect)#1920, 1080))
         self.videoScene.setBackgroundBrush(QBrush(Qt.black))
         
         self.videoView.setScene(self.videoScene)
         #self.videoView.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         #self.videoView.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        
-        self.bgImg = QGraphicsPixmapItem(px)        
+            
+            
+        if path:
+            self.bgImg = QGraphicsPixmapItem(px)
+        else:
+            self.bgImg = QGraphicsPixmapItem()
+              
+              
         self.videoScene.addItem(self.bgImg)   
         self.bgImg.setPos(0,0)     
         
@@ -907,6 +1045,7 @@ class videoPlayer(QMainWindow):
         self.vh.loadProgressive = True
         
         self.stop = False
+        skipCnt = 0 # counts how often process events were skipped
         
         
         logGUI.info('"--------- start mainloop ------------"')
@@ -928,13 +1067,21 @@ class videoPlayer(QMainWindow):
                                 cfg.Back.BLUE + 
                                 "mainloop overflow before processEvents(): {0}ms".format(
                                         dieTime.msecsTo(QTime.currentTime())))
+                
             elif(QTime.currentTime() < dieTime.addMSecs(15)):
                 frameNo = self.vh.getCurrentFrameNo()
                 self.ui.lbl_v1.setText("no: {0}".format(frameNo))
 #                 self.ui.lv_frames.setCurrentIndex(self.frameList.index(frameNo,0))
              
 #             cfg.log.debug("---------------------------------------- while loop() - begin")
-            while(QTime.currentTime() < dieTime):
+
+            if not (QTime.currentTime() < dieTime):                
+                skipCnt += 1
+            else:
+                skipCnt = 0
+                
+            while(QTime.currentTime() < dieTime) or (skipCnt > 10):
+                skipCnt = 0
 #                 cfg.log.debug("processEvents() - begin")
                 QApplication.processEvents(QEventLoop.AllEvents, QTime.currentTime().msecsTo(dieTime))
 #                 cfg.log.debug("processEvents() - end")
@@ -952,13 +1099,16 @@ class videoPlayer(QMainWindow):
         logGUI.info('"--------- stopped mainloop ------------"')
         
     @cfg.logClassFunction
-    def providePosList(self, path):
+    def providePosList(self, path, ending=None):
+        if not ending:
+            ending = '.pos.npy'
+        
         fileList  = []
         posList = []
         cfg.log.debug("scaning files...")
         for root,  dirs,  files in os.walk(path):
             for f in files:
-                if f.endswith('.pos.npy'):
+                if f.endswith(ending):
                     path = root + '/' + f
                     fileList.append(path)
                     
@@ -1083,7 +1233,7 @@ class videoPlayer(QMainWindow):
         self.videoList[self.fileList[0]] = VideoLoader(self.fileList[0])
         #self.prefetchVideo(self.fileList[0])
         
-    @cfg.logClassFunction
+    @cfg.logClassFunctionInfo
     def showTrajectories(self, state):
         self.showTraject = bool(state)        
         
@@ -1484,7 +1634,11 @@ class AnnoView(QWidget):
         """
         adds an annotation to a scene
         """
-        filt = AnnotationFilter([self.vialNo], self.annotator, 
+        if self.vialNo is None:
+            filt = AnnotationFilter([0], self.annotator, 
+                                                        self.behaviourName)
+        else:
+            filt = AnnotationFilter([self.vialNo], self.annotator, 
                                                         self.behaviourName)
 
         self.annotationDict[key] = annotation.filterFrameList(filt)
@@ -1781,6 +1935,10 @@ class VideoLoader(QObject):
         self.videoHandler = videoHandler
         
         self.thread = thread
+        
+        self.videoEnding = '.mp4'
+        
+        self.imTransform = lambda x: x
         # call at the end
 #         self.loadVideos()
 
@@ -1792,10 +1950,18 @@ class VideoLoader(QObject):
 #         self.loadVideos()        
         
 #     @cfg.logClassFunction
+
+    def maxOfSelectedVials(self):
+        return maxOfSelectedVials(self.selectedVials)
+
     @Slot()
     def loadVideos(self):
         self.exiting = False
         self.loading = True
+        
+        #####################################################################   TODO: fix properly!!
+        # quick-fix of file extension dilemma
+#         self.posPath = self.posPath.split(self.videoEnding)[0] + '.pos.npy'
 
         cfg.log.info("loadVideos: {0} @ {1}".format(self.posPath, QThread.currentThread().objectName()))
         #         print "RUN", QThread.currentThread().objectName(), QApplication.instance().thread().objectName(), '\n'
@@ -1810,22 +1976,30 @@ class VideoLoader(QObject):
         lbview = rc.load_balanced_view()   
         
         #@lbview.parallel(block=True)
-        def loadVideo(f, vialNo):    
+        def loadVideo(f, vialNo, imTransform=None):    
 #             from qimage2ndarray import array2qimage
             import sys
             from pyTools.system.videoExplorer import videoExplorer
             import numpy as np    
             from PySide.QtGui import QImage
+            from scipy.misc import imresize 
+            
             
             vE = videoExplorer()        
             
+            if imTransform is None:
+                imTransform = lambda x: x
+#             else:
+#                 imTransform = lambda x: imresize(x)
+                
             
             im = []#np2qimage(np.rot90(vE.getFrame(f, info=False, 
             #                              frameMode='RGB')) * 255)]
             vE.setVideoStream(f, info=False, frameMode='RGB')
             for frame in vE:
 #                 im += [np2qimage(np.rot90(frame) * 255)]
-                im += [np.rot90(frame)]
+#                 im += [[imresize(frame, 0.5), imresize(frame, [64,64])]]
+                im += [[frame, imresize(frame, [64,64])]]
                         
             ret = dict()
             
@@ -1838,7 +2012,7 @@ class VideoLoader(QObject):
             from pyTools.videoProc.annotation import Annotation
             from os.path import isfile         
                         
-            f = posPath.split('.pos')[0] + '.bhvr'
+            f = posPath.split(self.videoEnding)[0] + '.bhvr'
             if isfile(f):
                 cfg.log.debug("videoLoader: f exists create empty Annotation")
                 out = Annotation()
@@ -1853,7 +2027,7 @@ class VideoLoader(QObject):
                                                                  "dilp",
                                                                  "wDah(+)"])
             else:
-                cfg.log.debug("videoLoader: f exists NOT create empty Annotation")
+                cfg.log.debug("videoLoader: f does NOT exist create empty Annotation")
                 out = Annotation(frameNo=videoLength, vialNames=["Abeta +RU",
                                                                  "ABeta -RU",
                                                                  "dilp",
@@ -1861,9 +2035,16 @@ class VideoLoader(QObject):
             return out
             
         results = []
-        for i in self.selectedVials:
-            f = self.posPath.split('.pos')[0] + '.v{0}.{1}'.format(i, 'avi')
-            results += [lbview.apply_async(loadVideo, f, i)]
+        
+        if self.selectedVials is None:
+            f = self.posPath# self.posPath.split(self.videoEnding)[0] + self.videoEnding#.v{0}.{1}'.format(i, 'avi')
+            results += [lbview.apply_async(loadVideo, f, 0, self.imTransform)]
+        else:        
+            for i in self.selectedVials:
+                f = self.posPath.split(self.videoEnding)[0] + \
+                    '.v{0}.{1}'.format(i, self.videoEnding)
+                results += [lbview.apply_async(loadVideo, f, i, 
+                                               self.imTransform)]
         
         cfg.log.debug("videoLoader: waiting for process...")
         allReady = False
@@ -1883,10 +2064,14 @@ class VideoLoader(QObject):
             for ar in results:
                 allReady = allReady and ar.ready()
                 
-            self.thread.msleep(10)
+            if self.thread is None:
+                import time
+                time.sleep(0.01)
+            else:
+                self.thread.msleep(10)
         
         cfg.log.debug("videoLoader: copy results")
-        self.frameList = [[] for i in range(max(self.selectedVials) + 1)]
+        self.frameList = [[] for i in range(self.maxOfSelectedVials() + 1)]
         for i in range(len(results)):
             # copy data
             ar = results[i].get()
@@ -1904,11 +2089,19 @@ class VideoLoader(QObject):
         rc.close()
         
         if True:#not self.exiting:
-            cfg.log.debug("videoLoader: load positions")
-            self.pos = np.load(self.posPath)
             # using max(self.selectedVials) to make sure that the list entry
             # has actually some frames and is no dummy
-            self.videoLength = len(self.frameList[max(self.selectedVials)])
+            self.videoLength = len(self.frameList[self.maxOfSelectedVials()])
+            
+            cfg.log.debug("videoLoader: load positions")
+            try:
+                self.pos = np.load(self.posPath.split(self.videoEnding)[0] + 
+                                   '.pos.npy')
+            except IOError:
+                # create dummy positions to keep stuff internally going
+                self.pos = np.zeros((self.videoLength, 
+                                     self.maxOfSelectedVials() + 1,
+                                     2))
         
         if True:#not self.exiting:
             cfg.log.debug("videoLoader: load annotations")
@@ -1919,8 +2112,8 @@ class VideoLoader(QObject):
 #         self.finished.emit()  
 #         self.loadedAnnotation.emit([self.annotation, self.posPath])
 
-
-        self.videoHandler.updateNewAnnotation([self.annotation, self.posPath])
+        if self.videoHandler is not None:
+            self.videoHandler.updateNewAnnotation([self.annotation, self.posPath])
         
         
         self.loading = False
@@ -1998,7 +2191,7 @@ class VideoHandler(QObject):
         self.posPath = ''
         self.idx = 0
         self.pathIdx = 0
-        self.dictLength = 31         # should be odd, otherwise fix checkBuffers()!
+        self.dictLength = 5         # should be odd, otherwise fix checkBuffers()!
         self.delBuffer = 5
         
         self.posList = sorted(posList)
@@ -2032,6 +2225,11 @@ class VideoHandler(QObject):
         
         # always do that at the end
         self.checkBuffer()
+        
+        
+
+    def maxOfSelectedVials(self):
+        return maxOfSelectedVials(self.selectedVials)
     
     def aboutToQuit(self):
         self.videoLoaderLuncherThread.quit()
@@ -2105,8 +2303,8 @@ class VideoHandler(QObject):
         try:
             frame = self.videoDict[self.posPath].getFrame(self.idx)
             if not frame:
-                frame = [[[0,0]] * (max(self.selectedVials) + 1), 
-                          [np.zeros((64,64,3))] * (max(self.selectedVials) + 1)]
+                frame = [[[0,0]] * (self.maxOfSelectedVials() + 1), 
+                          [np.zeros((64,64,3))] * (self.maxOfSelectedVials() + 1)]
                 #[[[0,0]] * (max(self.selectedVials) + 1), np.zeros((64,64,3))]
                     
         except KeyError:
@@ -2116,8 +2314,8 @@ class VideoHandler(QObject):
             self.getCurrentFrame()
         except RuntimeError as e:
             cfg.log.error("something went wrong during the fetching procedure: error message {0}".format(e.message))
-            frame = [[[0,0]] * (max(self.selectedVials) + 1), 
-                     [np.zeros((64,64,3))] * (max(self.selectedVials) + 1)]
+            frame = [[[0,0]] * (self.maxOfSelectedVials() + 1), 
+                     [np.zeros((64,64,3))] * (self.maxOfSelectedVials() + 1)]
             
         if doBufferCheck:
             self.checkBuffer(updateAnnotationViews)            
