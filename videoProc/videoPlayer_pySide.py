@@ -16,6 +16,7 @@ import pyTools.misc.config as cfg
 import copy
 
 import numpy as np
+import scipy.misc as scim
 #import matplotlib as mpl
 import pylab as plt
 import time
@@ -100,6 +101,25 @@ class MyListModel(QAbstractListModel):
         else: 
             return None
     
+    
+class MouseFilterObj(QObject):
+    def __init__(self, parent):
+        QObject.__init__(self)
+        self.parent = parent
+        self.increment = 0
+        
+    @cfg.logClassFunction
+    def eventFilter(self, obj, event):
+        cfg.log.info("mouse event!!!!!!!!!!!!!! {0}".format(event.type()))
+        if (event.type() == QEvent.GraphicsSceneMouseMove):
+            self.parent.setCropCenter(int(event.scenePos().y()), 
+                                      int( event.scenePos().x()),
+                                      increment = self.increment)
+            
+        if (event.type() == QEvent.GraphicsSceneWheel):
+            self.increment -= event.delta()
+            
+        return False
             
 
 class filterObj(QObject):
@@ -396,7 +416,7 @@ class videoPlayer(QMainWindow):
                         startVideoName=None,
                         rewindOnClick=False,
                         videoOnly=True,
-                        videoEnding='.avi' #'.v0.avi'
+                        videoEnding='.avi', #'.v0.avi'
                         ):
         """
         
@@ -421,6 +441,9 @@ class videoPlayer(QMainWindow):
         self.eventFilter = filterObj(self, **filterObjArgs)
         self.installEventFilter(self.eventFilter)
         self.connectSignals()       
+        
+        self.mouseEventFilter = MouseFilterObj(self)
+        
         
         self.fileList = self.providePosList(path, ending=videoEnding)    
         
@@ -520,6 +543,8 @@ class videoPlayer(QMainWindow):
                                      "annotations":self.annotations
                                     }\
                                 }))
+        
+        self.setCropCenter(None, None)
         
         self.selectVideo(startIdx)
         
@@ -694,7 +719,42 @@ class videoPlayer(QMainWindow):
                 pass
         painter.end()
         
+        
+    @cfg.logClassFunctionInfo
+    def setCropCenter(self, x, y, width=None, increment=None):        
+        if width != None and increment != None:
+            raise ValueError("width and increment cannot be both specified")
+        cfg.log.info("width: {0}, increment {1}".format(width, increment))
+        if width == None: 
+            width = 32
             
+        if increment != None:
+            width += (increment / 10) 
+        if x == None:        
+            self.prevXCrop = slice(None, None)
+        else:
+            self.prevXCrop = slice(x-width, x+width)
+            
+        if y == None:
+            self.prevYCrop = slice(None, None)
+        else:
+            self.prevYCrop = slice(y-width, y+width)
+            
+        if x == None or y == None:
+            self.cropRect.setPos(-1000, -1000)            
+            return
+            
+        x -= width
+        y -= width
+            
+        self.cropRect.setRect(0,0, width * 2, width * 2)
+        self.cropRect.setPos(y, x)
+        r = self.cropRect.rect()
+            
+        cfg.log.info("after width: {0}, increment {1}, rect {2}".format(width, increment, r))
+        
+            
+        
         
     @cfg.logClassFunction
     def updateFrameList(self, intList):
@@ -782,7 +842,8 @@ class videoPlayer(QMainWindow):
         
     @cfg.logClassFunction
     def updateOriginalLabel(self, lbl, img):
-        qi = array2qimage(img)
+        qi = array2qimage(scim.imresize(img[self.prevXCrop, self.prevYCrop], 
+                                        (64,64)))
 
         cfg.log.debug("converting img to QImage")
 #         qi = np2qimage(img)
@@ -880,57 +941,25 @@ class videoPlayer(QMainWindow):
             self.updateLabel(self.lbl_v0, frame[0][sv], frame[1][sv][0])
         
         
+        # showing trajectory #
         self.frames = []
         for i in range(self.trajNo):
             self.frames += [self.vh.getTempFrame(increment * (i - offset))] 
         
-        
         for i in range(len(self.frames)-1, -1, -1):
             frame = self.frames[i]
-#             if i == 0:
-# #                 self.updateLabel(self.lbl_v1, frame[0][1], frame[1][1])
-# #                 self.updateLabel(self.lbl_v2, frame[0][2], frame[1][2])
-# #                 self.updateLabel(self.lbl_v3, frame[0][3], frame[1][3])
-#             
-# #                 self.updateOriginalLabel(self.ui.lbl_v3_full, frame[1][3])
-#             else:
             self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
-#                 self.updateLabel(self.trajLabels[i][1], frame[0][1], None)
-#                 self.updateLabel(self.trajLabels[i][2], frame[0][2], None)
-#                 self.updateLabel(self.trajLabels[i][3], frame[0][3], None)
 
 
+        # showing previews #
         offset = (len(self.prevFrameLbls) - 1) / 2
         self.prevFrames = []
-        
-        
-        
-        
+                
         for i in range(len(self.prevFrameLbls)):
             self.prevFrames += [self.vh.getTempFrame(i - offset)]
-            self.updateOriginalLabel(self.prevFrameLbls[i], self.prevFrames[i][1][sv][1])
+            self.updateOriginalLabel(self.prevFrameLbls[i], self.prevFrames[i][1][sv][0])
 #             
 
-
-
-
-
-
-
-
-
-#         self.prevFrames += [self.vh.getTempFrame(-1)]
-#         self.prevFrames += [self.vh.getTempFrame(0)]
-#         self.prevFrames += [self.vh.getTempFrame(1)]
-#         
-#         self.updateOriginalLabel(self.ui.lbl_v0_full, prevFrames[0][1][sv])
-#         self.updateOriginalLabel(self.ui.lbl_v1_full, prevFrames[1][1][sv])
-#         self.updateOriginalLabel(self.ui.lbl_v2_full, prevFrames[2][1][sv])
-        
-        
-        
-        if self.showTraject:
-            pass
         
     @cfg.logClassFunction
     def jumpToFrame(self, vE, lbl, p, frameNo):    
@@ -1031,9 +1060,28 @@ class videoPlayer(QMainWindow):
         fmt.setDoubleBuffer(True);                 
         fmt.setDirectRendering(True);
          
-        self.videoView.setViewport(QGLWidget(fmt))
+        glw = QGLWidget(fmt)
+#         glw.setMouseTracking(True)
+        
+        self.videoView.setViewport(glw)
         self.videoView.show()
         self.videoView.fitInView(self.bgImg, Qt.KeepAspectRatio)
+        
+#         self.videoView.installEventFilter(self.mouseEventFilter)
+        self.videoView.setMouseTracking(True)
+#         self.lbl_v0.setAcceptHoverEvents(True)
+#         self.videoScene.setAcceptHoverEvents(True)
+        self.videoScene.installEventFilter(self.mouseEventFilter)
+        
+        
+        
+        geo = QRectF(0, 0, 64, 64)
+        penCol = QColor()
+        penCol.setHsv(50, 255, 255, 255)
+        self.cropRect = self.videoScene.addRect(geo, QPen(penCol))
+#         self.videoView.setCursor(QCursor(Qt.CrossCursor))
+        
+        
         
     def startVideo(self):
         self.play = True
@@ -1773,7 +1821,10 @@ class AnnoView(QWidget):
                             and (curIdx in self.tempRng[curKey])):
                 conf = [None]
             else:
-                conf = self.annotationDict[curKey].frameList[curIdx]
+                if type(self.annotationDict[curKey].frameList[curIdx]) == dict:
+                    conf = self.annotationDict[curKey].frameList[curIdx]['confidence']                    
+                else:
+                    conf = self.annotationDict[curKey].frameList[curIdx]
                                   
             self.confidenceList += [KeyIdxPair(curKey, curIdx, conf)]            
             curIdx += 1     
