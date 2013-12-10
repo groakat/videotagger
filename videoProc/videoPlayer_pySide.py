@@ -1964,7 +1964,7 @@ class VideoLoader(QObject):
         self.wait()
                 
         if self.annotation is not None:
-            self.annotation.saveToFile(self.posPath.split('.pos')[0] + '.bhvr')
+            self.annotation.saveToFile('.'.join(self.posPath.split('.')[:-1]) + '.bhvr')
     
     @cfg.logClassFunction
     def __init__(self, posPath, videoHandler, selectedVials=[1], thread=None):
@@ -2063,7 +2063,7 @@ class VideoLoader(QObject):
             from pyTools.videoProc.annotation import Annotation
             from os.path import isfile         
                         
-            f = posPath.split(self.videoEnding)[0] + '.bhvr'
+            f = '.'.join(posPath.split('.')[:-1]) + '.bhvr'
             if isfile(f):
                 cfg.log.debug("videoLoader: f exists create empty Annotation")
                 out = Annotation()
@@ -2621,7 +2621,7 @@ class VideoHandler(QObject):
                                 v=vial, r=rng[key], a=annotator,
                                   b=behaviour, c=confidence))
                     
-                    tmpFilename = key.split(".pos")[0] + ".bhvr~"
+                    tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
                     self.videoDict[key].annotation.saveToFile(tmpFilename)
                     
                     # refresh annotation in anno view
@@ -2683,7 +2683,7 @@ class VideoHandler(QObject):
                 for key in rng:
                     self.videoDict[key].annotation.removeAnnotation(vial, rng[key], 
                                             annotator, behaviour)
-                    tmpFilename = key.split(".pos")[0] + ".bhvr~"
+                    tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
                     self.videoDict[key].annotation.saveToFile(tmpFilename)
                 
                     # refresh annotation in anno view
@@ -2720,7 +2720,7 @@ class VideoHandler(QObject):
     @cfg.logClassFunction
     def saveAll(self):
         for key in self.videoDict:
-            tmpFilename = key.split(".pos")[0] + ".bhvr"
+            tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr"
             self.videoDict[key].annotation.saveToFile(tmpFilename)
     
 class AnnotationItemLoader(BaseThread):
@@ -2906,7 +2906,7 @@ class VideoLoaderLuncher(QObject):
         if vL is not None and not vL.loading and vL.annotation is not None: 
             if vL.annotation.hasChanged:
                 cfg.log.info("save annotation")
-                tmpFilename = vidPath.split(".pos")[0] + ".bhvr"
+                tmpFilename = '.'.join(vidPath.split(".")[:-1]) + ".bhvr"
                 vL.annotation.saveToFile(tmpFilename)
             
             self.availableVLs += [vL]

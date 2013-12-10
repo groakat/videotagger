@@ -394,6 +394,21 @@ class videoExplorer(object):
     @staticmethod
     def findClosestDate(dateList, date):
 		min(DTlist,key=lambda date : abs(dt-date))
+        
+
+def providePosList(path, ending=None):
+    if not ending:
+        ending = '.pos.npy'
+    
+    fileList  = []
+    for root,  dirs,  files in os.walk(path):
+        for f in files:
+            if f.endswith(ending):
+                path = root + '/' + f
+                fileList.append(path)
+                
+    fileList = sorted(fileList)
+    return fileList
     
 if __name__ == "__main__":
     vE = videoExplorer()
