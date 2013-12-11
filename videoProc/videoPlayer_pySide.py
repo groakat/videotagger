@@ -841,7 +841,8 @@ class videoPlayer(QMainWindow):
         #lbl.update()
         
     @cfg.logClassFunction
-    def updateOriginalLabel(self, lbl, img):
+    def updateOriginalLabel(self, lbl, data):
+        img = data[0]
         qi = array2qimage(scim.imresize(img[self.prevXCrop, self.prevYCrop], 
                                         (64,64)))
 
@@ -873,7 +874,8 @@ class videoPlayer(QMainWindow):
         
         
     @cfg.logClassFunctionInfo
-    def updateMainLabel(self, lbl, img):
+    def updateMainLabel(self, lbl, data):
+        img, anno = data
         h = img.shape[0]
         w = img.shape[1]
         if self.sceneRect != QRectF(0, 0, w,h):
@@ -2204,7 +2206,8 @@ class VideoLoader(QObject):
             out = []
             for i in range(len(self.frameList)):
                 if not idx >= len(self.frameList[i]):
-                    out += [self.frameList[i][idx]]
+                    out += [[self.frameList[i][idx] ,  
+                             self.annotation.frameList[idx][i]]]
                 else:
                     out += [[]]
                 
@@ -2354,8 +2357,10 @@ class VideoHandler(QObject):
         try:
             frame = self.videoDict[self.posPath].getFrame(self.idx)
             if not frame:
-                frame = [[[0,0]] * (self.maxOfSelectedVials() + 1), 
-                          [np.zeros((64,64,3))] * (self.maxOfSelectedVials() + 1)]
+                frame = [[[0,0] 
+                                for i in range(self.maxOfSelectedVials() + 1)], 
+                         [[np.zeros((64,64,3)), {'confidence': 0}] 
+                                for i in range(self.maxOfSelectedVials() + 1)]]
                 #[[[0,0]] * (max(self.selectedVials) + 1), np.zeros((64,64,3))]
                     
         except KeyError:
