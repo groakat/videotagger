@@ -254,7 +254,34 @@ class Annotation():
         
         #~ for child in self.children:
             #~ child.removeAnnotation(v, frames, b, a)
-
+            
+def getPropertyFromFrameAnno(a, prop):
+    """
+    Returns the requested property from a filtered frame annotation.
+    
+    If the filtered frame has multiple entries with the same property,
+    all of them are returned.
+    
+    Args:
+        a (frame from annotation.frameList)
+        
+        prop (String)
+        
+    Returns:
+        List containing values of the properties
+    """
+    out = []
+    for bk in a[0]:
+        if bk != 'name':
+            for bnk in a[0][bk]:
+                for ak in a[0][bk][bnk]:
+                    if type(a[0][bk][bnk][ak]) == int:
+                        if prop == "confidence":
+                            out += [a[0][bk][bnk][ak]]
+                    elif prop in a[0][bk][bnk][ak].keys():
+                        out += [a[0][bk][bnk][ak][prop]]
+                        
+    return out
 
 if __name__ == "__main__":
     vid = []

@@ -110,7 +110,7 @@ class MouseFilterObj(QObject):
         
     @cfg.logClassFunction
     def eventFilter(self, obj, event):
-        cfg.log.info("mouse event!!!!!!!!!!!!!! {0}".format(event.type()))
+        cfg.log.debug("mouse event!!!!!!!!!!!!!! {0}".format(event.type()))
         if (event.type() == QEvent.GraphicsSceneMouseMove):
             self.parent.setCropCenter(int(event.scenePos().y()), 
                                       int( event.scenePos().x()),
@@ -484,6 +484,8 @@ class videoPlayer(QMainWindow):
 #                             {"annot": "peter",
 #                              "behav": "struggling"},
 #                             ]
+        self.tmpAnnotation = Annotation(0, [''])
+        self.annotationRoiLabels = []
         
         
         self.vialRoi = vialROI#[[350, 660], [661, 960], [971, 1260], [1290, 1590]]
@@ -538,11 +540,11 @@ class videoPlayer(QMainWindow):
         self.show()        
         logGUI.info(json.dumps(
                             {"message":'"--------- opened GUI ------------"'})) 
-        logGUI.info(json.dumps({"args":
-                                    {"selectedVial":self.selectedVial,
-                                     "annotations":self.annotations
-                                    }\
-                                }))
+#         logGUI.info(json.dumps({"args":
+#                                     {"selectedVial":self.selectedVial,
+#                                      "annotations":self.annotations
+#                                     }\
+#                                 }))
         
         self.setCropCenter(None, None)
         
@@ -612,12 +614,16 @@ class videoPlayer(QMainWindow):
         height = 20
         width = 1000
         
+        self.annotations[0]["color"] = QColor(0,0,255,150)
+        self.annotations[1]["color"] = QColor(0,255,0,150)
+        self.annotations[2]["color"] = QColor(255,0,0,150)
+        
         self.createPrevFrames(xPos - 15, yPos - 95)
         
         self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
                                        annotator=[self.annotations[0]["annot"]], 
                                        behaviourName=[self.annotations[0]["behav"]], 
-                                       color = QColor(0,0,255,150),
+                                       color = self.annotations[0]["color"],
                                        geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
         self.annoViewList[-1].show()
@@ -633,7 +639,7 @@ class videoPlayer(QMainWindow):
         self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
                                        annotator=[self.annotations[1]["annot"]], 
                                        behaviourName=[self.annotations[1]["behav"]], 
-                                       color = QColor(0,255,0,150), 
+                                       color = self.annotations[1]["color"], 
                                        geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry()
         self.annoViewList[-1].show()
@@ -649,7 +655,7 @@ class videoPlayer(QMainWindow):
         self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
                                        annotator=[self.annotations[2]["annot"]], 
                                        behaviourName=[self.annotations[2]["behav"]], 
-                                       color = QColor(255,0,0,150), 
+                                       color = self.annotations[2]["color"], 
                                        geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
         self.annoViewList[-1].show()
@@ -875,7 +881,8 @@ class videoPlayer(QMainWindow):
         
     @cfg.logClassFunctionInfo
     def updateMainLabel(self, lbl, data):
-        img, anno = data
+        img = data[0][0]
+        anno = data[1]
         h = img.shape[0]
         w = img.shape[1]
         if self.sceneRect != QRectF(0, 0, w,h):
@@ -888,7 +895,63 @@ class videoPlayer(QMainWindow):
                     
         self.loadImageIntoLabel(lbl, img)
         
+        # place annotation roi
+        self.tmpAnnotation.setFrameList([[anno]])
         
+        rois = []
+        for i in range(len(self.annotations)):
+            filt = AnnotationFilter(None, [self.annotations[i]["annot"]],
+                                            [self.annotations[i]["behav"]])
+            tmpAnno  = self.tmpAnnotation.filterFrameList(filt)      
+            
+            if tmpAnno.frameList[0] == [None]:
+                continue
+                         
+            bb = getPropertyFromFrameAnno(tmpAnno.frameList[0], "boundingBox")
+            
+            for b in bb:
+                rois += [[b, self.annotations[i]["color"]]]
+                
+        self.positionAnnotationRoi(rois)
+        
+        
+    @cfg.logClassFunction
+    def positionAnnotationRoi(self, rois):
+        while len(self.annotationRoiLabels) < len(rois):
+            rect = QRectF(0, 0, 64, 64)
+            self.annotationRoiLabels += [self.videoScene.addRect(rect)]
+            
+        usedRoi = 0
+        
+        cfg.log.info("Rois: {0}".format(rois))
+        for i in range(len(rois)):        
+            x1, y1, x2, y2 = rois[i][0]
+            color = rois[i][1]
+            
+            width = x2 - x1
+            height = y2 - y1
+            
+            cfg.log.info("setting rect to: {0} {1} {2} {3}".format(x1/2, 
+                                                                   y1/2,
+                                                                   width /2,
+                                                                   height / 2))
+            self.annotationRoiLabels[i].setRect(0,0, width / 2, height / 2)
+            self.annotationRoiLabels[i].setPos(x1/2, y1/2)
+            self.annotationRoiLabels[i].setPen(QPen(color))
+#             self.annotationRoiLabels[i].setBrush(QPen(color))
+#             self.annotationRoiLabels[i].setVisible(True)
+             
+            cfg.log.info("set rect to: {0}".format(self.annotationRoiLabels[i].rect()))
+            usedRoi = i + 1
+            
+            
+        # move unused rects out of sight
+        for k in range(usedRoi, len(self.annotationRoiLabels)):
+            self.annotationRoiLabels[k].setRect(0,0, 0, 0)
+            self.annotationRoiLabels[k].setPos(-10, -10)
+            
+        
+    
     @cfg.logClassFunction
     def showTempFrame(self, increment):
         self.tempIncrement = increment
@@ -938,7 +1001,7 @@ class videoPlayer(QMainWindow):
         
         frame = self.frames[0]
         if self.videoOnly:
-            self.updateMainLabel(self.lbl_v0, frame[1][sv][0])
+            self.updateMainLabel(self.lbl_v0, frame[1][sv])
         else:
             self.updateLabel(self.lbl_v0, frame[0][sv], frame[1][sv][0])
         
@@ -1823,10 +1886,16 @@ class AnnoView(QWidget):
                             and (curIdx in self.tempRng[curKey])):
                 conf = [None]
             else:
-                if type(self.annotationDict[curKey].frameList[curIdx]) == dict:
-                    conf = self.annotationDict[curKey].frameList[curIdx]['confidence']                    
+#                 if type(self.annotationDict[curKey].frameList[curIdx]) == dict:
+#                     conf = self.annotationDict[curKey].frameList[curIdx]['confidence']                    
+#                 else:
+#                     conf = self.annotationDict[curKey].frameList[curIdx]
+                if self.annotationDict[curKey].frameList[curIdx] == [None]:
+                    conf = [None]
                 else:
-                    conf = self.annotationDict[curKey].frameList[curIdx]
+                    conf = getPropertyFromFrameAnno(
+                                self.annotationDict[curKey].frameList[curIdx],
+                                "confidence")
                                   
             self.confidenceList += [KeyIdxPair(curKey, curIdx, conf)]            
             curIdx += 1     
