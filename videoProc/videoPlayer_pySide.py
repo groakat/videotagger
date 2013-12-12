@@ -116,6 +116,9 @@ class MouseFilterObj(QObject):
                                       int( event.scenePos().x()),
                                       increment = self.increment)
             
+        if (event.type() == QEvent.Leave):
+            self.parent.setCropCenter(None, None, increment=self.increment)
+            
         if (event.type() == QEvent.GraphicsSceneWheel):
             self.increment -= event.delta()
             
