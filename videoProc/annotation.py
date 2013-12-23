@@ -204,10 +204,20 @@ class Annotation():
         
         return out
 
-    def addAnnotation(self, vial, frames, annotator,behaviour, confidence=1.0):
+    def addAnnotation(self, vial, frames, annotator,behaviour, metadata=1.0):
         """
         frames list of ints
         """
+        if vial == None:
+            # just use first index
+            vial = 0       
+            
+        if isinstance(metadata, (int, long, float, complex)):
+            tmpVal = metadata     
+            metadata = dict()
+            for frame in frames:
+                metadata[frame] = tmpVal
+            
         self.hasChanged = True
         if len(self.frameList) < max(frames):
             raise ValueError("Trying to add annotation to frame that" +
@@ -225,7 +235,7 @@ class Annotation():
                 self.frameList[frame][vial]["behaviour"][behaviour] = a
                 
             self.frameList[frame][vial]["behaviour"][behaviour][annotator] = \
-                                                                    confidence
+                                                                    metadata[frame]
         
         #~ for child in self.children:
             #~ child.addAnnotation(vial, frames, behaviour, annotator, 

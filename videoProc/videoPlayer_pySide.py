@@ -112,8 +112,8 @@ class MouseFilterObj(QObject):
     def eventFilter(self, obj, event):
         cfg.log.debug("mouse event!!!!!!!!!!!!!! {0}".format(event.type()))
         if (event.type() == QEvent.GraphicsSceneMouseMove):
-            self.parent.setCropCenter(int(event.scenePos().y()), 
-                                      int( event.scenePos().x()),
+            self.parent.setCropCenter(int(event.scenePos().x()), 
+                                      int( event.scenePos().y()),
                                       increment = self.increment)
             
         if (event.type() == QEvent.Leave):
@@ -489,6 +489,9 @@ class videoPlayer(QMainWindow):
 #                             ]
         self.tmpAnnotation = Annotation(0, [''])
         self.annotationRoiLabels = []
+        self.annoIsOpen = False
+        self.metadata = []
+        self.confidence = 0
         
         
         self.vialRoi = vialROI#[[350, 660], [661, 960], [971, 1260], [1290, 1590]]
@@ -733,34 +736,35 @@ class videoPlayer(QMainWindow):
     def setCropCenter(self, x, y, width=None, increment=None):        
         if width != None and increment != None:
             raise ValueError("width and increment cannot be both specified")
-        cfg.log.info("width: {0}, increment {1}".format(width, increment))
+        cfg.log.debug("width: {0}, increment {1}".format(width, increment))
         if width == None: 
-            width = 32
+            width = 64
             
         if increment != None:
             width += (increment / 10) 
         if x == None:        
             self.prevXCrop = slice(None, None)
         else:
-            self.prevXCrop = slice(x-width, x+width)
+            self.prevXCrop = slice(x-width/2, x+width/2)
             
         if y == None:
             self.prevYCrop = slice(None, None)
         else:
-            self.prevYCrop = slice(y-width, y+width)
+            self.prevYCrop = slice(y-width/2, y+width/2)
             
         if x == None or y == None:
             self.cropRect.setPos(-1000, -1000)            
             return
             
-        x -= width
-        y -= width
+        x -= width / 2 
+        y -= width / 2
             
-        self.cropRect.setRect(0,0, width * 2, width * 2)
-        self.cropRect.setPos(y, x)
+        self.cropRect.setRect(0,0, width, width)
+        self.cropRect.setPos(x, y)
         r = self.cropRect.rect()
             
-        cfg.log.info("after width: {0}, increment {1}, rect {2}".format(width, increment, r))
+        cfg.log.debug("after width: {0}, increment {1}, rect {2}".format(width, increment, r))
+        
         
             
         
@@ -852,7 +856,7 @@ class videoPlayer(QMainWindow):
     @cfg.logClassFunction
     def updateOriginalLabel(self, lbl, data):
         img = data[0]
-        qi = array2qimage(scim.imresize(img[self.prevXCrop, self.prevYCrop], 
+        qi = array2qimage(scim.imresize(img[self.prevYCrop, self.prevXCrop], 
                                         (64,64)))
 
         cfg.log.debug("converting img to QImage")
@@ -1027,6 +1031,8 @@ class videoPlayer(QMainWindow):
             self.prevFrames += [self.vh.getTempFrame(i - offset)]
             self.updateOriginalLabel(self.prevFrameLbls[i], self.prevFrames[i][1][sv][0])
 #             
+        
+        self.vh.updateAnnotationProperties(self.getMetadata())
 
         
     @cfg.logClassFunction
@@ -1454,13 +1460,46 @@ class videoPlayer(QMainWindow):
         else:
             self.eraseAnno(annotator, behaviour)           
             
-    
+    def getMetadata(self):        
+        if self.prevXCrop.start is not None:
+            xStart = self.prevXCrop.start * 2
+        else:
+            xStart= None
+            
+        if self.prevYCrop.start is not None:
+            yStart = self.prevYCrop.start * 2
+        else:
+            yStart = None
+            
+        if self.prevXCrop.stop is not None:
+            xStop = self.prevXCrop.stop * 2
+        else:
+            xStop = None
+        
+        if self.prevYCrop.stop is not None:
+            yStop = self.prevYCrop.stop * 2
+        else:
+            yStop = None
+            
+        metadata =           {"confidence": self.confidence,
+                              "boundingBox":[xStart, 
+                                             yStart,
+                                             xStop,
+                                             yStop]}
+        
+        return metadata
+        
 #     @cfg.logClassFunction
     def addAnno(self, annotator="peter", behaviour="just testing", 
                 confidence=1, oneClickAnnotation=False):        
         logGUI.info(json.dumps({"annotator": annotator,
                                 "behaviour": behaviour,
                                 "confidence": confidence}))
+        
+        if not self.annoIsOpen:
+            self.confidence = confidence            
+#             self.metadata = []
+#             self.addMetadata()
                                 
         if self.rewindOnClick:
             if not self.rewinding:
@@ -1469,22 +1508,24 @@ class videoPlayer(QMainWindow):
                 ##
             else:
                 self.vh.addAnnotation(self.selectedVial, annotator, 
-                                      behaviour, confidence=confidence)
+                                      behaviour, metadata=self.getMetadata())
                 
                 if oneClickAnnotation:                
                     self.vh.addAnnotation(self.selectedVial, annotator, 
-                                      behaviour, confidence=confidence)
+                                      behaviour, metadata=self.getMetadata())
                 
                 self.stopRewind()
                     
         
         else:    
             self.vh.addAnnotation(self.selectedVial, annotator, 
-                                  behaviour, confidence=confidence)
+                                  behaviour, metadata=self.getMetadata())
                 
             if oneClickAnnotation:                
                 self.vh.addAnnotation(self.selectedVial, annotator, 
-                                  behaviour, confidence=confidence)
+                                  behaviour, metadata=self.getMetadata())
+                
+        self.annoIsOpen = not self.annoIsOpen
 #     @cfg.logClassFunction
 
         
@@ -1768,17 +1809,21 @@ class AnnoView(QWidget):
             del self.annotationDict[key]   
         
     @cfg.logClassFunction
-    def setPosition(self, key=None, idx=None, tempPositionOnly=False):
+    def setPosition(self, key=None, idx=None, tempPositionOnly=False, 
+                    metadata = None):
         if key is None:
             key = self.selKey
         if idx is None:
             idx = self.idx
+        if metadata is None:
+            metadata = {"confidence":1}    
+        
                     
         if not tempPositionOnly:
             self.selKey = key
             self.idx = idx
             
-        self.addTempAnno(key, idx)        
+        self.addTempAnno(key, idx, metadata)        
         self.updateConfidenceList()#(key, idx)
         self.updateGraphicView()
         
@@ -1883,7 +1928,7 @@ class AnnoView(QWidget):
             if (self.addingAnno 
                             and (curKey in tempKeys) 
                             and (curIdx in self.tempRng[curKey])):
-                conf = [1]
+                conf = [self.tempValue[curKey][curIdx]["confidence"]]
             elif (self.erasingAnno 
                             and (curKey in tempKeys) 
                             and (curIdx in self.tempRng[curKey])):
@@ -1924,25 +1969,28 @@ class AnnoView(QWidget):
             self.frames[i].update()
         
     @cfg.logClassFunction
-    def addAnno(self, key=None, idx=None):
+    def addAnno(self, key=None, idx=None, metadata=None):
         if key is None:
             key = self.selKey
         if idx is None:
             idx = self.idx
+        if metadata is None:
+            metadata = {"confidence":1}
             
 #         if self.erasingAnno:
 #             self.eraseAnno(key, idx)
 #             return
+        self.tempRng = dict()
+        self.tempAnno = dict()
+        self.tempValue = dict()
         
         if not self.addingAnno:            
             self.addingAnno = True
             #self.tempStart = [self.selKey, self.idx]
             self.tempStart = bsc.FramePosition(self.annotationDict, key, idx)
-            self.setPosition(key, idx, tempPositionOnly=True)
+            self.setPosition(key, idx, tempPositionOnly=True, metadata=metadata)
         else:
             self.addingAnno = False  
-            self.tempRng = dict()
-            self.tempAnno = dict()
 
              
     @cfg.logClassFunction
@@ -1983,13 +2031,23 @@ class AnnoView(QWidget):
              
              
     @cfg.logClassFunction
-    def addTempAnno(self, key=None, idx=None):
+    def addTempAnno(self, key=None, idx=None, metadata=None):
         if key is None:
             key = self.selKey
         if idx is None:
             idx = self.idx
             
+        if metadata == None:
+            metadata = {"confidence": 1}
+            
         self.resetAnno()
+        
+        if self.addingAnno: 
+            if not key in self.tempValue.keys():
+                self.tempValue[key] = dict()
+            
+            self.tempValue[key][idx] = metadata
+        
         if self.addingAnno or self.erasingAnno:
             tempEnd = bsc.FramePosition(self.annotationDict, key, idx)            
             self.tempRng = bsc.generateRangeValuesFromKeys(self.tempStart, tempEnd) 
@@ -2349,6 +2407,9 @@ class VideoHandler(QObject):
         
         self.selectedVials = selectedVials
         
+        self.curMetadata = None
+        self.tempValue = dict()
+        
         # always do that at the end
         self.checkBuffer()
         
@@ -2621,7 +2682,8 @@ class VideoHandler(QObject):
             
         for aV in self.annoViewList:
             aV.setPosition(self.posPath, self.idx, 
-                           tempPositionOnly= updateOnlyTempPosition)
+                           tempPositionOnly= updateOnlyTempPosition,
+                           metadata=self.curMetadata)
         
     
         
@@ -2658,7 +2720,34 @@ class VideoHandler(QObject):
             aV.setZoom(zoomLevel)
         
     @cfg.logClassFunction
-    def addAnnotation(self, vial, annotator, behaviour, confidence):
+    def updateAnnotationProperties(self, metadata):
+        """
+            metadata is the property of the annotation
+        """
+        
+        self.curMetadata = metadata
+        
+        if not self.annoAltStart:
+            return
+                
+        curAnnoEnd = bsc.FramePosition(self.videoDict, self.posPath, self.idx) 
+        lenFunc = lambda x: len(x.frameList[0])                
+        
+        newRng = bsc.generateRangeValuesFromKeys(self.annoEnd, 
+                                                 curAnnoEnd,
+                                                 lenFunc=lenFunc)
+        
+        for key in newRng:
+            for idx in newRng[key]:
+                if not key in self.tempValue.keys():
+                    self.tempValue[key] = dict()
+                    
+                self.tempValue[key][idx] =  metadata
+                
+        self.annoEnd = curAnnoEnd
+        
+    @cfg.logClassFunction
+    def addAnnotation(self, vial, annotator, behaviour, metadata):
         for aV in self.annoViewList:
             if (aV.behaviourName == None) \
             or (behaviour == aV.behaviourName) \
@@ -2668,13 +2757,23 @@ class VideoHandler(QObject):
                 or (annotator in aV.annotator):
                     if vial == aV.vialNo:
                         cfg.log.debug("calling aV.addAnno()")
-                        aV.addAnno(self.posPath, self.idx)
+                        aV.addAnno(self.posPath, self.idx, metadata)
                         
         if self.annoAltStart == None:
             self.annoAltStart = bsc.FramePosition(self.videoDict, self.posPath, 
                                                                     self.idx)
+            
+            self.annoEnd = bsc.FramePosition(self.videoDict, self.posPath, 
+                                             self.idx)
+             
             self.annoAltFilter = AnnotationFilter([vial], [annotator], 
                                                                     [behaviour])
+            
+            self.tempValue = dict()
+            
+            self.updateAnnotationProperties(metadata)
+            
+            
         else:
             curFilter = AnnotationFilter([vial], [annotator], [behaviour])
             sameAnnotationFilter = \
@@ -2692,11 +2791,12 @@ class VideoHandler(QObject):
                             
                 for key in rng:
                     self.videoDict[key].annotation.addAnnotation(vial, rng[key], 
-                                            annotator, behaviour, confidence)
+                                            annotator, behaviour, 
+                                            self.tempValue[key])
                                             
                     cfg.log.info("add annotation vial {v}| range {r}| annotator {a}| behaviour {b}| confidence {c}".format(
                                 v=vial, r=rng[key], a=annotator,
-                                  b=behaviour, c=confidence))
+                                  b=behaviour, c=self.tempValue[key]))
                     
                     tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
                     self.videoDict[key].annotation.saveToFile(tmpFilename)
@@ -2719,7 +2819,7 @@ class VideoHandler(QObject):
                                        "key-range":rng, 
                                        "annotator":annotator,
                                        "behaviour":behaviour, 
-                                       "confidence":confidence}))
+                                       "metadata":self.tempValue[key]}))
                 
                 self.annoAltStart = None
         
@@ -2739,6 +2839,10 @@ class VideoHandler(QObject):
         if self.annoAltStart == None:
             self.annoAltStart = bsc.FramePosition(self.videoDict, self.posPath, 
                                                                     self.idx)
+            
+            self.annoEnd = bsc.FramePosition(self.videoDict, self.posPath, 
+                                             self.idx)
+             
             self.annoAltFilter = AnnotationFilter([vial], [annotator], 
                                                                     [behaviour])
         else:
