@@ -115,9 +115,12 @@ class MouseFilterObj(QObject):
             self.parent.setCropCenter(int(event.scenePos().x()), 
                                       int( event.scenePos().y()),
                                       increment = self.increment)
+#             QApplication.setOverrideCursor(QCursor(Qt.BlankCursor ))
+#             QWSServer.setCursorVisible( False )
             
         if (event.type() == QEvent.Leave):
             self.parent.setCropCenter(None, None, increment=self.increment)
+#             QWSServer.setCursorVisible( True )
             
         if (event.type() == QEvent.GraphicsSceneWheel):
             self.increment -= event.delta()
@@ -1138,6 +1141,7 @@ class videoPlayer(QMainWindow):
 #         glw.setMouseTracking(True)
         
         self.videoView.setViewport(glw)
+        self.videoView.viewport().setCursor(Qt.BlankCursor)
         self.videoView.show()
         self.videoView.fitInView(self.bgImg, Qt.KeepAspectRatio)
         
@@ -3127,6 +3131,20 @@ class MyThread(QThread):
         self.exec_()
         print "RUN DONE", QThread.currentThread().objectName()        
         self.finished.emit()
+        
+        
+class GraphicsVideoView(QGraphicsView):
+    def enterEvent(self, event):
+        QGraphicsView.enterEvent(event)
+        self.viewport().setCursor(Qt.CrossCursor)
+ 
+    def mousePressEvent(self, event):
+        QGraphicsView.mousePressEvent(event);
+        self.viewport().setCursor(Qt.CrossCursor);
+ 
+    def mouseReleaseEvent(self, event):
+        QGraphicsView.mouseReleaseEvent(event);
+        self.viewport().setCursor(Qt.CrossCursor);
         
 if __name__ == "__main__":
     

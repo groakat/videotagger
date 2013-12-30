@@ -245,6 +245,10 @@ class Annotation():
         """
         frames list of ints
         """
+        if vial == None:
+            # just use first index
+            vial = 0    
+            
         self.hasChanged = True
         if len(self.frameList) < max(frames):
             raise ValueError("Trying to remove annotation to frame that" +
