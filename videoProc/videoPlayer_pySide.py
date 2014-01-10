@@ -1064,12 +1064,12 @@ class videoPlayer(QMainWindow):
 
 
         # showing previews #
-        offset = (len(self.prevFrameLbls) - 1) / 2
-        self.prevFrames = []
-                
-        for i in range(len(self.prevFrameLbls)):
-            self.prevFrames += [self.vh.getTempFrame(i - offset)]
-            self.updateOriginalLabel(self.prevFrameLbls[i], self.prevFrames[i][1][sv][0])
+#         offset = (len(self.prevFrameLbls) - 1) / 2
+#         self.prevFrames = []
+#                 
+#         for i in range(len(self.prevFrameLbls)):
+#             self.prevFrames += [self.vh.getTempFrame(i - offset)]
+#             self.updateOriginalLabel(self.prevFrameLbls[i], self.prevFrames[i][1][sv][0])
 #             
         
         self.vh.updateAnnotationProperties(self.getMetadata())
@@ -2456,6 +2456,8 @@ class VideoHandler(QObject):
         # always do that at the end
         self.checkBuffer()
         
+        self.vE = videoExplorer()
+        
         
 
     def maxOfSelectedVials(self):
@@ -2629,6 +2631,17 @@ class VideoHandler(QObject):
                 self.fileChangeCB(self.posPath)   
                 
         return self.getCurrentFrame(doBufferCheck=doBufferCheck)
+    
+    @cfg.logClassFunction
+    def getFrameUnbuffered(self, doBufferCheck=True, 
+                           updateAnnotationViews=True):
+        img = self.vE.getFrame(self.posPath, frameNo=self.idx, frameMode='RGB')
+        frame = [[[0,0] 
+                        for i in range(self.maxOfSelectedVials() + 1)], 
+                 [[img, {'confidence': 0}]  * \
+                             range(self.maxOfSelectedVials() + 1)]]
+            
+        return frame
                 
     @cfg.logClassFunction
     def checkBuffer(self, updateAnnoViewPositions=True):        
