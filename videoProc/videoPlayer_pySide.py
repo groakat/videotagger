@@ -153,6 +153,7 @@ class filterObj(QObject):
                             "anno-1": Qt.Key_1,
                             "anno-2": Qt.Key_2,
                             "anno-3": Qt.Key_3,
+                            "anno-4": Qt.Key_3,
                             "quit-anno": Qt.Key_Q,
                             "info": Qt.Key_I}
         else:
@@ -179,9 +180,9 @@ class filterObj(QObject):
             self.stepSize = stepSize
                     
         if oneClickAnnotation is None:
-            self.oneClickAnnotation = [False, False, False]            
+            self.oneClickAnnotation = [False] * 4            
         else:
-            self.oneClickAnnotation = oneClickAnnotation  
+            self.oneClickAnnotation = [oneClickAnnotation] * 4  
             
         self.inConstantSpeed = False
         self.orignalStepSize = self.stepSize
@@ -388,6 +389,12 @@ class filterObj(QObject):
                                         confidence=1, 
                                         oneClickAnnotation=self.oneClickAnnotation[2])
                     
+                if key == self.keyMap["anno-4"]:
+                    self.parent.alterAnnotation(self.parent.annotations[3]["annot"], 
+                                        self.parent.annotations[3]["behav"],
+                                        confidence=1, 
+                                        oneClickAnnotation=self.oneClickAnnotation[3])
+                    
                 if key == self.keyMap["quit-anno"]:
                     self.parent.addingAnnotations = not self.parent.addingAnnotations
                     if not self.parent.addingAnnotations:
@@ -471,7 +478,8 @@ class videoPlayer(QMainWindow):
         self.tempIncrement = 0
         self.stop = False
         self.addingAnnotations = True
-        self.ui.lbl_eraser.setVisible(False)
+        self.ui.lbl_eraser.setVisible(False)        
+        self.prevSize = 100
         
         
         self.rewindOnClick = rewindOnClick
@@ -480,7 +488,7 @@ class videoPlayer(QMainWindow):
         self.rewindCnt = 0
         
         if self.rewindOnClick:
-            self.eventFilter.oneClickAnnotation = [True, True, True]
+            self.eventFilter.oneClickAnnotation = [True, True, True, True]
         
         self.annotations = annotations 
 #                             [{"annot": "peter",
@@ -612,70 +620,98 @@ class videoPlayer(QMainWindow):
         
         self.createAnnoViews()
         
-        
-    @cfg.logClassFunction
-    def createAnnoViews(self):
-        self.annoViewList = []
-        self.annoViewLabel = []
-        
-        yPos = 420
-        xPos = 60 
-        height = 20
-        width = 1000
-        
-        self.annotations[0]["color"] = QColor(0,0,255,150)
-        self.annotations[1]["color"] = QColor(0,255,0,150)
-        self.annotations[2]["color"] = QColor(255,0,0,150)
-        
-        self.createPrevFrames(xPos - 15, yPos - 95)
-        
+    def createAnnoView(self, xPos, yPos, width, height, idx):
         self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
-                                       annotator=[self.annotations[0]["annot"]], 
-                                       behaviourName=[self.annotations[0]["behav"]], 
-                                       color = self.annotations[0]["color"],
-                                       geo=QRect(xPos, yPos, width, height))]
-#         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
-        self.annoViewList[-1].show()
-        self.vh.addAnnoView(self.annoViewList[-1]) 
-        self.annoViewLabel += [QLabel(self)]
-        self.annoViewLabel[-1].setText("{0}: {1}".format(\
-                                            self.annotations[0]["annot"],
-                                            self.annotations[0]["behav"]))
-        self.annoViewLabel[-1].move(xPos + width + 10, yPos)        
-        self.annoViewLabel[-1].adjustSize()       
-        yPos += height + 5
-        
-        self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
-                                       annotator=[self.annotations[1]["annot"]], 
-                                       behaviourName=[self.annotations[1]["behav"]], 
-                                       color = self.annotations[1]["color"], 
-                                       geo=QRect(xPos, yPos, width, height))]
-#         self.annoViewList[-1].setGeometry()
-        self.annoViewList[-1].show()
-        self.vh.addAnnoView(self.annoViewList[-1])       
-        self.annoViewLabel += [QLabel(self)]
-        self.annoViewLabel[-1].setText("{0}: {1}".format(\
-                                            self.annotations[1]["annot"],
-                                            self.annotations[1]["behav"]))
-        self.annoViewLabel[-1].move(xPos + width + 10, yPos)         
-        self.annoViewLabel[-1].adjustSize()       
-        yPos += height + 5 
-        
-        self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
-                                       annotator=[self.annotations[2]["annot"]], 
-                                       behaviourName=[self.annotations[2]["behav"]], 
-                                       color = self.annotations[2]["color"], 
+                                       annotator=[self.annotations[idx]["annot"]], 
+                                       behaviourName=[self.annotations[idx]["behav"]], 
+                                       color = self.annotations[idx]["color"], 
                                        geo=QRect(xPos, yPos, width, height))]
 #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1])     
         self.annoViewLabel += [QLabel(self)]
         self.annoViewLabel[-1].setText("{0}: {1}".format(\
-                                            self.annotations[2]["annot"],
-                                            self.annotations[2]["behav"]))
+                                            self.annotations[idx]["annot"],
+                                            self.annotations[idx]["behav"]))
         self.annoViewLabel[-1].move(xPos + width + 10, yPos)          
-        self.annoViewLabel[-1].adjustSize()    
-               
+        self.annoViewLabel[-1].adjustSize() 
+        
+        
+    @cfg.logClassFunction
+    def createAnnoViews(self):
+        self.annoViewList = []
+        self.annoViewLabel = []
+        
+        yPos = 430 #+ self.prevSize
+        xPos = 60 
+        height = 20
+        width = 1000
+        
+        self.annotations[0]["color"] = QColor(0,0,255,150)
+        self.annotations[1]["color"] = QColor(0,0,255,150)
+        self.annotations[2]["color"] = QColor(0,255,0,150)
+        self.annotations[3]["color"] = QColor(0,255,0,150)
+        
+
+#         self.createPrevFrames(xPos - 15, yPos - (self.prevSize + 20))
+        self.createPrevFrames(xPos + 135, yPos - (self.prevSize + 20))
+        
+#         self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
+#                                        annotator=[self.annotations[0]["annot"]], 
+#                                        behaviourName=[self.annotations[0]["behav"]], 
+#                                        color = self.annotations[0]["color"],
+#                                        geo=QRect(xPos, yPos, width, height))]
+# #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
+#         self.annoViewList[-1].show()
+#         self.vh.addAnnoView(self.annoViewList[-1]) 
+#         self.annoViewLabel += [QLabel(self)]
+#         self.annoViewLabel[-1].setText("{0}: {1}".format(\
+#                                             self.annotations[0]["annot"],
+#                                             self.annotations[0]["behav"]))
+#         self.annoViewLabel[-1].move(xPos + width + 10, yPos)        
+#         self.annoViewLabel[-1].adjustSize()       
+#         yPos += height + 5
+#         
+#         self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
+#                                        annotator=[self.annotations[1]["annot"]], 
+#                                        behaviourName=[self.annotations[1]["behav"]], 
+#                                        color = self.annotations[1]["color"], 
+#                                        geo=QRect(xPos, yPos, width, height))]
+# #         self.annoViewList[-1].setGeometry()
+#         self.annoViewList[-1].show()
+#         self.vh.addAnnoView(self.annoViewList[-1])       
+#         self.annoViewLabel += [QLabel(self)]
+#         self.annoViewLabel[-1].setText("{0}: {1}".format(\
+#                                             self.annotations[1]["annot"],
+#                                             self.annotations[1]["behav"]))
+#         self.annoViewLabel[-1].move(xPos + width + 10, yPos)         
+#         self.annoViewLabel[-1].adjustSize()       
+#         yPos += height + 5 
+#         
+#         self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
+#                                        annotator=[self.annotations[2]["annot"]], 
+#                                        behaviourName=[self.annotations[2]["behav"]], 
+#                                        color = self.annotations[2]["color"], 
+#                                        geo=QRect(xPos, yPos, width, height))]
+# #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
+#         self.annoViewList[-1].show()
+#         self.vh.addAnnoView(self.annoViewList[-1])     
+#         self.annoViewLabel += [QLabel(self)]
+#         self.annoViewLabel[-1].setText("{0}: {1}".format(\
+#                                             self.annotations[2]["annot"],
+#                                             self.annotations[2]["behav"]))
+#         self.annoViewLabel[-1].move(xPos + width + 10, yPos)          
+#         self.annoViewLabel[-1].adjustSize()    
+#                
+#         yPos += height + 5  
+        
+        self.createAnnoView(xPos, yPos, width, height, 0)
+        yPos += height + 5  
+        self.createAnnoView(xPos, yPos, width, height, 1)
+        yPos += height + 5  
+        self.createAnnoView(xPos, yPos, width, height, 2)
+        yPos += height + 5  
+        self.createAnnoView(xPos, yPos, width, height, 3)
         yPos += height + 5  
         
         for aV in self.annoViewList:
@@ -688,22 +724,23 @@ class videoPlayer(QMainWindow):
             
             
     def createPrevFrames(self, xPos, yPos):
+        size = self.prevSize
         
-        self.noPrevFrames = 15
+        self.noPrevFrames = 7
         self.prevFrameLbls = []
         self.prevConnectHooks = []
         
         for i in range(self.noPrevFrames):
             self.prevFrameLbls += [QLabel(self)]
-            self.prevFrameLbls[-1].setGeometry(QRect(xPos, yPos, 64, 64))
+            self.prevFrameLbls[-1].setGeometry(QRect(xPos, yPos, size, size))
             
-            self.prevConnectHooks += [[QPoint(xPos + 32, yPos + 64), 
-                                       QPoint(xPos + 32, yPos + 66)]]
+            self.prevConnectHooks += [[QPoint(xPos + size / 2, yPos + size), 
+                                      QPoint(xPos + size / 2, yPos + size + 2)]]
             
             if i == (self.noPrevFrames - 1) / 2:
                 self.prevFrameLbls[-1].setLineWidth(3)
                 self.prevFrameLbls[-1].setFrameShape(QFrame.Box)
-            xPos += 64 + 5
+            xPos += size + 5
         
     
         
@@ -860,7 +897,7 @@ class videoPlayer(QMainWindow):
     def updateOriginalLabel(self, lbl, data):
         img = data[0]
         qi = array2qimage(scim.imresize(img[self.prevYCrop, self.prevXCrop], 
-                                        (64,64)))
+                                        (self.prevSize,self.prevSize)))
 
         cfg.log.debug("converting img to QImage")
 #         qi = np2qimage(img)
@@ -897,7 +934,7 @@ class videoPlayer(QMainWindow):
         w = img.shape[1]
         if self.sceneRect != QRectF(0, 0, w,h):
             cfg.log.info("changing background")
-            self.videoView.setGeometry(QRect(10, 10, w, h))#1920/2, 1080/2))
+            self.videoView.setGeometry(QRect(380, 10, w, h))#1920/2, 1080/2))
             self.videoScene.setSceneRect(QRectF(0, 0, w,h))            
             self.videoScene.setBackgroundBrush(QBrush(Qt.black))
             lbl.setPos(0,0)
@@ -1100,7 +1137,8 @@ class videoPlayer(QMainWindow):
         
         self.videoView = QGraphicsView(self)        
         self.videoView.setFrameStyle(QFrame.NoFrame)
-        self.videoView.setGeometry(QRect(10, 10, w, h))#1920/2, 1080/2))
+#         self.videoView.setGeometry(QRect(10, 10, w, h))#1920/2, 1080/2))
+#         self.videoView.setGeometry(QRect(150, 10, w, h))#1920/2, 1080/2))
         self.videoScene = QGraphicsScene(self)
         self.videoScene.setItemIndexMethod(QGraphicsScene.NoIndex)
         self.videoScene.setSceneRect(self.sceneRect)#1920, 1080))
@@ -1142,6 +1180,7 @@ class videoPlayer(QMainWindow):
         
         self.videoView.setViewport(glw)
         self.videoView.viewport().setCursor(Qt.BlankCursor)
+#         self.videoView.setGeometry(QRect(250, 10, w, h))#1920/2, 1080/2))
         self.videoView.show()
         self.videoView.fitInView(self.bgImg, Qt.KeepAspectRatio)
         
@@ -2214,7 +2253,7 @@ class VideoLoader(QObject):
                                                                  "dilp",
                                                                  "wDah(+)"])
             else:
-                cfg.log.debug("videoLoader: f does NOT exist create empty Annotation")
+                cfg.log.info("videoLoader: f does NOT exist create empty Annotation")
                 out = Annotation(frameNo=videoLength, vialNames=["Abeta +RU",
                                                                  "ABeta -RU",
                                                                  "dilp",

@@ -46,7 +46,8 @@ def extractAnnotatedFrames(vials=None, annotator="peter", behaviour="struggling"
                     if frameList:
                         for f in frameList:
 #                             frames += [[path, f[0]]]
-                            for v in range(len(a)):
+#                             for v in range(len(a)):
+                            for v in range(len(f[1])):
                                 if f[1][v] is not None:
                                     a[v] += [[path.split('.bhvr')[0] + '.pos.npy', f[0]]]
                     
@@ -54,7 +55,7 @@ def extractAnnotatedFrames(vials=None, annotator="peter", behaviour="struggling"
 
 def extractNegativeAnnotatedFrames(vials=None, annotator="peter", behaviours=["struggling"], 
                            dataFolder='/run/media/peter/Elements/peter/data/tmp-20130506',
-                           samplesNo=10000):
+                           samplesNo=10000, noVials=3):
     """
     Extracts frames that do not contain any of the given behaviours.
     
@@ -64,7 +65,7 @@ def extractNegativeAnnotatedFrames(vials=None, annotator="peter", behaviours=["s
     TODO: needs refinement in vial selection
     """
 #     frames = []
-    noVials = 3
+#     noVials = 3
     
     # list of filtered frames (one list for each vial)
     a = [[] for i in range(3)]
@@ -1046,13 +1047,13 @@ def flattenAnnotationSections(sect):
         
     return out
 
-def providePosList(path):
+def providePosList(path, ending='pos.npy'):
     fileList  = []
     posList = []
     print("scaning files...")
     for root,  dirs,  files in os.walk(path):
         for f in files:
-            if f.endswith('pos.npy'):
+            if f.endswith(ending):
                 path = root + '/' + f
                 fileList.append(path)
                 

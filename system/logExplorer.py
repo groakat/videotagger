@@ -32,6 +32,9 @@ def convertFrame2Date(key, idx=0, ref=None):
     Returns:
         datedelta object
     """
+    if key.split(".")[-1] != 'npy':
+        key = ".".join(key.split(".")[:-1]) + '.pos.npy'
+    
     # calculate how many ms the idx represents in the current video file #
     if idx > 0:
         totalF = np.load(key).shape[0]
@@ -43,7 +46,15 @@ def convertFrame2Date(key, idx=0, ref=None):
     # retrieve video file timestamp #
     t = key.split('/')[-1].split(".")[0:2]
     t = t[0] + "." + t[1]
-    d = datetime.datetime.strptime(t, "%Y-%m-%d.%H-%M-%S")
+    try:
+        # datatime type of file name
+        d = datetime.datetime.strptime(t, "%Y-%m-%d.%H-%M-%S")
+    except ValueError:
+        # minute-only filename
+        min = int(t.split(".")[0][-4:])
+        # need to use timedelta to be able to represent min > 59
+        dd = datetime.timedelta(minutes=min)
+        d = datetime.datetime(2000,1,1,0) + dd
     
     if ref is not None:
         d = (d + idxInMs) - ref
