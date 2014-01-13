@@ -1038,9 +1038,11 @@ class videoPlayer(QMainWindow):
         cfg.log.debug("increment: {0}, checkBuffer: {1}".format(increment, checkBuffer))
         
         if increment > 0:
-            self.frames += [self.vh.getNextFrame(increment, checkBuffer)]
+            self.frames += [self.vh.getNextFrame(increment, doBufferCheck=False, 
+                                                 unbuffered=True)]
         elif increment < 0:
-            self.frames += [self.vh.getPrevFrame(-increment, checkBuffer)]
+            self.frames += [self.vh.getPrevFrame(-increment, doBufferCheck=False,
+                                                 unbuffered=True)]
         else:
             self.frames += [self.vh.getCurrentFrame()]
             increment = 8
@@ -1054,13 +1056,13 @@ class videoPlayer(QMainWindow):
         
         
         # showing trajectory #
-        self.frames = []
-        for i in range(self.trajNo):
-            self.frames += [self.vh.getTempFrame(increment * (i - offset))] 
-        
-        for i in range(len(self.frames)-1, -1, -1):
-            frame = self.frames[i]
-            self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
+#         self.frames = []
+#         for i in range(self.trajNo):
+#             self.frames += [self.vh.getTempFrame(increment * (i - offset))] 
+#         
+#         for i in range(len(self.frames)-1, -1, -1):
+#             frame = self.frames[i]
+#             self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
 
 
         # showing previews #
@@ -2454,7 +2456,7 @@ class VideoHandler(QObject):
         self.tempValue = dict()
         
         # always do that at the end
-        self.checkBuffer()
+#         self.checkBuffer()
         
         self.vE = videoExplorer()
         
@@ -2564,6 +2566,27 @@ class VideoHandler(QObject):
 #             frame = self.videoDict[self.posPath]
             
         return frame
+    
+    
+    @cfg.logClassFunction
+    def getCurrentFrameUnbuffered(self, doBufferCheck=False, 
+                                  updateAnnotationViews=False):
+        
+        
+        img = self.vE.getFrame(self.posPath, frameNo=self.idx, frameMode='RGB')
+        frame = [[[0,0] 
+                        for i in range(self.maxOfSelectedVials() + 1)], 
+                 [[[img], {'confidence': 0}]  * \
+                             (self.maxOfSelectedVials() + 1)]]
+        
+        if doBufferCheck:
+            self.checkBuffer(updateAnnotationViews)            
+        
+            if updateAnnotationViews:
+                self.updateAnnoViewPositions()
+            
+        return frame
+    
         
     @cfg.logClassFunction
     def getBufferFrame(self, posPath, idx):    
@@ -2577,7 +2600,8 @@ class VideoHandler(QObject):
         return frame
                 
     @cfg.logClassFunction
-    def getNextFrame(self, increment=1, doBufferCheck=True, emitFileChange=True):
+    def getNextFrame(self, increment=1, doBufferCheck=True, emitFileChange=True,
+                     unbuffered=False):
         self.idx += increment
 
         if self.idx >= self.videoDict[self.posPath].getVideoLength():
@@ -2604,11 +2628,14 @@ class VideoHandler(QObject):
             if changedFile and emitFileChange:
                 self.fileChangeCB(self.posPath)  
                         
-            
-        return self.getCurrentFrame(doBufferCheck=doBufferCheck)
+        if not unbuffered:
+            return self.getCurrentFrame(doBufferCheck=doBufferCheck)
+        else:
+            return self.getCurrentFrameUnbuffered(doBufferCheck=doBufferCheck)
         
     @cfg.logClassFunction
-    def getPrevFrame(self, decrement=1, doBufferCheck=True, emitFileChange=True):
+    def getPrevFrame(self, decrement=1, doBufferCheck=True, emitFileChange=True,
+                     unbuffered=False):
         self.idx -= decrement
         
         if self.idx < 0:
@@ -2630,18 +2657,12 @@ class VideoHandler(QObject):
             if changedFile and emitFileChange:
                 self.fileChangeCB(self.posPath)   
                 
-        return self.getCurrentFrame(doBufferCheck=doBufferCheck)
+                        
+        if not unbuffered:
+            return self.getCurrentFrame(doBufferCheck=doBufferCheck)
+        else:
+            return self.getCurrentFrameUnbuffered(doBufferCheck=doBufferCheck)
     
-    @cfg.logClassFunction
-    def getFrameUnbuffered(self, doBufferCheck=True, 
-                           updateAnnotationViews=True):
-        img = self.vE.getFrame(self.posPath, frameNo=self.idx, frameMode='RGB')
-        frame = [[[0,0] 
-                        for i in range(self.maxOfSelectedVials() + 1)], 
-                 [[img, {'confidence': 0}]  * \
-                             range(self.maxOfSelectedVials() + 1)]]
-            
-        return frame
                 
     @cfg.logClassFunction
     def checkBuffer(self, updateAnnoViewPositions=True):        
