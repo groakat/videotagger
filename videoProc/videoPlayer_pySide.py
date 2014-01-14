@@ -2131,6 +2131,7 @@ from IPython.parallel import Client, dependent
 class VideoLoader(QObject):        
     loadedVideos = Signal(list) 
     loadedAnnotation = Signal(list)
+    eof = Signal(int)
     finished = Signal()   
     startLoading = Signal()
 
@@ -2144,11 +2145,11 @@ class VideoLoader(QObject):
             self.annotation.saveToFile('.'.join(self.posPath.split('.')[:-1]) + '.bhvr')
     
     @cfg.logClassFunction
-    def __init__(self, posPath, videoHandler, selectedVials=[1], thread=None):
+    def __init__(self, posPath, idxSlice, videoHandler, selectedVials=[1], thread=None):
         super(VideoLoader, self).__init__(None)        
-        self.init(posPath, videoHandler, selectedVials, thread)
+        self.init(posPath, idxSlice, videoHandler, selectedVials, thread)
         
-    def init(self, posPath, videoHandler, selectedVials=[1], thread=None):
+    def init(self, posPath, idxSlice, videoHandler, selectedVials=[1], thread=None):
         self.loading = False
         
         self.videoLength = -1
@@ -2167,6 +2168,8 @@ class VideoLoader(QObject):
         self.videoEnding = '.mp4'
         
         self.imTransform = lambda x: x
+        
+        self.endOfFile = [] 
         # call at the end
 #         self.loadVideos()
 
@@ -2204,7 +2207,7 @@ class VideoLoader(QObject):
         lbview = rc.load_balanced_view()   
         
         #@lbview.parallel(block=True)
-        def loadVideo(f, vialNo, imTransform=None):    
+        def loadVideo(f, idxSlice, vialNo, imTransform=None):    
 #             from qimage2ndarray import array2qimage
             import sys
             from pyTools.system.videoExplorer import videoExplorer
@@ -2216,23 +2219,38 @@ class VideoLoader(QObject):
             vE = videoExplorer()        
             
             if imTransform is None:
-                imTransform = lambda x: x
+                imTransform = lambda x: imresize(x, [64, 64])
 #             else:
 #                 imTransform = lambda x: imresize(x)
                 
             
             im = []#np2qimage(np.rot90(vE.getFrame(f, info=False, 
             #                              frameMode='RGB')) * 255)]
-            vE.setVideoStream(f, info=False, frameMode='RGB')
-            for frame in vE:
+            endOfFile = None
+            try:
+                frame = vE.getFrame(f, idxSlice.start, info=False, 
+                                    frameMode='RGB')
+                im += [[frame, imTransform(frame)]]
+            except StopIteration:
+                endOfFile = idxSlice.start
+                           
+            
+            for idx in range(idxSlice.start+1, idxSlice.stop):
+                if endOfFile is not None:
+                    break
 #                 im += [np2qimage(np.rot90(frame) * 255)]
 #                 im += [[imresize(frame, 0.5), imresize(frame, [64,64])]]
-                im += [[frame, imresize(frame, [64,64])]]
+                try:
+                    frame = vE.next()
+                    im += [[frame, imTransform(frame)]]
+                except StopIteration:
+                    endOfFile = idx
                         
             ret = dict()
             
             ret["vialNo"] = vialNo
             ret["qi"] = im
+            ret['endOfFile'] = endOfFile
             return ret     
             
         @cfg.logClassFunction
@@ -2266,7 +2284,8 @@ class VideoLoader(QObject):
         
         if self.selectedVials is None:
             f = self.posPath# self.posPath.split(self.videoEnding)[0] + self.videoEnding#.v{0}.{1}'.format(i, 'avi')
-            results += [lbview.apply_async(loadVideo, f, 0, self.imTransform)]
+            results += [lbview.apply_async(loadVideo, f, self.idxSlice, 0,
+                                           self.imTransform)]
         else:        
             for i in self.selectedVials:
                 f = self.posPath.split(self.videoEnding)[0] + \
@@ -2305,6 +2324,7 @@ class VideoLoader(QObject):
             ar = results[i].get()
             # TODO: make it dynamic again for later
             self.frameList[ar["vialNo"]] = copy.copy(ar["qi"]) 
+            self.endOfFile += copy.copy(ar['endOfFile'])
 #             self.frameList[0] = ar["qi"]
             # delete data from cluster
             msgId = results[i].msg_id
@@ -2336,15 +2356,27 @@ class VideoLoader(QObject):
             self.annotation = loadAnnotation(self.posPath, self.videoLength)
         
         cfg.log.debug("finished loading, emiting signal {0}".format(self.videoLength))
-        
-#         self.finished.emit()  
-#         self.loadedAnnotation.emit([self.annotation, self.posPath])
 
         if self.videoHandler is not None:
             self.videoHandler.updateNewAnnotation([self.annotation, self.posPath])
         
         
         self.loading = False
+        
+        
+        lastFrameNo = None
+        for eof in self.endOfFile:
+            if eof is not None:
+                if lastFrameNo is None:
+                    lastFrameNo = eof
+                elif lastFrameNo is not eof:
+                    raise ValueError("two video files in the same minute have different lengths!")
+        
+        if lastFrameNo is not None:
+            self.eof.emit(lastFrameNo)
+                
+#         self.finished.emit()  
+#         self.loadedAnnotation.emit([self.annotation, self.posPath])
         
         cfg.log.info("finsihed loadVideos: {0} @ {1}".format(self.posPath, QThread.currentThread().objectName()))
         
@@ -2714,15 +2746,36 @@ class VideoHandler(QObject):
             try:
                 self.videoDict[vidPath]
             except KeyError:
-                self.fetchVideo(vidPath)
+                self.fetchVideo(vidPath, idxRange)
+        
+    def bufferEnding(self, key):
+        if key in self.videoLengths.keys():
+            self.updateVideoLength([key, self.videoLengths[key]])
+        else:
+            try:
+                ## load annotation file
+                pass
+            except:
+                ## query video directly
+                videoLengthQuery(key, self.bufferWidth, self.updateVideoLength)
+        
+    
+    def updateVideoLength(self, lst):
+        key = lst[0] 
+        length = lst[1]
+        
+        self.videoLengths[key] = length
+        bufferStart = np.mod(length, self.bufferWidth)
+        idxRange = slice(bufferStart, bufferStart + self.bufferWidth)
+        self.fetchVideo(key, idxRange)
         
         
     @cfg.logClassFunction
-    def fetchVideo(self, path):
+    def fetchVideo(self, path, idxRange):
         cfg.log.info("fetching {0}".format(path))
 #         vL = VideoLoader(path)
 #         vL.loadedAnnotation.connect(self.updateNewAnnotation)
-        self.newVideoLoader.emit([path, self, self.selectedVials])
+        self.newVideoLoader.emit([path, self, self.selectedVials, idxRange])
         self.videoDict[path] = None
         
         
@@ -3118,6 +3171,8 @@ class VideoLoaderLuncher(QObject):
         path = lst[0]
         vH = lst[1]
         selectedVials = lst[2]
+        idxSlice = lst[3]
+        
         if len(self.availableVLs) == 0:
             cfg.log.info("create new VideoLoader {0}".format(path))     
             
@@ -3125,7 +3180,7 @@ class VideoLoaderLuncher(QObject):
                                      
             videoLoaderThread = MyThread("videoLoader {0}".format(len(self.threads.keys())))
             
-            vL = VideoLoader(path, vH,thread=videoLoaderThread, selectedVials=selectedVials)                 
+            vL = VideoLoader(path, vH, idxSlice=idxSlice, thread=videoLoaderThread, selectedVials=selectedVials)                 
             vL.moveToThread(videoLoaderThread)         
             videoLoaderThread.start()
             
@@ -3142,7 +3197,7 @@ class VideoLoaderLuncher(QObject):
             vL = self.availableVLs.pop()
             cfg.log.info("recycle new VideoLoader {0}, was previous: {1}".format(path, vL.posPath))
             thread, signal = self.threads[vL]
-            vL.init(path, vH,thread=thread, selectedVials=selectedVials)     
+            vL.init(path, vH, idxSlice=idxSlice, thread=thread, selectedVials=selectedVials)     
             signal.emit()
 
             
@@ -3177,6 +3232,62 @@ class VideoLoaderLuncher(QObject):
         for key in self.threads:
             self.threads[key].quit()
             
+            
+
+
+class videoLengthQuery(QObject):
+    # signal ([filename, length])
+    videoLength = Signal(list)
+    startProcess = Signal()
+    
+    def __init__(self, filename, bufferWidth, resultSlot):
+        super(videoLengthQuery, self).__init__(None)
+        self.filename = filename
+        self.bufferWidth = bufferWidth
+        self.length = None
+        
+        self.vE = videoExplorer()
+        
+        self.thread = MyThread("videoLengthQuery")
+                             
+        self.moveToThread(self.thread)         
+        self.thread.start()
+        
+        self.startProcess.connect(self.retrieveVideoLength) 
+        self.videoLength.connect(resultSlot)
+        self.startProcess.emit()
+        
+        
+       
+    @Slot()
+    def retrieveVideoLength(self):
+        """
+        Finds video length by accessing it bruteforce
+        
+        """
+        idx = 0
+        modi = self.bufferWidth * 1000
+        
+        while modi > 1:
+            while True:
+                try:
+                    self.vE.getFrame(self.filename, frameNo=idx, 
+                                    frameMode='RGB')
+                except StopIteration:
+                    break
+                
+                idx += modi
+                
+            idx -= modi
+            modi /= 2
+            
+            print modi, idx
+
+        self.videoLength.emit([self.filename, idx])
+        self.length = idx
+        self.thread.quit()
+        
+        
         
 class MyThread(QThread):    
     finished = Signal()
