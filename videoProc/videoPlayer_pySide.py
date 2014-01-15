@@ -2145,11 +2145,13 @@ class VideoLoader(QObject):
             self.annotation.saveToFile('.'.join(self.posPath.split('.')[:-1]) + '.bhvr')
     
     @cfg.logClassFunction
-    def __init__(self, posPath, idxSlice, videoHandler, selectedVials=[1], thread=None):
+    def __init__(self, posPath, idxSlice, videoHandler, selectedVials=[1], 
+                 thread=None, eofCallback=None):
         super(VideoLoader, self).__init__(None)        
         self.init(posPath, idxSlice, videoHandler, selectedVials, thread)
         
-    def init(self, posPath, idxSlice, videoHandler, selectedVials=[1], thread=None):
+    def init(self, posPath, idxSlice, videoHandler, selectedVials=[1], 
+             thread=None):
         self.loading = False
         
         self.videoLength = -1
@@ -2170,17 +2172,6 @@ class VideoLoader(QObject):
         self.imTransform = lambda x: x
         
         self.endOfFile = [] 
-        # call at the end
-#         self.loadVideos()
-
-#     @cfg.logClassFunction
-#     @Slot
-#     def run(self):    
-#         self.exiting = False
-#         self.loading = True
-#         self.loadVideos()        
-        
-#     @cfg.logClassFunction
 
     def maxOfSelectedVials(self):
         return maxOfSelectedVials(self.selectedVials)
@@ -2452,15 +2443,26 @@ class VideoHandler(QObject):
         self.posPath = ''
         self.idx = 0
         self.pathIdx = 0
+        
+        ### old stuff ?
         self.dictLength = 5         # should be odd, otherwise fix checkBuffers()!
         self.delBuffer = 5
+        ### old stuff ?
+        
+        self.bufferWidth  = 100     # width of each buffer
+        self.bufferLength = 3       # number of buffers on EITHER SIDE
+        self.bufferJut = 1          # number of buffers outside of the core 
+                                    # buffer area on EITHER SIDEthat are not 
+                                    # deleted immediately
+        self.videoLengths = dict()  # lengths of each video chunk
+        
         
         self.posList = sorted(posList)
         self.posPath = posList[startIdx]
         
         self.annoAltStart = None
         
-        self.vLL = VideoLoaderLuncher()
+        self.vLL = VideoLoaderLuncher(eofCallback=self.endOfFileNotice)
 
         self.videoLoaderLuncherThread = MyThread("videoLuncher")
         self.vLL.moveToThread(self.videoLoaderLuncherThread)
@@ -2698,85 +2700,266 @@ class VideoHandler(QObject):
                 
     @cfg.logClassFunction
     def checkBuffer(self, updateAnnoViewPositions=True):        
-        hS = ((self.dictLength + 1) / 2.0)
-        currIdx = self.posList.index(self.posPath)
+#         hS = ((self.dictLength + 1) / 2.0)
+#         currIdx = self.posList.index(self.posPath)
+#         
+#         s = int(currIdx - hS)
+#         e = int(currIdx + hS +1)
+#         if s < 0:
+#             s = 0
+#         if e > len(self.posList):
+#             e = len(self.posList)            
+#         fetchRng = slice(s, e) 
+#         
+#         s -= self.delBuffer
+#         e += self.delBuffer
+#         if s < 0:
+#             s = 0
+#         if e > len(self.posList):
+#             e = len(self.posList)   
+#           
+#         delRng = slice(s, e)
+#         
+#         # delete all videos that are out of scope
+#         for vidPath in self.videoDict.keys():
+#             try:
+#                 self.posList[fetchRng].index(vidPath)
+#             except ValueError:
+#                 ################################################################ TODO: remove only if annotation is not open                
+#                 cfg.log.info("delete {0}".format(vidPath))
+#                 if updateAnnoViewPositions:
+#                     for aV in self.annoViewList:
+#                         aV.removeAnnotation(vidPath)
+#                                                             
+#                 cfg.log.debug("delete video dict")
+# #                 self.dump = self.videoDict[vidPath]
+#                 self.deleteVideoLoader.emit([self.videoDict[vidPath], vidPath])
+#                 
+#                 # first make sure to not refer anymore to VL
+#                 self.videoDict[vidPath] = None
+# #                 delete key/value pair
+#                 del self.videoDict[vidPath]
+#                                 
+#                 cfg.log.debug("delete finish")
+#                 
+#         
+#         # prefetch all videos that are not prefetched yet
+#         for vidPath in self.posList[fetchRng]:
+#             try:
+#                 self.videoDict[vidPath]
+#             except KeyError:
+#                 self.fetchVideo(vidPath, idxRange)
+
+
+               
+        bufferedKeysR = self.checkBuffersRight()
+        bufferedKeysL = self.checkBuffersLeft()
+        self.deleteOldBuffers(bufferedKeysR, bufferedKeysL, 
+                              updateAnnoViewPositions)
         
-        s = int(currIdx - hS)
-        e = int(currIdx + hS +1)
-        if s < 0:
-            s = 0
-        if e > len(self.posList):
-            e = len(self.posList)            
-        fetchRng = slice(s, e) 
-        
-        s -= self.delBuffer
-        e += self.delBuffer
-        if s < 0:
-            s = 0
-        if e > len(self.posList):
-            e = len(self.posList)   
-          
-        delRng = slice(s, e)
-        
-        # delete all videos that are out of scope
-        for vidPath in self.videoDict.keys():
-            try:
-                self.posList[fetchRng].index(vidPath)
-            except ValueError:
-                ################################################################ TODO: remove only if annotation is not open                
-                cfg.log.info("delete {0}".format(vidPath))
-                if updateAnnoViewPositions:
-                    for aV in self.annoViewList:
-                        aV.removeAnnotation(vidPath)
-                                                            
-                cfg.log.debug("delete video dict")
-#                 self.dump = self.videoDict[vidPath]
-                self.deleteVideoLoader.emit([self.videoDict[vidPath], vidPath])
+
+    def deleteOldBuffers(self, bkR, bkL, updateAnnoViewPositions):
+        # extend right buffer to account for jut
+        curKey = sorted(bkR.keys())[-1]
+        curIdx = sorted(bkR[curKey])[-1]
+        for i in range(self.bufferJut):    
+            curKey, curIdx = self.parseBuffersRight(curKey, curIdx)
+            
+            if curKey is None:
+                break
+            
+            if curKey not in bkR.keys():
+                bkR[curKey] = [] 
                 
-                # first make sure to not refer anymore to VL
-                self.videoDict[vidPath] = None
-#                 delete key/value pair
-                del self.videoDict[vidPath]
-                                
-                cfg.log.debug("delete finish")
+            bkR[curKey] += [curIdx]
+                    
+        # extend left buffer to account for jut
+        curKey = sorted(bkL.keys())[-1]
+        curIdx = sorted(bkL[curKey])[-1]
+        for i in range(self.bufferJut):    
+            curKey, curIdx = self.parseBuffersLeft(curKey, curIdx)
+            
+            if curKey is None:
+                break
+            
+            if curKey not in bkL.keys():
+                bkL[curKey] = [] 
+                
+            bkL[curKey] += [curIdx]
+            
+        # check all buffers if lying within jut, unbuffer otherwise
+        for key in self.videoDict.keys():
+            if key in bkR.keys() or key in bkL.keys():
+                for idx in self.videoDict[key].keys():
+                    if idx in bkR[key].keys() or idx in bkL[key].keys():
+                        continue
+                    else:
+                        self.unbuffer(key, idx, updateAnnoViewPositions)
+            else:
+                for idx in self.videoDict[key].keys():
+                    self.unbuffer(key, idx, updateAnnoViewPositions)
+            
+    def unbuffer(self, key, idx, updateAnnoViewPositions):        
+        cfg.log.debug("delete video dict")
+        self.deleteVideoLoader.emit([self.videoDict[key][idx]])
+        
+        # first make sure to not refer anymore to VL
+        self.videoDict[key][idx] = None
+        # delete key/value pair
+        del self.videoDict[key][idx]
+
+        cfg.log.debug("delete finish")
+        
+        if key not in self.videoDict[key].keys():
+            if updateAnnoViewPositions:
+                for aV in self.annoViewList:
+                    aV.removeAnnotation(key)
+        
+        
+        
+    def checkBuffersRight(self):        
+        # index of current frame in videoDict
+        curIdx = np.mod(self.idx, self.bufferWidth)
+        curKey = self.posPath
+        
+        bufferedKeys = dict()
+        bufferedKeys[curKey] = []
+        
+        for i in range(self.bufferWidth):
+            curKey, curIdx = self.parseBuffersRight(curKey, curIdx)
+            
+            if curKey is None:
+                break
+            
+            if curKey not in bufferedKeys.keys():
+                bufferedKeys[curKey] = [] 
+                
+            self.ensureBuffering(curKey, curIdx)
+            bufferedKeys[curKey] += [curIdx]
+        
+        return bufferedKeys
+            
+    def parseBuffersRight(self, curKey, curIdx):        
+        curIdx += 1
+        if  curKey in self.videoLengths.keys():
+            if self.videoLengths[curKey] is not None \
+            and (curIdx * self.bufferWidth) >= self.videoLengths[curKey]:
+                curIdx = 0
+                newKeyIdx = self.posList.keys().index(curKey) + 1
+                if newKeyIdx < len(self.posList):
+                    curKey = self.posList[newKeyIdx]
+                else:
+                    curKey = None
+                    curIdx = None
+                    
+        return curKey, curIdx
                 
         
-        # prefetch all videos that are not prefetched yet
-        for vidPath in self.posList[fetchRng]:
-            try:
-                self.videoDict[vidPath]
-            except KeyError:
-                self.fetchVideo(vidPath, idxRange)
+    def checkBuffersLeft(self):
+        curIdx = np.mod(self.idx, self.bufferWidth)
+        curKey = self.posPath
+        
+        bufferedKeys = dict()
+        bufferedKeys[curKey] = []
+        
+        for i in range(self.bufferWidth):
+            curKey, curIdx = self.parseBuffersLeft(curKey, curIdx)
+            
+            if curKey is None:
+                break
+            
+            if curKey not in bufferedKeys.keys():
+                bufferedKeys[curKey] = [] 
+                
+            self.ensureBuffering(curKey, curIdx)
+            bufferedKeys[curKey] += [curIdx]
+                
+        return bufferedKeys
+                
+    def parseBuffersLeft(self, curKey, curIdx):
+        curIdx -= 1
+        
+        if curIdx < 0:
+            newKeyIdx = self.posList.keys().index(curKey) - 1
+            if newKeyIdx >= 0:
+                curKey = self.posList[newKeyIdx]  
+                if  curKey in self.videoLengths.keys():
+                    if self.videoLengths[curKey] is not None:
+                        curIdx = self.videoLengths[curKey]
+                else:
+                    self.bufferEnding(curKey)                    
+            else:
+                curIdx = None
+                curKey = None
+        
+        return curKey, curIdx
+        
+    def ensureBuffering(self, curKey, curIdx):
+        try:
+            self.videoDict[curKey][curIdx]
+        except KeyError:
+            self.fetchVideo(curKey, curIdx)
+        except IndexError:
+            self.fetchVideo(curKey, curIdx)
+        
         
     def bufferEnding(self, key):
-        if key in self.videoLengths.keys():
-            self.updateVideoLength([key, self.videoLengths[key]])
+        if key in self.videoLengths.keys():            
+            bufferStart = np.mod(self.videoLengths[key], self.bufferWidth)
+            idxRange = slice(bufferStart, bufferStart + self.bufferWidth)
+            self.fetchVideo(key, idxRange)
         else:
+            self.videoLengths[key] = None
             try:
                 ## load annotation file
                 pass
             except:
                 ## query video directly
-                videoLengthQuery(key, self.bufferWidth, self.updateVideoLength)
+                VideoLengthQuery(key, self.bufferWidth, 
+                                 self.updateVideoLengthAndFetchLastBuffer)
         
-    
-    def updateVideoLength(self, lst):
+    @Slot(list)
+    def endOfFileNotice(self, lst):
         key = lst[0] 
         length = lst[1]
         
+        self.updateVideoLength(key, length)
+        
+        nextKey = self.posList[self.posList.keys().index(key) + 1]
+        try:
+            self.videoDict[nextKey][0]
+        except KeyError:
+            self.fetchVideo(nextKey, 0)
+        except IndexError:
+            self.fetchVideo(nextKey, 0)
+        
+    @Slot(list)
+    def updateVideoLengthAndFetchLastBuffer(self, lst):
+        key = lst[0]
+        length = lst[1]
+        
+        self.updateVideoLength(key, length)
+        self.bufferEnding(key)
+        
+    def updateVideoLength(self, key, length):
         self.videoLengths[key] = length
-        bufferStart = np.mod(length, self.bufferWidth)
-        idxRange = slice(bufferStart, bufferStart + self.bufferWidth)
-        self.fetchVideo(key, idxRange)
         
         
     @cfg.logClassFunction
-    def fetchVideo(self, path, idxRange):
+    def fetchVideo(self, path, idx):
         cfg.log.info("fetching {0}".format(path))
 #         vL = VideoLoader(path)
 #         vL.loadedAnnotation.connect(self.updateNewAnnotation)
-        self.newVideoLoader.emit([path, self, self.selectedVials, idxRange])
-        self.videoDict[path] = None
+        bufferStart = idx * self.bufferWidth
+        idxRange = slice(bufferStart, bufferStart + self.bufferWidth)
+        
+        if path not in self.videoDict.keys():
+            self.videoDict[path] = dict()
+            
+        self.videoDict[path][idx] = None        
+        
+        self.newVideoLoader.emit([path, self, self.selectedVials, 
+                                  idx, idxRange])
         
         
     @cfg.logClassFunction
@@ -2784,11 +2967,12 @@ class VideoHandler(QObject):
     def linkToAnnoview(self, lst):
         """
         Args:
-            lst ([path, videoLoader]) 
+            lst ([path, idx, videoLoader]) 
         """ 
         path = lst[0]
-        vL = lst[1]
-        self.videoDict[path] = vL
+        idx = lst[1]
+        vL = lst[2]
+        self.videoDict[path][idx] = vL
         
     @cfg.logClassFunction
     def addAnnoView(self, annoView):
@@ -3132,7 +3316,7 @@ class VideoLoaderLuncher(QObject):
     loadVideos = Signal() 
     
     @cfg.logClassFunction
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, eofCallback):
         """
         This object will exectute `func` with `args` in a
         separate thread. You can query ready() to check
@@ -3149,7 +3333,7 @@ class VideoLoaderLuncher(QObject):
         self.availableVLs = []
         self.dumpingPlace = []
         self.threads = dict()
-        
+        self.eofCallback = eofCallback
 #         self.start()
     
 #     @cfg.logClassFunction
@@ -3171,22 +3355,29 @@ class VideoLoaderLuncher(QObject):
         path = lst[0]
         vH = lst[1]
         selectedVials = lst[2]
-        idxSlice = lst[3]
+        idx = lst[3]
+        idxSlice = lst[4]
         
         if len(self.availableVLs) == 0:
             cfg.log.info("create new VideoLoader {0}".format(path))     
             
 #             vL = VideoLoader(path, vH, selectedVials=selectedVials) 
                                      
-            videoLoaderThread = MyThread("videoLoader {0}".format(len(self.threads.keys())))
+            videoLoaderThread = MyThread("videoLoader {0}".format(len(
+                                                        self.threads.keys())))
             
-            vL = VideoLoader(path, vH, idxSlice=idxSlice, thread=videoLoaderThread, selectedVials=selectedVials)                 
+            vL = VideoLoader(path, vH, idxSlice=idxSlice, 
+                             thread=videoLoaderThread, 
+                             selectedVials=selectedVials,
+                             eofCallback=eofCb)                 
             vL.moveToThread(videoLoaderThread)         
             videoLoaderThread.start()
             
 #             signal = "loadVideo {0}".format(len(self.threads.keys()))
 #             self.connect(self, SIGNAL(signal), vL.loadVideos) 
             vL.startLoading.connect(vL.loadVideos)
+            vL.eof.connect(self.eofCallback)
+            
             cfg.log.info("finished thread coonecting signal create new VideoLoader {0}".format(path)) 
             vL.startLoading.emit()
             cfg.log.info("finished thread emit create new VideoLoader {0}".format(path)) 
@@ -3197,12 +3388,14 @@ class VideoLoaderLuncher(QObject):
             vL = self.availableVLs.pop()
             cfg.log.info("recycle new VideoLoader {0}, was previous: {1}".format(path, vL.posPath))
             thread, signal = self.threads[vL]
-            vL.init(path, vH, idxSlice=idxSlice, thread=thread, selectedVials=selectedVials)     
+            vL.init(path, vH, idxSlice=idxSlice, thread=thread, 
+                    selectedVials=selectedVials,
+                    eofCallback=eofCb)     
             signal.emit()
 
             
 #         vL.loadedAnnotation.connect(cb)
-        self.createdVideoLoader.emit([path, vL])
+        self.createdVideoLoader.emit([path, idx, vL])
 #         cfg.log.debug("finish")
             
     @cfg.logClassFunction
@@ -3213,14 +3406,14 @@ class VideoLoaderLuncher(QObject):
                 self.dumpingPlace.remove(vL)
                 
         vL = lst[0]
-        vidPath = lst[1]
+#         vidPath = lst[1]
         
         # TODO is this potential memory leak?
         if vL is not None and not vL.loading and vL.annotation is not None: 
-            if vL.annotation.hasChanged:
-                cfg.log.info("save annotation")
-                tmpFilename = '.'.join(vidPath.split(".")[:-1]) + ".bhvr"
-                vL.annotation.saveToFile(tmpFilename)
+#             if vL.annotation.hasChanged:
+#                 cfg.log.info("save annotation")
+#                 tmpFilename = '.'.join(vidPath.split(".")[:-1]) + ".bhvr"
+#                 vL.annotation.saveToFile(tmpFilename)
             
             self.availableVLs += [vL]
         else:
@@ -3235,20 +3428,20 @@ class VideoLoaderLuncher(QObject):
             
 
 
-class videoLengthQuery(QObject):
+class VideoLengthQuery(QObject):
     # signal ([filename, length])
     videoLength = Signal(list)
     startProcess = Signal()
     
     def __init__(self, filename, bufferWidth, resultSlot):
-        super(videoLengthQuery, self).__init__(None)
+        super(VideoLengthQuery, self).__init__(None)
         self.filename = filename
         self.bufferWidth = bufferWidth
         self.length = None
         
         self.vE = videoExplorer()
         
-        self.thread = MyThread("videoLengthQuery")
+        self.thread = MyThread("VideoLengthQuery")
                              
         self.moveToThread(self.thread)         
         self.thread.start()
