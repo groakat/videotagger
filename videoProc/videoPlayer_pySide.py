@@ -2140,9 +2140,6 @@ class VideoLoader(QObject):
         cfg.log.debug("deleting")
         self.exiting = True
         self.wait()
-                
-        if self.annotation is not None:
-            self.annotation.saveToFile('.'.join(self.posPath.split('.')[:-1]) + '.bhvr')
     
     @cfg.logClassFunction
     def __init__(self, posPath, idxSlice, videoHandler, selectedVials=[1], 
@@ -2157,7 +2154,7 @@ class VideoLoader(QObject):
         self.videoLength = -1
         self.frameList = []
         
-        self.annotation = None # annotation object
+#         self.annotation = None # annotation object
         
         self.posPath = copy.copy(posPath)      
         
@@ -2172,6 +2169,7 @@ class VideoLoader(QObject):
         self.imTransform = lambda x: x
         
         self.endOfFile = [] 
+        self.idxSlice
 
     def maxOfSelectedVials(self):
         return maxOfSelectedVials(self.selectedVials)
@@ -2244,32 +2242,6 @@ class VideoLoader(QObject):
             ret['endOfFile'] = endOfFile
             return ret     
             
-        @cfg.logClassFunction
-        def loadAnnotation(posPath, videoLength):
-            from pyTools.videoProc.annotation import Annotation
-            from os.path import isfile         
-                        
-            f = '.'.join(posPath.split('.')[:-1]) + '.bhvr'
-            if isfile(f):
-                cfg.log.debug("videoLoader: f exists create empty Annotation")
-                out = Annotation()
-                cfg.log.debug("videoLoader: created Annotation. try to load..")
-                try:
-                    out.loadFromFile(f)
-                    cfg.log.debug("videoLoader: loaded Annotation")                    
-                except:
-                    cfg.log.warning("load annotation of "+f+" failed, reset annotaions")
-                    out = Annotation(frameNo=videoLength, vialNames=["Abeta +RU",
-                                                                 "ABeta -RU",
-                                                                 "dilp",
-                                                                 "wDah(+)"])
-            else:
-                cfg.log.info("videoLoader: f does NOT exist create empty Annotation")
-                out = Annotation(frameNo=videoLength, vialNames=["Abeta +RU",
-                                                                 "ABeta -RU",
-                                                                 "dilp",
-                                                                 "wDah(+)"])
-            return out
             
         results = []
         
@@ -2342,17 +2314,14 @@ class VideoLoader(QObject):
                                      self.maxOfSelectedVials() + 1,
                                      2))
         
-        if True:#not self.exiting:
-            cfg.log.debug("videoLoader: load annotations")
-            self.annotation = loadAnnotation(self.posPath, self.videoLength)
+#         if True:#not self.exiting:
+#             cfg.log.debug("videoLoader: load annotations")
+#             self.annotation = loadAnnotation(self.posPath, self.videoLength)
         
         cfg.log.debug("finished loading, emiting signal {0}".format(self.videoLength))
-
-        if self.videoHandler is not None:
-            self.videoHandler.updateNewAnnotation([self.annotation, self.posPath])
-        
-        
-        self.loading = False
+# 
+#         if self.videoHandler is not None:
+#             self.videoHandler.updateNewAnnotation([self.annotation, self.posPath])
         
         
         lastFrameNo = None
@@ -2366,6 +2335,7 @@ class VideoLoader(QObject):
         if lastFrameNo is not None:
             self.eof.emit(lastFrameNo)
                 
+        self.loading = False
 #         self.finished.emit()  
 #         self.loadedAnnotation.emit([self.annotation, self.posPath])
         
@@ -2431,6 +2401,10 @@ class VideoLoader(QObject):
 class VideoHandler(QObject):       
     newVideoLoader = Signal(list)
     deleteVideoLoader = Signal(list)
+    
+    newAnnotationLoader = Signal(list)
+    deleteAnnotationLoader = Signal(list)
+    
     changedFile = Signal(str)
     
     @cfg.logClassFunction
@@ -2438,6 +2412,7 @@ class VideoHandler(QObject):
         super(VideoHandler, self).__init__()        
         
         self.videoDict = dict()
+        self.annoDict = dict()
         self.posList = []
         self.annoViewList = []
         self.posPath = ''
@@ -2462,20 +2437,37 @@ class VideoHandler(QObject):
         
         self.annoAltStart = None
         
+        ## video loading
         self.vLL = VideoLoaderLuncher(eofCallback=self.endOfFileNotice)
 
         self.videoLoaderLuncherThread = MyThread("videoLuncher")
         self.vLL.moveToThread(self.videoLoaderLuncherThread)
         
         self.videoLoaderLuncherThread.start()
-        self.videoLoaderLuncherThread.wrapUp.connect(
-                                    self.vLL.aboutToQuit)
-        
-#         time.sleep(10)
+        self.videoLoaderLuncherThread.wrapUp.connect(self.vLL.aboutToQuit)
+
         self.vLL.createdVideoLoader.connect(self.linkToAnnoview)
         self.newVideoLoader.connect(self.vLL.lunchVideoLoader)
         self.deleteVideoLoader.connect(self.vLL.deleteVideoLoader)
         
+        ## annotation loading
+        self.aLL = AnnotationLoaderLuncher(self.updateNewAnnotation)
+
+        self.annotationLoaderLuncherThread = MyThread("annotationLuncher")
+        self.aLL.moveToThread(self.annotationLoaderLuncherThread)
+        
+        self.annotationLoaderLuncherThread.start()
+        self.annotationLoaderLuncherThread.wrapUp.connect(self.aLL.aboutToQuit)
+
+#         self.aLL.createdAnnotationLoader.connect(self.linkToAnnoview)
+        self.newAnnotationLoader.connect(self.aLL.lunchAnnotationLoader)
+        self.deleteAnnotationLoader.connect(self.aLL.deleteAnnotationLoader)
+        
+        
+        self.bufferEndingQueue = []         # queue of videos that need to
+                                            # be prefetched (i.e. bufferEnding
+                                            # has to be called with this
+                                            # values)
         
         self.loadProgressive = False
         
@@ -2638,19 +2630,19 @@ class VideoHandler(QObject):
                      unbuffered=False):
         self.idx += increment
 
-        if self.idx >= self.videoDict[self.posPath].getVideoLength():
+        if self.idx >= self.videoLengths[self.posPath]:
             keys = sorted(self.videoDict.keys())
             pos = [i for i,k in enumerate(keys) if k==self.posPath][0]
             changedFile = False
             while self.idx >= \
-                    self.videoDict[self.posPath].getVideoLength(): 
+                    self.videoLengths[self.posPath]: 
                 if pos != len(keys) - 1:
-                    self.idx -= self.videoDict[self.posPath].getVideoLength()                                         
+                    self.idx -= self.videoLengths[self.posPath]                                         
                     self.posPath = keys[pos+1]
                     pos += 1 
                     changedFile = True
                 else:
-                    self.idx = self.videoDict[self.posPath].getVideoLength() -1
+                    self.idx = self.videoLengths[self.posPath] -1
                     if doBufferCheck:
                         cfg.log.warning("This is the very last frame, cannot advance further")
                     break
@@ -2678,7 +2670,7 @@ class VideoHandler(QObject):
             changedFile = False
             while self.idx < 0:
                 if pos != 0:
-                    self.idx += self.videoDict[self.posPath].getVideoLength()
+                    self.idx += self.videoLengths[self.posPath]
                     self.posPath = keys[pos-1] 
                     pos -= 1              
                     changedFile = True
@@ -2787,6 +2779,15 @@ class VideoHandler(QObject):
                 
             bkL[curKey] += [curIdx]
             
+        # advance and behind buffer key
+        advKeyIdx = self.posList.index(sorted(bkR.keys())[-1]) + 1
+        if advKeyIdx > len(self.posList):
+            advKeyIdx = None
+                    
+        behKeyIdx = self.posList.index(sorted(bkL.keys())[0]) - 1
+        if behKeyIdx < 0:
+            behKeyIdx = None
+            
         # check all buffers if lying within jut, unbuffer otherwise
         for key in self.videoDict.keys():
             if key in bkR.keys() or key in bkL.keys():
@@ -2796,8 +2797,19 @@ class VideoHandler(QObject):
                     else:
                         self.unbuffer(key, idx, updateAnnoViewPositions)
             else:
-                for idx in self.videoDict[key].keys():
+                for idx in sorted(self.videoDict[key].keys()):
+                    if idx == 0 and key == advKeyIdx:
+                        # ahead buffered first buffer
+                        continue
+                    if key == behKeyIdx \
+                    and len(self.videoDict[key].keys()) == 1:
+                        # behing (left hand side) buffered last buffer
+                        continue
+                    
                     self.unbuffer(key, idx, updateAnnoViewPositions)
+                    
+                self.deleteAnnotationLoader.emit([self.annoDict[key]])
+            
             
     def unbuffer(self, key, idx, updateAnnoViewPositions):        
         cfg.log.debug("delete video dict")
@@ -2905,18 +2917,12 @@ class VideoHandler(QObject):
         
     def bufferEnding(self, key):
         if key in self.videoLengths.keys():            
-            bufferStart = np.mod(self.videoLengths[key], self.bufferWidth)
-            idxRange = slice(bufferStart, bufferStart + self.bufferWidth)
-            self.fetchVideo(key, idxRange)
+            idx = np.mod(self.videoLengths[key], self.bufferWidth)
+            self.fetchVideo(key, idx)
         else:
             self.videoLengths[key] = None
-            try:
-                ## load annotation file
-                pass
-            except:
-                ## query video directly
-                VideoLengthQuery(key, self.bufferWidth, 
-                                 self.updateVideoLengthAndFetchLastBuffer)
+            self.newAnnotationLoader.emit([key])
+            self.bufferEndingQueue += [key]
         
     @Slot(list)
     def endOfFileNotice(self, lst):
@@ -2926,12 +2932,11 @@ class VideoHandler(QObject):
         self.updateVideoLength(key, length)
         
         nextKey = self.posList[self.posList.keys().index(key) + 1]
-        try:
-            self.videoDict[nextKey][0]
-        except KeyError:
-            self.fetchVideo(nextKey, 0)
-        except IndexError:
-            self.fetchVideo(nextKey, 0)
+        
+        # if end of file notice was send, while moving towards the right-hand
+        # side
+        if len(self.videoDict[key]) > 1:
+            self.ensureBuffering(nextKey, 0)
         
     @Slot(list)
     def updateVideoLengthAndFetchLastBuffer(self, lst):
@@ -2976,11 +2981,11 @@ class VideoHandler(QObject):
         
     @cfg.logClassFunction
     def addAnnoView(self, annoView):
-        for vidPath in self.videoDict:
-            if (not self.videoDict[vidPath] is None) and \
-               (not self.videoDict[vidPath].loading):
-                cfg.log.debug("annotation id: {0}".format(id(self.videoDict[vidPath].annotation)))
-                annoView.addAnnotation(self.videoDict[vidPath].annotation, vidPath)
+        for vidPath in self.annoDict:
+            if (not self.annoDict[vidPath] is None) and \
+               (not self.annoDict[vidPath].loading):
+                cfg.log.debug("annotation id: {0}".format(id(self.annoDict[vidPath].annotation)))
+                annoView.addAnnotation(self.annoDict[vidPath].annotation, vidPath)
                 
         self.annoViewList += [annoView]
         
@@ -3001,7 +3006,7 @@ class VideoHandler(QObject):
         
     
         
-    @cfg.logClassFunction
+#     @cfg.logClassFunction
     @Slot(list)
     def updateNewAnnotation(self, annotationBundle):  
         self.annotationBundle += [annotationBundle]
@@ -3012,11 +3017,21 @@ class VideoHandler(QObject):
         self.annotationBundle = sorted(self.annotationBundle, key=lambda x: x[1])
         
         for annotationBundle in self.annotationBundle:
+            annotation = annotationBundle[0]
+            path = annotationBundle[1]
             for aV in self.annoViewList:
-                aV.addAnnotation(annotationBundle[0], annotationBundle[1], 
+                aV.addAnnotation(annotation, path , 
                                  addAllAtOnce=(not self.loadProgressive))
+                
+            self.annoDict[path] = annotation
+            # save pathlength and bufferEnding if requested earlier
+            self.videoLengths[path] = len(annotation.frameList)
+            if path in self.bufferEndingQueue:
+                self.bufferEnding(path)
+                self.bufferEndingQueue.pop(self.bufferEndingQueue.index(path))
             
         self.annotationBundle = []
+        
             
     @cfg.logClassFunction
     def addFrameToAnnotation(self, vialNo, annotator, behaviour):   
@@ -3025,7 +3040,7 @@ class VideoHandler(QObject):
                                                                     behaviour)
                                                                     
         
-        self.videoDict[self.posPath].addAnnotation(vialNo, [self.idx], 
+        self.annoDict[self.posPath].addAnnotation(vialNo, [self.idx], 
                                                    behaviour, annotator)
                                                                     
     @cfg.logClassFunction
@@ -3044,7 +3059,7 @@ class VideoHandler(QObject):
         if not self.annoAltStart:
             return
                 
-        curAnnoEnd = bsc.FramePosition(self.videoDict, self.posPath, self.idx) 
+        curAnnoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx) 
         lenFunc = lambda x: len(x.frameList[0])                
         
         newRng = bsc.generateRangeValuesFromKeys(self.annoEnd, 
@@ -3074,10 +3089,10 @@ class VideoHandler(QObject):
                         aV.addAnno(self.posPath, self.idx, metadata)
                         
         if self.annoAltStart == None:
-            self.annoAltStart = bsc.FramePosition(self.videoDict, self.posPath, 
+            self.annoAltStart = bsc.FramePosition(self.annoDict, self.posPath, 
                                                                     self.idx)
             
-            self.annoEnd = bsc.FramePosition(self.videoDict, self.posPath, 
+            self.annoEnd = bsc.FramePosition(self.annoDict, self.posPath, 
                                              self.idx)
              
             self.annoAltFilter = AnnotationFilter([vial], [annotator], 
@@ -3096,7 +3111,7 @@ class VideoHandler(QObject):
             if not sameAnnotationFilter:
                 self.escapeAnnotationAlteration()
             else:
-                annoEnd = bsc.FramePosition(self.videoDict, self.posPath, self.idx)    
+                annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)    
                 
                 ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  : make that [0] dynamic
                 lenFunc = lambda x: len(x.frameList[0])
@@ -3104,7 +3119,7 @@ class VideoHandler(QObject):
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                             
                 for key in rng:
-                    self.videoDict[key].annotation.addAnnotation(vial, rng[key], 
+                    self.annoDict[key].annotation.addAnnotation(vial, rng[key], 
                                             annotator, behaviour, 
                                             self.tempValue[key])
                                             
@@ -3113,7 +3128,7 @@ class VideoHandler(QObject):
                                   b=behaviour, c=self.tempValue[key]))
                     
                     tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
-                    self.videoDict[key].annotation.saveToFile(tmpFilename)
+                    self.annoDict[key].annotation.saveToFile(tmpFilename)
                     
                     # refresh annotation in anno view
                     for aV in self.annoViewList:
@@ -3126,7 +3141,7 @@ class VideoHandler(QObject):
                                 if vial == aV.vialNo:
                                     cfg.log.debug("refreshing annotation")
                                     aV.addAnnotation(\
-                                                self.videoDict[key].annotation,
+                                                self.annoDict[key].annotation,
                                                      key)
                 
                 logGUI.info(json.dumps({"vial":vial,
@@ -3151,10 +3166,10 @@ class VideoHandler(QObject):
                         aV.eraseAnno(self.posPath, self.idx)
                         
         if self.annoAltStart == None:
-            self.annoAltStart = bsc.FramePosition(self.videoDict, self.posPath, 
+            self.annoAltStart = bsc.FramePosition(self.annoDict, self.posPath, 
                                                                     self.idx)
             
-            self.annoEnd = bsc.FramePosition(self.videoDict, self.posPath, 
+            self.annoEnd = bsc.FramePosition(self.annoDict, self.posPath, 
                                              self.idx)
              
             self.annoAltFilter = AnnotationFilter([vial], [annotator], 
@@ -3167,7 +3182,7 @@ class VideoHandler(QObject):
             if not sameAnnotationFilter:
                 self.escapeAnnotationAlteration()
             else:
-                annoEnd = bsc.FramePosition(self.videoDict, self.posPath, self.idx)    
+                annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)    
                 
                 ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  : make that [0] dynamic
                 lenFunc = lambda x: len(x.frameList[0])
@@ -3176,10 +3191,10 @@ class VideoHandler(QObject):
                 self.annoAltStart = None
                 
                 for key in rng:
-                    self.videoDict[key].annotation.removeAnnotation(vial, rng[key], 
+                    self.annoDict[key].annotation.removeAnnotation(vial, rng[key], 
                                             annotator, behaviour)
                     tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
-                    self.videoDict[key].annotation.saveToFile(tmpFilename)
+                    self.annoDict[key].annotation.saveToFile(tmpFilename)
                 
                     # refresh annotation in anno view
                     for aV in self.annoViewList:
@@ -3192,7 +3207,7 @@ class VideoHandler(QObject):
                                 if vial == aV.vialNo:
                                     cfg.log.debug("refreshing annotation")
                                     aV.addAnnotation(\
-                                                self.videoDict[key].annotation,
+                                                self.annoDict[key].annotation,
                                                      key)
                                     
                 logGUI.info(json.dumps({"vial":vial,
@@ -3214,9 +3229,9 @@ class VideoHandler(QObject):
             
     @cfg.logClassFunction
     def saveAll(self):
-        for key in self.videoDict:
+        for key in self.annoDict:
             tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr"
-            self.videoDict[key].annotation.saveToFile(tmpFilename)
+            self.annoDict[key].annotation.saveToFile(tmpFilename)
     
 class AnnotationItemLoader(BaseThread):
     annotationStuff = Signal(list)
@@ -3334,13 +3349,6 @@ class VideoLoaderLuncher(QObject):
         self.dumpingPlace = []
         self.threads = dict()
         self.eofCallback = eofCallback
-#         self.start()
-    
-#     @cfg.logClassFunction
-#     def run(self):
-#         cfg.log.debug("(VideoLoaderLuncher) begin")        
-#         self.exec_()
-#         cfg.log.debug("(VideoLoaderLuncher) end")
             
     
     
@@ -3368,13 +3376,10 @@ class VideoLoaderLuncher(QObject):
             
             vL = VideoLoader(path, vH, idxSlice=idxSlice, 
                              thread=videoLoaderThread, 
-                             selectedVials=selectedVials,
-                             eofCallback=eofCb)                 
+                             selectedVials=selectedVials)                 
             vL.moveToThread(videoLoaderThread)         
             videoLoaderThread.start()
-            
-#             signal = "loadVideo {0}".format(len(self.threads.keys()))
-#             self.connect(self, SIGNAL(signal), vL.loadVideos) 
+
             vL.startLoading.connect(vL.loadVideos)
             vL.eof.connect(self.eofCallback)
             
@@ -3389,19 +3394,17 @@ class VideoLoaderLuncher(QObject):
             cfg.log.info("recycle new VideoLoader {0}, was previous: {1}".format(path, vL.posPath))
             thread, signal = self.threads[vL]
             vL.init(path, vH, idxSlice=idxSlice, thread=thread, 
-                    selectedVials=selectedVials,
-                    eofCallback=eofCb)     
+                    selectedVials=selectedVials)     
             signal.emit()
 
-            
-#         vL.loadedAnnotation.connect(cb)
         self.createdVideoLoader.emit([path, idx, vL])
 #         cfg.log.debug("finish")
             
-    @cfg.logClassFunction
+#     @cfg.logClassFunction
+    @Slot(list)
     def deleteVideoLoader(self, lst):
         for vL in self.dumpingPlace:
-            if vL is not None and not vL.loading and vL.annotation is not None:                 
+            if vL is not None and not vL.loading:                 
                 self.availableVLs += [vL]
                 self.dumpingPlace.remove(vL)
                 
@@ -3409,12 +3412,7 @@ class VideoLoaderLuncher(QObject):
 #         vidPath = lst[1]
         
         # TODO is this potential memory leak?
-        if vL is not None and not vL.loading and vL.annotation is not None: 
-#             if vL.annotation.hasChanged:
-#                 cfg.log.info("save annotation")
-#                 tmpFilename = '.'.join(vidPath.split(".")[:-1]) + ".bhvr"
-#                 vL.annotation.saveToFile(tmpFilename)
-            
+        if vL is not None and not vL.loading:             
             self.availableVLs += [vL]
         else:
             self.dumpingPlace += [vL]
@@ -3425,7 +3423,163 @@ class VideoLoaderLuncher(QObject):
         for key in self.threads:
             self.threads[key].quit()
             
+class AnnotationLoaderLuncher(QObject):      
+    createdAnnotationLoader = Signal(list)  
+    loadAnnotations = Signal()
+    
+    def __init__(self, loadedCallback): 
+        super(VideoLoaderLuncher, self).__init__(None)
             
+        self.availableALs = []
+        self.dumpingPlace = []
+        self.threads = dict()
+        self.loadedCallback = loadedCallback
+    
+    @Slot(list)
+    def lunchAnnotationLoader(self, lst):
+        path = lst[0]
+        
+        if len(self.availableALs) == 0:
+            cfg.log.info("create new AnnotationLoader {0}".format(path))     
+            
+#             vL = VideoLoader(path, vH, selectedVials=selectedVials) 
+                                     
+            annotationLoaderThread = MyThread("AnnotationLoader {0}".format(len(
+                                                        self.threads.keys())))
+            
+            aL = AnnotationLoader(path)                 
+            aL.moveToThread(annotationLoaderThread)         
+            annotationLoaderThread.start()
+
+            aL.startLoading.connect(aL.loadAnnotation)
+            aL.loaded.connect(self.loadedCallback)
+            
+            cfg.log.info("finished thread coonecting signal create new VideoLoader {0}".format(path)) 
+            aL.startLoading.emit()
+            cfg.log.info("finished thread emit create new VideoLoader {0}".format(path)) 
+            self.threads[aL] = [annotationLoaderThread, aL.startLoading]
+            
+            cfg.log.info("finished create new VideoLoader {0}".format(path))  
+        else:
+            aL = self.availableVLs.pop()
+            cfg.log.info("recycle new VideoLoader {0}, was previous: {1}".format(path, aL.posPath))
+            thread, signal = self.threads[aL]
+            aL.init(path)     
+            signal.emit()
+
+        self.createdAnnotationLoader.emit([path])
+        
+#     @cfg.logClassFunction
+    @Slot(list)
+    def deleteVideoLoader(self, lst):
+        for aL in self.dumpingPlace:
+            if aL is not None and not aL.loading:  
+                if aL.annotation.hasChanged:
+                    aL.annotation.saveToFile(aL.path)               
+                self.availableALs += [aL]
+                self.dumpingPlace.remove(aL)
+                
+        aL = lst[0]
+#         vidPath = lst[1]
+        
+        # TODO is this potential memory leak?
+        if aL is not None and not aL.loading:  
+            if aL.annotation.hasChanged:
+                aL.annotation.saveToFile(aL.path)
+                
+            self.availableALs += [aL]
+        else:
+            self.dumpingPlace += [aL]
+        
+    @Slot()    
+    def aboutToQuit(self):
+        print "video-launcher, about to quit"
+        for key in self.threads:
+            self.threads[key].quit()
+            
+class AnnotationLoader(QObject):        
+    loadedAnnotation = Signal(list) 
+    startLoading = Signal()
+
+    @cfg.logClassFunction
+    def __del__(self):        
+        cfg.log.debug("deleting")
+        self.exiting = True
+        self.wait()
+                
+        if self.annotation is not None:
+            self.annotation.saveToFile('.'.join(self.posPath.split('.')[:-1]) + '.bhvr')
+    
+    @cfg.logClassFunction
+    def __init__(self, path, thread, vialNames=None):
+        super(VideoLoader, self).__init__(None)        
+        self.init(path, thread, vialNames=None)
+        
+    def init(self, path, thread, vialNames=None):
+        if vialNames is None:
+            vialNames = [None]
+        
+        self.loading = False
+        
+        self.annotation = None
+        
+#         self.annotation = None # annotation object
+        
+        self.path = copy.copy(path)      
+        
+        self.thread = thread        
+    
+    @cfg.logClassFunction
+    def loadAnnotation(self):
+        from os.path import isfile    
+        
+        self.loading = True     
+                    
+        f = '.'.join(self.path.split('.')[:-1]) + '.bhvr'
+        if isfile(f):
+            cfg.log.debug("videoLoader: f exists create empty Annotation")
+            out = Annotation()
+            cfg.log.debug("videoLoader: created Annotation. try to load..")
+            try:
+                out.loadFromFile(f)
+                cfg.log.debug("videoLoader: loaded Annotation")                    
+            except:
+                cfg.log.warning("load annotation of "+f+" failed, reset annotaions")
+                videoLength = self.retrieveVideoLength(self.path)
+                out = Annotation(frameNo=videoLength, vialNames=self.vialNames)
+        else:
+            cfg.log.info("videoLoader: f does NOT exist create empty Annotation")
+            videoLength = self.retrieveVideoLength(self.path)
+            out = Annotation(frameNo=videoLength, vialNames=self.vialNames)
+            
+        self.annotation = out
+        self.loadedAnnotation.emit([out, self.path])
+        self.loading = False
+        
+        
+    def retrieveVideoLength(self, filename, initialStepSize=10000):
+        """
+        Finds video length by accessing it bruteforce
+        
+        """
+        idx = 0
+        modi = initialStepSize
+        vE = videoExplorer()
+        
+        while modi > 1:
+            while True:
+                try:
+                    vE.getFrame(filename, frameNo=idx, frameMode='RGB')
+                except StopIteration:
+                    break
+                
+                idx += modi
+                
+            idx -= modi
+            modi /= 2
+            
+
+        return idx
 
 
 class VideoLengthQuery(QObject):
@@ -3682,3 +3836,5 @@ if __name__ == "__main__":
     w.quit.connect(app.quit)
     
     sys.exit(app.exec_())
+    
+    np.asanyarray(a, dtype, order)

@@ -62,6 +62,7 @@ class Annotation():
         f = open(filename, 'w')
         json.dump(self.frameList, f, sort_keys=True,indent=4, separators=(',', ': '))
         f.close()
+        self.hasChanged = False
         
     def loadFromFile(self, filename):
         f = open(filename, 'r')
