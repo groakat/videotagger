@@ -24,7 +24,7 @@ class MyListModel(QAbstractListModel):
     def rowCount(self, parent=QModelIndex()): 
         return len(self.listdata) 
  
-    def data(self, index, role): 
+    def tree(self, index, role): 
         if index.isValid() and role == Qt.DisplayRole:
             return QVariant(self.listdata[index.row()])
         else: 
@@ -131,7 +131,7 @@ class videoPlayer(QMainWindow):
         
     def startVideo(self):
         self.play = True
-        a = plt.imread("/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
+        a = plt.imread("/run/media/peter/Elements/peter/tree/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
         
         qi = array2qimage(a*255)
         pixmap = QPixmap()
@@ -230,7 +230,7 @@ if __name__ == "__main__":
     
     app = QApplication(sys.argv)
     
-    path = '/run/media/peter/Elements/peter/data/tmp-20130506'
+    path = '/run/media/peter/Elements/peter/tree/tmp-20130506'
     w = videoPlayer(path, videoFormat='avi')
     
     sys.exit(app.exec_())

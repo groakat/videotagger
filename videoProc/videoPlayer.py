@@ -44,7 +44,7 @@ class MyListModel(QAbstractListModel):
     def rowCount(self, parent=QModelIndex()): 
         return len(self.listdata) 
  
-    def data(self, index, role): 
+    def tree(self, index, role): 
         if index.isValid() and role == Qt.DisplayRole:
             return QVariant(self.listdata[index.row()])
         else: 
@@ -127,7 +127,7 @@ class videoPlayer(QMainWindow):
         
         self.configureUI()
         
-        self.setBackground("/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
+        self.setBackground("/run/media/peter/Elements/peter/tree/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
         
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.showNextFrame)
@@ -679,7 +679,7 @@ class videoPlayer(QMainWindow):
         
     def startVideo(self):
         #self.play = True
-        #self.setBackground("/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
+        #self.setBackground("/run/media/peter/Elements/peter/tree/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
         
         
         cfg.log.debug("start Video")
@@ -1564,7 +1564,7 @@ class VideoLoader(QObject):
             if False:#self.exiting:
                 for i in range(len(results)):
                     results[i].abort()
-                    # delete data from cluster
+                    # delete tree from cluster
                     msgId = results[i].msg_id
                     #~ del lbview.results[msgId]
                     del rc.results[msgId]
@@ -1581,12 +1581,12 @@ class VideoLoader(QObject):
         cfg.log.debug("videoLoader: copy results")
         self.frameList = [[] for i in range(max(self.selectedVials) + 1)]
         for i in range(len(results)):
-            # copy data
+            # copy tree
             ar = results[i].get()
             # TODO: make it dynamic again for later
             self.frameList[ar["vialNo"]] = ar["qi"] 
 #             self.frameList[0] = ar["qi"]
-            # delete data from cluster
+            # delete tree from cluster
             msgId = results[i].msg_id
             #~ del lbview.results[msgId]
             del rc.results[msgId]
@@ -2363,7 +2363,7 @@ if __name__ == "__main__":
     
     app = QApplication(sys.argv)
     
-    path = '/run/media/peter/Elements/peter/data/tmp-20130506'
+    path = '/run/media/peter/Elements/peter/tree/tmp-20130506'
     
     logGUI = logging.getLogger("GUI")
     logGUI.setLevel(logging.DEBUG)

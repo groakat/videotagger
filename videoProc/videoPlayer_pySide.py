@@ -52,11 +52,11 @@ KeyIdxPair = namedtuple('KeyIdxPair', ['key', 'idx', 'conf'])
 # #                   QImage.Format_ARGB32)
 # #     import Image
 # #     im = Image.fromarray(a.astype(np.uint8))
-# #     data = im.convert("RGBA").tostring("raw", "RGBA")
+# #     tree = im.convert("RGBA").tostring("raw", "RGBA")
 #     
-# #     data = (np.uint8(255) << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
-#     data = (255 << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
-#     image = QImage(data.data, a.shape[1], a.shape[0], QImage.Format_ARGB32)
+# #     tree = (np.uint8(255) << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
+#     tree = (255 << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
+#     image = QImage(tree.tree, a.shape[1], a.shape[0], QImage.Format_ARGB32)
 #     
 #     return image
 
@@ -68,11 +68,11 @@ def np2qimage(a):
 #                   QImage.Format_ARGB32)
 #     import Image
 #     im = Image.fromarray(a.astype(np.uint8))
-#     data = im.convert("RGBA").tostring("raw", "RGBA")
+#     tree = im.convert("RGBA").tostring("raw", "RGBA")
     
     data = (np.uint32(255) << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
-#     data = (np.uint8(255) << 24 | np.bitwise_or(np.bitwise_or(a[:,:,0] << 16, a[:,:,1] << 8), a[:,:,2])).flatten()
-    image = QImage(data.data, a.shape[1], a.shape[0], QImage.Format_ARGB32)
+#     tree = (np.uint8(255) << 24 | np.bitwise_or(np.bitwise_or(a[:,:,0] << 16, a[:,:,1] << 8), a[:,:,2])).flatten()
+    image = QImage(data.tree, a.shape[1], a.shape[0], QImage.Format_ARGB32)
     
     return image
 
@@ -95,7 +95,7 @@ class MyListModel(QAbstractListModel):
     def rowCount(self, parent=QModelIndex()): 
         return len(self.listdata) 
  
-    def data(self, index, role): 
+    def tree(self, index, role): 
         if index.isValid() and role == Qt.DisplayRole:
             return self.listdata[index.row()]
         else: 
@@ -543,7 +543,7 @@ class videoPlayer(QMainWindow):
         self.configureUI()
         
         if not self.videoOnly:
-            self.setBackground(backgroundPath)#"/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
+            self.setBackground(backgroundPath)#"/run/media/peter/Elements/peter/tree/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
         else:
             self.setBackground()
         
@@ -895,7 +895,7 @@ class videoPlayer(QMainWindow):
         
     @cfg.logClassFunction
     def updateOriginalLabel(self, lbl, img):
-#         img = data[0]
+#         img = tree[0]
         qi = array2qimage(scim.imresize(img[self.prevYCrop, self.prevXCrop], 
                                         (self.prevSize,self.prevSize)))
 
@@ -928,8 +928,8 @@ class videoPlayer(QMainWindow):
         
     @cfg.logClassFunction
     def updateMainLabel(self, lbl, img):
-#         img = data[0][0]
-#         anno = data[1]
+#         img = tree[0][0]
+#         anno = tree[1]
         h = img.shape[0]
         w = img.shape[1]
         if self.sceneRect != QRectF(0, 0, w,h):
@@ -1040,7 +1040,8 @@ class videoPlayer(QMainWindow):
         # place annotation roi
         
         anno = frame[2]
-        self.tmpAnnotation.setFrameList([[anno]])
+        self.tmpAnnotation.setFrameList([anno])
+        cfg.log.info("passed anno {0}".format(anno))
         
         rois = []
         for i in range(len(self.annotations)):
@@ -1056,6 +1057,8 @@ class videoPlayer(QMainWindow):
             for b in bb:
                 rois += [[b, self.annotations[i]["color"]]]
                 
+                
+        cfg.log.info("passed rois {0}".format(rois))
         self.positionAnnotationRoi(rois)
         
         
@@ -1209,7 +1212,7 @@ class videoPlayer(QMainWindow):
         
     def startVideo(self):
         self.play = True
-        #self.setBackground("/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
+        #self.setBackground("/run/media/peter/Elements/peter/tree/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
         
         
         cfg.log.debug("start Video")
@@ -1224,48 +1227,51 @@ class videoPlayer(QMainWindow):
          
         while not self.stop:
             #cfg.log.info("begin   --------------------------------------- main loop")
-            self.vh.loadProgressive = True
-             
-            dieTime = QTime.currentTime().addMSecs(33)
-                         
-            if self.play:            
-                self.showNextFrame(self.increment)
+            try:
+                self.vh.loadProgressive = True
                  
-                if self.increment == 0:
-                    self.play = False
+                dieTime = QTime.currentTime().addMSecs(33)
+                             
+                if self.play:            
+                    self.showNextFrame(self.increment)
+                     
+                    if self.increment == 0:
+                        self.play = False
+                        
+                if not(QTime.currentTime() < dieTime):
+                    cfg.log.warning("no realtime display!!! " + 
+                                    cfg.Back.BLUE + 
+                                    "mainloop overflow before processEvents(): {0}ms".format(
+                                            dieTime.msecsTo(QTime.currentTime())))
                     
-            if not(QTime.currentTime() < dieTime):
-                cfg.log.warning("no realtime display!!! " + 
-                                cfg.Back.BLUE + 
-                                "mainloop overflow before processEvents(): {0}ms".format(
-                                        dieTime.msecsTo(QTime.currentTime())))
-                
-            elif(QTime.currentTime() < dieTime.addMSecs(15)):
-                frameNo = self.vh.getCurrentFrameNo()
-                self.ui.lbl_v1.setText("no: {0}".format(frameNo))
-#                 self.ui.lv_frames.setCurrentIndex(self.frameList.index(frameNo,0))
-             
-#             cfg.log.debug("---------------------------------------- while loop() - begin")
-
-            if not (QTime.currentTime() < dieTime):                
-                skipCnt += 1
-            else:
-                skipCnt = 0
-                
-            while(QTime.currentTime() < dieTime) or (skipCnt > 10):
-                skipCnt = 0
-#                 cfg.log.debug("processEvents() - begin")
-                QApplication.processEvents(QEventLoop.AllEvents, QTime.currentTime().msecsTo(dieTime))
-#                 cfg.log.debug("processEvents() - end")
+                elif(QTime.currentTime() < dieTime.addMSecs(15)):
+                    frameNo = self.vh.getCurrentFrameNo()
+                    self.ui.lbl_v1.setText("no: {0}".format(frameNo))
+    #                 self.ui.lv_frames.setCurrentIndex(self.frameList.index(frameNo,0))
                  
-            if not(QTime.currentTime() < (dieTime.addMSecs(1))):
-                cfg.log.warning("no realtime display!!! " + 
-                                cfg.Back.YELLOW + 
-                                "mainloop overflow after processEvents(): {0}ms".format(
-                                        dieTime.msecsTo(QTime.currentTime())))
-#             cfg.log.debug("---------------------------------------  while loop() - end")
-             
-#             cfg.log.debug("end   ------------------------------------------ main loop")
+    #             cfg.log.debug("---------------------------------------- while loop() - begin")
+    
+                if not (QTime.currentTime() < dieTime):                
+                    skipCnt += 1
+                else:
+                    skipCnt = 0
+                    
+                while(QTime.currentTime() < dieTime) or (skipCnt > 10):
+                    skipCnt = 0
+    #                 cfg.log.debug("processEvents() - begin")
+                    QApplication.processEvents(QEventLoop.AllEvents, QTime.currentTime().msecsTo(dieTime))
+    #                 cfg.log.debug("processEvents() - end")
+                     
+                if not(QTime.currentTime() < (dieTime.addMSecs(1))):
+                    cfg.log.warning("no realtime display!!! " + 
+                                    cfg.Back.YELLOW + 
+                                    "mainloop overflow after processEvents(): {0}ms".format(
+                                            dieTime.msecsTo(QTime.currentTime())))
+    #             cfg.log.debug("---------------------------------------  while loop() - end")
+                 
+    #             cfg.log.debug("end   ------------------------------------------ main loop")
+            except:
+                pass
          
         self.vh.loadProgressive = False
         logGUI.info('"--------- stopped mainloop ------------"')
@@ -2275,7 +2281,7 @@ class VideoLoader(QObject):
                 if False:#self.exiting:
                     for i in range(len(results)):
                         results[i].abort()
-                        # delete data from cluster
+                        # delete tree from cluster
                         msgId = results[i].msg_id
                         #~ del lbview.results[msgId]
                         del rc.results[msgId]
@@ -2296,13 +2302,13 @@ class VideoLoader(QObject):
             cfg.log.debug("videoLoader: copy results")
             self.frameList = [[] for i in range(self.maxOfSelectedVials() + 1)]
             for i in range(len(results)):
-                # copy data
+                # copy tree
                 ar = results[i].get()
                 # TODO: make it dynamic again for later
                 self.frameList[ar["vialNo"]] = copy.copy(ar["qi"]) 
                 self.endOfFile += copy.copy(ar['endOfFile'])
     #             self.frameList[0] = ar["qi"]
-                # delete data from cluster
+                # delete tree from cluster
                 msgId = results[i].msg_id
                 #~ del lbview.results[msgId]
                 del rc.results[msgId]
@@ -3754,8 +3760,8 @@ if __name__ == "__main__":
             "behav": "struggling"
         }
     ],
-    "background": "/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png",
-    "videoPath": "/run/media/peter/Elements/peter/data/tmp-20130506"
+    "background": "/run/media/peter/Elements/peter/tree/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png",
+    "videoPath": "/run/media/peter/Elements/peter/tree/tmp-20130506"
     }
     
     If you do not have the example file, you can simply copy and paste the 
@@ -3771,8 +3777,8 @@ if __name__ == "__main__":
     You can contact the author via p.rennert@cs.ucl.ac.uk
     
     I did my best to avoid errors and bugs, but I cannot privide any reliability
-    with respect to software or hardware or data (including fidelity and potential
-    data-loss), nor any issues it may cause with your experimental setup.
+    with respect to software or hardware or tree (including fidelity and potential
+    tree-loss), nor any issues it may cause with your experimental setup.
     
     <Licence missing>
     """))
