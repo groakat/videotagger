@@ -5,6 +5,10 @@ import sys
 from PySide import QtCore, QtGui
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 
+
+from time import time
+
+
 sys.path.append("/home/peter/phd/code")
 
 from pyTools.misc.FrameDataVisualization import FrameDataView
@@ -22,11 +26,12 @@ class TestClass(QtGui.QMainWindow):
         self.initializeConfidenceStructure()
         
         self.day = 0
-        self.hour = 2
-        self.minute = 10
-        self.frame = 1 
+        self.hour = 0
+        self.minute = 0
+        self.frame = 0 
         
         self.show()   
+        
         
     def connectElements(self):        
         self.ui.btn_generateData.clicked.connect(self.generateNewSequence)
@@ -110,17 +115,18 @@ class TestClass(QtGui.QMainWindow):
 #     @QtCore.Slot()
     def generateNewSequence(self):
         print "start"
-        dayRng = range(4)
-        hourRng = range(24)
+        dayRng = range(1)
+        hourRng = range(2)
         minuteRng = range(60)
         frameRng = range(1800)
+        t1 = time()
         self.frameView.fdvTree.generateRandomSequence(dayRng, hourRng, 
                                                       minuteRng, frameRng)
-        print "finished"
+        print "finished in {0} sec".format(time()-t1)
         
     def plotSequence(self):        
         self.frameView.plotConfidence(self.day, self.hour, self.minute, 
-                                      self.frame, 30)
+                                      self.frame, 1)
         
 #         self.widget.draw()
 #         self.widget_2.draw()

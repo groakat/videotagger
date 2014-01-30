@@ -1,6 +1,7 @@
 import matplotlib as mpl  
 import matplotlib.pyplot as plt
 import numpy as np
+import cPickle as pickle
 
 class FrameDataVisualizationTree:
     def __init__(self):
@@ -10,6 +11,14 @@ class FrameDataVisualizationTree:
     def resetAllSamples(self):
         self.tree = dict()    
         
+        
+    def save(self, filename):
+        with open(filename, "wb") as f:
+            pickle.dump(self.tree, f)
+            
+    def load(self, filename):
+        with open(filename, "rb") as f:
+            self.tree = pickle.load(f) 
     
     def generateRandomSequence(self, dayRng, hourRng, minuteRng, frameRng):
         for day in dayRng:
@@ -17,7 +26,10 @@ class FrameDataVisualizationTree:
                 for minute in minuteRng:
                     minMax = np.random.rand(1)[0]
                     for frame in frameRng:
-                        data = np.random.rand(1)[0] * minMax
+                        if np.random.rand(1)[0] > 0.9:
+                            data = 0.999999
+                        else:
+                            data = np.random.rand(1)[0] * minMax
                         self.addSample(day, hour, minute, frame, data)
                         
     
@@ -26,14 +38,20 @@ class FrameDataVisualizationTree:
         if day not in self.tree.keys():
             self.tree[day] = dict()
             self.tree[day]['max'] = -np.Inf
+            self.tree[day]['mean'] = 0
+            self.tree[day]['sampleN'] = 0
             
         if hour not in self.tree[day].keys():
             self.tree[day][hour] = dict()
             self.tree[day][hour]['max'] = -np.Inf
+            self.tree[day][hour]['mean'] = 0
+            self.tree[day][hour]['sampleN'] = 0
             
         if minute not in self.tree[day][hour].keys():
             self.tree[day][hour][minute] = dict()
             self.tree[day][hour][minute]['max'] = -np.Inf
+            self.tree[day][hour][minute]['mean'] = 0
+            self.tree[day][hour][minute]['sampleN'] = 0
         
         
     def updateMax(self, day, hour, minute, data):
@@ -48,22 +66,41 @@ class FrameDataVisualizationTree:
                 if self.tree[day]['max'] < data:
                     self.tree[day]['max'] = data
         
+    
+    def incrementMean(self, prevMean, data, n):
+        return prevMean + (1.0/n) * (data - prevMean)
+    
+    
+    def addSampleToStumpMean(self, stump, data):
+        stump['mean'] = self.incrementMean(stump['mean'], 
+                                           data,
+                                           stump['sampleN'] + 1)
+        stump['sampleN'] += 1
+        
+    
+    def addSampleToMean(self, day, hour, minute, data):
+        self.addSampleToStumpMean(self.tree[day][hour][minute], data)
+        self.addSampleToStumpMean(self.tree[day][hour], data)
+        self.addSampleToStumpMean(self.tree[day], data)
+    
         
     def addSample(self, day, hour, minute, frame, data):
         self.verifyStructureExists(day, hour, minute, frame)
-        
-        if frame in self.tree[day][hour][minute].keys():
-            self.replaceSample(day, hour, minute, frame, data)
-        else:     
+        # using try, except because its much fast than looking up the keys
+        try:
+            oldData = self.tree[day][hour][minute][frame]
+            self.replaceSample(day, hour, minute, frame, data, oldData)
+        except KeyError:
             self.insertSample(day, hour, minute, frame, data)
             
             
     def insertSample(self, day, hour, minute, frame, data):
         self.tree[day][hour][minute][frame] = data
-        self.updateMax(day, hour, minute, data) 
+        self.updateMax(day, hour, minute, data)
+        self.addSampleToMean(day, hour, minute, data)
         
     
-    def replaceSample(self,day, hour, minute, frame, data):
+    def replaceSample(self,day, hour, minute, frame, data, oldData):
         oldData = self.tree[day][hour][minute][frame]    
         self.tree[day][hour][minute][frame] = data
         
@@ -86,46 +123,56 @@ class FrameDataVisualizationTree:
     def generatePlotDataDays(self, day, hour, minute, frame):
         self.plotData['days'] = dict()
         self.plotData['days']['data'] = []
+        self.plotData['days']['weight'] = []
         self.plotData['days']['tick'] = []
         for key in sorted(self.tree.keys()):
-            if key == 'max':
+            if key in ['max', 'mean', 'sampleN']:
                 continue
                 
             self.plotData['days']['data'] += [self.tree[key]['max']]
+            self.plotData['days']['weight'] += [self.tree[key]['mean']]
             self.plotData['days']['tick'] += [key]
             
             
     def generatePlotDataHours(self, day, hour, minute, frame):
         self.plotData['hours'] = dict()
         self.plotData['hours']['data'] = []
+        self.plotData['hours']['weight'] = []
         self.plotData['hours']['tick'] = []
         for key in sorted(self.tree[day].keys()):
-            if key == 'max':
+            if key in ['max', 'mean', 'sampleN']:
                 continue
                 
             self.plotData['hours']['data'] += [self.tree[day][key]['max']]
+            self.plotData['hours']['weight'] += [self.tree[day][key]['mean']]
             self.plotData['hours']['tick'] += [key]    
             
             
     def generatePlotDataMinutes(self, day, hour, minute, frame):
         self.plotData['minutes'] = dict()
         self.plotData['minutes']['data'] = []
+        self.plotData['minutes']['weight'] = []
         self.plotData['minutes']['tick'] = []
         for key in sorted(self.tree[day][hour].keys()):
-            if key == 'max':
+            if key in ['max', 'mean', 'sampleN']:
                 continue
                 
-            self.plotData['minutes']['data'] += [self.tree[day][hour][key]['max']]
+            self.plotData['minutes']['data'] += \
+                                            [self.tree[day][hour][key]['max']]
+            self.plotData['minutes']['weight'] += \
+                                            [self.tree[day][hour][key]['mean']]
             self.plotData['minutes']['tick'] += [key]
             
             
-    def generatePlotDataFrames(self, day, hour, minute, frame, frameResolution=1):
+    def generatePlotDataFrames(self, day, hour, minute, frame, 
+                               frameResolution=1):
         self.plotData['frames'] = dict()
         self.plotData['frames']['data'] = []
+        self.plotData['frames']['weight'] = []
         self.plotData['frames']['tick'] = []
         cnt = 0
         for key in sorted(self.tree[day][hour][minute].keys()):
-            if key == 'max':
+            if key in ['max', 'mean', 'sampleN']:
                 continue
             
             if cnt == 0:               
@@ -139,12 +186,14 @@ class FrameDataVisualizationTree:
             else:
                 tmpVal /= frameResolution
                 self.plotData['frames']['data'] += [tmpVal]
+                self.plotData['frames']['weight'] += [tmpVal]
                 self.plotData['frames']['tick'] += [tmpKeys]
                 cnt = 0
                 
         if cnt != 0:
             tmpVal /= cnt
             self.plotData['frames']['data'] += [tmpVal]
+            self.plotData['frames']['weight'] += [tmpVal]
             self.plotData['frames']['tick'] += [tmpKeys]
             
             
@@ -352,15 +401,17 @@ class FrameDataView:
                 cb(self.day, self.hour,  self.minute, frame)
         
                    
-    def plotColorCodedBar(self, data, ax):
+    def plotColorCodedBar(self, data, ax, weight=None):
+        if weight is None:
+            weight = data
+            
         fig = plt.figure(ax.get_figure().number)
         plt.cla()     
         cm = mpl.colors.LinearSegmentedColormap('my_colormap',self.cdict, 256)
-        cnt = 0
-        for datum in data:
-            ax.bar(cnt, datum, 1, color=cm(datum), edgecolor=(0,0,0,0))
-            cnt += 1
+        for i in range(len(data)):
+            ax.bar(i, data[i], 1, color=cm(weight[i]), edgecolor=(0,0,0,0))
         ax.set_axis_off()
+        plt.ylim(0, 1)
     
     def plotConfidence(self, day, hour, minute, frame, frameResolution=None):
         """
@@ -380,15 +431,18 @@ class FrameDataView:
             
         ax = self.figs['days'].axes[0]
         data = self.fdvTree.plotData['days']['data']
-        self.plotColorCodedBar(data, ax)   
+        weight = self.fdvTree.plotData['days']['weight']
+        self.plotColorCodedBar(data, ax, weight)   
         
         ax = self.figs['hours'].axes[0]
         data = self.fdvTree.plotData['hours']['data']
-        self.plotColorCodedBar(data, ax)
+        weight = self.fdvTree.plotData['hours']['weight']
+        self.plotColorCodedBar(data, ax, weight)
         
         ax = self.figs['minutes'].axes[0]
         data = self.fdvTree.plotData['minutes']['data']
-        self.plotColorCodedBar(data, ax)
+        weight = self.fdvTree.plotData['minutes']['weight']
+        self.plotColorCodedBar(data, ax, weight)
         
         ax = self.figs['frames'].axes[0]
         data = self.fdvTree.plotData['frames']['data']
