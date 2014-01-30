@@ -36,8 +36,8 @@ class FrameDataVisualizationTree:
             self.tree[day][hour][minute]['max'] = -np.Inf
         
         
-    def updateStats(self, day, hour, minute, frame):
-        data = self.tree[day][hour][minute][frame]  
+    def updateMax(self, day, hour, minute, data):
+#         data = self.tree[day][hour][minute][frame]  
             
         if self.tree[day][hour][minute]['max'] < data:
             self.tree[day][hour][minute]['max'] = data
@@ -49,10 +49,31 @@ class FrameDataVisualizationTree:
                     self.tree[day]['max'] = data
         
         
-    def addSample(self, day, hour, minute, frame, confidence):
-        self.verifyStructureExists(day, hour, minute, frame)        
-        self.tree[day][hour][minute][frame] = confidence
-        self.updateStats(day, hour, minute, frame) 
+    def addSample(self, day, hour, minute, frame, data):
+        self.verifyStructureExists(day, hour, minute, frame)
+        
+        if frame in self.tree[day][hour][minute].keys():
+            self.replaceSample(day, hour, minute, frame, data)
+        else:     
+            self.insertSample(day, hour, minute, frame, data)
+            
+            
+    def insertSample(self, day, hour, minute, frame, data):
+        self.tree[day][hour][minute][frame] = data
+        self.updateMax(day, hour, minute, data) 
+        
+    
+    def replaceSample(self,day, hour, minute, frame, data):
+        oldData = self.tree[day][hour][minute][frame]    
+        self.tree[day][hour][minute][frame] = data
+        
+        if oldData == self.tree[day][hour][minute]['max']: 
+            newMax = np.max([self.tree[day][hour][minute][k] \
+                        for k in self.tree[day][hour][minute].keys()])
+            self.updateMax(day, hour, minute, newMax)
+        else:
+            self.updateMax(day, hour, minute, data)
+            
         
     def generateConfidencePlotData(self, day, hour, minute, frame, frameResolution=1):
         self.plotData = dict()
