@@ -1,5 +1,5 @@
 
-from matplotlibDistplay import Ui_MainWindow
+from matplotlibDisplay import Ui_MainWindow
 
 import sys
 from PySide import QtCore, QtGui
@@ -11,7 +11,8 @@ from time import time
 
 sys.path.append("/home/peter/phd/code")
 
-from pyTools.misc.FrameDataVisualization import FrameDataView
+from pyTools.misc.FrameDataVisualization import FrameDataView, \
+                                FrameDataVisualizationTreeTrajectories
 # from pyTools.system.videoExplorer import *
 
 
@@ -25,17 +26,22 @@ class TestClass(QtGui.QMainWindow):
         
         self.initializeConfidenceStructure()
         
-        self.day = 0
-        self.hour = 0
-        self.minute = 0
-        self.frame = 0 
+        self.day = None#0
+        self.hour = None #0
+        self.minute = None #0
+        self.frame = None 
+        
+        self.frameResolution = 15
         
         self.show()   
         
         
     def connectElements(self):        
         self.ui.btn_generateData.clicked.connect(self.generateNewSequence)
+        self.ui.btn_loadData.clicked.connect(self.loadSequence)
         self.ui.btn_redraw.clicked.connect(self.plotSequence)
+        self.ui.btn_set.clicked.connect(self.setDisplayRange)
+        self.ui.btn_clear.clicked.connect(self.resetDisplayRange)
         
     def initializeConfidenceStructure(self):        
         # first approach:
@@ -46,8 +52,11 @@ class TestClass(QtGui.QMainWindow):
         figs['hours'] = self.ui.confWidget2.canvas.fig
         figs['minutes'] = self.ui.confWidget3.canvas.fig
         figs['frames'] = self.ui.confWidget4.canvas.fig
+        figs['colourbar'] = self.ui.w_colourbar.canvas.fig
         
-        self.frameView = FrameDataView(figs=figs)
+        fdvTree = FrameDataVisualizationTreeTrajectories()
+        
+        self.frameView = FrameDataView(figs=figs, fdvTree=fdvTree)
         
 #         # second approach:
 #         # get existing figure handles and create new widgets from them
@@ -86,47 +95,79 @@ class TestClass(QtGui.QMainWindow):
                                            self.printDatumLocation)
         
         
-    def printDatumLocation(self, day, hour, minute, frame):
-        print "clicked on day {0}, hour {1}, minute {2}, frame {3}".format(
-                                                    day, hour, minute, frame)
+    def printDatumLocation(self, day, hour, minute, frame, data):
+        print "clicked on day {0}, hour {1}, minute {2}, frame {3}, data {4}".format(
+                                                    day, hour, minute, frame, data)
+        self.initLocations(day, hour, minute, frame)
+        self.plotSequence()
         
+    def initLocations(self, day, hour, minute, frame):
         if day == None:
-            self.day = 0
+            self.day = sorted(self.frameView.fdvTree.tree.keys())[0]
         else:
             self.day = day
             
         if hour == None:
-            self.hour = 0
+            self.hour = sorted(self.frameView.fdvTree.tree[self.day].keys())[0]
         else:
-            self.hour = hour
+            self.hour = hour#"{0:02d}".format(int(hour))
             
         if minute == None:
-            self.minute = 0
+            self.minute = sorted(self.frameView.fdvTree.tree[self.day][self.hour].keys())[0]
         else:
-            self.minute = minute
+            self.minute = minute#"{0:02d}".format(int(minute))
             
         if frame == None:
-            self.frame = 0
+            self.frame = sorted(self.frameView.fdvTree.tree[self.day][self.hour][self.minute].keys())[0]
         else:
             self.frame = frame
-            
-        self.plotSequence()
         
 #     @QtCore.Slot()
     def generateNewSequence(self):
         print "start"
         dayRng = range(1)
-        hourRng = range(2)
+        hourRng = range(24)
         minuteRng = range(60)
         frameRng = range(1800)
         t1 = time()
         self.frameView.fdvTree.generateRandomSequence(dayRng, hourRng, 
-                                                      minuteRng, frameRng)
+                                                    minuteRng, frameRng)
+#         self.frameView.fdvTree.load('/home/peter/phd/code/pyTools/notebooks/ECCV2014/annotation-vial0-peter-struggling.fdvt')
         print "finished in {0} sec".format(time()-t1)
         
+        self.day = None#0
+        self.hour = None #0
+        self.minute = None #0
+        self.frame = None 
+        
+        
+    def loadSequence(self):
+        print "start"
+        dayRng = range(1)
+        hourRng = range(24)
+        minuteRng = range(60)
+        frameRng = range(1800)
+        t1 = time()
+#         self.frameView.fdvTree.generateRandomSequence(dayRng, hourRng, 
+#                                                       minuteRng, frameRng)
+#         self.frameView.fdvTree.load('/home/peter/phd/code/pyTools/notebooks/ECCV2014/annotation-vial0-peter-struggling.fdvt')
+        self.frameView.fdvTree.load('/home/peter/phd/code/pyTools/notebooks/ECCV2014/posTree-v3.fdvtp')
+        print "finished in {0} sec".format(time()-t1)
+        
+        self.day = None#0
+        self.hour = None #0
+        self.minute = None #0
+        self.frame = None 
+        
+#         displayRange = self.frameView.getDisplayRange()
+#         self.ui.le_min.setText(str(displayRange[0]))
+#         self.ui.le_max.setText(str(displayRange[1]))
+        self.resetDisplayRange()
+        
     def plotSequence(self):        
-        self.frameView.plotConfidence(self.day, self.hour, self.minute, 
-                                      self.frame, 1)
+        self.initLocations(self.day, self.hour, self.minute, self.frame)
+        self.frameView.plotData(self.day, self.hour, self.minute, 
+                                      self.frame, self.frameResolution)
         
 #         self.widget.draw()
 #         self.widget_2.draw()
@@ -137,6 +178,18 @@ class TestClass(QtGui.QMainWindow):
         self.ui.confWidget2.draw()
         self.ui.confWidget3.draw()
         self.ui.confWidget4.draw()
+        
+    def setDisplayRange(self):
+        dMin = float(self.ui.le_min.text())
+        dMax = float(self.ui.le_max.text())
+        self.frameView.setDisplayRange([dMin, dMax])
+        self.plotSequence()
+        
+    def resetDisplayRange(self):
+        self.frameView.resetDisplayRange()
+        displayRange = self.frameView.getDisplayRange()
+        self.ui.le_min.setText("{0:.2f}".format(displayRange[0]))
+        self.ui.le_max.setText("{0:.2f}".format(displayRange[1]))
         
         
 if __name__ == "__main__":    

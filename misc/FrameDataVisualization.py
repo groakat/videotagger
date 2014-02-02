@@ -2,14 +2,18 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import cPickle as pickle
+import time
+import pyTools.videoProc.annotation as Annotation
 
-class FrameDataVisualizationTree:
+class FrameDataVisualizationTreeBase:
     def __init__(self):
         self.resetAllSamples()
+        self.range = [0,1]
         
     
     def resetAllSamples(self):
-        self.tree = dict()    
+        self.tree = dict()  
+        self.tree['max'] = 0  
         
         
     def save(self, filename):
@@ -26,7 +30,7 @@ class FrameDataVisualizationTree:
                 for minute in minuteRng:
                     minMax = np.random.rand(1)[0]
                     for frame in frameRng:
-                        if np.random.rand(1)[0] > 0.9:
+                        if np.random.rand(1)[0] > 1.9:
                             data = 0.999999
                         else:
                             data = np.random.rand(1)[0] * minMax
@@ -65,6 +69,9 @@ class FrameDataVisualizationTree:
             
                 if self.tree[day]['max'] < data:
                     self.tree[day]['max'] = data
+            
+                    if self.tree['max'] < data:
+                        self.tree['max'] = data
         
     
     def incrementMean(self, prevMean, data, n):
@@ -170,42 +177,105 @@ class FrameDataVisualizationTree:
         self.plotData['frames']['data'] = []
         self.plotData['frames']['weight'] = []
         self.plotData['frames']['tick'] = []
-        cnt = 0
+        cnt = 0        
+        tmpVal = []
+        tmpKeys = []
         for key in sorted(self.tree[day][hour][minute].keys()):
             if key in ['max', 'mean', 'sampleN']:
                 continue
             
-            if cnt == 0:               
-                tmpVal = 0
-                tmpKeys = []
+            tmpVal += [self.tree[day][hour][minute][key]]
+            tmpKeys += [key]      
+            cnt += 1  
             
-            if cnt < frameResolution:
-                tmpVal += self.tree[day][hour][minute][key]
-                tmpKeys += [key]
-                cnt += 1
-            else:
-                tmpVal /= frameResolution
-                self.plotData['frames']['data'] += [tmpVal]
-                self.plotData['frames']['weight'] += [tmpVal]
+            if not (cnt < frameResolution):
+#                 tmpVal /= frameResolution
+                self.plotData['frames']['data'] += [max(tmpVal)]
+                self.plotData['frames']['weight'] += [sum(tmpVal) / frameResolution]
                 self.plotData['frames']['tick'] += [tmpKeys]
-                cnt = 0
+                cnt = 0        
+                tmpVal = []
+                tmpKeys = []
+                
                 
         if cnt != 0:
-            tmpVal /= cnt
-            self.plotData['frames']['data'] += [tmpVal]
-            self.plotData['frames']['weight'] += [tmpVal]
+#             tmpVal /= cnt
+            self.plotData['frames']['data'] += [max(tmpVal)]
+            self.plotData['frames']['weight'] += [sum(tmpVal) / cnt]
             self.plotData['frames']['tick'] += [tmpKeys]
             
             
+            
+class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
+    def filename2Time(self, f):
+        timestamp = f.split('/')[-1]
+        day, timePart = timestamp.split('.')[:-1]
+        hour, minute, second = timePart.split('-')
+        
+        return day, hour, minute, second
+
+
+    def importAnnotations(self, bhvrList, vials=None, annotator="peter", behaviour="struggling"):
+        filt = Annotation.AnnotationFilter(vials, [annotator], [behaviour])
+        
+        for f in bhvrList:
+            # load annotation and filter it #
+            anno = Annotation.Annotation()
+    
+            anno.loadFromFile(f)
+            filteredAnno = anno.filterFrameList(filt)
+            
+            day, hour, minute, second = self.filename2Time(f)
+            
+            for i in range(len(filteredAnno.frameList)):
+                if filteredAnno.frameList[i][0] is None:
+                    data = 0
+                else:
+                    data = filteredAnno.frameList[i][0]['behaviour'][behaviour][annotator]
+                    
+                self.addSample(day, hour, minute, i, data)
+                     
+                     
+class FrameDataVisualizationTreeTrajectories(FrameDataVisualizationTreeBase):
+    def filename2Time(self, f):
+        timestamp = f.split('/')[-1]
+        day, timePart = timestamp.split('.')[:-2]
+        hour, minute, second = timePart.split('-')
+        
+        return day, hour, minute, second
+    
+    
+    def importTrajectories(self, posList, vial=0):
+        tmpPos = np.zeros((1,2))
+        for f in sorted(posList):
+            day, hour, minute, second = self.filename2Time(f)
+            
+            posMat = np.load(f)        
+            for i in range(posMat.shape[0]):
+                curPos = posMat[i][vial]
+                diff = abs(curPos - tmpPos)
+                data = np.sum(diff)
+                tmpPos = curPos
+                
+                self.addSample(day, hour, minute, i, data)
+                
+        self.range = [0, self.tree['max']]
+    
+    
+    def load(self, filename):
+        with open(filename, "rb") as f:
+            self.tree = pickle.load(f) 
+        self.range = [0, self.tree['max']]
         
 class FrameDataView:    
-    def __init__(self, figs=None, fdvTree=None, frameResolution=1):
+    def __init__(self, figs=None, fdvTree=None, frameResolution=1, cm=None):
         """
         figs (dict):
                 {'days': figure representing visualization for days,
                  'hours': figure representing visualization for hours,
                  'minutes': figure representing visualization for minutes,
-                 'frames': figure representing visualization for frames}
+                 'frames': figure representing visualization for frames
+                 'colourbar': figure representing the colourbar}
                  
                  if None, figures will be created automatically
                  
@@ -214,14 +284,23 @@ class FrameDataView:
                     
         """
         if fdvTree == None:
-            self.fdvTree = FrameDataVisualizationTree()
+            self.fdvTree = FrameDataVisualizationTreeBase()
         else:
             self.fdvTree = fdvTree
+            
+        
+        if cm is not None:
+            self.cm = cm
+        else:
+            self.cm = plt.cm.Paired
+            
             
         if figs == None:
             self.configureFigures()
         else:
-            self.figs = figs           
+            self.figs = figs        
+            if 'colourbar' in self.figs.keys():
+                self.plotColourbar() 
         
         self.frameResolution = 1
         self.initializeColours()
@@ -231,10 +310,16 @@ class FrameDataView:
         self.cbMinutes = dict()
         self.cbFrames = dict()
         
+        self.resetLocation()
+        
+        self.range = None
+        
+    def resetLocation(self):
         self.day = None
         self.hour = None
         self.minute = None
         self.frame= None
+        self.updateRemaining = True
         
     def configureFigures(self):
         
@@ -244,6 +329,7 @@ class FrameDataView:
         self.figs['hours'] = self.createFigure()
         self.figs['minutes'] = self.createFigure()
         self.figs['frames'] = self.createFigure()        
+        
         
     def initializeColours(self):
         # color dict for bar plots
@@ -266,23 +352,26 @@ class FrameDataView:
         
         return fig
     
+    def getDisplayRange(self):
+        if self.range is None:
+            return self.fdvTree.range
+        else:
+            return self.range
+    
+    
+    def setDisplayRange(self, rng):
+        self.displayRange = rng
+        self.updateRemaining = True
+        
+        
+    def resetDisplayRange(self):
+        self.displayRange = None
+        self.updateRemaining = True
+        return self.fdvTree.range
+    
         
     def linkFigureDays(self, fig):
         self.figs['days'] = fig
-#         for event in [  'button_press_event',
-#                         'button_release_event',
-#                         'draw_event',
-#                         'key_press_event',
-#                         'key_release_event',
-#                         'motion_notify_event', 
-#                         'pick_event' ,
-#                         'resize_event',
-#                         'scroll_event',
-#                         'figure_enter_event',
-#                         'figure_leave_event',
-#                         'axes_enter_event',
-#                         'axes_leave_event']:
-#             self.figs['days'].canvas.mpl_connect(event, self.callbackWrapperDays)
     
         
     def linkFigureHours(self, fig):
@@ -365,9 +454,12 @@ class FrameDataView:
                     event.button, event.x, event.y, event.xdata, event.ydata,
                     event.name)
         
-        if event.name in self.cbDays.keys():
+        if event.name in self.cbDays.keys():            
+            pos = int(np.floor(event.xdata))
+            dayKey = sorted(self.fdvTree.tree.keys())[pos]
+            data = self.fdvTree.tree[dayKey]['max']
             for cb in self.cbDays[event.name]:
-                cb(np.floor(event.xdata), None, None, None)
+                cb(dayKey, None, None, None, data)
     
     
     def callbackWrapperHours(self, event):
@@ -375,9 +467,12 @@ class FrameDataView:
                     event.button, event.x, event.y, event.xdata, event.ydata,
                     event.name)
         
-        if event.name in self.cbHours.keys():
+        if event.name in self.cbHours.keys():           
+            pos = int(np.floor(event.xdata))
+            hourKey = sorted(self.fdvTree.tree[self.day].keys())[pos]
+            data = self.fdvTree.tree[self.day][hourKey]['max']
             for cb in self.cbHours[event.name]:
-                cb(self.day, np.floor(event.xdata), None, None)
+                cb(self.day, hourKey, None, None, data)
     
     
     def callbackWrapperMinutes(self, event):
@@ -386,8 +481,11 @@ class FrameDataView:
                     event.name)
         
         if event.name in self.cbMinutes.keys():
+            pos = int(np.floor(event.xdata))
+            minuteKey = sorted(self.fdvTree.tree[self.day][self.hour].keys())[pos]
+            data = self.fdvTree.tree[self.day][self.hour][minuteKey]['max']
             for cb in self.cbMinutes[event.name]:
-                cb(self.day, self.hour,  np.floor(event.xdata), None)
+                cb(self.day, self.hour,  minuteKey, None, data)
     
     
     def callbackWrapperFrames(self, event):
@@ -397,23 +495,42 @@ class FrameDataView:
         frame = np.floor(event.xdata) * self.frameResolution
         
         if event.name in self.cbFrames.keys():
+            pos = int(frame)
+            frameKey = sorted(\
+                self.fdvTree.tree[self.day][self.hour][self.minute].keys())[pos]
+            data = self.fdvTree.tree[self.day][self.hour][self.minute][frameKey]
             for cb in self.cbFrames[event.name]:
-                cb(self.day, self.hour,  self.minute, frame)
+                cb(self.day, self.hour,  self.minute, frameKey, data)
         
+    def plotColourbar(self):
+        fig = plt.figure(self.figs['colourbar'].number)
+        a = np.outer(np.arange(0,1,0.01),np.ones(10))
+        ax = plt.imshow(a,aspect='auto',cmap=self.cm,origin="lower")
+        ax.axes.set_axis_off()
                    
-    def plotColorCodedBar(self, data, ax, weight=None):
+    def plotColorCodedBar(self, data, ax, weight=None, rng=None, cm=None):
         if weight is None:
             weight = data
+        
+        if rng is None:
+            rng = [0, 1]    
+        
+        if cm == None:
+            cm = self.cm
+        rng[1] += np.spacing(1)
             
         fig = plt.figure(ax.get_figure().number)
-        plt.cla()     
-        cm = mpl.colors.LinearSegmentedColormap('my_colormap',self.cdict, 256)
+        plt.cla()
+#         cm = mpl.colors.LinearSegmentedColormap('my_colormap',self.cdict, 256)
         for i in range(len(data)):
-            ax.bar(i, data[i], 1, color=cm(weight[i]), edgecolor=(0,0,0,0))
+            ax.bar(i, data[i], 0.8, color=cm(weight[i] / rng[1]), 
+                   edgecolor=(0,0,0,0))
+            
         ax.set_axis_off()
-        plt.ylim(0, 1)
+        plt.ylim(rng[0], rng[1])
+        plt.xlim(0, len(data) - 0.2)
     
-    def plotConfidence(self, day, hour, minute, frame, frameResolution=None):
+    def plotData(self, day, hour, minute, frame, frameResolution=None):
         """
         frameResolution (int):
                     if None, standard (constructor) frameResolution will be
@@ -422,31 +539,48 @@ class FrameDataView:
         if frameResolution is not None:
             self.frameResolution = frameResolution
             
-        self.day = day
-        self.hour = hour
-        self.minute = minute
-            
         self.fdvTree.generateConfidencePlotData(day, hour, minute, frame, 
                                                 self.frameResolution)
-            
-        ax = self.figs['days'].axes[0]
-        data = self.fdvTree.plotData['days']['data']
-        weight = self.fdvTree.plotData['days']['weight']
-        self.plotColorCodedBar(data, ax, weight)   
-        
-        ax = self.figs['hours'].axes[0]
-        data = self.fdvTree.plotData['hours']['data']
-        weight = self.fdvTree.plotData['hours']['weight']
-        self.plotColorCodedBar(data, ax, weight)
-        
-        ax = self.figs['minutes'].axes[0]
-        data = self.fdvTree.plotData['minutes']['data']
-        weight = self.fdvTree.plotData['minutes']['weight']
-        self.plotColorCodedBar(data, ax, weight)
-        
-        ax = self.figs['frames'].axes[0]
-        data = self.fdvTree.plotData['frames']['data']
-        self.plotColorCodedBar(data, ax)
         
         
         
+        if self.displayRange is None:
+            rng = self.fdvTree.range
+        else:
+            rng = self.displayRange
+                
+        if self.day != day or self.updateRemaining:            
+            self.day = day
+            self.updateRemaining = True            
+            ax = self.figs['days'].axes[0]
+            data = self.fdvTree.plotData['days']['data']
+            weight = self.fdvTree.plotData['days']['weight']
+            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm)   
+        
+        if self.hour != hour or self.updateRemaining:
+            self.hour = hour
+            self.updateRemaining = True
+            ax = self.figs['hours'].axes[0]
+            data = self.fdvTree.plotData['hours']['data']
+            weight = self.fdvTree.plotData['hours']['weight']
+            maxVal = self.fdvTree.range[1]
+            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm)  
+        
+        if self.minute != minute or self.updateRemaining:
+            self.minute = minute
+            self.updateRemaining = True
+            ax = self.figs['minutes'].axes[0]
+            data = self.fdvTree.plotData['minutes']['data']
+            weight = self.fdvTree.plotData['minutes']['weight']
+            maxVal = self.fdvTree.range[1]
+            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm)  
+        
+        if self.updateRemaining:
+            ax = self.figs['frames'].axes[0]
+            data = self.fdvTree.plotData['frames']['data']
+            weight = self.fdvTree.plotData['frames']['weight']
+            maxVal = self.fdvTree.range[1]
+            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm)  
+        
+        
+        self.updateRemaining = False
