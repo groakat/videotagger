@@ -152,9 +152,9 @@
    <widget class="FrameViewWidget" name="widget" native="true">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>290</y>
-      <width>611</width>
+      <x>60</x>
+      <y>300</y>
+      <width>581</width>
       <height>211</height>
      </rect>
     </property>

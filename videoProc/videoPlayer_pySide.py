@@ -6,7 +6,7 @@ from PySide.QtCore import *
 from PySide.QtOpenGL import * 
 
 
-from videoPlayer_auto import Ui_Form
+from pyTools.gui.videoPlayer_auto import Ui_Form
 
 from pyTools.system.videoExplorer import *
 from pyTools.imgProc.imgViewer import *

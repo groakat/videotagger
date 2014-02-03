@@ -67,6 +67,17 @@
      </rect>
     </property>
    </widget>
+   <widget class="QWidget" name="verticalLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>110</x>
+      <y>330</y>
+      <width>521</width>
+      <height>171</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout"/>
+   </widget>
    <widget class="QPushButton" name="btn_generateData">
     <property name="geometry">
      <rect>
@@ -149,16 +160,6 @@
      <string>clear</string>
     </property>
    </widget>
-   <widget class="FrameViewWidget" name="widget" native="true">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>290</y>
-      <width>611</width>
-      <height>211</height>
-     </rect>
-    </property>
-   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -177,12 +178,6 @@
    <class>MplWidget</class>
    <extends>QWidget</extends>
    <header>mplwidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>FrameViewWidget</class>
-   <extends>QWidget</extends>
-   <header>FrameViewWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -77,6 +77,10 @@ class FrameViewWidget(QtGui.QWidget):
         self.frame = None 
         self.resetDisplayRange()
         
+    def registerButtonPressCallbacks(self, figType, callbackFunction):
+        self.frameView.registerMPLCallback(figType, 'button_press_event', 
+                                           callbackFunction)
+        
     def printDatumLocation(self, day, hour, minute, frame, data):
         print "clicked on day {0}, hour {1}, minute {2}, frame {3}, data {4}".format(
                                                     day, hour, minute, frame, data)
