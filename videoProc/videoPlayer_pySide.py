@@ -954,7 +954,7 @@ class videoPlayer(QMainWindow):
             
         usedRoi = 0
         
-        cfg.log.debug("Rois: {0}".format(rois))
+        cfg.log.info("Rois: {0}".format(rois))
         for i in range(len(rois)):        
             x1, y1, x2, y2 = rois[i][0]
             color = rois[i][1]
@@ -1043,7 +1043,7 @@ class videoPlayer(QMainWindow):
         # place annotation roi
         
         anno = frame[2]
-        self.tmpAnnotation.setFrameList([[anno]])
+        self.tmpAnnotation.setFrameList([anno])
         
         rois = []
         for i in range(len(self.annotations)):
