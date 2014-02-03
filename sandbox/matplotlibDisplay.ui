@@ -149,12 +149,12 @@
      <string>clear</string>
     </property>
    </widget>
-   <widget class="Ui_FrameViewWidget" name="widget" native="true">
+   <widget class="FrameViewWidget" name="widget" native="true">
     <property name="geometry">
      <rect>
       <x>60</x>
       <y>300</y>
-      <width>511</width>
+      <width>581</width>
       <height>211</height>
      </rect>
     </property>
@@ -180,7 +180,7 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>Ui_FrameViewWidget</class>
+   <class>FrameViewWidget</class>
    <extends>QWidget</extends>
    <header>FrameViewWidget.h</header>
    <container>1</container>

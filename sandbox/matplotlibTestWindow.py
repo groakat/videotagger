@@ -33,15 +33,22 @@ class TestClass(QtGui.QMainWindow):
         
         self.frameResolution = 15
         
+        self.ui.widget.loadSequence()
+        
         self.show()   
         
         
     def connectElements(self):        
-        self.ui.btn_generateData.clicked.connect(self.generateNewSequence)
-        self.ui.btn_loadData.clicked.connect(self.loadSequence)
-        self.ui.btn_redraw.clicked.connect(self.plotSequence)
-        self.ui.btn_set.clicked.connect(self.setDisplayRange)
-        self.ui.btn_clear.clicked.connect(self.resetDisplayRange)
+#         self.ui.btn_generateData.clicked.connect(self.generateNewSequence)
+#         self.ui.btn_loadData.clicked.connect(self.loadSequence)
+#         self.ui.btn_redraw.clicked.connect(self.plotSequence)
+#         self.ui.btn_set.clicked.connect(self.setDisplayRange)
+#         self.ui.btn_clear.clicked.connect(self.resetDisplayRange)
+        
+        
+        self.ui.btn_generateData.clicked.connect(self.ui.widget.generateNewSequence)
+        self.ui.btn_loadData.clicked.connect(self.ui.widget.loadSequence)
+        self.ui.btn_redraw.clicked.connect(self.ui.widget.plotSequence)
         
     def initializeConfidenceStructure(self):        
         # first approach:
@@ -57,30 +64,6 @@ class TestClass(QtGui.QMainWindow):
         fdvTree = FrameDataVisualizationTreeTrajectories()
         
         self.frameView = FrameDataView(figs=figs, fdvTree=fdvTree)
-        
-#         # second approach:
-#         # get existing figure handles and create new widgets from them
-#         figs = self.frameView.getFigureHandles()         
-#         
-#         self.widget = FigureCanvas(figs['days'])
-#         self.widget.setGeometry(QtCore.QRect(100, 350, 471, 31))
-#         self.widget.setObjectName("widget")
-#         self.widget_2 = FigureCanvas(figs['hours'])
-#         self.widget_2.setGeometry(QtCore.QRect(100, 410, 471, 31))
-#         self.widget_2.setObjectName("widget_2")
-#         self.widget_3 = FigureCanvas(figs['minutes'])
-#         self.widget_3.setGeometry(QtCore.QRect(100, 470, 471, 31))
-#         self.widget_3.setObjectName("widget_3")
-#         self.widget_4 = FigureCanvas(figs['frames'])
-#         self.widget_4.setGeometry(QtCore.QRect(100, 530, 471, 31))
-#         self.widget_4.setObjectName("widget_4")
-#                 
-#         l = self.ui.verticalLayout
-#         
-#         l.addWidget(self.widget)
-#         l.addWidget(self.widget_2)
-#         l.addWidget(self.widget_3)
-#         l.addWidget(self.widget_4)
 
         self.frameView.registerMPLCallback('days', 'button_press_event', 
                                            self.printDatumLocation)
