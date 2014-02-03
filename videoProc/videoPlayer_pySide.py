@@ -2552,9 +2552,11 @@ class VideoHandler(QObject):
         
         try:
             if increment > 0:
-                frame = self.getNextFrame(increment, doBufferCheck=False, emitFileChange=False)
+                frame = self.getNextFrame(increment, doBufferCheck=False, 
+                                          emitFileChange=False)
             else:
-                frame = self.getPrevFrame(-increment, doBufferCheck=False, emitFileChange=False)
+                frame = self.getPrevFrame(-increment, doBufferCheck=False, 
+                                          emitFileChange=False)
         except KeyError:
             pass
         except RuntimeError:
@@ -2583,7 +2585,7 @@ class VideoHandler(QObject):
 #                          ]
 
                 frame = self.getCurrentFrameUnbuffered(doBufferCheck, 
-                                                   updateAnnotationViews)
+                                                       updateAnnotationViews)
                 #[[[0,0]] * (max(self.selectedVials) + 1), np.zeros((64,64,3))]
                     
         except KeyError:
@@ -2902,6 +2904,9 @@ class VideoHandler(QObject):
                 if  curKey in self.videoLengths.keys():
                     if self.videoLengths[curKey] is not None:
                         curIdx = self.videoLengths[curKey] / self.bufferWidth
+                    else:     
+                        curIdx = None
+                        curKey = None
                 else:
                     self.bufferEnding(curKey)       
                     curIdx = None
@@ -2966,8 +2971,7 @@ class VideoHandler(QObject):
         cfg.log.debug("input: {0} [{1}]".format(path, idx))
         bufferStart = idx * self.bufferWidth
         idxRange = slice(bufferStart, bufferStart + self.bufferWidth)
-        
-        
+            
         cfg.log.debug("fetching {0} [{1}]".format(path, idxRange))
         
         if path not in self.videoDict.keys():
