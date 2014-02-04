@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Wed Nov 13 20:24:38 2013
-#      by: pyside-uic 0.2.13 running on PySide 1.1.0
+# Created: Tue Feb  4 11:10:13 2014
+#      by: pyside-uic 0.2.14 running on PySide 1.1.2
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -12,7 +12,7 @@ from PySide import QtCore, QtGui
 class Ui_Form(object):
     def setupUi(self, Form):
         Form.setObjectName("Form")
-        Form.resize(1312, 758)
+        Form.resize(1312, 826)
         self.pb_startVideo = QtGui.QPushButton(Form)
         self.pb_startVideo.setGeometry(QtCore.QRect(1120, 570, 151, 23))
         self.pb_startVideo.setObjectName("pb_startVideo")
@@ -28,25 +28,12 @@ class Ui_Form(object):
         self.lbl_v1.setGeometry(QtCore.QRect(1100, 520, 111, 16))
         self.lbl_v1.setFrameShape(QtGui.QFrame.NoFrame)
         self.lbl_v1.setObjectName("lbl_v1")
-        self.lv_paths = QtGui.QListView(Form)
-        self.lv_paths.setGeometry(QtCore.QRect(60, 570, 891, 121))
-        self.lv_paths.setObjectName("lv_paths")
         self.pb_stopVideo = QtGui.QPushButton(Form)
         self.pb_stopVideo.setGeometry(QtCore.QRect(1120, 590, 151, 23))
         self.pb_stopVideo.setObjectName("pb_stopVideo")
-        self.sldr_paths = QtGui.QSlider(Form)
-        self.sldr_paths.setGeometry(QtCore.QRect(70, 690, 871, 23))
-        self.sldr_paths.setOrientation(QtCore.Qt.Horizontal)
-        self.sldr_paths.setObjectName("sldr_paths")
         self.pb_jmp2frame = QtGui.QPushButton(Form)
         self.pb_jmp2frame.setGeometry(QtCore.QRect(1120, 610, 151, 23))
         self.pb_jmp2frame.setObjectName("pb_jmp2frame")
-        self.lv_frames = QtGui.QListView(Form)
-        self.lv_frames.setGeometry(QtCore.QRect(960, 570, 61, 121))
-        self.lv_frames.setObjectName("lv_frames")
-        self.lv_jmp = QtGui.QListView(Form)
-        self.lv_jmp.setGeometry(QtCore.QRect(1030, 570, 61, 121))
-        self.lv_jmp.setObjectName("lv_jmp")
         self.pb_compDist = QtGui.QPushButton(Form)
         self.pb_compDist.setGeometry(QtCore.QRect(1120, 630, 151, 23))
         self.pb_compDist.setObjectName("pb_compDist")
@@ -224,8 +211,34 @@ class Ui_Form(object):
         self.progBar.setPalette(palette)
         self.progBar.setProperty("value", 24)
         self.progBar.setObjectName("progBar")
+        self.tabWidget = QtGui.QTabWidget(Form)
+        self.tabWidget.setGeometry(QtCore.QRect(30, 560, 1071, 251))
+        self.tabWidget.setObjectName("tabWidget")
+        self.tab_1 = QtGui.QWidget()
+        self.tab_1.setObjectName("tab_1")
+        self.sldr_paths = QtGui.QSlider(self.tab_1)
+        self.sldr_paths.setGeometry(QtCore.QRect(20, 130, 871, 23))
+        self.sldr_paths.setOrientation(QtCore.Qt.Horizontal)
+        self.sldr_paths.setObjectName("sldr_paths")
+        self.lv_frames = QtGui.QListView(self.tab_1)
+        self.lv_frames.setGeometry(QtCore.QRect(910, 10, 61, 121))
+        self.lv_frames.setObjectName("lv_frames")
+        self.lv_jmp = QtGui.QListView(self.tab_1)
+        self.lv_jmp.setGeometry(QtCore.QRect(980, 10, 61, 121))
+        self.lv_jmp.setObjectName("lv_jmp")
+        self.lv_paths = QtGui.QListView(self.tab_1)
+        self.lv_paths.setGeometry(QtCore.QRect(10, 10, 891, 121))
+        self.lv_paths.setObjectName("lv_paths")
+        self.tabWidget.addTab(self.tab_1, "")
+        self.tab_2 = QtGui.QWidget()
+        self.tab_2.setObjectName("tab_2")
+        self.frameView = FrameViewWidget(self.tab_2)
+        self.frameView.setGeometry(QtCore.QRect(10, -10, 941, 221))
+        self.frameView.setObjectName("frameView")
+        self.tabWidget.addTab(self.tab_2, "")
 
         self.retranslateUi(Form)
+        self.tabWidget.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(Form)
 
     def retranslateUi(self, Form):
@@ -244,4 +257,7 @@ class Ui_Form(object):
         self.speed_lbl.setText(QtGui.QApplication.translate("Form", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.lbl_vial.setText(QtGui.QApplication.translate("Form", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.progBar.setFormat(QtGui.QApplication.translate("Form", "%p%", None, QtGui.QApplication.UnicodeUTF8))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_1), QtGui.QApplication.translate("Form", "Filenames", None, QtGui.QApplication.UnicodeUTF8))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QtGui.QApplication.translate("Form", "Frame View", None, QtGui.QApplication.UnicodeUTF8))
 
+from FrameViewWidget import FrameViewWidget

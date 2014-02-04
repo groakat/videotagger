@@ -33,7 +33,7 @@ class TestClass(QtGui.QMainWindow):
         
         self.frameResolution = 15
         
-        self.ui.widget.loadSequence()
+        self.ui.widget.loadSequence("/home/peter/phd/code/pyTools/notebooks/ECCV2014/annotation-cac-peter-drinking.fdvt")
         
         self.show()   
         

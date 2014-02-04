@@ -215,25 +215,49 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         return day, hour, minute, second
 
 
-    def importAnnotations(self, bhvrList, vials=None, annotator="peter", behaviour="struggling"):
+    def filename2TimeRunningIndeces(self, f):
+        timestamp = f.split('/')[-1].split('.')[0]
+        rawMinutes = timestamp.split('_')[-1]
+        day, hour, minute, second = self.minutes2Time(int(rawMinutes))
+        
+        return day, hour, minute, second
+    
+    
+    def minutes2Time(self, rawMinutes):
+        days = rawMinutes // (60 * 24)
+        hours = rawMinutes // 60
+        minutes = rawMinutes % 60
+        second = 0    
+        return days, hours, minutes, second
+
+
+    def importAnnotations(self, bhvrList, vials=None, annotator="peter", 
+                          behaviour="struggling", runningIndeces=False):
         filt = Annotation.AnnotationFilter(vials, [annotator], [behaviour])
         
         for f in bhvrList:
             # load annotation and filter it #
             anno = Annotation.Annotation()
-    
+        
             anno.loadFromFile(f)
             filteredAnno = anno.filterFrameList(filt)
             
-            day, hour, minute, second = self.filename2Time(f)
+            if not runningIndeces:
+                day, hour, minute, second = self.filename2Time(f)
+            else:
+                day, hour, minute, second = self.filename2TimeRunningIndeces(f)
+                
             
             for i in range(len(filteredAnno.frameList)):
                 if filteredAnno.frameList[i][0] is None:
                     data = 0
                 else:
                     data = filteredAnno.frameList[i][0]['behaviour'][behaviour][annotator]
+                    if type(data) == dict:
+                        data = data['confidence']
                     
                 self.addSample(day, hour, minute, i, data)
+                  
                      
                      
 class FrameDataVisualizationTreeTrajectories(FrameDataVisualizationTreeBase):
@@ -447,6 +471,7 @@ class FrameDataView:
                 self.figs[figKey].canvas.mpl_connect(event, 
                                                      self.callbackWrapperFrames)
             self.cbFrames[event] += [callbackFunction]
+            print "callback added to frames", callbackFunction, self.cbFrames
     
     
     def callbackWrapperDays(self, event):

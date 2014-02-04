@@ -10,7 +10,7 @@
 from PySide import QtCore, QtGui
 
 from time import time
-import sys 
+import sys , copy
 sys.path.append("/home/peter/phd/code")
 from pyTools.misc.FrameDataVisualization import FrameDataView, \
                                 FrameDataVisualizationTreeTrajectories
@@ -24,6 +24,7 @@ class FrameViewWidget(QtGui.QWidget):
         self.setupUi(self)
         
         self.frameResolution = 15
+        self.customCallbacks = []
         
         self.fdvTree = FrameDataVisualizationTreeTrajectories()
         self.initializeConfidenceStructure()
@@ -70,6 +71,11 @@ class FrameViewWidget(QtGui.QWidget):
         self.frameView.registerMPLCallback('frames', 'button_press_event', 
                                            self.printDatumLocation)
         
+        tmpCallbacks = copy.copy(self.customCallbacks)
+        self.customCallbacks = []
+        
+        for figType, callbackFunction in tmpCallbacks:
+            self.registerButtonPressCallback(figType, callbackFunction)
         
         self.day = None#0
         self.hour = None #0
@@ -77,9 +83,11 @@ class FrameViewWidget(QtGui.QWidget):
         self.frame = None 
         self.resetDisplayRange()
         
-    def registerButtonPressCallbacks(self, figType, callbackFunction):
+    def registerButtonPressCallback(self, figType, callbackFunction):
+        print "registerBuggerPressCallback"
         self.frameView.registerMPLCallback(figType, 'button_press_event', 
                                            callbackFunction)
+        self.customCallbacks += [[figType, callbackFunction]]
         
     def printDatumLocation(self, day, hour, minute, frame, data):
         print "clicked on day {0}, hour {1}, minute {2}, frame {3}, data {4}".format(
@@ -136,6 +144,7 @@ class FrameViewWidget(QtGui.QWidget):
         print "finished in {0} sec".format(time()-t1)
         
         self.initializeConfidenceStructure()
+        self.draw()
         
     def plotSequence(self):        
         self.initLocations(self.day, self.hour, self.minute, self.frame)
