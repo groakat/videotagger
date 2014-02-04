@@ -6,7 +6,7 @@ from PySide.QtCore import *
 from PySide.QtOpenGL import * 
 
 
-from videoPlayer_auto import Ui_Form
+from pyTools.gui.videoPlayer_auto import Ui_Form
 
 from pyTools.system.videoExplorer import *
 from pyTools.imgProc.imgViewer import *
@@ -505,6 +505,7 @@ class videoPlayer(QMainWindow):
         self.metadata = []
         self.confidence = 0
         
+        self.usingVideoRunningIndeces = True
         
         self.vialRoi = vialROI#[[350, 660], [661, 960], [971, 1260], [1290, 1590]]
         
@@ -555,6 +556,10 @@ class videoPlayer(QMainWindow):
         
         self.ui.cb_trajectory.setChecked(self.showTraject)
         self.showTrajectories(self.showTraject)
+        
+        self.setupFrameView()
+        
+        
         self.show()        
         logGUI.info(json.dumps(
                             {"message":'"--------- opened GUI ------------"'})) 
@@ -656,57 +661,7 @@ class videoPlayer(QMainWindow):
         self.annotations[3]["color"] = QColor(0,255,0,150)
         
 
-#         self.createPrevFrames(xPos - 15, yPos - (self.prevSize + 20))
         self.createPrevFrames(xPos + 135, yPos - (self.prevSize + 20))
-        
-#         self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
-#                                        annotator=[self.annotations[0]["annot"]], 
-#                                        behaviourName=[self.annotations[0]["behav"]], 
-#                                        color = self.annotations[0]["color"],
-#                                        geo=QRect(xPos, yPos, width, height))]
-# #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
-#         self.annoViewList[-1].show()
-#         self.vh.addAnnoView(self.annoViewList[-1]) 
-#         self.annoViewLabel += [QLabel(self)]
-#         self.annoViewLabel[-1].setText("{0}: {1}".format(\
-#                                             self.annotations[0]["annot"],
-#                                             self.annotations[0]["behav"]))
-#         self.annoViewLabel[-1].move(xPos + width + 10, yPos)        
-#         self.annoViewLabel[-1].adjustSize()       
-#         yPos += height + 5
-#         
-#         self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
-#                                        annotator=[self.annotations[1]["annot"]], 
-#                                        behaviourName=[self.annotations[1]["behav"]], 
-#                                        color = self.annotations[1]["color"], 
-#                                        geo=QRect(xPos, yPos, width, height))]
-# #         self.annoViewList[-1].setGeometry()
-#         self.annoViewList[-1].show()
-#         self.vh.addAnnoView(self.annoViewList[-1])       
-#         self.annoViewLabel += [QLabel(self)]
-#         self.annoViewLabel[-1].setText("{0}: {1}".format(\
-#                                             self.annotations[1]["annot"],
-#                                             self.annotations[1]["behav"]))
-#         self.annoViewLabel[-1].move(xPos + width + 10, yPos)         
-#         self.annoViewLabel[-1].adjustSize()       
-#         yPos += height + 5 
-#         
-#         self.annoViewList += [AnnoView(self, vialNo=self.selectedVial, 
-#                                        annotator=[self.annotations[2]["annot"]], 
-#                                        behaviourName=[self.annotations[2]["behav"]], 
-#                                        color = self.annotations[2]["color"], 
-#                                        geo=QRect(xPos, yPos, width, height))]
-# #         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
-#         self.annoViewList[-1].show()
-#         self.vh.addAnnoView(self.annoViewList[-1])     
-#         self.annoViewLabel += [QLabel(self)]
-#         self.annoViewLabel[-1].setText("{0}: {1}".format(\
-#                                             self.annotations[2]["annot"],
-#                                             self.annotations[2]["behav"]))
-#         self.annoViewLabel[-1].move(xPos + width + 10, yPos)          
-#         self.annoViewLabel[-1].adjustSize()    
-#                
-#         yPos += height + 5  
         
         self.createAnnoView(xPos, yPos, width, height, 0)
         yPos += height + 5  
@@ -724,6 +679,13 @@ class videoPlayer(QMainWindow):
         #~ width = 
         self.ui.progBar.setVisible(False)        
         self.ui.progBar.move(xPos + 220, yPos + 3)
+        
+          
+        
+    def setupFrameView(self):
+        frameView = self.ui.frameView
+        frameView.registerButtonPressCallback('frames', self.selectVideoTime)
+        frameView.loadSequence("/home/peter/phd/code/pyTools/notebooks/ECCV2014/annotation-cac-peter-drinking.fdvt")
             
             
     def createPrevFrames(self, xPos, yPos):
@@ -1357,18 +1319,39 @@ class videoPlayer(QMainWindow):
             
 
     @cfg.logClassFunction
-    def selectVideo(self, idx):
+    def selectVideo(self, idx, frame=0):
         self.idx = idx
         #self.setVideo(self.idx)
-        self.vh.getFrame(sorted(self.fileList)[idx], 0)
+        self.vh.getFrame(sorted(self.fileList)[idx], frame)
         self.ui.lbl_v0.setText("current file: {0}".format( \
                                                     sorted(self.fileList)[idx]))
+        
+        self.startLoop.emit()
+        
+    def selectVideoTime(self, day, hour, minute, frame, data):
+        
+        print "selectVideoTime: clicked on day {0}, hour {1}, minute {2}, frame {3}, data {4}".format(
+                                                    day, hour, minute, frame, data)
+        
+        if self.usingVideoRunningIndeces:
+            idx = day * (24 * 60) + hour * 60 + minute
+        else:
+            dataStr = "{day}.{hour}-{minute}".format(day=day, hour=hour, 
+                                                     minute=minute)
+            idx = [idx for idx in range(len(self.posList))  
+                            if dataStr in self.posList[idx]]
+            if len(idx) == 0:
+                raise ValueError("dataStr retrieved no result")
+            if len(idx) > 1:
+                raise ValueError("dataStr retrieved ambigous result")
+        
+        self.selectVideo(idx, frame)
+                
         
     @cfg.logClassFunctionInfo
     def selectVideoLV(self, mdl):
         self.idx = mdl.row()   
         self.selectVideo(self.idx)
-        self.startLoop.emit()
         
     def jump2selectedVideo(self):
         self.selectVideoLV(self.ui.lv_paths.selectionModel().currentIndex())
@@ -2500,8 +2483,7 @@ class VideoHandler(QObject):
         # always do that at the end
 #         self.checkBuffer()
         
-        self.vE = videoExplorer()
-        
+        self.vE = videoExplorer()       
         
 
     def maxOfSelectedVials(self):
@@ -2664,7 +2646,7 @@ class VideoHandler(QObject):
                         for i in range(self.maxOfSelectedVials() + 1)], 
                  [[np.zeros((10,10))]  * \
                              (self.maxOfSelectedVials() + 1)],
-                 []
+                 [[]]
                  ]
         
 #         if doBufferCheck:
