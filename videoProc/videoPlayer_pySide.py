@@ -1335,6 +1335,7 @@ class videoPlayer(QMainWindow):
         
         if self.usingVideoRunningIndeces:
             idx = day * (24 * 60) + hour * 60 + minute
+            idx -= 1
         else:
             dataStr = "{day}.{hour}-{minute}".format(day=day, hour=hour, 
                                                      minute=minute)
