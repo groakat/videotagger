@@ -846,6 +846,8 @@ class videoPlayer(QMainWindow):
         
     @cfg.logClassFunction
     def updateLabel(self, lbl, p, img):
+        
+        p = [100, 100]
         self.loadImageIntoLabel(lbl, img)
 #         if img is not None:
 # #             qi = array2qimage(img)
