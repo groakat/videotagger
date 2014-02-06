@@ -286,15 +286,15 @@ def getPropertyFromFrameAnno(a, prop):
         List containing values of the properties
     """
     out = []
-    for bk in a[0]:
+    for bk in a:
         if bk != 'name':
-            for bnk in a[0][bk]:
-                for ak in a[0][bk][bnk]:
-                    if type(a[0][bk][bnk][ak]) == int:
+            for bnk in a[bk]:
+                for ak in a[bk][bnk]:
+                    if type(a[bk][bnk][ak]) == int:
                         if prop == "confidence":
-                            out += [a[0][bk][bnk][ak]]
-                    elif prop in a[0][bk][bnk][ak].keys():
-                        out += [a[0][bk][bnk][ak][prop]]
+                            out += [a[bk][bnk][ak]]
+                    elif prop in a[bk][bnk][ak].keys():
+                        out += [a[bk][bnk][ak][prop]]
                         
     return out
 

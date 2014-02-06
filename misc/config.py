@@ -8,7 +8,7 @@ init(autoreset=True)
 # set logger up
       
 # Make a global logging object.
-logLevel = logging.INFO
+logLevel = logging.DEBUG
 
 
 log = logging.getLogger("log")

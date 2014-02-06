@@ -216,7 +216,7 @@ class filterObj(QObject):
             self.stepSize = self.orignalStepSize
         
             
-    @cfg.logClassFunction
+#     @cfg.logClassFunction
     def eventFilter(self, obj, event):
         if (event.type() == QEvent.KeyPress):
             key = event.key()
@@ -429,7 +429,7 @@ class videoPlayer(QMainWindow):
                         filterObjArgs=None,
                         startVideoName=None,
                         rewindOnClick=False,
-                        videoOnly=True,
+                        croppedVideo=True,
                         videoEnding='.avi', #'.v0.avi'
                         ):
         """
@@ -459,7 +459,12 @@ class videoPlayer(QMainWindow):
         self.mouseEventFilter = MouseFilterObj(self)
         
         
-        self.fileList = self.providePosList(path, ending=videoEnding)    
+        self.croppedVideo = croppedVideo
+        
+        if croppedVideo:
+            videoEnding = ".v{0}{1}".format(selectedVial, videoEnding)
+        
+        self.fileList = self.providePosList(path, ending='.bhvr')    
         
         self.lm = MyListModel(self.fileList, self)        
         self.ui.lv_paths.setModel(self.lm)
@@ -516,7 +521,6 @@ class videoPlayer(QMainWindow):
         self.ui.lbl_vial.setText("vial: {0}".format(self.selectedVial))
                 
                 
-        self.videoOnly = videoOnly
 #         self.vh.changedFile.connect(self.changeVideo)
         
         
@@ -536,15 +540,18 @@ class videoPlayer(QMainWindow):
             
             startIdx = startIdx[0]
         
+        self.fileList = self.convertFileList(self.fileList, videoEnding)
+        
         self.vh = VideoHandler(self.fileList, self.changeVideo, 
-                               self.selectedVial, startIdx=startIdx)
+                               self.selectedVial, startIdx=startIdx,
+                               videoEnding=videoEnding)
         
         
         self.updateFrameList(range(2000))
         
         self.configureUI()
         
-        if not self.videoOnly:
+        if self.croppedVideo:
             self.setBackground(backgroundPath)#"/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
         else:
             self.setBackground()
@@ -679,8 +686,7 @@ class videoPlayer(QMainWindow):
         #~ width = 
         self.ui.progBar.setVisible(False)        
         self.ui.progBar.move(xPos + 220, yPos + 3)
-        
-          
+    
         
     def setupFrameView(self):
         frameView = self.ui.frameView
@@ -736,6 +742,13 @@ class videoPlayer(QMainWindow):
                 pass
         painter.end()
         
+        
+    def convertFileList(self, fileList, videoEnding):
+        fl = []
+        for f in sorted(fileList):
+            fl += ['.'.join(f.split('.')[:-1]) + videoEnding]
+        
+        return fl
         
     @cfg.logClassFunctionInfo
     def setCropCenter(self, x, y, width=None, increment=None):        
@@ -850,7 +863,7 @@ class videoPlayer(QMainWindow):
         if self.selectedVial is None:
             newY = self.vialRoi[0][1] - p[1] - 32
         else:
-            newY = self.vialRoi[self.selectedVial][1] - p[1] - 32 #lblOrigin.y() + (p[0] * self.yFactor) + self.yOffset
+            newY = self.vialRoi[self.selectedVial[0]][1] - p[1] - 32 #lblOrigin.y() + (p[0] * self.yFactor) + self.yOffset
         
         
         lbl.setPos(newX,newY)
@@ -977,7 +990,8 @@ class videoPlayer(QMainWindow):
         if self.selectedVial is None:
             sv = 0            
         else:
-            sv = self.selectedVial
+            sv = 0
+#             sv = self.selectedVial[0]
         
         offset = 5  
         
@@ -995,7 +1009,7 @@ class videoPlayer(QMainWindow):
             offset = (self.trajNo / 2) 
         
         frame = self.frames[0]
-        if self.videoOnly:
+        if not self.croppedVideo:
             self.updateMainLabel(self.lbl_v0, frame[1][sv][0])
         else:
             self.updateLabel(self.lbl_v0, frame[0][sv], frame[1][sv][0])
@@ -1013,10 +1027,10 @@ class videoPlayer(QMainWindow):
                                             [self.annotations[i]["behav"]])
             tmpAnno  = self.tmpAnnotation.filterFrameList(filt)      
             
-            if tmpAnno.frameList[0] == [None]:
+            if tmpAnno.frameList[0][sv] == None:
                 continue
                          
-            bb = getPropertyFromFrameAnno(tmpAnno.frameList[0], "boundingBox")
+            bb = getPropertyFromFrameAnno(tmpAnno.frameList[0][sv], "boundingBox")
             
             for b in bb:
                 rois += [[b, self.annotations[i]["color"]]]
@@ -1079,7 +1093,7 @@ class videoPlayer(QMainWindow):
             a = plt.imread(path) * 255
             
             # crop and rotate background image to show only one vial
-            rng = slice(*self.vialRoi[self.selectedVial])
+            rng = slice(*self.vialRoi[self.selectedVial[0]])
             a = np.rot90(a[:, rng]).astype(np.uint32)
             
             h = a.shape[0]
@@ -1109,8 +1123,8 @@ class videoPlayer(QMainWindow):
         
         self.videoView = QGraphicsView(self)        
         self.videoView.setFrameStyle(QFrame.NoFrame)
-#         self.videoView.setGeometry(QRect(10, 10, w, h))#1920/2, 1080/2))
-#         self.videoView.setGeometry(QRect(150, 10, w, h))#1920/2, 1080/2))
+        self.videoView.setGeometry(QRect(10, 10, w, h))#1920/2, 1080/2))
+        self.videoView.setGeometry(QRect(150, 10, w, h))#1920/2, 1080/2))
         self.videoScene = QGraphicsScene(self)
         self.videoScene.setItemIndexMethod(QGraphicsScene.NoIndex)
         self.videoScene.setSceneRect(self.sceneRect)#1920, 1080))
@@ -1152,7 +1166,7 @@ class videoPlayer(QMainWindow):
         
         self.videoView.setViewport(glw)
         self.videoView.viewport().setCursor(Qt.BlankCursor)
-#         self.videoView.setGeometry(QRect(250, 10, w, h))#1920/2, 1080/2))
+        self.videoView.setGeometry(QRect(100, 10, w, h))#1920/2, 1080/2))
         self.videoView.show()
         self.videoView.fitInView(self.bgImg, Qt.KeepAspectRatio)
         
@@ -1834,7 +1848,7 @@ class AnnoView(QWidget):
             filt = AnnotationFilter([0], self.annotator, 
                                                         self.behaviourName)
         else:
-            filt = AnnotationFilter([self.vialNo], self.annotator, 
+            filt = AnnotationFilter(self.vialNo, self.annotator, 
                                                         self.behaviourName)
 
         self.annotationDict[key] = annotation.filterFrameList(filt)
@@ -1980,8 +1994,13 @@ class AnnoView(QWidget):
                 if self.annotationDict[curKey].frameList[curIdx] == [None]:
                     conf = [None]
                 else:
-                    conf = getPropertyFromFrameAnno(
-                                self.annotationDict[curKey].frameList[curIdx],
+                    if self.vialNo == None:
+                        conf = getPropertyFromFrameAnno(
+                               self.annotationDict[curKey].frameList[curIdx][0],
+                                "confidence")
+                    else:                        
+                        conf = getPropertyFromFrameAnno(
+                            self.annotationDict[curKey].frameList[curIdx][self.vialNo[0]],
                                 "confidence")
                                   
             self.confidenceList += [KeyIdxPair(curKey, curIdx, conf)]            
@@ -2166,7 +2185,8 @@ class VideoLoader(QObject):
         self.idxSlice = idxSlice
 
     def maxOfSelectedVials(self):
-        return maxOfSelectedVials(self.selectedVials)
+        return 0
+#         return maxOfSelectedVials(self.selectedVials)
 
     @Slot()
     def loadVideos(self):
@@ -2241,64 +2261,70 @@ class VideoLoader(QObject):
             self.endOfFile = [copy.copy(results['endOfFile'])]
             
         else:                
-            rc = Client()
-            cfg.log.debug("rc.ids : {0}".format(rc.ids))
+            f = self.posPath# self.posPath.split(self.videoEnding)[0] + self.videoEnding#.v{0}.{1}'.format(i, 'avi')
+            results = loadVideo(f, self.idxSlice, self.selectedVials[0], self.imTransform)
+            self.frameList = [copy.copy(results["qi"])] 
+            self.endOfFile = [copy.copy(results['endOfFile'])]
             
-            dview = rc[:]        
-            dview['np2qimage'] = np2qimage
-            dview['QImage'] = QImage
-            dview['pth'] = sys.path
-    #         dview['np'] = np
-            lbview = rc.load_balanced_view()   
             
-            for i in self.selectedVials:
-                f = self.posPath.split(self.videoEnding)[0] + \
-                    '.v{0}.{1}'.format(i, self.videoEnding)
-                results += [lbview.apply_async(loadVideo, f, i, 
-                                               self.imTransform)]
-        
-            cfg.log.debug("videoLoader: waiting for process...")
-            allReady = False
-            while not allReady:
-                if False:#self.exiting:
-                    for i in range(len(results)):
-                        results[i].abort()
-                        # delete data from cluster
-                        msgId = results[i].msg_id
-                        #~ del lbview.results[msgId]
-                        del rc.results[msgId]
-                        del rc.metadata[msgId]
-                    
-                    return   
-                
-                allReady = True
-                for ar in results:
-                    allReady = allReady and ar.ready()
-                    
-                if self.thread is None:
-                    import time
-                    time.sleep(0.01)
-                else:
-                    self.thread.msleep(10)
-            
-            cfg.log.debug("videoLoader: copy results")
-            self.frameList = [[] for i in range(self.maxOfSelectedVials() + 1)]
-            for i in range(len(results)):
-                # copy data
-                ar = results[i].get()
-                # TODO: make it dynamic again for later
-                self.frameList[ar["vialNo"]] = copy.copy(ar["qi"]) 
-                self.endOfFile += copy.copy(ar['endOfFile'])
-    #             self.frameList[0] = ar["qi"]
-                # delete data from cluster
-                msgId = results[i].msg_id
-                #~ del lbview.results[msgId]
-                del rc.results[msgId]
-                del rc.metadata[msgId]
-            
-            # close client to close socket connections
-            cfg.log.debug("videoLoader: close client to close socket connections")
-            rc.close()
+#             rc = Client()
+#             cfg.log.debug("rc.ids : {0}".format(rc.ids))
+#             
+#             dview = rc[:]        
+#             dview['np2qimage'] = np2qimage
+#             dview['QImage'] = QImage
+#             dview['pth'] = sys.path
+#     #         dview['np'] = np
+#             lbview = rc.load_balanced_view()   
+#             
+#             for i in self.selectedVials:
+#                 f = self.posPath.split(self.videoEnding)[0] + \
+#                     '.v{0}.{1}'.format(i, self.videoEnding)
+#                 results += [lbview.apply_async(loadVideo, f, i, 
+#                                                self.imTransform)]
+#         
+#             cfg.log.debug("videoLoader: waiting for process...")
+#             allReady = False
+#             while not allReady:
+#                 if False:#self.exiting:
+#                     for i in range(len(results)):
+#                         results[i].abort()
+#                         # delete data from cluster
+#                         msgId = results[i].msg_id
+#                         #~ del lbview.results[msgId]
+#                         del rc.results[msgId]
+#                         del rc.metadata[msgId]
+#                     
+#                     return   
+#                 
+#                 allReady = True
+#                 for ar in results:
+#                     allReady = allReady and ar.ready()
+#                     
+#                 if self.thread is None:
+#                     import time
+#                     time.sleep(0.01)
+#                 else:
+#                     self.thread.msleep(10)
+#             
+#             cfg.log.debug("videoLoader: copy results")
+#             self.frameList = [[] for i in range(self.maxOfSelectedVials() + 1)]
+#             for i in range(len(results)):
+#                 # copy data
+#                 ar = results[i].get()
+#                 # TODO: make it dynamic again for later
+#                 self.frameList[ar["vialNo"]] = copy.copy(ar["qi"]) 
+#                 self.endOfFile += copy.copy(ar['endOfFile'])
+#     #             self.frameList[0] = ar["qi"]
+#                 # delete data from cluster
+#                 msgId = results[i].msg_id
+#                 #~ del lbview.results[msgId]
+#                 del rc.results[msgId]
+#                 del rc.metadata[msgId]
+#             
+#             # close client to close socket connections
+#             cfg.log.debug("videoLoader: close client to close socket connections")
+#             rc.close()
         
         if True:#not self.exiting:
             # using max(self.selectedVials) to make sure that the list entry
@@ -2408,7 +2434,8 @@ class VideoHandler(QObject):
     changedFile = Signal(str)
     
     @cfg.logClassFunction
-    def __init__(self, posList, fileChangeCb, selectedVials=[0], startIdx=0):
+    def __init__(self, posList, fileChangeCb, selectedVials=[0], startIdx=0,
+                 videoEnding='.avi'):
         super(VideoHandler, self).__init__()        
         
         self.videoDict = dict()
@@ -2418,6 +2445,7 @@ class VideoHandler(QObject):
         self.posPath = ''
         self.idx = 0
         self.pathIdx = 0
+        self.videoEnding = videoEnding
         
         ### old stuff ?
         self.dictLength = 5         # should be odd, otherwise fix checkBuffers()!
@@ -2435,6 +2463,7 @@ class VideoHandler(QObject):
         self.posList = sorted(posList)
         self.posPath = posList[startIdx]
         
+        
         self.annoAltStart = None
         
         ## video loading
@@ -2451,7 +2480,7 @@ class VideoHandler(QObject):
         self.deleteVideoLoader.connect(self.vLL.deleteVideoLoader)
         
         ## annotation loading
-        self.aLL = AnnotationLoaderLuncher(self.endOfFileNotice)
+        self.aLL = AnnotationLoaderLuncher(self.endOfFileNotice, videoEnding)
 
         self.annotationLoaderLuncherThread = MyThread("annotationLuncher")
         self.aLL.moveToThread(self.annotationLoaderLuncherThread)
@@ -2488,7 +2517,8 @@ class VideoHandler(QObject):
         
 
     def maxOfSelectedVials(self):
-        return maxOfSelectedVials(self.selectedVials)
+        return 0
+#         return maxOfSelectedVials(self.selectedVials)
     
     def aboutToQuit(self):
         self.videoLoaderLuncherThread.quit()
@@ -2965,13 +2995,20 @@ class VideoHandler(QObject):
         key = lst[0] 
         length = lst[1]
         
-        self.updateVideoLength(key, length)
+        if key.endswith('.bhvr'):
+            videokey = "".join(key.split('.bhvr')[:-1]) + self.videoEnding
+        else:
+            videokey = key
         
-        nextKey = self.posList[self.posList.index(key) + 1]
+        
+        self.updateVideoLength(videokey, length)
+        
+        nextKey = self.posList[self.posList.index(videokey) + 1]
         
         # if end of file notice was send, while moving towards the right-hand
         # side
-        if key in self.videoDict.keys() and len(self.videoDict[key]) > 1:
+        if videokey in self.videoDict.keys() \
+        and len(self.videoDict[videokey]) > 1:
             self.ensureBuffering(nextKey, 0)
         
     @Slot(list)
@@ -3478,18 +3515,23 @@ class AnnotationLoaderLuncher(QObject):
     createdAnnotationLoader = Signal(list)  
     loadAnnotations = Signal()
     
-    def __init__(self, loadedCallback): 
+    def __init__(self, loadedCallback, videoEnding): 
         super(AnnotationLoaderLuncher, self).__init__(None)
             
         self.availableALs = []
         self.dumpingPlace = []
         self.threads = dict()
         self.loadedCallback = loadedCallback
+        self.videoEnding = videoEnding
     
     @Slot(list)
     def lunchAnnotationLoader(self, lst):
         path = lst[0]
         aL = None
+        
+        videoPath = copy.copy(path)
+        
+        path = '.'.join(path.split(self.videoEnding)[:1]) + '.bhvr'
         
         if len(self.availableALs) == 0:
             cfg.log.debug("create new AnnotationLoader {0}".format(path))     
@@ -3519,7 +3561,7 @@ class AnnotationLoaderLuncher(QObject):
             aL.init(path, thread)     
             signal.emit()
 
-        self.createdAnnotationLoader.emit([aL, path])
+        self.createdAnnotationLoader.emit([aL, videoPath])
         
 #     @cfg.logClassFunction
     @Slot(list)
@@ -3609,6 +3651,7 @@ class AnnotationLoader(QObject):
         self.annotation = out
 #         self.loadedAnnotation.emit([self, self.path])
 
+        cfg.log.debug("finished loading annotation {0}".format(self.path))
         self.loadedAnnotation.emit([self.path, len(self.annotation.frameList)])
         self.loading = False
         
@@ -3865,6 +3908,11 @@ if __name__ == "__main__":
     except KeyError:
         rewindOnClick = False
         
+    try:
+        croppedVideo = config['cropped-video']
+    except KeyError:
+        croppedVideo = False
+        
         
     
     
@@ -3886,7 +3934,8 @@ if __name__ == "__main__":
     
     w = videoPlayer(path, annotations, backgroundPath, selectedVial, vialROI,
                      videoFormat='avi', filterObjArgs=filterObjArgs,
-                     startVideoName=startVideo, rewindOnClick=rewindOnClick)
+                     startVideoName=startVideo, rewindOnClick=rewindOnClick,
+                     croppedVideo=croppedVideo)
     
     app.connect(app, SIGNAL("aboutToQuit()"), w.exit)
     w.quit.connect(app.quit)
