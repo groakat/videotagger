@@ -13,6 +13,7 @@ from pyTools.imgProc.imgViewer import *
 from pyTools.videoProc.annotation import *
 import pyTools.misc.basic as bsc 
 import pyTools.misc.config as cfg
+import pyTools.misc.Cache as Cache
 import copy
 
 import numpy as np
@@ -848,7 +849,7 @@ class videoPlayer(QMainWindow):
     def updateLabel(self, lbl, p, img):
         
 #         p = [100, 2500]
-        self.loadImageIntoLabel(lbl, img)
+        self.loadImageIntoLabel(lbl, np.rot90(img))
 #         if img is not None:
 # #             qi = array2qimage(img)
 #             qi = np2qimage(img)
@@ -867,9 +868,9 @@ class videoPlayer(QMainWindow):
         else:
             newY = self.vialRoi[self.selectedVial[0]][1] - p[1] - 32 #lblOrigin.y() + (p[0] * self.yFactor) + self.yOffset
         
-        cfg.log.info("x {0}, y {1}".format(newX, newY))
+        cfg.log.info("p= [{2}, {3}] --> x {0}, y {1}".format(newX, newY, p[0], p[1]))
         lbl.setPos(newX,newY)
-        lbl.setPos(100, 100)
+#         lbl.setPos(100, 100)
         #lbl.setStyleSheet("border: 1px dotted rgba(255, 0, 0, 75%);");
         #lbl.raise_()
         #lbl.update()
@@ -1016,7 +1017,7 @@ class videoPlayer(QMainWindow):
             self.updateMainLabel(self.lbl_v0, frame[1][sv][0])
         else:
 #             self.updateMainLabel(self.lbl_v0, frame[1][sv][0])
-            self.updateLabel(self.lbl_v0, frame[0][sv], frame[1][sv][0])
+            self.updateLabel(self.lbl_v0, frame[0][2], frame[1][sv][0])
         
         
         
@@ -2004,7 +2005,7 @@ class AnnoView(QWidget):
                                 "confidence")
                     else:                        
                         conf = getPropertyFromFrameAnno(
-                            self.annotationDict[curKey].frameList[curIdx][self.vialNo[0]],
+                            self.annotationDict[curKey].frameList[curIdx][0],
                                 "confidence")
                                   
             self.confidenceList += [KeyIdxPair(curKey, curIdx, conf)]            
@@ -2409,7 +2410,7 @@ class VideoLoader(QObject):
 #                 else:
 #                     out += []
                 
-            return [self.pos[idx - self.idxSlice.start], out]
+            return out
         else:
             cfg.log.error("error in fetching key {0}, idx {1}".format(self.posPath, idx))
             raise RuntimeError("Video frame was not available (index out of range (requested {0} of {1} @ {2})".format(idx, len(self.frameList), self.posPath))
@@ -2495,6 +2496,9 @@ class VideoHandler(QObject):
         self.aLL.createdAnnotationLoader.connect(self.updateNewAnnotation)
         self.newAnnotationLoader.connect(self.aLL.lunchAnnotationLoader)
         self.deleteAnnotationLoader.connect(self.aLL.deleteAnnotationLoader)
+        
+        self.posCache = Cache.PosFileCache()       
+        
         
         
         self.bufferEndingQueue = []         # queue of videos that need to
@@ -2594,7 +2598,17 @@ class VideoHandler(QObject):
             cfg.log.info("waiting for videopath")   
             QApplication.processEvents()
             time.sleep(0.05)
-                         
+        
+        frameList = []
+        
+        # get position
+        posKey = "".join(self.posPath.split(self.videoEnding)[:-1]) + '.pos.npy'
+#         posKey += 
+        
+        pos = self.posCache.getItem(posKey)[self.idx]
+        
+        frameList += [pos]
+        
         try:
             bufferIdx = self.idx / self.bufferWidth
             frame = self.videoDict[self.posPath][bufferIdx].getFrame(self.idx)
@@ -2624,8 +2638,9 @@ class VideoHandler(QObject):
 #             self.getCurrentFrame()
 #         except RuntimeError as e:
 #             cfg.log.error("something went wrong during the fetching procedure: error message {0}".format(e.message))
-            frame = [[[0,0]] * (self.maxOfSelectedVials() + 1), 
-                     [np.zeros((64,64,3))] * (self.maxOfSelectedVials() + 1)]
+#             frame = [[[0,0]] * (self.maxOfSelectedVials() + 1), 
+#                      [np.zeros((64,64,3))] * (self.maxOfSelectedVials() + 1)]
+            frame = [np.zeros((64,64,3))] * (self.maxOfSelectedVials() + 1)
             
         if doBufferCheck:
             self.checkBuffer(updateAnnotationViews)            
@@ -2636,7 +2651,8 @@ class VideoHandler(QObject):
             logGUI.debug(json.dumps({"key":self.posPath, 
                                      "idx":self.idx}))
                 
-            
+        frameList += [frame]
+         
         if self.posPath in self.annoDict.keys():
             if self.annoDict[self.posPath] is not None:
                 annotation = self.annoDict[self.posPath].annotation.frameList[self.idx]
@@ -2647,8 +2663,8 @@ class VideoHandler(QObject):
             annotation = [[{'confidence': 0}] 
                                 for i in range(self.maxOfSelectedVials() + 1)]
             
-        frame += [annotation]
-        return frame
+        frameList += [annotation]
+        return frameList
     
     
     @cfg.logClassFunctionInfo
@@ -2658,10 +2674,7 @@ class VideoHandler(QObject):
         
         cfg.log.warning("{0}".format(self.idx))
         img = self.vE.getFrame(self.posPath, frameNo=self.idx, frameMode='RGB')
-        frame = [[[0,0] 
-                        for i in range(self.maxOfSelectedVials() + 1)], 
-                 [[img]  * \
-                             (self.maxOfSelectedVials() + 1)]]
+        frame = [img]  * (self.maxOfSelectedVials() + 1)
         
         if doBufferCheck:
             self.checkBuffer(updateAnnotationViews)            
