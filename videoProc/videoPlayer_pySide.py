@@ -847,7 +847,7 @@ class videoPlayer(QMainWindow):
     @cfg.logClassFunction
     def updateLabel(self, lbl, p, img):
         
-        p = [100, 100]
+#         p = [100, 2500]
         self.loadImageIntoLabel(lbl, img)
 #         if img is not None:
 # #             qi = array2qimage(img)
@@ -867,8 +867,9 @@ class videoPlayer(QMainWindow):
         else:
             newY = self.vialRoi[self.selectedVial[0]][1] - p[1] - 32 #lblOrigin.y() + (p[0] * self.yFactor) + self.yOffset
         
-        
+        cfg.log.info("x {0}, y {1}".format(newX, newY))
         lbl.setPos(newX,newY)
+        lbl.setPos(100, 100)
         #lbl.setStyleSheet("border: 1px dotted rgba(255, 0, 0, 75%);");
         #lbl.raise_()
         #lbl.update()
@@ -1014,6 +1015,7 @@ class videoPlayer(QMainWindow):
         if not self.croppedVideo:
             self.updateMainLabel(self.lbl_v0, frame[1][sv][0])
         else:
+#             self.updateMainLabel(self.lbl_v0, frame[1][sv][0])
             self.updateLabel(self.lbl_v0, frame[0][sv], frame[1][sv][0])
         
         
