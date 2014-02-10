@@ -850,7 +850,8 @@ class videoPlayer(QMainWindow):
     def updateLabel(self, lbl, p, img):
         
 #         p = [100, 2500]
-        self.loadImageIntoLabel(lbl, np.rot90(img))
+        if img is not None:
+            self.loadImageIntoLabel(lbl, np.rot90(img))
 #         if img is not None:
 # #             qi = array2qimage(img)
 #             qi = np2qimage(img)
@@ -1046,13 +1047,13 @@ class videoPlayer(QMainWindow):
         
         
         # showing trajectory #
-#         self.frames = []
-#         for i in range(self.trajNo):
-#             self.frames += [self.vh.getTempFrame(increment * (i - offset))] 
-#         
-#         for i in range(len(self.frames)-1, -1, -1):
-#             frame = self.frames[i]
-#             self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
+        self.frames = []
+        for i in range(self.trajNo):
+            self.frames += [self.vh.getTempFrame(increment * (i - offset))] 
+         
+        for i in range(len(self.frames)-1, -1, -1):
+            frame = self.frames[i]
+            self.updateLabel(self.trajLabels[i][0], frame[0][2], None)
 
 
         # showing previews #
@@ -1347,6 +1348,8 @@ class videoPlayer(QMainWindow):
                                                     sorted(self.fileList)[idx]))
         
         self.startLoop.emit()
+        
+        self.showNextFrame(0)
         
     def selectVideoTime(self, day, hour, minute, frame, data):
         
