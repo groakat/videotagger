@@ -478,7 +478,7 @@ class videoPlayer(QMainWindow):
         self.play = False
         self.frameIdx = -1
         self.showTraject = False
-        self.tempTrajSwap = True
+        self.tempTrajSwap = False
         self.trajNo = 0
         self.trajLabels = []
         self.frames = []
