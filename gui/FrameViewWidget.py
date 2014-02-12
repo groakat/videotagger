@@ -84,7 +84,7 @@ class FrameViewWidget(QtGui.QWidget):
         self.resetDisplayRange()
         
     def registerButtonPressCallback(self, figType, callbackFunction):
-        print "registerBuggerPressCallback"
+#         print "registerBuggerPressCallback"
         self.frameView.registerMPLCallback(figType, 'button_press_event', 
                                            callbackFunction)
         self.customCallbacks += [[figType, callbackFunction]]
@@ -119,7 +119,7 @@ class FrameViewWidget(QtGui.QWidget):
         
 #     @QtCore.Slot()
     def generateNewSequence(self):
-        print "start"
+        print "start generating sequence"
         dayRng = range(1)
         hourRng = range(24)
         minuteRng = range(60)
@@ -128,20 +128,20 @@ class FrameViewWidget(QtGui.QWidget):
         self.fdvTree.generateRandomSequence(dayRng, hourRng, 
                                                     minuteRng, frameRng)
 #         self.frameView.fdvTree.load('/home/peter/phd/code/pyTools/notebooks/ECCV2014/annotation-vial0-peter-struggling.fdvt')
-        print "finished in {0} sec".format(time()-t1)
+        print "finished generating sequence in {0} sec".format(time()-t1)
         
         self.initializeConfidenceStructure()
         
         
     def loadSequence(self, path='/home/peter/phd/code/pyTools/notebooks/ECCV2014/posTree-v3.fdvtp'):
-        print "start"
+        print "start loading sequence"
         dayRng = range(1)
         hourRng = range(24)
         minuteRng = range(60)
         frameRng = range(1800)
         t1 = time()
         self.frameView.fdvTree.load(path)
-        print "finished in {0} sec".format(time()-t1)
+        print "finished  loading sequence in {0} sec".format(time()-t1)
         
         self.initializeConfidenceStructure()
         self.draw()

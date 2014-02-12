@@ -432,7 +432,8 @@ class videoPlayer(QMainWindow):
                         rewindOnClick=False,
                         croppedVideo=True,
                         videoEnding='.avi', #'.v0.avi',
-                        runningIndeces=True
+                        runningIndeces=True,
+                        fdvtPath=None
                         ):
         """
         
@@ -488,6 +489,7 @@ class videoPlayer(QMainWindow):
         self.addingAnnotations = True
         self.ui.lbl_eraser.setVisible(False)        
         self.prevSize = 100
+        self.fdvtPath = fdvtPath
         
         
         self.rewindOnClick = rewindOnClick
@@ -693,7 +695,8 @@ class videoPlayer(QMainWindow):
     def setupFrameView(self):
         frameView = self.ui.frameView
         frameView.registerButtonPressCallback('frames', self.selectVideoTime)
-        frameView.loadSequence("/home/peter/phd/code/pyTools/notebooks/ECCV2014/posTree-v2.fdvtp")
+        if self.fdvtPath is not None:
+            frameView.loadSequence(self.fdvtPath)
             
             
     def createPrevFrames(self, xPos, yPos):
@@ -3941,6 +3944,10 @@ if __name__ == "__main__":
     except KeyError:
         runningIndeces = True
         
+    try:
+        fdvtPath = config['frame-data-visualization-path']
+    except KeyError:
+        fdvtPath = None
         
     
     
@@ -3963,7 +3970,8 @@ if __name__ == "__main__":
     w = videoPlayer(path, annotations, backgroundPath, selectedVial, vialROI,
                      videoFormat='avi', filterObjArgs=filterObjArgs,
                      startVideoName=startVideo, rewindOnClick=rewindOnClick,
-                     croppedVideo=croppedVideo, runningIndeces=runningIndeces)
+                     croppedVideo=croppedVideo, runningIndeces=runningIndeces,
+                     fdvtPath=fdvtPath)
     
     app.connect(app, SIGNAL("aboutToQuit()"), w.exit)
     w.quit.connect(app.quit)

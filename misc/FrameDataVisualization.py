@@ -471,13 +471,12 @@ class FrameDataView:
                 self.figs[figKey].canvas.mpl_connect(event, 
                                                      self.callbackWrapperFrames)
             self.cbFrames[event] += [callbackFunction]
-            print "callback added to frames", callbackFunction, self.cbFrames
     
     
     def callbackWrapperDays(self, event):
-        print 'DAY: button={0}, x={1}, y={2}, xdata={3}, ydata={4}, name={5}'.format(
-                    event.button, event.x, event.y, event.xdata, event.ydata,
-                    event.name)
+#         print 'DAY: button={0}, x={1}, y={2}, xdata={3}, ydata={4}, name={5}'.format(
+#                     event.button, event.x, event.y, event.xdata, event.ydata,
+#                     event.name)
         
         if event.name in self.cbDays.keys():            
             pos = int(np.floor(event.xdata))
@@ -488,9 +487,9 @@ class FrameDataView:
     
     
     def callbackWrapperHours(self, event):
-        print 'HOURS: button={0}, x={1}, y={2}, xdata={3}, ydata={4}, name={5}'.format(
-                    event.button, event.x, event.y, event.xdata, event.ydata,
-                    event.name)
+#         print 'HOURS: button={0}, x={1}, y={2}, xdata={3}, ydata={4}, name={5}'.format(
+#                     event.button, event.x, event.y, event.xdata, event.ydata,
+#                     event.name)
         
         if event.name in self.cbHours.keys():           
             pos = int(np.floor(event.xdata))
@@ -501,9 +500,9 @@ class FrameDataView:
     
     
     def callbackWrapperMinutes(self, event):
-        print 'MINUTES: button={0}, x={1}, y={2}, xdata={3}, ydata={4}, name={5}'.format(
-                    event.button, event.x, event.y, event.xdata, event.ydata,
-                    event.name)
+#         print 'MINUTES: button={0}, x={1}, y={2}, xdata={3}, ydata={4}, name={5}'.format(
+#                     event.button, event.x, event.y, event.xdata, event.ydata,
+#                     event.name)
         
         if event.name in self.cbMinutes.keys():
             pos = int(np.floor(event.xdata))
@@ -514,9 +513,9 @@ class FrameDataView:
     
     
     def callbackWrapperFrames(self, event):
-        print 'FRAME: button={0}, x={1}, y={2}, xdata={3}, ydata={4}, name={5}'.format(
-                    event.button, event.x, event.y, event.xdata, event.ydata,
-                    event.name)
+#         print 'FRAME: button={0}, x={1}, y={2}, xdata={3}, ydata={4}, name={5}'.format(
+#                     event.button, event.x, event.y, event.xdata, event.ydata,
+#                     event.name)
         frame = np.floor(event.xdata) * self.frameResolution
         
         if event.name in self.cbFrames.keys():
