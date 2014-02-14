@@ -1,6 +1,0 @@
-source ../startEnv
-
-firefox &
-../libs/shuttlexpress/shuttle &
-ipython notebook --no-browser
-

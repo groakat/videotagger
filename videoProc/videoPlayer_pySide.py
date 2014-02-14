@@ -2780,8 +2780,8 @@ class VideoHandler(QObject):
             changedFile = False
             while self.idx < 0:
                 if pos != 0:
-                    self.idx += self.videoLengths[self.posPath]
                     self.posPath = keys[pos-1] 
+                    self.idx += self.videoLengths[self.posPath]
                     pos -= 1              
                     changedFile = True
                 else:
@@ -3682,6 +3682,7 @@ class AnnotationLoader(QObject):
         self.loading = False
         
         
+    @cfg.logClassFunction
     def retrieveVideoLength(self, filename, initialStepSize=10000):
         """
         Finds video length by accessing it bruteforce
@@ -3704,7 +3705,7 @@ class AnnotationLoader(QObject):
             modi /= 2
             
 
-        return idx
+        return idx + 1
 
 
 class VideoLengthQuery(QObject):
