@@ -881,8 +881,11 @@ class videoPlayer(QMainWindow):
         #lbl.update()
         
     @cfg.logClassFunction
-    def updateOriginalLabel(self, lbl, img):
+    def updatePreviewLabel(self, lbl, img):
 #         img = data[0]
+        if self.croppedVideo:
+            img = np.rot90(img)
+        
         qi = array2qimage(scim.imresize(img[self.prevYCrop, self.prevXCrop], 
                                         (self.prevSize,self.prevSize)))
 
@@ -1065,7 +1068,7 @@ class videoPlayer(QMainWindow):
                  
         for i in range(len(self.prevFrameLbls)):
             self.prevFrames += [self.vh.getTempFrame(i - offset)]
-            self.updateOriginalLabel(self.prevFrameLbls[i], self.prevFrames[i][1][sv][0])
+            self.updatePreviewLabel(self.prevFrameLbls[i], self.prevFrames[i][1][sv][0])
              
         
         self.vh.updateAnnotationProperties(self.getMetadata())
