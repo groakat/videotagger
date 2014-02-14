@@ -890,9 +890,15 @@ class videoPlayer(QMainWindow):
 #         img = data[0]
         if self.croppedVideo:
             img = np.rot90(img)
+
+        if not self.croppedVideo:
+            img = scim.imresize(img[self.prevYCrop, self.prevXCrop], 
+                                        (self.prevSize,self.prevSize))
+        else:
+            img = scim.imresize(img, (self.prevSize,self.prevSize))
+            
         
-        qi = array2qimage(scim.imresize(img[self.prevYCrop, self.prevXCrop], 
-                                        (self.prevSize,self.prevSize)))
+        qi = array2qimage(img)
 
         cfg.log.debug("converting img to QImage")
 #         qi = np2qimage(img)
