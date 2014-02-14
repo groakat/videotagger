@@ -781,6 +781,11 @@ class videoPlayer(QMainWindow):
             
         x -= width / 2 
         y -= width / 2
+        
+#         w = self.sceneRect.width()
+#         h = self.sceneRect.height()
+#         
+        
             
         self.cropRect.setRect(0,0, width, width)
         self.cropRect.setPos(x, y)
@@ -3189,7 +3194,7 @@ class VideoHandler(QObject):
         self.annoEnd = curAnnoEnd
         
     @cfg.logClassFunction
-    def addAnnotation(self, vial, annotator, behaviour, metadata):
+    def addAnnotation(self, vials, annotator, behaviour, metadata):
         for aV in self.annoViewList:
             if (aV.behaviourName == None) \
             or (behaviour == aV.behaviourName) \
@@ -3197,7 +3202,7 @@ class VideoHandler(QObject):
                 if (aV.annotator == None) \
                 or (annotator == aV.annotator) \
                 or (annotator in aV.annotator):
-                    if vial == aV.vialNo:
+                    if vials == aV.vialNo:
                         cfg.log.debug("calling aV.addAnno()")
                         aV.addAnno(self.posPath, self.idx, metadata)
                         
@@ -3208,7 +3213,7 @@ class VideoHandler(QObject):
             self.annoEnd = bsc.FramePosition(self.annoDict, self.posPath, 
                                              self.idx)
              
-            self.annoAltFilter = AnnotationFilter([vial], [annotator], 
+            self.annoAltFilter = AnnotationFilter(vials, [annotator], 
                                                                     [behaviour])
             
             self.tempValue = dict()
@@ -3217,7 +3222,7 @@ class VideoHandler(QObject):
             
             
         else:
-            curFilter = AnnotationFilter([vial], [annotator], [behaviour])
+            curFilter = AnnotationFilter(vials, [annotator], [behaviour])
             sameAnnotationFilter = \
                     all((sorted(curFilter[i]) == sorted(self.annoAltFilter[i]) \
                                         for i in range(len(curFilter))))
@@ -3232,12 +3237,13 @@ class VideoHandler(QObject):
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                             
                 for key in rng:
-                    self.annoDict[key].annotation.addAnnotation(vial, rng[key], 
-                                            annotator, behaviour, 
-                                            self.tempValue[key])
-                                            
-                    cfg.log.info("add annotation vial {v}| range {r}| annotator {a}| behaviour {b}| confidence {c}".format(
-                                v=vial, r=rng[key], a=annotator,
+                    for v in vials:
+                        self.annoDict[key].annotation.addAnnotation(v, rng[key], 
+                                                annotator, behaviour, 
+                                                self.tempValue[key])
+                                                
+                    cfg.log.info("add annotation vials {v}| range {r}| annotator {a}| behaviour {b}| confidence {c}".format(
+                                v=vials, r=rng[key], a=annotator,
                                   b=behaviour, c=self.tempValue[key]))
                     
                     tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
@@ -3251,13 +3257,13 @@ class VideoHandler(QObject):
                             if (aV.annotator == None) \
                             or (annotator == aV.annotator) \
                             or (annotator in aV.annotator):
-                                if vial == aV.vialNo:
+                                if vials == aV.vialNo:
                                     cfg.log.debug("refreshing annotation")
                                     aV.addAnnotation(\
                                                 self.annoDict[key].annotation,
                                                      key)
                 
-                logGUI.info(json.dumps({"vial":vial,
+                logGUI.info(json.dumps({"vials":vials,
                                        "key-range":rng, 
                                        "annotator":annotator,
                                        "behaviour":behaviour, 
@@ -3266,7 +3272,7 @@ class VideoHandler(QObject):
                 self.annoAltStart = None
         
     @cfg.logClassFunction
-    def eraseAnnotation(self, vial, annotator, behaviour):
+    def eraseAnnotation(self, vials, annotator, behaviour):
         for aV in self.annoViewList:
             if aV.behaviourName == None \
             or behaviour == aV.behaviourName \
@@ -3274,7 +3280,7 @@ class VideoHandler(QObject):
                 if aV.annotator == None \
                 or annotator == aV.annotator \
                 or annotator in aV.annotator:
-                    if vial == aV.vialNo:
+                    if vials == aV.vialNo:
                         cfg.log.debug("eraseAnnotation")
                         aV.eraseAnno(self.posPath, self.idx)
                         
@@ -3285,10 +3291,10 @@ class VideoHandler(QObject):
             self.annoEnd = bsc.FramePosition(self.annoDict, self.posPath, 
                                              self.idx)
              
-            self.annoAltFilter = AnnotationFilter([vial], [annotator], 
+            self.annoAltFilter = AnnotationFilter(vials, [annotator], 
                                                                     [behaviour])
         else:
-            curFilter = AnnotationFilter([vial], [annotator], [behaviour])
+            curFilter = AnnotationFilter(vials, [annotator], [behaviour])
             sameAnnotationFilter = \
                     all((sorted(curFilter[i]) == sorted(self.annoAltFilter[i]) \
                                         for i in range(len(curFilter))))
@@ -3304,10 +3310,12 @@ class VideoHandler(QObject):
                 self.annoAltStart = None
                 
                 for key in rng:
-                    self.annoDict[key].annotation.removeAnnotation(vial, rng[key], 
-                                            annotator, behaviour)
-                    tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
-                    self.annoDict[key].annotation.saveToFile(tmpFilename)
+                    for v in vials:
+                        self.annoDict[key].annotation.removeAnnotation(v,
+                                                rng[key], 
+                                                annotator, behaviour)
+                        tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
+                        self.annoDict[key].annotation.saveToFile(tmpFilename)
                 
                     # refresh annotation in anno view
                     for aV in self.annoViewList:
@@ -3317,13 +3325,13 @@ class VideoHandler(QObject):
                             if (aV.annotator == None) \
                             or (annotator == aV.annotator) \
                             or (annotator in aV.annotator):
-                                if vial == aV.vialNo:
+                                if vials == aV.vialNo:
                                     cfg.log.debug("refreshing annotation")
                                     aV.addAnnotation(\
                                                 self.annoDict[key].annotation,
                                                      key)
                                     
-                logGUI.info(json.dumps({"vial":vial,
+                logGUI.info(json.dumps({"vials":vials,
                                        "key-range":rng, 
                                        "annotator":annotator,
                                        "behaviour":behaviour}))
