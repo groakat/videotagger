@@ -787,7 +787,7 @@ class videoPlayer(QtGui.QMainWindow):
         else:
             newY = self.vialRoi[self.selectedVial[0]][1] - p[1] - 32 
         
-        cfg.log.info("p= [{2}, {3}] --> x {0}, y {1}".format(newX, newY, p[0], p[1]))
+        cfg.log.debug("p= [{2}, {3}] --> x {0}, y {1}".format(newX, newY, p[0], p[1]))
         lbl.setPos(newX,newY)
         
     @cfg.logClassFunction
@@ -955,7 +955,8 @@ class videoPlayer(QtGui.QMainWindow):
         # showing trajectory #
         self.frames = []
         for i in range(self.trajNo):
-            self.frames += [self.vh.getTempFrame(increment * (i - offset))] 
+            self.frames += [self.vh.getTempFrame(increment * (i - offset), 
+                                                 posOnly=True)] 
          
         for i in range(len(self.frames)-1, -1, -1):
             frame = self.frames[i]
