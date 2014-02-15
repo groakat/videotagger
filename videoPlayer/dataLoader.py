@@ -1,41 +1,15 @@
-import sys
-from OpenGL.GL import *
-from OpenGL.GLU import *
 from PySide import QtGui
 from PySide import QtCore
-from PySide import QtOpenGL
 
-
-from pyTools.gui.videoPlayer_auto import Ui_Form
 
 import pyTools.system.videoExplorer as VE
-import pyTools.imgProc.imgViewer as IV
 import pyTools.videoProc.annotation as Annotation
-import pyTools.misc.basic as bsc 
 import pyTools.misc.config as cfg
-import pyTools.misc.Cache as Cache
-import copy
 
 import numpy as np
-import scipy.misc as scim
-#import matplotlib as mpl
-import pylab as plt
 import time
 import copy
 
-import qimage2ndarray as qim2np
-
-
-
-#from qimage2ndarray import *
-# from PyQt4.uic.Compiler.qtproxies import QtCore
-
-from collections import namedtuple
-
-
-import json
-import logging, logging.handlers
-import os, sys
 
 
 
@@ -54,7 +28,6 @@ class BaseThread(QtCore.QThread):
         self.wait()
         
     def run(self):
-#         print "RUN", QThread.currentThread().objectName(), QApplication.instance().thread().objectName()
         self.exec_()
         
     @cfg.logClassFunction
@@ -91,14 +64,11 @@ class VideoLoader(QtCore.QObject):
         
         self.videoLength = -1
         self.frameList = []
-        
-#         self.annotation = None # annotation object
-        
+
         self.posPath = copy.copy(posPath)      
         
         self.selectedVials = selectedVials
-#         
-#         self.videoHandler = videoHandler
+
         
         self.thread = thread
         
@@ -111,7 +81,6 @@ class VideoLoader(QtCore.QObject):
 
     def maxOfSelectedVials(self):
         return 0
-#         return maxOfSelectedVials(self.selectedVials)
 
     @QtCore.Slot()
     def loadVideos(self):
@@ -191,66 +160,7 @@ class VideoLoader(QtCore.QObject):
             self.frameList = [copy.copy(results["qi"])] 
             self.endOfFile = [copy.copy(results['endOfFile'])]
             
-            
-#             rc = Client()
-#             cfg.log.debug("rc.ids : {0}".format(rc.ids))
-#             
-#             dview = rc[:]        
-#             dview['np2qimage'] = np2qimage
-#             dview['QImage'] = QImage
-#             dview['pth'] = sys.path
-#     #         dview['np'] = np
-#             lbview = rc.load_balanced_view()   
-#             
-#             for i in self.selectedVials:
-#                 f = self.posPath.split(self.videoEnding)[0] + \
-#                     '.v{0}.{1}'.format(i, self.videoEnding)
-#                 results += [lbview.apply_async(loadVideo, f, i, 
-#                                                self.imTransform)]
-#         
-#             cfg.log.debug("videoLoader: waiting for process...")
-#             allReady = False
-#             while not allReady:
-#                 if False:#self.exiting:
-#                     for i in range(len(results)):
-#                         results[i].abort()
-#                         # delete data from cluster
-#                         msgId = results[i].msg_id
-#                         #~ del lbview.results[msgId]
-#                         del rc.results[msgId]
-#                         del rc.metadata[msgId]
-#                     
-#                     return   
-#                 
-#                 allReady = True
-#                 for ar in results:
-#                     allReady = allReady and ar.ready()
-#                     
-#                 if self.thread is None:
-#                     import time
-#                     time.sleep(0.01)
-#                 else:
-#                     self.thread.msleep(10)
-#             
-#             cfg.log.debug("videoLoader: copy results")
-#             self.frameList = [[] for i in range(self.maxOfSelectedVials() + 1)]
-#             for i in range(len(results)):
-#                 # copy data
-#                 ar = results[i].get()
-#                 # TODO: make it dynamic again for later
-#                 self.frameList[ar["vialNo"]] = copy.copy(ar["qi"]) 
-#                 self.endOfFile += copy.copy(ar['endOfFile'])
-#     #             self.frameList[0] = ar["qi"]
-#                 # delete data from cluster
-#                 msgId = results[i].msg_id
-#                 #~ del lbview.results[msgId]
-#                 del rc.results[msgId]
-#                 del rc.metadata[msgId]
-#             
-#             # close client to close socket connections
-#             cfg.log.debug("videoLoader: close client to close socket connections")
-#             rc.close()
-        
+                    
         if True:#not self.exiting:
             # using max(self.selectedVials) to make sure that the list entry
             # has actually some frames and is no dummy
@@ -266,14 +176,9 @@ class VideoLoader(QtCore.QObject):
                                      self.maxOfSelectedVials() + 1,
                                      2))
         
-#         if True:#not self.exiting:
-#             cfg.log.debug("videoLoader: load annotations")
-#             self.annotation = loadAnnotation(self.posPath, self.videoLength)
         
         cfg.log.info("finished loading, emiting signal {0} {1} {2}".format(self.posPath, self.videoLength, self.idxSlice))
 # 
-#         if self.videoHandler is not None:
-#             self.videoHandler.updateNewAnnotation([self.annotation, self.posPath])
         
         
         lastFrameNo = None

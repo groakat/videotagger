@@ -1,32 +1,10 @@
-import sys
-from OpenGL import GL
-from OpenGL import GLU
 from PySide import QtGui
 from PySide import QtCore
-from PySide import QtOpenGL
 
 
-from pyTools.gui.videoPlayer_auto import Ui_Form
-
-import pyTools.system.videoExplorer as VE
-import pyTools.imgProc.imgViewer as IV
 import pyTools.videoProc.annotation as Annotation
 import pyTools.misc.basic as bsc 
 import pyTools.misc.config as cfg
-import pyTools.misc.Cache as Cache
-import copy
-
-import numpy as np
-import scipy.misc as scim
-#import matplotlib as mpl
-import pylab as plt
-import time
-import copy
-
-import qimage2ndarray as qim2np
-
-
-
 #from qimage2ndarray import *
 # from PyQt4.uic.Compiler.qtproxies import QtCore
 
@@ -34,8 +12,6 @@ from collections import namedtuple
 
 
 import json
-import logging, logging.handlers
-import os, sys
 
 
 KeyIdxPair = namedtuple('KeyIdxPair', ['key', 'idx', 'conf'])
@@ -134,16 +110,6 @@ class AnnoView(QtGui.QWidget):
                                        QtCore.QPoint(parPos.x(), 
                                                      parPos.y() - 3)]]
             parPos.setX(parPos.x() + 10)
-            
-        
-#         self.cMarker2 = QLabel(parent)
-#         self.cMarker2.setGeometry(QRect(geo.x() + geo.width() / 2 + 6, 
-#                                        geo.y() -15, 1, geo.height() + 30))
-#         self.cMarker2.setFrameShape(QFrame.Box)
-#         self.cMarker.setFrameStyle(QFrame.Plain)
-#         self.cMarker.setLineWidth(1)
-#         self.cMarker.setObjectName(fromUtf8("cMarker"))
-#         self.ui.addLine(linePosX, yPos -5, linePosX, yPos + height + 5,  QPen(QColor(100,100,100)))
         
         
         # initialization of parameters
@@ -171,10 +137,7 @@ class AnnoView(QtGui.QWidget):
         self.erasingAnno = False
         self.addingAnno = False
         self.tempAnno = dict()
-        
-#         geo = self.geometry()
-#         geo.setHeight(self.boxHeight + 6)
-#         self.setGeometry(geo)
+
         
         # setting values
         self.scene = QtGui.QGraphicsScene(self.gV)
@@ -188,7 +151,6 @@ class AnnoView(QtGui.QWidget):
         self.behaviourName = behaviourName
         self.annotator = annotator
         
-#         self.gV.setViewport(QGLWidget(parent))
         
         if color == None:
             self.color = QtGui.QColor(0,255,0,150)
@@ -227,7 +189,6 @@ class AnnoView(QtGui.QWidget):
         center = self.frameAmount / 2 + 1
         self.gV.centerOn(self.frames[center])
         self.setZoom(0)
-#         self.centerOn(self.frames[0])
             
     def centerAt(self, avItem):
         for i in range(len(self.frames)):
@@ -273,8 +234,6 @@ class AnnoView(QtGui.QWidget):
                                               behaviour=self.behaviourName[0],
                                               confidence=1)
 #                 
-#                 self.addAnno(self.confidenceList[i].key, 
-#                                  self.confidenceList[i].idx)
                 
         if avItem is None:
             self.parent().resetTempFrame()
@@ -330,9 +289,6 @@ class AnnoView(QtGui.QWidget):
     def setZoom(self, zoomLevel):
         #scale absolute
         scale = self.zoomLevels[self.zoom]
-#         if self.zoom < 4:
-#             for line in self.lines:
-#                 line.setVisible(False)
 #         else:
         for line in self.lines:
             line.setVisible(True)
@@ -450,13 +406,6 @@ class AnnoView(QtGui.QWidget):
     def updateGraphicView(self):
         for i in range(len(self.confidenceList)):   
             conf = self.confidenceList[i].conf
-#             if kip == None:
-#                 conf = None
-#             elif kip == 1:
-#                 conf = 1
-#             else:
-#                 conf = self.annotationDict[kip.key].frameList[kip.idx]
-#             cfg.log.warning("{0}".format(conf))
             if [True for c in conf if c != None]:
                 self.frames[i].setBrush(self.brushA)
                 self.frames[i].setPen(self.penA)
@@ -475,9 +424,7 @@ class AnnoView(QtGui.QWidget):
         if metadata is None:
             metadata = {"confidence":1}
             
-#         if self.erasingAnno:
-#             self.eraseAnno(key, idx)
-#             return
+
         self.tempRng = dict()
         self.tempAnno = dict()
         self.tempValue = dict()
@@ -549,7 +496,3 @@ class AnnoView(QtGui.QWidget):
         if self.addingAnno or self.erasingAnno:
             tempEnd = bsc.FramePosition(self.annotationDict, key, idx)            
             self.tempRng = bsc.generateRangeValuesFromKeys(self.tempStart, tempEnd) 
-# 
-#         if self.erasingAnno:                         
-#             tempEnd = bsc.FramePosition(self.annotationDict, self.selKey, self.idx)            
-#             self.tempRng = bsc.generateRangeValuesFromKeys(self.tempStart, tempEnd)   

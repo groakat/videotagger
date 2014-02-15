@@ -8,74 +8,30 @@ from PySide import QtOpenGL
 
 from pyTools.gui.videoPlayer_auto import Ui_Form
 
-import pyTools.system.videoExplorer as VE
-import pyTools.imgProc.imgViewer as IV
 import pyTools.videoPlayer.videoHandler as VH
 import pyTools.videoPlayer.dataLoader as DL
 import pyTools.videoPlayer.annoView as AV
 import pyTools.videoProc.annotation as Annotation
-import pyTools.misc.basic as bsc 
 import pyTools.misc.config as cfg
-import pyTools.misc.Cache as Cache
-import copy
 
 import numpy as np
 import scipy.misc as scim
-#import matplotlib as mpl
 import pylab as plt
 import time
-import copy
 
 import qimage2ndarray as qim2np
 
 
 
-#from qimage2ndarray import *
-# from PyQt4.uic.Compiler.qtproxies import QtCore
-
-from collections import namedtuple
-
-
 import json
 import logging, logging.handlers
-import os, sys
-
-
-            
-#################################################################### 
-# 
-# KeyIdxPair = namedtuple('KeyIdxPair', ['key', 'idx', 'conf'])
-
-####################################################################
-
-# def np2qimage(a):
-#     import numpy as np  
-#     a = a.astype(np.uint32, order='C', copy=True)  
-# #     qi = (255 << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
-# #     return QImage(qi, a.shape[1], a.shape[0], 
-# #                   QImage.Format_ARGB32)
-# #     import Image
-# #     im = Image.fromarray(a.astype(np.uint8))
-# #     data = im.convert("RGBA").tostring("raw", "RGBA")
-#     
-# #     data = (np.uint8(255) << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
-#     data = (255 << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
-#     image = QImage(data.data, a.shape[1], a.shape[0], QImage.Format_ARGB32)
-#     
-#     return image
+import os
 
 def np2qimage(a):
     import numpy as np  
     a = a.astype(np.uint32)  
-#     qi = (255 << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
-#     return QImage(qi, a.shape[1], a.shape[0], 
-#                   QImage.Format_ARGB32)
-#     import Image
-#     im = Image.fromarray(a.astype(np.uint8))
-#     data = im.convert("RGBA").tostring("raw", "RGBA")
     
     data = (np.uint32(255) << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()
-#     data = (np.uint8(255) << 24 | np.bitwise_or(np.bitwise_or(a[:,:,0] << 16, a[:,:,1] << 8), a[:,:,2])).flatten()
     image = QtGui.QImage(data.data, a.shape[1], a.shape[0],
                           QtGui.QImage.Format_ARGB32)
     
@@ -93,7 +49,6 @@ class MyListModel(QtCore.QAbstractListModel):
     def __init__(self, datain, parent=None, *args): 
         """ datain: a list where each item is a row
         """
-#         QAbstractListModel.__init__(self, parent, *args)
         super(MyListModel, self).__init__(parent) 
         self.listdata = datain
  
@@ -120,12 +75,10 @@ class MouseFilterObj(QtCore.QObject):
             self.parent.setCropCenter(int(event.scenePos().x()), 
                                       int( event.scenePos().y()),
                                       increment = self.increment)
-#             QApplication.setOverrideCursor(QCursor(Qt.BlankCursor ))
-#             QWSServer.setCursorVisible( False )
+
             
         if (event.type() == QtCore.QEvent.Leave):
             self.parent.setCropCenter(None, None, increment=self.increment)
-#             QWSServer.setCursorVisible( True )
             
         if (event.type() == QtCore.QEvent.GraphicsSceneWheel):
             self.increment -= event.delta()
@@ -365,8 +318,6 @@ class filterObj(QtCore.QObject):
                     if self.parent.tempTrajSwap:
                         self.parent.tempTrajSwap = False
                         self.parent.showTrajectories(True)
-    #                     self.tempTrajSwap = True
-    #                     self.showTrajectories(False)
                     
                         
                 if key == self.keyMap["info"]:
@@ -505,13 +456,6 @@ class videoPlayer(QtGui.QMainWindow):
             self.eventFilter.oneClickAnnotation = [True, True, True, True]
         
         self.annotations = annotations 
-#                             [{"annot": "peter",
-#                              "behav": "falling"},
-#                             {"annot": "peter",
-#                              "behav": "dropping"},
-#                             {"annot": "peter",
-#                              "behav": "struggling"},
-#                             ]
         self.tmpAnnotation = Annotation.Annotation(0, [''])
         self.annotationRoiLabels = []
         self.annoIsOpen = False
@@ -520,7 +464,7 @@ class videoPlayer(QtGui.QMainWindow):
         
         self.usingVideoRunningIndeces = runningIndeces
         
-        self.vialRoi = vialROI#[[350, 660], [661, 960], [971, 1260], [1290, 1590]]
+        self.vialRoi = vialROI
         
         if type(selectedVial) == int:
             self.selectedVial = [selectedVial]
@@ -528,8 +472,6 @@ class videoPlayer(QtGui.QMainWindow):
             self.selectedVial = selectedVial#3
         self.ui.lbl_vial.setText("vial: {0}".format(self.selectedVial))
                 
-                
-#         self.vh.changedFile.connect(self.changeVideo)
         
         
         self.filterList = []
@@ -560,7 +502,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.configureUI()
         
         if self.croppedVideo:
-            self.setBackground(backgroundPath)#"/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
+            self.setBackground(backgroundPath)
         else:
             self.setBackground()
         
@@ -578,21 +520,10 @@ class videoPlayer(QtGui.QMainWindow):
         self.show()        
         cfg.logGUI.info(json.dumps(
                             {"message":'"--------- opened GUI ------------"'})) 
-#         logGUI.info(json.dumps({"args":
-#                                     {"selectedVial":self.selectedVial,
-#                                      "annotations":self.annotations
-#                                     }\
-#                                 }))
         
         self.setCropCenter(None, None)
         
         self.selectVideo(startIdx)
-        
-#         self.exec_()
-        
-        
-        
-        #glMatrixMode(GL_PROJECTION)
         
         
     @cfg.logClassFunction
@@ -630,8 +561,8 @@ class videoPlayer(QtGui.QMainWindow):
     @cfg.logClassFunction
     def configureUI(self):
         
-        self.xFactor = 1 # self.ui.label.width() / 1920.0
-        self.yFactor = 1 #self.ui.label.height() / 1080.0
+        self.xFactor = 1 
+        self.yFactor = 1 
         self.xOffset = -32 + (self.xFactor*64) / 2
         self.yOffset = -32 + (self.yFactor*64) / 2
         
@@ -649,7 +580,7 @@ class videoPlayer(QtGui.QMainWindow):
                                        color = self.annotations[idx]["color"], 
                                        geo=QtCore.QRect(xPos, yPos, width, 
                                                        height))]
-#         self.annoViewList[-1].setGeometry(QRect(xPos, yPos, width, height))
+
         self.annoViewList[-1].show()
         self.vh.addAnnoView(self.annoViewList[-1])     
         self.annoViewLabel += [QtGui.QLabel(self)]
@@ -665,7 +596,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.annoViewList = []
         self.annoViewLabel = []
         
-        yPos = 430 #+ self.prevSize
+        yPos = 430 
         xPos = 60 
         height = 20
         width = 1000
@@ -785,9 +716,6 @@ class videoPlayer(QtGui.QMainWindow):
             
         x -= width / 2 
         y -= width / 2
-        
-#         w = self.sceneRect.width()
-#         h = self.sceneRect.height()
 #         
         
             
@@ -842,52 +770,25 @@ class videoPlayer(QtGui.QMainWindow):
     def loadImageIntoLabel(self, lbl, img):
         if img is not None:
             qi = qim2np.array2qimage(img)
-#             a = np.ones(img.shape, dtype=np.float64) * 254
-#               
-#             s1 = a.strides
-#             s2 = img.astype(np.uint32).flatten().strides
-#             
-#             cfg.log.info("strides {0} {1}".format(s1, s2))
-# 
-#             qi = np2qimage(img)#.astype(np.float64, order='F', copy=True))
             cfg.log.debug("copy image to pixmap")
-#             1/0
-#             qi = QImage(500,350, QImage.Format_ARGB32)
-            px = QtGui.QPixmap().fromImage(qi)        
-            #lbl.setScaledContents(True)
+            px = QtGui.QPixmap().fromImage(qi)     
             cfg.log.debug("set pixmap")
             lbl.setPixmap(px)
         
     @cfg.logClassFunction
     def updateLabel(self, lbl, p, img):
-        
-#         p = [100, 2500]
         if img is not None:
             self.loadImageIntoLabel(lbl, np.rot90(img))
-#         if img is not None:
-# #             qi = array2qimage(img)
-#             qi = np2qimage(img)
-#             pixmap = QPixmap()
-#             px = QPixmap.fromImage(qi)        
-#             #lbl.setScaledContents(True)
-#             lbl.setPixmap(px)
-#         else:
-#             pixmap = QPixmap()
-#             lbl.setPixmap(pixmap)
             
                 
-        newX = p[0] - 32#lblOrigin.x() + p[1] * self.xFactor + self.xOffset
+        newX = p[0] - 32
         if self.selectedVial is None:
             newY = self.vialRoi[0][1] - p[1] - 32
         else:
-            newY = self.vialRoi[self.selectedVial[0]][1] - p[1] - 32 #lblOrigin.y() + (p[0] * self.yFactor) + self.yOffset
+            newY = self.vialRoi[self.selectedVial[0]][1] - p[1] - 32 
         
         cfg.log.info("p= [{2}, {3}] --> x {0}, y {1}".format(newX, newY, p[0], p[1]))
         lbl.setPos(newX,newY)
-#         lbl.setPos(100, 100)
-        #lbl.setStyleSheet("border: 1px dotted rgba(255, 0, 0, 75%);");
-        #lbl.raise_()
-        #lbl.update()
         
     @cfg.logClassFunction
     def updatePreviewLabel(self, lbl, img):
@@ -903,19 +804,6 @@ class videoPlayer(QtGui.QMainWindow):
             
         
         qi = qim2np.array2qimage(img)
-
-        cfg.log.debug("converting img to QImage")
-#         qi = np2qimage(img)
-        
-        def millis():
-            import datetime as dt
-            dt = dt.datetime.now() - dt.datetime(1970, 1,1)
-            ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
-            return ms
-        
-        from scipy.misc import imsave
-        
-#         imsave('/tmp/ol/' + str(millis()) + '.png', img)
         
         cfg.log.debug("creating pixmap")
         pixmap = QtGui.QPixmap()
@@ -933,8 +821,6 @@ class videoPlayer(QtGui.QMainWindow):
         
     @cfg.logClassFunction
     def updateMainLabel(self, lbl, img):
-#         img = data[0][0]
-#         anno = data[1]
         h = img.shape[0]
         w = img.shape[1]
         if self.sceneRect != QtCore.QRectF(0, 0, w,h):
@@ -971,8 +857,6 @@ class videoPlayer(QtGui.QMainWindow):
             self.annotationRoiLabels[i].setRect(0,0, width / 2, height / 2)
             self.annotationRoiLabels[i].setPos(x1/2, y1/2)
             self.annotationRoiLabels[i].setPen(QtGui.QPen(color))
-#             self.annotationRoiLabels[i].setBrush(QPen(color))
-#             self.annotationRoiLabels[i].setVisible(True)
              
             cfg.log.debug("set rect to: {0}".format(self.annotationRoiLabels[i].rect()))
             usedRoi = i + 1
@@ -1009,16 +893,12 @@ class videoPlayer(QtGui.QMainWindow):
             increment = self.increment
             
         self.rewindIncrement()
-        
-        #if self.frames != []:
-        #    self.frames.pop(0)
         self.frames = []    
         
         if self.selectedVial is None:
             sv = 0            
         else:
             sv = 0
-#             sv = self.selectedVial[0]
         
         offset = 5  
         
@@ -1039,7 +919,6 @@ class videoPlayer(QtGui.QMainWindow):
         if not self.croppedVideo:
             self.updateMainLabel(self.lbl_v0, frame[1][sv][0])
         else:
-#             self.updateMainLabel(self.lbl_v0, frame[1][sv][0])
             self.updateLabel(self.lbl_v0, frame[0][2], frame[1][sv][0])
         
         
@@ -1129,7 +1008,6 @@ class videoPlayer(QtGui.QMainWindow):
             h = a.shape[0]
             w = a.shape[1]
             
-    #         a *= 255
             # grey conversion
             b = a[:,:,0] * 0.2126 + a[:,:,1] * 0.7152 + a[:,:,2] * 0.0722
             a[:,:,0] = b
@@ -1145,9 +1023,6 @@ class videoPlayer(QtGui.QMainWindow):
             h = 0
             w = 0            
             
-        #~ 
-        #~ self.ui.label.setScaledContents(True)
-        #~ self.ui.label.setPixmap(px)
         
         self.sceneRect = QtCore.QRectF(0, 0, w,h)
         
@@ -1161,8 +1036,6 @@ class videoPlayer(QtGui.QMainWindow):
         self.videoScene.setBackgroundBrush(QtGui.QBrush(QtCore.Qt.black))
         
         self.videoView.setScene(self.videoScene)
-        #self.videoView.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        #self.videoView.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             
             
         if path:
@@ -1218,7 +1091,6 @@ class videoPlayer(QtGui.QMainWindow):
     @QtCore.Slot()
     def startVideo(self):
         self.play = True
-        #self.setBackground("/run/media/peter/Elements/peter/data/tmp-20130426/2013-02-19.00-43-00-bg-True-False-True-True.png")
         
         
         cfg.log.debug("start Video")
@@ -1252,7 +1124,6 @@ class videoPlayer(QtGui.QMainWindow):
             elif(QtCore.QTime.currentTime() < dieTime.addMSecs(15)):
                 frameNo = self.vh.getCurrentFrameNo()
                 self.ui.lbl_v1.setText("no: {0}".format(frameNo))
-#                 self.ui.lv_frames.setCurrentIndex(self.frameList.index(frameNo,0))
              
 #             cfg.log.debug("---------------------------------------- while loop() - begin")
 
@@ -1272,10 +1143,6 @@ class videoPlayer(QtGui.QMainWindow):
                                 cfg.Back.YELLOW + 
                                 "mainloop overflow after processEvents(): {0}ms".format(
                                         dieTime.msecsTo(QtCore.QTime.currentTime())))
-#             cfg.log.debug("---------------------------------------  while loop() - end")
-             
-#             cfg.log.debug("end   ------------------------------------------ main loop")
-         
         self.vh.loadProgressive = False
         cfg.logGUI.info('"--------- stopped mainloop ------------"')
         
@@ -1334,10 +1201,6 @@ class videoPlayer(QtGui.QMainWindow):
     def setVideo(self, idx):
         self.ui.lv_paths.setCurrentIndex(self.lm.index(idx,0))
         self.ui.sldr_paths.setSliderPosition(idx)
-#         for i in range(len(self.vEs)):
-#             f = self.generatePatchVideoPath(self.fileList[idx], i)
-#             self.vEs[i].setVideoStream(f, info=False, frameMode='RGB')
-            
         self.pos = self.posList[idx]
         
         if self.filterList != []:
@@ -1351,12 +1214,6 @@ class videoPlayer(QtGui.QMainWindow):
     @cfg.logClassFunction
     def setFrame(self, idx):
         self.frameIdx = idx
-        #~ if not self.play:
-            #~ i = self.frameIdx
-            #~ img = self.jumpToFrame(self.vEs[0], self.ui.lbl_v0, self.pos[i][0],i)
-            #~ img = self.jumpToFrame(self.vEs[1], self.ui.lbl_v1, self.pos[i][1],i)
-            #~ img = self.jumpToFrame(self.vEs[2], self.ui.lbl_v2, self.pos[i][2],i)
-            #~ img = self.jumpToFrame(self.vEs[3], self.ui.lbl_v3, self.pos[i][3],i)
         self.vh.setFrameIdx(idx)
         self.showNextFrame(1)
         self.ui.lv_frames.setCurrentIndex(self.frameList.index(idx,0))
@@ -1365,7 +1222,6 @@ class videoPlayer(QtGui.QMainWindow):
     @cfg.logClassFunction
     def selectVideo(self, idx, frame=0):
         self.idx = idx
-        #self.setVideo(self.idx)
         self.vh.getFrame(sorted(self.fileList)[idx], frame)
         self.ui.lbl_v0.setText("current file: {0}".format( \
                                                     sorted(self.fileList)[idx]))
@@ -1420,7 +1276,6 @@ class videoPlayer(QtGui.QMainWindow):
     @cfg.logClassFunction
     def loadNewVideo(self):
         self.videoList[self.fileList[0]] = DL.VideoLoader(self.fileList[0])
-        #self.prefetchVideo(self.fileList[0])
         
     @cfg.logClassFunction
     def showTrajectories(self, state):
@@ -1434,7 +1289,6 @@ class videoPlayer(QtGui.QMainWindow):
         if self.trajLabels != []:
             for i in range(len(self.trajLabels)):
                 for k in range(len(self.trajLabels[i])):
-                    #self.trajLabels[i].pop().setVisible(False)
                     self.videoScene.removeItem(self.trajLabels[i].pop())
                     
         self.ui.label.update()
@@ -1447,10 +1301,6 @@ class videoPlayer(QtGui.QMainWindow):
                 penCol = QtGui.QColor()
                 penCol.setHsv(i / 50.0 * 255, 255, 150, 50)
                 lbl += [self.videoScene.addRect(geo, QtGui.QPen(penCol))]
-                #l.setLineWidth(1)
-                #l.setStyleSheet("border: 1px solid hsva({0}, 200, 150, 15%);".format(i / 50.0 * 255));
-                #l.show()
-                #lbl += [l]
             self.trajLabels += [lbl]
     
     @cfg.logClassFunction
@@ -1467,10 +1317,6 @@ class videoPlayer(QtGui.QMainWindow):
         cfg.log.debug("Change video to {0}".format(filePath))
         
         self.ui.lbl_v0.setText("current file: {0}".format(filePath))
-#         posInLst = self.fileList.index(filePath)
-                
-#         self.ui.lv_paths.setCurrentIndex(self.lm.index(posInLst,0))
-        #self.updateFrameList(range(self.vh.getCurrentVideoLength()))
         
         cfg.log.debug("end")
         
@@ -1478,18 +1324,10 @@ class videoPlayer(QtGui.QMainWindow):
     def saveAll(self):
         cfg.logGUI.info('""')
         self.vh.saveAll()
-        
-#     @cfg.logClassFunction
-#     def prefetchVideo(self, posPath):        
-#         self.vl = VideoLoader()
-#         self.vl.loadedVideos.connect(self.addVideo)
-#         self.vl.loadVideos(posPath)
+
         
     def testFunction(self):
         cfg.log.debug("testFunction")
-#         self.vh.saveAll()
-        #self.showNextFrame(0)
-        #self.vh.loadProgressive = True
         1/0
         self.increment = 40
         
@@ -1565,9 +1403,7 @@ class videoPlayer(QtGui.QMainWindow):
                                 "confidence": confidence}))
         
         if not self.annoIsOpen:
-            self.confidence = confidence            
-#             self.metadata = []
-#             self.addMetadata()
+            self.confidence = confidence     
                                 
         if self.rewindOnClick:
             if not self.rewinding:
@@ -1763,10 +1599,6 @@ if __name__ == "__main__":
     except KeyError:
         fdvtPath = None
         
-    
-    
-#     logGUI = logging.getLogger("GUI")
-#     logGUI.setLevel(logging.DEBUG)
     hGUI = logging.FileHandler(os.path.join(path, 
                     "videoPlayer." + \
                     time.strftime("%Y-%m-%d.%H-%M-%S", time.localtime()) +\

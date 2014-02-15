@@ -1,42 +1,20 @@
-import sys
-from OpenGL import GL
-from OpenGL import GLU
 from PySide import QtGui
 from PySide import QtCore
-from PySide import QtOpenGL
 
-
-from pyTools.gui.videoPlayer_auto import Ui_Form
 
 import pyTools.system.videoExplorer as VE
-import pyTools.imgProc.imgViewer as IV
 import pyTools.videoProc.annotation as Annotation
 import pyTools.misc.basic as bsc 
 import pyTools.misc.config as cfg
 import pyTools.misc.Cache as Cache
 import pyTools.videoPlayer.dataLoader as DL
-import copy
-
 import numpy as np
-import scipy.misc as scim
-#import matplotlib as mpl
-import pylab as plt
 import time
-import copy
-
-import qimage2ndarray as qim2np
 
 
-
-#from qimage2ndarray import *
-# from PyQt4.uic.Compiler.qtproxies import QtCore
-
-from collections import namedtuple
 
 
 import json
-import logging, logging.handlers
-import os, sys
 
 
 
@@ -224,16 +202,10 @@ class VideoHandler(QtCore.QObject):
         try:
             bufferIdx = self.idx / self.bufferWidth
             frame = self.videoDict[self.posPath][bufferIdx].getFrame(self.idx)
+            
             if not frame:
-#                 frame = [[[0,0] 
-#                                 for i in range(self.maxOfSelectedVials() + 1)], 
-#                          [[np.zeros((64,64,3))] 
-#                                 for i in range(self.maxOfSelectedVials() + 1)]
-#                          ]
-
                 frame = self.getCurrentFrameUnbuffered(doBufferCheck, 
                                                        updateAnnotationViews)
-                #[[[0,0]] * (max(self.selectedVials) + 1), np.zeros((64,64,3))]
                     
         except KeyError:
             cfg.log.warning("accessing video out of scope, fetching...")
@@ -243,15 +215,6 @@ class VideoHandler(QtCore.QObject):
                     
         except AttributeError:
             cfg.log.warning("accessing video out of scope, fetching...")
-#             self.fetchVideo(self.posPath)
-#             frame = self.getCurrentFrameUnbuffered(doBufferCheck, 
-#                                                    updateAnnotationViews)
-            #self.getFrame(self.posPath, idx)
-#             self.getCurrentFrame()
-#         except RuntimeError as e:
-#             cfg.log.error("something went wrong during the fetching procedure: error message {0}".format(e.message))
-#             frame = [[[0,0]] * (self.maxOfSelectedVials() + 1), 
-#                      [np.zeros((64,64,3))] * (self.maxOfSelectedVials() + 1)]
             frame = [np.zeros((64,64,3))] * (self.maxOfSelectedVials() + 1)
             
         if doBufferCheck:
@@ -298,23 +261,12 @@ class VideoHandler(QtCore.QObject):
     
     @cfg.logClassFunctionInfo
     def getCurrentFrameNull(self):
-        
-        
-#         cfg.log.warning("{0}".format(self.idx))
-#         img = self.vE.getFrame(self.posPath, frameNo=self.idx, frameMode='RGB')
         frame = [[[0,0] 
                         for i in range(self.maxOfSelectedVials() + 1)], 
                  [[np.zeros((10,10))]  * \
                              (self.maxOfSelectedVials() + 1)],
                  [[]]
                  ]
-        
-#         if doBufferCheck:
-#             self.checkBuffer(updateAnnotationViews)            
-#         
-#             if updateAnnotationViews:
-#                 self.updateAnnoViewPositions()
-            
         return frame
     
         
@@ -773,7 +725,7 @@ class VideoHandler(QtCore.QObject):
             return
                 
         curAnnoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx) 
-        lenFunc = lambda x: len(x.frameList[0])                
+        lenFunc = lambda x: len(x.annotation.frameList[0])                
         
         newRng = bsc.generateRangeValuesFromKeys(self.annoEnd, 
                                                  curAnnoEnd,
@@ -828,7 +780,7 @@ class VideoHandler(QtCore.QObject):
                 annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)    
                 
                 ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  : make that [0] dynamic
-                lenFunc = lambda x: len(x.frameList[0])
+                lenFunc = lambda x: len(x.annotation.frameList[0])
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                             
@@ -901,7 +853,7 @@ class VideoHandler(QtCore.QObject):
                 annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)    
                 
                 ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  : make that [0] dynamic
-                lenFunc = lambda x: len(x.frameList[0])
+                lenFunc = lambda x: len(x.annotation.frameList[0])
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                 self.annoAltStart = None
