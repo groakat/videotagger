@@ -6,6 +6,9 @@ from colorama import init
 init(autoreset=True)
     
 # set logger up
+logGUI = logging.getLogger("GUI")
+logGUI.setLevel(logging.DEBUG)
+
       
 # Make a global logging object.
 logLevel = logging.INFO
