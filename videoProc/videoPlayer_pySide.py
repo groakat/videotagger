@@ -1021,10 +1021,10 @@ class videoPlayer(QMainWindow):
         cfg.log.debug("increment: {0}, checkBuffer: {1}".format(increment, checkBuffer))
         
         if increment > 0:
-            self.frames += [self.vh.getNextFrame(increment, doBufferCheck=True, 
+            self.frames += [self.vh.getNextFrame(increment, doBufferCheck=checkBuffer, 
                                                  unbuffered=False)]
         elif increment < 0:
-            self.frames += [self.vh.getPrevFrame(-increment, doBufferCheck=True,
+            self.frames += [self.vh.getPrevFrame(-increment, doBufferCheck=checkBuffer,
                                                  unbuffered=False)]
         else:
             self.frames += [self.vh.getCurrentFrame()]
