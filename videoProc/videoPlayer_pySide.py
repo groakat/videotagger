@@ -3184,7 +3184,7 @@ class VideoHandler(QObject):
             return
                 
         curAnnoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx) 
-        lenFunc = lambda x: len(x.annotation.frameList[0])                
+        lenFunc = lambda x: len(x.annotation.frameList)#[0])                
         
         newRng = bsc.generateRangeValuesFromKeys(self.annoEnd, 
                                                  curAnnoEnd,
@@ -3238,7 +3238,7 @@ class VideoHandler(QObject):
                 annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)    
                 
                 ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  : make that [0] dynamic
-                lenFunc = lambda x: len(x.annotation.frameList[0])
+                lenFunc = lambda x: len(x.annotation.frameList)#[0])
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                             
@@ -3310,7 +3310,7 @@ class VideoHandler(QObject):
                 annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)    
                 
                 ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  : make that [0] dynamic
-                lenFunc = lambda x: len(x.annotation.frameList[0])
+                lenFunc = lambda x: len(x.annotation.frameList)#[0])
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                 self.annoAltStart = None

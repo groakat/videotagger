@@ -942,6 +942,10 @@ class videoPlayer(QtGui.QMainWindow):
                                                      "boundingBox")
             
             for b in bb:
+                # ensure that annotations without boundingbox do not mess up
+                # anything
+                if None in b:
+                    continue
                 rois += [[b, self.annotations[i]["color"]]]
                 
         self.positionAnnotationRoi(rois)

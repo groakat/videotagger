@@ -725,7 +725,7 @@ class VideoHandler(QtCore.QObject):
             return
                 
         curAnnoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx) 
-        lenFunc = lambda x: len(x.annotation.frameList[0])                
+        lenFunc = lambda x: len(x.annotation.frameList)#[0])                
         
         newRng = bsc.generateRangeValuesFromKeys(self.annoEnd, 
                                                  curAnnoEnd,
@@ -753,6 +753,9 @@ class VideoHandler(QtCore.QObject):
                         cfg.log.debug("calling aV.addAnno()")
                         aV.addAnno(self.posPath, self.idx, metadata)
                         
+        if vials == None:
+            vials = [None]
+            
         if self.annoAltStart == None:
             self.annoAltStart = bsc.FramePosition(self.annoDict, self.posPath, 
                                                                     self.idx)
@@ -780,7 +783,7 @@ class VideoHandler(QtCore.QObject):
                 annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)    
                 
                 ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  : make that [0] dynamic
-                lenFunc = lambda x: len(x.annotation.frameList[0])
+                lenFunc = lambda x: len(x.annotation.frameList)#[0])
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                             
@@ -805,7 +808,8 @@ class VideoHandler(QtCore.QObject):
                             if (aV.annotator == None) \
                             or (annotator == aV.annotator) \
                             or (annotator in aV.annotator):
-                                if vials == aV.vialNo:
+                                if v == None and aV.vialNo == None \
+                                or v in aV.vialNo:
                                     cfg.log.debug("refreshing annotation")
                                     aV.addAnnotation(\
                                                 self.annoDict[key].annotation,
@@ -831,7 +835,10 @@ class VideoHandler(QtCore.QObject):
                     if vials == aV.vialNo:
                         cfg.log.debug("eraseAnnotation")
                         aV.eraseAnno(self.posPath, self.idx)
-                        
+                       
+        if vials == None:
+            vials = [None]
+             
         if self.annoAltStart == None:
             self.annoAltStart = bsc.FramePosition(self.annoDict, self.posPath, 
                                                                     self.idx)
@@ -853,7 +860,7 @@ class VideoHandler(QtCore.QObject):
                 annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)    
                 
                 ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  : make that [0] dynamic
-                lenFunc = lambda x: len(x.annotation.frameList[0])
+                lenFunc = lambda x: len(x.annotation.frameList)#[0])
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                 self.annoAltStart = None
@@ -874,7 +881,8 @@ class VideoHandler(QtCore.QObject):
                             if (aV.annotator == None) \
                             or (annotator == aV.annotator) \
                             or (annotator in aV.annotator):
-                                if vials == aV.vialNo:
+                                if v == None and aV.vialNo == None \
+                                or v in aV.vialNo:
                                     cfg.log.debug("refreshing annotation")
                                     aV.addAnnotation(\
                                                 self.annoDict[key].annotation,
