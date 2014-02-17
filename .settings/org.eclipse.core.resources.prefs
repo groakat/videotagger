@@ -1,4 +1,6 @@
 eclipse.preferences.version=1
 encoding//gui/FrameViewWidget.py=utf-8
+encoding//gui/FrameViewWidget_auto.py=utf-8
+encoding//gui/matplotlibDistplay.py=utf-8
 encoding//gui/videoPlayer_auto.py=utf-8
 encoding//pyToolsEnv/lib/python2.7/site-packages/Pygments-1.6-py2.7.egg/pygments/lexer.py=utf-8
