@@ -45,7 +45,7 @@ Communication to other services is done with zerorpc, which has additional depen
 
 * libzmq (`apt get install libzmq-dev`)
 * `pip install pyzmq`
-* `pip install cfii`
+* `pip install cffi`
 * `pip install zerorpc`
   
 # User Guide
