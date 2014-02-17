@@ -5,7 +5,7 @@ import cPickle as pickle
 import time
 import pyTools.videoProc.annotation as Annotation
 
-class FrameDataVisualizationTreeBase:
+class FrameDataVisualizationTreeBase(object):
     def __init__(self):
         self.resetAllSamples()
         self.range = [0,1]
@@ -13,7 +13,8 @@ class FrameDataVisualizationTreeBase:
     
     def resetAllSamples(self):
         self.tree = dict()  
-        self.tree['max'] = 0  
+        self.tree['meta'] = dict()  
+        self.tree['meta']['max'] = 0  
         
         
     def save(self, filename):
@@ -41,37 +42,40 @@ class FrameDataVisualizationTreeBase:
     def verifyStructureExists(self, day, hour, minute, frame):                              
         if day not in self.tree.keys():
             self.tree[day] = dict()
-            self.tree[day]['max'] = -np.Inf
-            self.tree[day]['mean'] = 0
-            self.tree[day]['sampleN'] = 0
+            self.tree[day]['meta'] = dict()            
+            self.tree[day]['meta']['max'] = -np.Inf
+            self.tree[day]['meta']['mean'] = 0
+            self.tree[day]['meta']['sampleN'] = 0
             
         if hour not in self.tree[day].keys():
             self.tree[day][hour] = dict()
-            self.tree[day][hour]['max'] = -np.Inf
-            self.tree[day][hour]['mean'] = 0
-            self.tree[day][hour]['sampleN'] = 0
+            self.tree[day][hour]['meta'] = dict()
+            self.tree[day][hour]['meta']['max'] = -np.Inf
+            self.tree[day][hour]['meta']['mean'] = 0
+            self.tree[day][hour]['meta']['sampleN'] = 0
             
         if minute not in self.tree[day][hour].keys():
             self.tree[day][hour][minute] = dict()
-            self.tree[day][hour][minute]['max'] = -np.Inf
-            self.tree[day][hour][minute]['mean'] = 0
-            self.tree[day][hour][minute]['sampleN'] = 0
+            self.tree[day][hour][minute]['meta'] = dict()
+            self.tree[day][hour][minute]['meta']['max'] = -np.Inf
+            self.tree[day][hour][minute]['meta']['mean'] = 0
+            self.tree[day][hour][minute]['meta']['sampleN'] = 0
         
         
     def updateMax(self, day, hour, minute, data):
 #         data = self.tree[day][hour][minute][frame]  
             
-        if self.tree[day][hour][minute]['max'] < data:
-            self.tree[day][hour][minute]['max'] = data
+        if self.tree[day][hour][minute]['meta']['max'] < data:
+            self.tree[day][hour][minute]['meta']['max'] = data
                 
-            if self.tree[day][hour]['max'] < data:
-                self.tree[day][hour]['max'] = data
+            if self.tree[day][hour]['meta']['max'] < data:
+                self.tree[day][hour]['meta']['max'] = data
             
-                if self.tree[day]['max'] < data:
-                    self.tree[day]['max'] = data
+                if self.tree[day]['meta']['max'] < data:
+                    self.tree[day]['meta']['max'] = data
             
-                    if self.tree['max'] < data:
-                        self.tree['max'] = data
+                    if self.tree['meta']['max'] < data:
+                        self.tree['meta']['max'] = data
         
     
     def incrementMean(self, prevMean, data, n):
@@ -79,10 +83,10 @@ class FrameDataVisualizationTreeBase:
     
     
     def addSampleToStumpMean(self, stump, data):
-        stump['mean'] = self.incrementMean(stump['mean'], 
-                                           data,
-                                           stump['sampleN'] + 1)
-        stump['sampleN'] += 1
+        stump['meta']['mean'] = self.incrementMean(stump['meta']['mean'], 
+                                                   data,
+                                                   stump['meta']['sampleN'] + 1)
+        stump['meta']['sampleN'] += 1
         
     
     def addSampleToMean(self, day, hour, minute, data):
@@ -111,7 +115,7 @@ class FrameDataVisualizationTreeBase:
         oldData = self.tree[day][hour][minute][frame]    
         self.tree[day][hour][minute][frame] = data
         
-        if oldData == self.tree[day][hour][minute]['max']: 
+        if oldData == self.tree[day][hour][minute]['meta']['max']: 
             newMax = np.max([self.tree[day][hour][minute][k] \
                         for k in self.tree[day][hour][minute].keys()])
             self.updateMax(day, hour, minute, newMax)
@@ -133,11 +137,11 @@ class FrameDataVisualizationTreeBase:
         self.plotData['days']['weight'] = []
         self.plotData['days']['tick'] = []
         for key in sorted(self.tree.keys()):
-            if key in ['max', 'mean', 'sampleN']:
+            if key in ['meta']:
                 continue
                 
-            self.plotData['days']['data'] += [self.tree[key]['max']]
-            self.plotData['days']['weight'] += [self.tree[key]['mean']]
+            self.plotData['days']['data'] += [self.tree[key]['meta']['max']]
+            self.plotData['days']['weight'] += [self.tree[key]['meta']['mean']]
             self.plotData['days']['tick'] += [key]
             
             
@@ -147,11 +151,13 @@ class FrameDataVisualizationTreeBase:
         self.plotData['hours']['weight'] = []
         self.plotData['hours']['tick'] = []
         for key in sorted(self.tree[day].keys()):
-            if key in ['max', 'mean', 'sampleN']:
+            if key in ['meta']:
                 continue
                 
-            self.plotData['hours']['data'] += [self.tree[day][key]['max']]
-            self.plotData['hours']['weight'] += [self.tree[day][key]['mean']]
+            self.plotData['hours']['data'] += \
+                                            [self.tree[day][key]['meta']['max']]
+            self.plotData['hours']['weight'] += \
+                                           [self.tree[day][key]['meta']['mean']]
             self.plotData['hours']['tick'] += [key]    
             
             
@@ -161,13 +167,13 @@ class FrameDataVisualizationTreeBase:
         self.plotData['minutes']['weight'] = []
         self.plotData['minutes']['tick'] = []
         for key in sorted(self.tree[day][hour].keys()):
-            if key in ['max', 'mean', 'sampleN']:
+            if key in ['meta']:
                 continue
                 
             self.plotData['minutes']['data'] += \
-                                            [self.tree[day][hour][key]['max']]
+                                    [self.tree[day][hour][key]['meta']['max']]
             self.plotData['minutes']['weight'] += \
-                                            [self.tree[day][hour][key]['mean']]
+                                    [self.tree[day][hour][key]['meta']['mean']]
             self.plotData['minutes']['tick'] += [key]
             
             
@@ -206,7 +212,161 @@ class FrameDataVisualizationTreeBase:
             
             
             
-class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
+class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
+    
+    def __init__(self):
+        super(FrameDataVisualizationTreeArrayBase, self).__init__()
+        
+        
+    def resetAllSamples(self):
+        super(FrameDataVisualizationTreeArrayBase, self).resetAllSamples()        
+        self.totalNoFrames = 0
+    
+    def insertFrameArray(self, day, hour, minute, frames):
+        self.verifyStructureExists(day, hour, minute, None)
+        self.tree[day][hour][minute]['data'] = frames
+        self.addFrameArrayToMean(day, hour, minute, frames)
+        self.updateMax(day, hour, minute, np.max(frames))
+        self.totalNoFrames += frames.shape[0]
+        
+    
+    def addFrameArrayToMean(self, day, hour, minute, frames):
+        mean = np.mean(frames)
+        N = frames.shape[0]
+        self.addFrameArrayToStumpMean(self.tree[day][hour][minute], mean, N)
+        self.addFrameArrayToStumpMean(self.tree[day][hour], mean, N)
+        self.addFrameArrayToStumpMean(self.tree[day], mean, N)
+        
+        
+    def addFrameArrayToStumpMean(self, stump, mean, N):
+        M = stump['meta']['sampleN']
+        newMean = (stump['meta']['mean'] * M + mean * N) / np.float(M+N)
+        stump['meta']['mean'] = newMean
+        stump['meta']['sampleN'] += N
+        
+        
+    def generateRandomArraySequence(self, dayRng, hourRng, minuteRng, frameRng):
+        for day in dayRng:
+            for hour in hourRng:
+                for minute in minuteRng:
+                    minMax = np.random.rand(1)[0]
+                    
+                    frames = np.random.rand(len(frameRng), 1)  * minMax
+                    frames[np.random.rand(len(frameRng), 1) > 0.98] = 1
+                    self.insertFrameArray(day, hour, minute, frames)
+                       
+                    
+    def serializeData(self):
+        data = np.empty((self.totalNoFrames, 1))
+        shapes = dict()
+        
+        cnt = 0
+        for day in sorted(self.tree.keys()):
+            if day == 'meta':
+                continue
+                
+            shapes[day] = dict()
+            
+            for hour in sorted(self.tree[day].keys()):
+                if hour == 'meta':
+                    continue
+                    
+                shapes[day][hour] = dict()
+                
+                for minute in sorted(self.tree[day][hour].keys()):
+                    if minute == 'meta':
+                        continue
+                        
+                    frames = self.tree[day][hour][minute]['data']
+                    shape = frames.shape[0]
+                    data[cnt:cnt+shape] = frames
+                    cnt += shape
+                    shapes[day][hour][minute] = shape
+        
+        msg = {'data': data.tostring(), 'shapes': shapes}
+        
+        return msg
+    
+
+
+    def deserialize(self, msg):
+        data = np.fromstring(msg['data'])
+        shapes = msg['shapes']
+        
+        self.resetAllSamples()
+        
+        cnt = 0
+        for day in sorted(shapes.keys()):           
+            for hour in sorted(shapes[day].keys()):
+                for minute in sorted(shapes[day][hour].keys()):
+                    frames = data[cnt:cnt + shapes[day][hour][minute]]
+                    self.insertFrameArray(day, hour, minute, frames)
+                    
+                    cnt += shapes[day][hour][minute]
+    
+                    
+    def testSerialization(self):
+        tmp = self.serializeData()
+        tmpFDVT = FrameDataVisualizationTreeArrayBase()
+        tmpFDVT.deserialize(tmp)
+        
+        isSame = True
+        for day in self.tree.keys():
+            if day == 'meta':
+                continue
+                
+                for hour in self.tree[day].keys():
+                    if hour == 'meta':
+                        continue
+                        
+                    for minute in self.tree[day][hour].keys():
+                        if minute == 'meta':
+                            continue
+                            
+                        framesA = self.tree[day][hour][minute]['data']
+                        framesB = tmpFDVT.tree[day][hour][minute]['data']
+                        
+                        isSame = isSame and np.allclose(framesA, framesB)
+                    
+        return isSame
+    
+    
+    
+            
+    def generatePlotDataFrames(self, day, hour, minute, frame, 
+                               frameResolution=1):
+        self.plotData['frames'] = dict()
+        self.plotData['frames']['data'] = []
+        self.plotData['frames']['weight'] = []
+        self.plotData['frames']['tick'] = []
+        cnt = 0        
+        tmpVal = []
+        tmpKeys = []
+        for i in range(self.tree[day][hour][minute]['data'].shape[0]):            
+            tmpVal += [self.tree[day][hour][minute]['data'][i]]
+            tmpKeys += [i]      
+            cnt += 1  
+            
+            if not (cnt < frameResolution):
+#                 tmpVal /= frameResolution
+                self.plotData['frames']['data'] += [max(tmpVal)]
+                self.plotData['frames']['weight'] += [sum(tmpVal) / 
+                                                                frameResolution]
+                self.plotData['frames']['tick'] += [tmpKeys]
+                cnt = 0        
+                tmpVal = []
+                tmpKeys = []
+                
+                
+        if cnt != 0:
+#             tmpVal /= cnt
+            self.plotData['frames']['data'] += [max(tmpVal)]
+            self.plotData['frames']['weight'] += [sum(tmpVal) / cnt]
+            self.plotData['frames']['tick'] += [tmpKeys]
+    
+    
+            
+class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
     def filename2Time(self, f):
         timestamp = f.split('/')[-1]
         day, timePart = timestamp.split('.')[:-1]
@@ -248,19 +408,22 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                 day, hour, minute, second = self.filename2TimeRunningIndeces(f)
                 
             
+            data = np.empty((len(filteredAnno.frameList), 1))
+            
             for i in range(len(filteredAnno.frameList)):
                 if filteredAnno.frameList[i][0] is None:
-                    data = 0
+                    data[i] = 0
                 else:
-                    data = filteredAnno.frameList[i][0]['behaviour'][behaviour][annotator]
-                    if type(data) == dict:
-                        data = data['confidence']
+                    bhvr = filteredAnno.frameList[i][0]['behaviour'][behaviour][annotator]
+                    if type(bhvr) == dict:
+                        data[i] = bhvr['confidence']
                     
-                self.addSample(day, hour, minute, i, data)
+            self.insertFrameArray(day, hour, minute, data)
                   
                      
                      
-class FrameDataVisualizationTreeTrajectories(FrameDataVisualizationTreeBase):
+class FrameDataVisualizationTreeTrajectories(\
+                                        FrameDataVisualizationTreeArrayBase):
     def filename2Time(self, f):
         timestamp = f.split('/')[-1]
         day, timePart = timestamp.split('.')[:-2]
@@ -274,22 +437,23 @@ class FrameDataVisualizationTreeTrajectories(FrameDataVisualizationTreeBase):
         for f in sorted(posList):
             day, hour, minute, second = self.filename2Time(f)
             
-            posMat = np.load(f)        
+            posMat = np.load(f)    
+            data = np.empty(posMat.shape[0])
             for i in range(posMat.shape[0]):
                 curPos = posMat[i][vial]
                 diff = abs(curPos - tmpPos)
-                data = np.sum(diff)
+                data[i] = np.sum(diff)
                 tmpPos = curPos
+                                 
+            self.insertFrameArray(day, hour, minute, data)
                 
-                self.addSample(day, hour, minute, i, data)
-                
-        self.range = [0, self.tree['max']]
+        self.range = [0, self.tree['meta']['max']]
     
     
     def load(self, filename):
         with open(filename, "rb") as f:
             self.tree = pickle.load(f) 
-        self.range = [0, self.tree['max']]
+        self.range = [0, self.tree['meta']['max']]
         
 class FrameDataView:    
     def __init__(self, figs=None, fdvTree=None, frameResolution=1, cm=None):
@@ -481,7 +645,7 @@ class FrameDataView:
         if event.name in self.cbDays.keys():            
             pos = int(np.floor(event.xdata))
             dayKey = sorted(self.fdvTree.tree.keys())[pos]
-            data = self.fdvTree.tree[dayKey]['max']
+            data = self.fdvTree.tree[dayKey]['meta']['max']
             for cb in self.cbDays[event.name]:
                 cb(dayKey, None, None, None, data)
     
@@ -494,7 +658,7 @@ class FrameDataView:
         if event.name in self.cbHours.keys():           
             pos = int(np.floor(event.xdata))
             hourKey = sorted(self.fdvTree.tree[self.day].keys())[pos]
-            data = self.fdvTree.tree[self.day][hourKey]['max']
+            data = self.fdvTree.tree[self.day][hourKey]['meta']['max']
             for cb in self.cbHours[event.name]:
                 cb(self.day, hourKey, None, None, data)
     
@@ -507,7 +671,7 @@ class FrameDataView:
         if event.name in self.cbMinutes.keys():
             pos = int(np.floor(event.xdata))
             minuteKey = sorted(self.fdvTree.tree[self.day][self.hour].keys())[pos]
-            data = self.fdvTree.tree[self.day][self.hour][minuteKey]['max']
+            data = self.fdvTree.tree[self.day][self.hour][minuteKey]['meta']['max']
             for cb in self.cbMinutes[event.name]:
                 cb(self.day, self.hour,  minuteKey, None, data)
     
@@ -520,9 +684,15 @@ class FrameDataView:
         
         if event.name in self.cbFrames.keys():
             pos = int(frame)
-            frameKey = sorted(\
-                self.fdvTree.tree[self.day][self.hour][self.minute].keys())[pos]
-            data = self.fdvTree.tree[self.day][self.hour][self.minute][frameKey]
+            try:
+                data = self.fdvTree.tree[self.day][self.hour][self.minute]['data'][pos]
+                frameKey = pos
+            except KeyError:
+                frameKey = sorted(\
+                    self.fdvTree.tree[self.day][self.hour][self.minute].keys())[pos]                    
+                data = self.fdvTree.tree[self.day][self.hour][self.minute][frameKey]
+                
+                
             for cb in self.cbFrames[event.name]:
                 cb(self.day, self.hour,  self.minute, frameKey, data)
         
