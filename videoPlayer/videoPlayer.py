@@ -12,6 +12,7 @@ import pyTools.videoPlayer.videoHandler as VH
 import pyTools.videoPlayer.dataLoader as DL
 import pyTools.videoPlayer.annoView as AV
 import pyTools.videoProc.annotation as Annotation
+import pyTools.system.misc as systemMisc
 import pyTools.misc.config as cfg
 
 import numpy as np
@@ -388,7 +389,8 @@ class videoPlayer(QtGui.QMainWindow):
                         croppedVideo=True,
                         videoEnding='.avi', #'.v0.avi',
                         runningIndeces=True,
-                        fdvtPath=None
+                        fdvtPath=None,
+                        bhvrListPath=None
                         ):
         """
         
@@ -422,7 +424,11 @@ class videoPlayer(QtGui.QMainWindow):
         if croppedVideo:
             videoEnding = ".v{0}{1}".format(selectedVial, videoEnding)
         
-        self.fileList = self.providePosList(path, ending='.bhvr')    
+        if bhvrListPath is None:
+            self.fileList = systemMisc.providePosList(path, ending='.bhvr')
+        else:
+            with open(bhvrListPath, "r") as f:
+                self.fileList = json.load(f)
         
         self.lm = MyListModel(self.fileList, self)        
         self.ui.lv_paths.setModel(self.lm)
@@ -1151,23 +1157,23 @@ class videoPlayer(QtGui.QMainWindow):
         self.vh.loadProgressive = False
         cfg.logGUI.info('"--------- stopped mainloop ------------"')
         
-    @cfg.logClassFunction
-    def providePosList(self, path, ending=None):
-        if not ending:
-            ending = '.pos.npy'
-        
-        fileList  = []
-        posList = []
-        cfg.log.debug("scaning files...")
-        for root,  dirs,  files in os.walk(path):
-            for f in files:
-                if f.endswith(ending):
-                    path = root + '/' + f
-                    fileList.append(path)
-                    
-        self.fileList = sorted(fileList)
-        cfg.log.debug("scaning files done")
-        return self.fileList
+#     @cfg.logClassFunction
+#     def providePosList(self, path, ending=None):
+#         if not ending:
+#             ending = '.pos.npy'
+#         
+#         fileList  = []
+#         posList = []
+#         cfg.log.debug("scaning files...")
+#         for root,  dirs,  files in os.walk(path):
+#             for f in files:
+#                 if f.endswith(ending):
+#                     path = root + '/' + f
+#                     fileList.append(path)
+#                     
+#         self.fileList = sorted(fileList)
+#         cfg.log.debug("scaning files done")
+#         return self.fileList
         
         
     @cfg.logClassFunction
@@ -1604,6 +1610,11 @@ if __name__ == "__main__":
     except KeyError:
         fdvtPath = None
         
+    try:
+        bhvrListPath = config['bhvr-cache']
+    except KeyError:
+        bhvrListPath = None
+        
     hGUI = logging.FileHandler(os.path.join(path, 
                     "videoPlayer." + \
                     time.strftime("%Y-%m-%d.%H-%M-%S", time.localtime()) +\
@@ -1622,7 +1633,7 @@ if __name__ == "__main__":
                      videoFormat='avi', filterObjArgs=filterObjArgs,
                      startVideoName=startVideo, rewindOnClick=rewindOnClick,
                      croppedVideo=croppedVideo, runningIndeces=runningIndeces,
-                     fdvtPath=fdvtPath)
+                     fdvtPath=fdvtPath, bhvrListPath=bhvrListPath)
     
     app.connect(app, QtCore.SIGNAL("aboutToQuit()"), w.exit)
     w.quit.connect(app.quit)
