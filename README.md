@@ -1,11 +1,11 @@
 pyTools
 =======
 
-Install
--------
+# Install
 
-Standalone VideoPlayer
-######################
+
+## Standalone VideoPlayer
+
 
 The best way of getting this running is to use the anaconda python distribution (there is a free version available from their website):
 https://store.continuum.io/cshop/anaconda/
@@ -39,9 +39,7 @@ To get this work, I edited the end of the .bashrc file in the home folder:
     export QT_PLUGIN_PATH=""
     
 
-- - - - - -
-Interactive VideoPlayer
-####################### 
+## Interactive VideoPlayer
 Communication to other services is done with zerorpc, which has additional dependencies:
 
 
@@ -50,9 +48,10 @@ Communication to other services is done with zerorpc, which has additional depen
 * `pip install cfii`
 * `pip install zerorpc`
   
+# User Guide
 
-VideoPlayer
------------
+## VideoPlayer
+
 
 The behaviour of the videoPlayer (in videoPlayer/videoPlayer.py) is controlled with a configuration file. There are some example configuration files in the videoPlayer/ folder. 
 
