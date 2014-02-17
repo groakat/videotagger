@@ -42,11 +42,18 @@ class FrameViewWidget(QtGui.QWidget, Ui_FrameViewWidget):
         
             
     def connectElements(self):        
-#         self.btn_generateData.clicked.connect(self.generateNewSequence)
-#         self.btn_loadData.clicked.connect(self.loadSequence)
-#         self.btn_redraw.clicked.connect(self.plotSequence)
         self.btn_set.clicked.connect(self.setDisplayRange)
         self.btn_clear.clicked.connect(self.resetDisplayRange)
+        self.pb_open.clicked.connect(self.openFDVT)
+        
+#     @QtCore.Slot()
+    def openFDVT(self):
+        print "ad2"
+        fileName = QtGui.QFileDialog.getOpenFileName(self,
+                                               "Open Image", ".")#, "fdtv files (*.fdtv*)")# *.jpg *.bmp)"))
+        
+        self.loadSequence(fileName[0])
+        
         
     def initializeConfidenceStructure(self):        
         # first approach:
@@ -148,6 +155,7 @@ class FrameViewWidget(QtGui.QWidget, Ui_FrameViewWidget):
         
         self.initializeConfidenceStructure()
         self.draw()
+        self.setDisplayRange()
         
     def plotSequence(self):        
         self.initLocations(self.day, self.hour, self.minute, self.frame)
@@ -178,8 +186,8 @@ class TestClass(QtGui.QMainWindow):
     
     def __init__(self):        
         QtGui.QMainWindow.__init__(self)
-        self.ui = FrameViewWidget()
-        self.ui.setupUi(self)
+        self.ui = FrameViewWidget(self)
+#         self.ui.setupUi(self)
         self.show()   
         
 
