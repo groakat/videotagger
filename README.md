@@ -26,7 +26,8 @@ from https://github.com/ContinuumIO/anaconda-issues/issues/32:
 Such a file can be found in the anaconda_fixes (qt.conf). In my case I copied this file into `/home/peter/anaconda/bin/`
 
 Also:
-  before creating the application object, one needs to do QtGui.QApplication.setLibraryPaths([]). The effect of the latter seems also be achievable by instead setting the environment variable "QT_PLUGIN_PATH" to an empty string.
+
+    before creating the application object, one needs to do QtGui.QApplication.setLibraryPaths([]). The effect of the latter seems also be achievable by instead setting the environment variable "QT_PLUGIN_PATH" to an empty string.
   
 To get this work, I edited the end of the .bashrc file in the home folder:
 
