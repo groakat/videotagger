@@ -4,6 +4,9 @@ pyTools
 Install
 -------
 
+Standalone VideoPlayer
+- - - - - -
+
 The best way of getting this running is to use the anaconda python distribution (there is a free version available from their website):
 https://store.continuum.io/cshop/anaconda/
 
@@ -34,6 +37,11 @@ To get this work, I edited the end of the .bashrc file in the home folder:
     # added by Anaconda 1.8.0 installer
     export PATH="/home/peter/anaconda/bin:$PATH"
     export QT_PLUGIN_PATH=""
+    
+
+Interactive VideoPlayer
+- - - - - - - - - - - - 
+sadasd
   
 
 VideoPlayer
