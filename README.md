@@ -5,7 +5,7 @@ Install
 -------
 
 Standalone VideoPlayer
-- - - - - -
+######################
 
 The best way of getting this running is to use the anaconda python distribution (there is a free version available from their website):
 https://store.continuum.io/cshop/anaconda/
@@ -39,9 +39,16 @@ To get this work, I edited the end of the .bashrc file in the home folder:
     export QT_PLUGIN_PATH=""
     
 
+- - - - - -
 Interactive VideoPlayer
-- - - - - - - - - - - - 
-sadasd
+####################### 
+Communication to other services is done with zerorpc, which has additional dependencies:
+
+
+* libzmq (`apt get install libzmq-dev`)
+* `pip install pyzmq`
+* `pip install cfii`
+* `pip install zerorpc`
   
 
 VideoPlayer
