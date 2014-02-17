@@ -43,7 +43,7 @@ The behaviour of the videoPlayer (in videoPlayer/videoPlayer.py) is controlled w
 
 Once the videoPath is set, one should run
 
-  python cacheFilelist.py -c <configuration file>
+  python cacheFilelist.py -c `<configuration file>`
   
 With `<configuration file>` being the filename of a configuration file. This will speed up the start up of the video player significantly.
 
