@@ -31,9 +31,9 @@ Also:
   before creating the application object, one needs to do QtGui.QApplication.setLibraryPaths([]). The effect of the latter seems also be achievable by instead setting the environment variable "QT_PLUGIN_PATH" to an empty string.
   
 To get this work, I edited the end of the .bashrc file in the home folder:
-  # added by Anaconda 1.8.0 installer
-  export PATH="/home/peter/anaconda/bin:$PATH"
-  export QT_PLUGIN_PATH=""
+    # added by Anaconda 1.8.0 installer
+    export PATH="/home/peter/anaconda/bin:$PATH"
+    export QT_PLUGIN_PATH=""
   
 
 VideoPlayer
@@ -43,7 +43,7 @@ The behaviour of the videoPlayer (in videoPlayer/videoPlayer.py) is controlled w
 
 Once the videoPath is set, one should run
 
-  python cacheFilelist.py -c `<configuration file>`
+    python cacheFilelist.py -c <configuration file>
   
 With `<configuration file>` being the filename of a configuration file. This will speed up the start up of the video player significantly.
 
