@@ -15,22 +15,21 @@ This package needs the following external libraries:
 * my fork of qimage2ndarray (https://github.com/groakat/qimage2ndarray)
 
 
-Further, if using anaconda and linux (and mac?), one has to rename/delete the libm.so and all libm.x.so files. These files can be found in the lib folder of the anaconda installation. For example:
-  /home/peter/anaconda/lib/
+Further, if using anaconda and linux (and mac?), one has to rename/delete the libm.so and all libm.x.so files. These files can be found in the lib folder of the anaconda installation. For example `/home/peter/anaconda/lib/`.
   
 If using anaconda with KDE (under linux) there is another clash with Qt:
 
 from https://github.com/ContinuumIO/anaconda-issues/issues/32:
 
-  "here needs to be a qt.conf next to the executable that has this content: "[Paths]\nPlugins = '.'\n" "
+    "here needs to be a qt.conf next to the executable that has this content: "[Paths]\nPlugins = '.'\n" "
   
-Such a file can be found in the anaconda_fixes (qt.conf). In my case I copied this file into
-  /home/peter/anaconda/bin/
+Such a file can be found in the anaconda_fixes (qt.conf). In my case I copied this file into `/home/peter/anaconda/bin/`
 
 Also:
   before creating the application object, one needs to do QtGui.QApplication.setLibraryPaths([]). The effect of the latter seems also be achievable by instead setting the environment variable "QT_PLUGIN_PATH" to an empty string.
   
 To get this work, I edited the end of the .bashrc file in the home folder:
+
     # added by Anaconda 1.8.0 installer
     export PATH="/home/peter/anaconda/bin:$PATH"
     export QT_PLUGIN_PATH=""
