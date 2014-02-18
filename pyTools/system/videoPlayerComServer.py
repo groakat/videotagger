@@ -4,6 +4,7 @@ import datetime
 from collections import OrderedDict
 from collections import namedtuple
 
+import pyTools.misc.FrameDataVisualization as FDVT 
 
 
 import copy
@@ -37,7 +38,10 @@ def make_hash(o):
         o = o2  
     
     if isinstance(o, (set, tuple, list)):    
-        return tuple([make_hash(e) for e in o])    
+        return tuple([make_hash(e) for e in o])
+    
+    if isinstance(o, (slice)):    
+        return tuple([make_hash(o.start), make_hash(o.stop), make_hash(o.step)])    
     
     elif not isinstance(o, dict):    
         return hash(o)
@@ -49,28 +53,84 @@ def make_hash(o):
     return hash(tuple(frozenset(sorted(new_o.items()))))
 
 
-Query = namedtuple("Query", ['id', 'rank', "type", "query", "reply"])
-
+Query = namedtuple("Query", ['qid', 'cid', 'priority', "job", "query"])
 class QueryTuple(Query):
-    def __new__(cls, id, rank, type, query, reply):
-        self = super(QueryTuple, cls).__new__(cls, id, rank, type, query, reply)
-        self._hash = hash(self.id) * hash(self.rank) * hash(self.type) * \
-                        make_hash(self.query) * make_hash(self.reply)
+    def __new__(cls, qid, cid, priority, job, query):
+        """
+        Args:
+            qid  -- unique query id (assigned by server)
+            cid  -- client id (assigned by client)
+            priority -- 0: info (update when you like)
+                        1: normal request
+                        2: immediate request
+                        
+            job  -- 0: transmitting new FDVT (update FDVT)
+                    1: requesting specific frame label
+                    2: requesting frame range
+                    
+            query -- data
+        """
+        self = super(QueryTuple, cls).__new__(cls, qid, cid, priority, job, query)
+        self._hash = hash(self.qid) * hash(qid) * hash(self.priority) * \
+                     hash(self.job) * make_hash(self.query)
         return self
     
     def __hash__(self):
         return self._hash
     
     def convertToDict(self):
-        return {'id': self.id, 'rank': self.rank, "type":self.type, 
-                "query":self.query, "reply":self.reply}
+        return {'qid': self.qid, 'cid': self.cid, 'priority': self.priority, 
+                "job":self.job, "query":self.query}
+        
         
 
-class ComServer(object):
+Reply = namedtuple("Reply", ['qid', 'cid','priority', "job", "reply"])
+class ReplyTuple(Reply):
+    def __new__(cls, qid, cid, priority, job, reply):
+        """
+        Args:
+            qid  -- unique query id (assigned by client) / each client has its 
+                    own full query id space
+            cid  -- client id (assigned by client)
+            priority -- 0: info (update when you like)
+                        1: normal request
+                        2: immediate request
+                        
+            job  -- 0: transmitting new FDVT (update FDVT)
+                    1: requesting specific frame label
+                    2: requesting frame range
+                    
+            reply -- data
+        """
+        self = super(ReplyTuple, cls).__new__(cls, qid, cid, priority, job, reply)
+        self._hash = hash(self.qid) * hash(qid) * hash(self.priority) * \
+                     hash(self.job) * make_hash(self.reply)
+        return self
     
+    def __hash__(self):
+        return self._hash
+    
+    def convertToDict(self):
+        return {'qid': self.qid, 'cid': self.cid, 'priority': self.priority, 
+                "job":self.job, "reply":self.reply}
+        
+
+
+class ComServerBase(object):    
     def __init__(self):
         self.queryQueue = dict()
         self.replyQueue = dict()
+        self.replyList = dict()
+        self.clientIDs = []
+        
+    def requestClientID(self):
+        if self.clientIDs:
+            cid = max(self.clientIDs) + 1
+            self.clientIDs += [cid]
+            return cid
+        else:
+            self.clientIDs = [0]
+            return 0
 
     def nextQuery(self):
         """ requests the next open query """
@@ -92,35 +152,65 @@ class ComServer(object):
         """ pushes a new query in the queue """
         queryTpl = QueryTuple(**queryDict)
         
-        if not queryTpl.rank in self.queryQueue.keys():
-            self.queryQueue[queryTpl.rank] = OrderedDict()
+        if not queryTpl.priority in self.queryQueue.keys():
+            self.queryQueue[queryTpl.priority] = OrderedDict()
                      
-        self.queryQueue[queryTpl.rank][queryTpl.id] = queryTpl
+        self.queryQueue[queryTpl.priority][queryTpl.qid] = queryTpl
         
         print "inserted queryDict"
     
-    def nextReply(self):
-        """ request the next query which has a reply """
-        for r in sorted(self.replyQueue.keys(), reverse=True):
-            try:
-                query = self.replyQueue[r].popitem(last=False)[1]
-                return query.convertToDict()
-            except KeyError:
-                pass
-            
-        return None
-    
-    def pushReply(self, queryDict):
-        """ pushes the reply to a query into the queue """
-        queryTpl = QueryTuple(**queryDict)
+    def nextReply(self, qid=None):
+        """ request the next query which has a reply 
+        Args:
+            qid -- if None, the next replay on the list will be served
+        """
+        if qid is None:                
+            for p in sorted(self.replyQueue.keys(), reverse=True):
+                try:
+                    query = self.replyQueue[p].popitem(last=False)[1]
+                    return query.convertToDict()
+                except KeyError:
+                    pass
+                
+            return None
+        else:
+            # first remove this qid from the reply queue then serve it
+            p = self.replyList[qid].priority
+            if qid in self.replyQueue[p].keys():
+                del self.replyQueue[p][qid]
+                
+            return self.replyList[qid].convertToDict()
         
-        if not queryTpl.rank in self.replyQueue.keys():
-            self.replyQueue[queryTpl.rank] = OrderedDict()
+    
+    def pushReply(self, replyDict):
+        """ pushes the reply to a query into the queue """
+        replyTpl = ReplyTuple(**replyDict)
+        
+        if not replyTpl.priority in self.replyQueue.keys():
+            self.replyQueue[replyTpl.priority] = OrderedDict()
                     
-        self.replyQueue[queryTpl.rank][queryTpl.id] = queryTpl
+        self.replyQueue[replyTpl.priority][replyTpl.qid] = replyTpl
+        self.replyList[replyTpl.qid] = replyTpl
+        
+    def pushTestData(self, data):
+        print data
+        
+        
+class ComServerFDVT(ComServerBase):
+    def __init__(self):
+        super(ComServerFDVT, self).__init__()
+        # __serialized__ FDVT
+        self.baseFDVT = None
+        
+    def pushBaseTree(self, replyDict):
+        self.baseFDVT = replyDict
+        
+    def requestBaseTree(self):
+        return self.baseFDVT
+        
         
         
 if __name__ == "__main__":    
-    s = zerorpc.Server(ComServer())
+    s = zerorpc.Server(ComServerBase())
     s.bind("tcp://0.0.0.0:4244")
     s.run()

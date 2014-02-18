@@ -419,6 +419,7 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                     
         return isSame
     
+        
     def testKeyIdxConversion(self):
         self.generateRandomArraySequence(range(2),
                                          range(24), 
@@ -433,8 +434,7 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
             
         
         return isSame
-    
-    
+      
     
             
     def generatePlotDataFrames(self, day, hour, minute, frame, 
