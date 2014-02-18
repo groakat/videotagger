@@ -251,58 +251,84 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                 for minute in minuteRng:
                     minMax = np.random.rand(1)[0]
                     
-                    frames = np.random.rand(len(frameRng), 1)  * minMax
-                    frames[np.random.rand(len(frameRng), 1) > 0.98] = 1
+                    frames = np.random.rand(len(frameRng))  * minMax
+                    frames[np.random.rand(len(frameRng)) > 0.98] = 1
                     self.insertFrameArray(day, hour, minute, frames)
-                       
                     
-    def serializeData(self):
-        data = np.empty((self.totalNoFrames, 1))
-        shapes = dict()
+                    
+    def computeInternalRanges(self):
+        self.ranges = dict()        
         
         cnt = 0
         for day in sorted(self.tree.keys()):
             if day == 'meta':
                 continue
                 
-            shapes[day] = dict()
+            self.ranges[day] = dict()
             
             for hour in sorted(self.tree[day].keys()):
                 if hour == 'meta':
                     continue
                     
-                shapes[day][hour] = dict()
+                self.ranges[day][hour] = dict()
                 
                 for minute in sorted(self.tree[day][hour].keys()):
                     if minute == 'meta':
                         continue
                         
                     frames = self.tree[day][hour][minute]['data']
-                    shape = frames.shape[0]
-                    data[cnt:cnt+shape] = frames
-                    cnt += shape
-                    shapes[day][hour][minute] = shape
+                    rng = slice(cnt,cnt+frames.shape[0])
+                    
+                    self.ranges[day][hour][minute] = rng
+                    cnt += 1         
+                           
+                    
+    def serializeData(self):
+        data = np.empty((self.totalNoFrames))
+        ranges = dict()        
         
-        msg = {'data': data.tostring(), 'shapes': shapes}
+        cnt = 0
+        for day in sorted(self.tree.keys()):
+            if day == 'meta':
+                continue
+                
+            ranges[day] = dict()
+            
+            for hour in sorted(self.tree[day].keys()):
+                if hour == 'meta':
+                    continue
+                    
+                ranges[day][hour] = dict()
+                
+                for minute in sorted(self.tree[day][hour].keys()):
+                    if minute == 'meta':
+                        continue
+                        
+                    frames = self.tree[day][hour][minute]['data']
+                    rng = slice(cnt,cnt+frames.shape[0])
+                    data[rng] = frames
+                    
+                    ranges[day][hour][minute] = rng
+                    cnt += 1                    
         
+        msg = {'data': data.tostring(), 'ranges':ranges}
+                
         return msg
     
 
 
     def deserialize(self, msg):
         data = np.fromstring(msg['data'])
-        shapes = msg['shapes']
+        ranges = msg['ranges']
         
         self.resetAllSamples()
         
-        cnt = 0
-        for day in sorted(shapes.keys()):           
-            for hour in sorted(shapes[day].keys()):
-                for minute in sorted(shapes[day][hour].keys()):
-                    frames = data[cnt:cnt + shapes[day][hour][minute]]
+        for day in sorted(ranges.keys()):           
+            for hour in sorted(ranges[day].keys()):
+                for minute in sorted(ranges[day][hour].keys()):
+                    frames = data[ranges[day][hour][minute]]
                     self.insertFrameArray(day, hour, minute, frames)
                     
-                    cnt += shapes[day][hour][minute]
     
                     
     def testSerialization(self):
