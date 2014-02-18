@@ -217,12 +217,12 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
     def __init__(self):
         super(FrameDataVisualizationTreeArrayBase, self).__init__()
         
-        self.addedNewData = True
-        
         
     def resetAllSamples(self):
         super(FrameDataVisualizationTreeArrayBase, self).resetAllSamples()        
         self.totalNoFrames = 0
+        self.addedNewData = True
+        
     
     def insertFrameArray(self, day, hour, minute, frames):
         self.addedNewData = True
@@ -249,6 +249,7 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
         
         
     def generateRandomArraySequence(self, dayRng, hourRng, minuteRng, frameRng):
+        self.resetAllSamples()
         for day in dayRng:
             for hour in hourRng:
                 for minute in minuteRng:
@@ -259,7 +260,38 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                     self.insertFrameArray(day, hour, minute, frames)
                     
                     
-    def findKeyToIdx(self, idx):
+    def key2idx(self, day, hour, minute, frame):
+        iDay = day
+        iHour = hour
+        iMinute = minute
+        iFrame = frame
+        
+        self.computeInternalRanges()
+        
+        cnt = 0
+        for day in sorted(self.ranges.keys()):
+            if day == 'meta':
+                continue
+            
+            dayMatch = day == iDay                
+            
+            for hour in sorted(self.ranges[day].keys()):
+                if hour == 'meta':
+                    continue
+                
+                hourMatch = dayMatch and (hour == iHour)
+                for minute in sorted(self.ranges[day][hour].keys()):
+                    if minute == 'meta':
+                        continue
+                        
+                    if hourMatch and (minute == iMinute):
+                        return cnt + iFrame 
+                        
+                    rng = self.ranges[day][hour][minute]                    
+                    cnt += rng.stop
+                    
+                    
+    def idx2key(self, idx):
         self.computeInternalRanges()
         
         for day in sorted(self.ranges.keys()):
@@ -385,6 +417,21 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                         
                         isSame = isSame and np.allclose(framesA, framesB)
                     
+        return isSame
+    
+    def testKeyIdxConversion(self):
+        self.generateRandomArraySequence(range(2),
+                                         range(24), 
+                                         range(60),
+                                         range(1800))
+        isSame = True
+        
+        for i in range(1000):
+            idx = np.random.randint(0, self.totalNoFrames)
+            key = self.idx2key(idx)
+            isSame = isSame and (idx == self.key2idx(*key))
+            
+        
         return isSame
     
     
