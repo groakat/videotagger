@@ -217,12 +217,15 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
     def __init__(self):
         super(FrameDataVisualizationTreeArrayBase, self).__init__()
         
+        self.addedNewData = True
+        
         
     def resetAllSamples(self):
         super(FrameDataVisualizationTreeArrayBase, self).resetAllSamples()        
         self.totalNoFrames = 0
     
     def insertFrameArray(self, day, hour, minute, frames):
+        self.addedNewData = True
         self.verifyStructureExists(day, hour, minute, None)
         self.tree[day][hour][minute]['data'] = frames
         self.addFrameArrayToMean(day, hour, minute, frames)
@@ -256,7 +259,33 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                     self.insertFrameArray(day, hour, minute, frames)
                     
                     
-    def computeInternalRanges(self):
+    def findKeyToIdx(self, idx):
+        self.computeInternalRanges()
+        
+        for day in sorted(self.ranges.keys()):
+            if day == 'meta':
+                continue
+            
+            for hour in sorted(self.ranges[day].keys()):
+                if hour == 'meta':
+                    continue
+                
+                for minute in sorted(self.ranges[day][hour].keys()):
+                    if minute == 'meta':
+                        continue
+                        
+                    rng = self.ranges[day][hour][minute]
+                    
+                    if idx < rng.stop:
+                        return day, hour, minute, idx
+                    
+                    idx -= rng.stop 
+        
+                    
+    def computeInternalRanges(self):        
+        if not self.addedNewData:
+            return
+        
         self.ranges = dict()        
         
         cnt = 0
@@ -282,6 +311,8 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                     self.ranges[day][hour][minute] = rng
                     cnt += 1         
                            
+        self.addedNewData = False
+        
                     
     def serializeData(self):
         data = np.empty((self.totalNoFrames))
