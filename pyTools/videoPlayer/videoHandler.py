@@ -115,7 +115,10 @@ class VideoHandler(QtCore.QObject):
         
 
     def maxOfSelectedVials(self):
-        return 0
+        if self.selectedVials is None:
+            return 0
+        else:
+            return max(self.selectedVials)#4#0
 #         return maxOfSelectedVials(self.selectedVials)
     
     def aboutToQuit(self):
@@ -197,7 +200,7 @@ class VideoHandler(QtCore.QObject):
 # #         posKey += 
 #         
 #         pos = self.posCache.getItem(posKey)[self.idx]
-        pos =self.getPositionArray(self.posPath)[self.idx]
+        pos = self.getPositionArray(self.posPath)[self.idx]
         
         frameList += [pos]
         
@@ -220,7 +223,11 @@ class VideoHandler(QtCore.QObject):
                     
         except AttributeError:
             cfg.log.warning("accessing video out of scope, fetching...")
-            frame = [np.zeros((64,64,3))] * (self.maxOfSelectedVials() + 1)
+#             frame = [np.zeros((64,64,3))] * (self.maxOfSelectedVials() + 1)
+            frame = self.getCurrentFrameUnbuffered(doBufferCheck, 
+                                                   updateAnnotationViews)
+#             print pos, posOnly
+#             print frameList
             
         if doBufferCheck:
             self.checkBuffer(updateAnnotationViews)            
@@ -244,6 +251,7 @@ class VideoHandler(QtCore.QObject):
                                 for i in range(self.maxOfSelectedVials() + 1)]
             
         frameList += [annotation]
+        
         return frameList
     
     
