@@ -1,4 +1,3 @@
-import pyTools.system.videoPlayerComServer as comServer
 import pyTools.system.videoPlayerComClient as comClient
 import pyTools.videoPlayer.dataLoader as DL
 
@@ -57,8 +56,6 @@ class RPCInterfaceHandler(QtCore.QObject):
         
         self.controller = RPCController(cbFuncs=cbFuncs,
                                         address=address)
-        self.waitingForReply = False
-        self.currentQuery = None
         
         
         self.thread = DL.MyThread("RPCInterfaceHandlerThread")
@@ -67,6 +64,13 @@ class RPCInterfaceHandler(QtCore.QObject):
         self.thread.start()
         
         self.wait4NextJobSig.connect(self.wait4NextJob)
+        self.initWaiting()
+        
+        
+        
+    def initWaiting(self):
+        self.currentQuery = None
+        self.waitingForReply = False
         self.wait4NextJobSig.emit()
         
         
@@ -89,6 +93,7 @@ class RPCInterfaceHandler(QtCore.QObject):
         self.waitingForReply = True
         self.currentQuery = query
         self.updateFDVTSig.emit(query.query)
+        self.initWaiting()
         
     def labelFrameRange(self, query):
         self.waitingForReply = True
@@ -112,9 +117,9 @@ class RPCInterfaceHandler(QtCore.QObject):
         """ 
         dVector = lst[0]
         self.controller.sendCompletedJob(self.currentQuery, dVector)
-        self.currentQuery = None
-        self.waitingForReply = False
-        self.wait4NextJobSig.emit()
+        self.initWaiting()
+        
+    
                 
         
         

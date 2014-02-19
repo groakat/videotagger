@@ -15,6 +15,7 @@ import pyTools.videoProc.annotation as Annotation
 import pyTools.system.misc as systemMisc
 import pyTools.misc.config as cfg
 import pyTools.videoPlayer.eventFilter as EF
+import pyTools.videoPlayer.RPCController as RPC
 
 import numpy as np
 import scipy.misc as scim
@@ -82,7 +83,8 @@ class videoPlayer(QtGui.QMainWindow):
                         videoEnding='.avi', #'.v0.avi',
                         runningIndeces=True,
                         fdvtPath=None,
-                        bhvrListPath=None
+                        bhvrListPath=None,
+                        serverAddress="tcp://127.0.0.1:4242"
                         ):
         """
         
@@ -213,6 +215,10 @@ class videoPlayer(QtGui.QMainWindow):
         self.showTrajectories(self.showTraject)
         
         self.setupFrameView()
+        if serverAddress is not None:
+            self.rpcIH = RPC.RPCInterfaceHandler(serverAddress)
+            self.rpcIH.updateFDVTSig.connect(self.setFrameView)
+            
         
         
         self.show()        
@@ -330,6 +336,12 @@ class videoPlayer(QtGui.QMainWindow):
         frameView.registerButtonPressCallback('frames', self.selectVideoTime)
         if self.fdvtPath is not None:
             frameView.loadSequence(self.fdvtPath)
+            
+            
+    @QtCore.Slot(list)
+    def setFrameView(self, lst):
+        fdvt = lst[0]
+        self.ui.frameView.setSequence(fdvt)
             
             
     def createPrevFrames(self, xPos, yPos):
@@ -1306,6 +1318,11 @@ if __name__ == "__main__":
         bhvrListPath = config['bhvr-cache']
     except KeyError:
         bhvrListPath = None
+        
+    try:
+        serverAddress = config['remote-request-server']
+    except KeyError:
+        serverAddress = "tcp://127.0.0.1:4242"
         
     hGUI = logging.FileHandler(os.path.join(path, 
                     "videoPlayer." + \
