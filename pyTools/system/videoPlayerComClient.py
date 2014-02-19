@@ -4,15 +4,15 @@ import pyTools.system.videoPlayerComServer as comServer
 from time import time
 
 
-class videoPlayerComClientBase(zerorpc.Client):
+class VideoPlayerComClientBase(zerorpc.Client):
     def __init__(self, address="tcp://127.0.0.1:4242"):
-        super(videoPlayerComClientBase, self).__init__()
+        super(VideoPlayerComClientBase, self).__init__()
         
         self.connect(address)
         self.cid = self.requestClientID()
         
 
-class FDVTComClientRequester(videoPlayerComClientBase):
+class FDVTComClientRequester(VideoPlayerComClientBase):
     def __init__(self, address="tcp://127.0.0.1:4242"):
         super(FDVTComClientRequester, self).__init__(address=address)
         
@@ -45,7 +45,7 @@ class FDVTComClientRequester(videoPlayerComClientBase):
         self.pushQuery(query.convertToDict())
 
 
-class FDVTComClientReplier(videoPlayerComClientBase):
+class FDVTComClientReplier(VideoPlayerComClientBase):
     def __init__(self, address="tcp://127.0.0.1:4242"):
         super(FDVTComClientReplier, self).__init__(address=address)
         
@@ -66,7 +66,7 @@ class FDVTComClientReplier(videoPlayerComClientBase):
 class GUIComBase(object):
     def __init__(self, address="tcp://127.0.0.1:4242", comServer=None, 
                  debug=False):
-        self.fdtv = FDVT.FrameDataVisualizationTreeArrayBase()
+        self.fdvt = FDVT.FrameDataVisualizationTreeArrayBase()
         
         if debug:
             self.generateRandomFDVT()
@@ -74,9 +74,10 @@ class GUIComBase(object):
         if comServer is not None:
             self.bus = comServer
         else:
-            self.bus = FDVTComClientReplier(address)
+            self.bus = VideoPlayerComClientBase(address)
             
         self.cid = self.bus.requestClientID()
+        self.qid = 0
         
     
     def generateRandomFDVT(self):
@@ -85,17 +86,22 @@ class GUIComBase(object):
         minuteRng = range(60)
         frameRng = range(1800)
 
-        self.fdtv.generateRandomArraySequence(dayRng, hourRng, minuteRng, 
+        self.fdvt.generateRandomArraySequence(dayRng, hourRng, minuteRng, 
                                               frameRng)
     
     def sendLabelTree(self):
         data = self.fdvt.serializeData()        
         query = comServer.ReplyTuple(None, None, None, "baseFDVT", data)             
-        self.bus.pushBaseTree(query.convertToDict())
+        self.bus.pushBaseLabelTree(query.convertToDict())
         
     
     def requestNewJob(self):
-        query = comServer.QueryTuple(**self.bus.nextQuery())
+        msg = self.bus.nextQuery()
+        if msg is None:
+            self.noNewJob()
+            return
+        
+        query = comServer.QueryTuple(**msg)
         if query.job == 0:
             self.updateFDVT(query)
         elif query.job == 1:
@@ -124,14 +130,21 @@ class GUIComBase(object):
         self.bus.pushReply(reply)     
         
         
+    ###### FUNCTIONS TO OVERLOAD ##############################################
+        
+    def noNewJob(self):
+        print "GUIComBase: no more queries in the server"      
+        
     def labelFrame(self, query):
-        print "GUIComBase: labelFrame"
+        print "GUIComBase: labelFrame -- {0}".format(query)
         
     def updateFDVT(self, query):
-        print "GUIComBase: updateFDVT"
+        print "GUIComBase: updateFDVT -- {0}".format(query) 
         
     def labelFrameRange(self, query):
-        print "GUIComBase: labelFrameRange"
+        print "GUIComBase: labelFrameRange -- {0}".format(query)
+        
+    ###### FUNCTIONS TO OVERLOAD ##############################################
     
     
 class ALComBase(object):
@@ -141,13 +154,19 @@ class ALComBase(object):
         if comServer is not None:
             self.bus = comServer
         else:
-            self.bus = FDVTComClientReplier(address)
+            self.bus = VideoPlayerComClientBase(address)
             
         self.cid = self.bus.requestClientID()
+        self.qid = 0
         
         
     def queryNextCompletedJob(self):
-        reply = comServer.ReplyTuple(**self.bus.nextReply())
+        msg = self.bus.nextReply()
+        if msg is None:
+            self.noNewReply()
+            return
+            
+        reply = comServer.ReplyTuple(**msg)
         
         if isinstance(reply.reply, Exception):
             self.jobFailed(reply)
@@ -161,25 +180,59 @@ class ALComBase(object):
         else:
             self.rejectJob(reply, ValueError('Cannot identify the job task'))
             
+            
+    def prepareQuery(self, job, priority, data):
+        query = dict()
+        query['cid'] = self.cid
+        query['qid'] = self.qid
+        self.qid += 1
+        query['job'] = job
+        query['priority'] = priority
+        query['query'] = data
         
+        return query
+            
         
-    def updatedFDVT(self, query):
-        print "ALComBase: updatedFDVT"
-        
-    def updateFrame(self, query):
-        print "ALComBase: updateFrame"
-        
-    def updateFrameRange(self, query):
-        print "ALComBase: updateFrameRange"
+    def pushFDVT(self, fdvt, priority=1):
+        query = self.prepareQuery(job=0, priority=priority, data=fdvt)
+        self.bus.pushQuery(query)
             
             
+    def queryFrameLabel(self, fIdx, priority=1):
+        query = self.prepareQuery(job=1, priority=priority, data=fIdx)
+        self.bus.pushQuery(query)
+            
+            
+    def queryFrameRangeLabel(self, fRng, priority=1):
+        query = self.prepareQuery(job=2, priority=priority, data=fRng)
+        self.bus.pushQuery(query)
+        
+        
+    def requestBaseLabelTree(self):
+        reply = comServer.ReplyTuple(**self.bus.requestBaseLabelTree())
+        self.fdtv.deserialize(reply.reply)
+        
+        
+    ###### FUNCTIONS TO OVERLOAD ##############################################
+                    
+    def noNewReply(self):
+        print "ALComBase: no more replies in the server"          
+        
+    def updatedFDVT(self, reply):
+        print "ALComBase: updatedFDVT -- {0}".format(reply)
+        
+    def updateFrame(self, reply):
+        print "ALComBase: updateFrame -- {0}".format(reply)
+        
+    def updateFrameRange(self, reply):
+        print "ALComBase: updateFrameRange -- {0}".format(reply)
+            
+        
     def jobFailed(self, reply):
         raise reply.reply
     
-    def requestBaseTree(self):
-        reply = comServer.ReplyTuple(**self.bus.requestBaseTree())
-        self.fdvt.deserialize(reply.reply)
-        
+    ###### FUNCTIONS TO OVERLOAD ##############################################
+    
         
 ###############################################################################
 

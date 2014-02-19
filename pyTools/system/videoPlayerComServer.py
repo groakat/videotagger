@@ -80,8 +80,13 @@ class QueryTuple(Query):
     
     def convertToDict(self):
         return {'qid': self.qid, 'cid': self.cid, 'priority': self.priority, 
-                "job":self.job, "query":self.query}
-        
+                "job":self.job, "query":self.query}        
+    
+    def __str__(self):
+        return "QueryTuple: qid: {qid}, cid: {cid}, priority: {priority}, job: {job}, query (hash): {query}".format(
+                qid=self.qid, cid=self.cid, priority=self.priority, 
+                job=self.job, query=make_hash(self.query))
+    
         
 
 Reply = namedtuple("Reply", ['qid', 'cid','priority', "job", "reply"])
@@ -113,6 +118,11 @@ class ReplyTuple(Reply):
     def convertToDict(self):
         return {'qid': self.qid, 'cid': self.cid, 'priority': self.priority, 
                 "job":self.job, "reply":self.reply}
+    
+    def __str__(self):
+        return "QueryTuple: qid: {qid}, cid: {cid}, priority: {priority}, job: {job}, reply (hash): {reply}".format(
+                qid=self.qid, cid=self.cid, priority=self.priority, 
+                job=self.job, reply=make_hash(self.reply))
         
 
 
@@ -202,15 +212,15 @@ class ComServerFDVT(ComServerBase):
         # __serialized__ FDVT
         self.baseFDVT = None
         
-    def pushBaseTree(self, replyDict):
+    def pushBaseLabelTree(self, replyDict):
         self.baseFDVT = replyDict
         
-    def requestBaseTree(self):
+    def requestBaseLabelTree(self):
         return self.baseFDVT
         
         
         
 if __name__ == "__main__":    
-    s = zerorpc.Server(ComServerBase())
+    s = zerorpc.Server(ComServerFDVT())
     s.bind("tcp://0.0.0.0:4244")
     s.run()

@@ -222,6 +222,7 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
         super(FrameDataVisualizationTreeArrayBase, self).resetAllSamples()        
         self.totalNoFrames = 0
         self.addedNewData = True
+        self.ranges = dict()
         
     
     def insertFrameArray(self, day, hour, minute, frames):
@@ -371,7 +372,7 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                     rng = slice(cnt,cnt+frames.shape[0])
                     data[rng] = frames
                     
-                    ranges[day][hour][minute] = rng
+                    ranges[day][hour][minute] = [rng.start, rng.stop]
                     cnt += 1                    
         
         msg = {'data': data.tostring(), 'ranges':ranges}
@@ -386,10 +387,14 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
         
         self.resetAllSamples()
         
-        for day in sorted(ranges.keys()):           
+        for day in sorted(ranges.keys()): 
+            self.ranges[day] = dict()          
             for hour in sorted(ranges[day].keys()):
+                self.ranges[day][hour] = dict()
                 for minute in sorted(ranges[day][hour].keys()):
-                    frames = data[ranges[day][hour][minute]]
+                    rng = slice(*ranges[day][hour][minute])
+                    self.ranges[day][hour][minute] = rng
+                    frames = data[rng]
                     self.insertFrameArray(day, hour, minute, frames)
                     
     
