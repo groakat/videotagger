@@ -4,6 +4,7 @@ import numpy as np
 import cPickle as pickle
 import time
 import pyTools.videoProc.annotation as Annotation
+import warnings
 
 class FrameDataVisualizationTreeBase(object):
     def __init__(self):
@@ -15,6 +16,8 @@ class FrameDataVisualizationTreeBase(object):
         self.tree = dict()  
         self.tree['meta'] = dict()  
         self.tree['meta']['max'] = 0  
+        self.tree['meta']['mean'] = 0
+        self.tree['meta']['sampleN'] = 0
         
         
     def save(self, filename):
@@ -224,6 +227,10 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
         self.addedNewData = True
         self.ranges = dict()
         
+        
+    def load(self, filename):
+        super(FrameDataVisualizationTreeArrayBase, self).load(filename)  
+        self.computeInternalRanges()
     
     def insertFrameArray(self, day, hour, minute, frames):
         self.addedNewData = True
@@ -233,18 +240,54 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
         self.updateMax(day, hour, minute, np.max(frames))
         self.totalNoFrames += frames.shape[0]
         
+               
+    def insertDeltaValue(self, deltaValue):
+        idx = deltaValue[0]
+        data = deltaValue[1]
+        self.updateValue(*self.idx2key(idx), data=data)
+        
+        
+    def insertDeltaVector(self, deltaVector):
+        """
+        Args:
+            deltaVector (list of delta values)
+                deltaValue ([idx, data])
+        """        
+        for deltaValue in deltaVector:
+            self.insertDeltaValue(deltaValue)    
+    
+        
+    def updateValue(self, day, hour, minute, frame, data):
+        pMean = np.mean(self.tree[day][hour][minute]['data'])
+        N = self.tree[day][hour][minute]['data'].shape[0]
+        self.propagateMean(day, hour, minute, pMean, -N)
+        
+        self.tree[day][hour][minute]['data'][frame] = data
+        
+        mean = np.mean(self.tree[day][hour][minute]['data'])
+        self.propagateMean(day, hour, minute, mean, N)        
+        
     
     def addFrameArrayToMean(self, day, hour, minute, frames):
         mean = np.mean(frames)
         N = frames.shape[0]
+        self.propagateMean(day, hour, minute, mean, N)
+        
+        
+    def propagateMean(self, day, hour, minute, mean, N):
         self.addFrameArrayToStumpMean(self.tree[day][hour][minute], mean, N)
         self.addFrameArrayToStumpMean(self.tree[day][hour], mean, N)
         self.addFrameArrayToStumpMean(self.tree[day], mean, N)
+        self.addFrameArrayToStumpMean(self.tree, mean, N)
         
         
     def addFrameArrayToStumpMean(self, stump, mean, N):
         M = stump['meta']['sampleN']
-        newMean = (stump['meta']['mean'] * M + mean * N) / np.float(M+N)
+        if M+N == 0:
+            newMean = 0
+        else:
+            newMean = (stump['meta']['mean'] * M + mean * N) / np.float(M+N)
+            
         stump['meta']['mean'] = newMean
         stump['meta']['sampleN'] += N
         
@@ -342,12 +385,13 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                     rng = slice(cnt,cnt+frames.shape[0])
                     
                     self.ranges[day][hour][minute] = rng
-                    cnt += 1         
+                    cnt += 1      
+                    self.totalNoFrames = rng.stop   
                            
         self.addedNewData = False
         
                     
-    def serializeData(self):
+    def flatten(self):
         data = np.empty((self.totalNoFrames))
         ranges = dict()        
         
@@ -375,14 +419,13 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                     ranges[day][hour][minute] = [rng.start, rng.stop]
                     cnt += 1                    
         
-        msg = {'data': data.tostring(), 'ranges':ranges}
+        msg = {'data': data, 'ranges':ranges}
                 
         return msg
     
 
-
-    def deserialize(self, msg):
-        data = np.fromstring(msg['data'])
+    def unflatten(self, msg):
+        data = msg['data']
         ranges = msg['ranges']
         
         self.resetAllSamples()
@@ -397,6 +440,18 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                     frames = data[rng]
                     self.insertFrameArray(day, hour, minute, frames)
                     
+                    
+
+    def serializeData(self):
+        msg = self.flatten()
+        msg['data'] = msg['data'].tostring()
+        
+        return msg
+    
+                    
+    def deserialize(self, msg):
+        msg['data'] = np.fromstring(msg['data'])        
+        self.unflatten(msg)
     
                     
     def testSerialization(self):
@@ -440,6 +495,23 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
         
         return isSame
       
+    def testInsertDeltaValues(self):
+        mean = self.tree['meta']['mean']
+        
+        isSame = True
+        
+        for i in range(1000):
+            idx = np.random.randint(0, self.totalNoFrames)
+            key = self.idx2key(idx)            
+            val = np.random.rand() * 100 - 50
+            
+            tmp = self.tree[key[0]][key[1]][key[2]]['data'][key[3]]
+            self.insertDeltaValue([idx, val])
+            self.insertDeltaValue([idx, tmp])
+            
+            isSame = isSame and (np.allclose(mean, self.tree['meta']['mean']))
+            
+        return isSame
     
             
     def generatePlotDataFrames(self, day, hour, minute, frame, 
@@ -473,9 +545,8 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
             self.plotData['frames']['weight'] += [sum(tmpVal) / cnt]
             self.plotData['frames']['tick'] += [tmpKeys]
     
+        
     
-            
-class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
     def filename2Time(self, f):
         timestamp = f.split('/')[-1]
         day, timePart = timestamp.split('.')[:-1]
@@ -498,36 +569,52 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
         minutes = rawMinutes % 60
         second = 0    
         return days, hours, minutes, second
+    
+            
+class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
+    def __init__(self):
+        super(FrameDataVisualizationTreeBehaviour, self).__init__()
 
 
-    def importAnnotations(self, bhvrList, vials=None, annotator="peter", 
-                          behaviour="struggling", runningIndeces=False):
-        filt = Annotation.AnnotationFilter(vials, [annotator], [behaviour])
+    def importAnnotations(self, bhvrList, annotations, vials, runningIndeces=False):
+        filtList = []
+        self.resetAllSamples()
+        
+        for i in range(len(annotations)):
+            annotator = annotations[i]["annot"]
+            behaviour = annotations[i]["behav"]
+            filtList += [Annotation.AnnotationFilter(vials,
+                                                          [annotator],
+                                                          [behaviour])]
         
         for f in bhvrList:
             # load annotation and filter it #
             anno = Annotation.Annotation()
         
             anno.loadFromFile(f)
-            filteredAnno = anno.filterFrameList(filt)
             
-            if not runningIndeces:
-                day, hour, minute, second = self.filename2Time(f)
-            else:
-                day, hour, minute, second = self.filename2TimeRunningIndeces(f)
+            data = np.zeros((len(anno.frameList)))
                 
+            for l in range(len(filtList)):
             
-            data = np.empty((len(filteredAnno.frameList), 1))
-            
-            for i in range(len(filteredAnno.frameList)):
-                if filteredAnno.frameList[i][0] is None:
-                    data[i] = 0
+                filteredAnno = anno.filterFrameList(filtList[l])
+                
+                if not runningIndeces:
+                    day, hour, minute, second = self.filename2Time(f)
                 else:
-                    bhvr = filteredAnno.frameList[i][0]['behaviour'][behaviour][annotator]
-                    if type(bhvr) == dict:
-                        data[i] = bhvr['confidence']
+                    day, hour, minute, second = self.filename2TimeRunningIndeces(f)
+                    
+                
+                
+                for i in range(len(filteredAnno.frameList)):
+                    if filteredAnno.frameList[i][0] is not None:
+                        if data[i] != 0:
+                            warnings.warn("Ambigous label of frame {f} in {d}".format(f=i, d=f))
+                        data[i] = l + 1
                     
             self.insertFrameArray(day, hour, minute, data)
+            
+            self.tree['meta']['filtList'] = filtList
                   
                      
                      
