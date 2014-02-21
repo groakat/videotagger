@@ -73,10 +73,11 @@ class GUIComBase(object):
                 
         if comServer is not None:
             self.bus = comServer
+            self.cid = self.bus.requestClientID()
         else:
             self.bus = VideoPlayerComClientBase(address)
+            self.cid = self.bus.cid
             
-        self.cid = self.bus.requestClientID()
         self.qid = 0
         
     
@@ -153,10 +154,11 @@ class ALComBase(object):
         
         if comServer is not None:
             self.bus = comServer
+            self.cid = self.bus.requestClientID()
         else:
             self.bus = VideoPlayerComClientBase(address)
+            self.cid = self.bus.cid
             
-        self.cid = self.bus.requestClientID()
         self.qid = 0
         
         
@@ -194,7 +196,7 @@ class ALComBase(object):
             
         
     def pushFDVT(self, fdvt, priority=1):
-        query = self.prepareQuery(job=0, priority=priority, data=fdvt)
+        query = self.prepareQuery(job=0, priority=priority, data=fdvt.serializeData())
         self.bus.pushQuery(query)
             
             

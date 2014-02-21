@@ -163,6 +163,12 @@ class FrameViewWidget(QtGui.QWidget, Ui_FrameViewWidget):
         self.draw()
         self.setDisplayRange()
         
+    def setSerializedSequence(self, fdvt):
+        self.frameView.fdvTree.deserialize(fdvt)
+        self.initializeConfidenceStructure()
+        self.draw()
+        self.setDisplayRange()
+        
     def plotSequence(self):        
         self.initLocations(self.day, self.hour, self.minute, self.frame)
         self.frameView.plotData(self.day, self.hour, self.minute, 

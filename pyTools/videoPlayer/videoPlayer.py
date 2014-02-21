@@ -1,4 +1,8 @@
 import sys
+import os
+
+
+sys.path.append(os.path.abspath('../../'))
 # from OpenGL import GL
 # from OpenGL import GLU
 from PySide import QtGui
@@ -25,7 +29,6 @@ import time
 import qimage2ndarray as qim2np
 import json
 import logging, logging.handlers
-import os
 
 
 def np2qimage(a):
@@ -145,6 +148,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.lbl_eraser.setVisible(False)        
         self.prevSize = 100
         self.fdvtPath = fdvtPath
+        self.isLabelingSingleFrame = False
         
         
         self.rewindOnClick = rewindOnClick
@@ -228,6 +232,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.setCropCenter(None, None)
         
         self.selectVideo(startIdx)
+        self.startLoop.emit()
         
         
     @cfg.logClassFunction
@@ -338,12 +343,6 @@ class videoPlayer(QtGui.QMainWindow):
             frameView.loadSequence(self.fdvtPath)
             
             
-    @QtCore.Slot(list)
-    def setFrameView(self, lst):
-        fdvt = lst[0]
-        self.ui.frameView.setSequence(fdvt)
-            
-            
     def createPrevFrames(self, xPos, yPos):
         size = self.prevSize
         
@@ -400,7 +399,22 @@ class videoPlayer(QtGui.QMainWindow):
         
         return fl
         
-    @cfg.logClassFunctionInfo
+                   
+            
+    @QtCore.Slot(list)
+    def setFrameView(self, lst):
+        fdvt = lst[0]
+        self.ui.frameView.setSerializedSequence(fdvt)
+        
+        
+    @QtCore.Slot(int)
+    def labelSingleFrame(self, idx):
+        self.isLabelingSingleFrame = True
+        day, hour, minute, frame = self.ui.frameView.fdvTree.idx2key(idx)        
+        self.selectVideoTime(self, day, hour, minute, frame)
+        
+        
+    @cfg.logClassFunction#Info
     def setCropCenter(self, x, y, width=None, increment=None):        
         if width != None and increment != None:
             raise ValueError("width and increment cannot be both specified")
@@ -552,7 +566,7 @@ class videoPlayer(QtGui.QMainWindow):
             
         usedRoi = 0
         
-        cfg.log.info("Rois: {0}".format(rois))
+        cfg.log.debug("Rois: {0}".format(rois))
         for i in range(len(rois)):        
             x1, y1, x2, y2 = rois[i][0]
             color = rois[i][1]
@@ -614,7 +628,7 @@ class videoPlayer(QtGui.QMainWindow):
         
         cfg.log.debug("increment: {0}, checkBuffer: {1}".format(increment, checkBuffer))
         
-        if increment > 0:
+        if increment >= 0:
             self.frames += [self.vh.getNextFrame(increment, doBufferCheck=checkBuffer, 
                                                  unbuffered=False)]
         elif increment < 0:
@@ -827,8 +841,8 @@ class videoPlayer(QtGui.QMainWindow):
             if self.play:            
                 self.showNextFrame(self.increment)
                  
-                if self.increment == 0:
-                    self.play = False
+#                 if self.increment == 0:
+#                     self.play = False
                     
             if not(QtCore.QTime.currentTime() < dieTime):
                 cfg.log.warning("no realtime display!!! " + 
@@ -860,6 +874,7 @@ class videoPlayer(QtGui.QMainWindow):
                                         dieTime.msecsTo(QtCore.QTime.currentTime())))
         self.vh.loadProgressive = False
         cfg.logGUI.info('"--------- stopped mainloop ------------"')
+        cfg.log.info('"--------- stopped mainloop ------------"')
         
 #     @cfg.logClassFunction
 #     def providePosList(self, path, ending=None):
@@ -907,7 +922,7 @@ class videoPlayer(QtGui.QMainWindow):
     def generatePatchVideoPath(self, posPath, vialNo):
         """
         strips pos path off its postfix and appends it with the vial + video
-        format postfix
+        format postfixq
         """
         return posPath.split('.pos')[0] + '.v{0}.{1}'.format(vialNo, 
                                                             self.videoFormat)
@@ -941,11 +956,11 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.lbl_v0.setText("current file: {0}".format( \
                                                     sorted(self.fileList)[idx]))
         
-        self.startLoop.emit()
-        
+        self.increment = 0 
         self.showNextFrame(0)
+#         self.startLoop.emit()
         
-    def selectVideoTime(self, day, hour, minute, frame, data):
+    def selectVideoTime(self, day, hour, minute, frame, data=None):
         
         print "selectVideoTime: clicked on day {0}, hour {1}, minute {2}, frame {3}, data {4}".format(
                                                     day, hour, minute, frame, data)
@@ -1043,8 +1058,9 @@ class videoPlayer(QtGui.QMainWindow):
         
     def testFunction(self):
         cfg.log.debug("testFunction")
-        1/0
-        self.increment = 40
+#         1/0
+#         self.increment = 40
+        self.rpcIH.getNextJob()
         
     def initRewind(self):        
         self.rewinding = True

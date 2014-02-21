@@ -3,6 +3,11 @@ import pyTools.videoPlayer.dataLoader as DL
 
 from PySide import QtCore
 
+# 
+#     import gevent
+#     from gevent import monkey
+#     monkey.patch_all()
+
 class RPCController(comClient.GUIComBase):
     
     def __init__(self, cbFuncs, address="tcp://127.0.0.1:4242", cServer=None, 
@@ -49,19 +54,16 @@ class RPCInterfaceHandler(QtCore.QObject):
         Args:
             address for controller
         """
-        cbFuncs = {'noNewJob': self.noNewJob, 
-                   'labelFrame': self.labelFrame, 
-                   'updateFDVT': self.updateFDVT,
-                   'labelFrameRange': self.labelFrameRange}
+        super(RPCInterfaceHandler, self).__init__(None)
         
-        self.controller = RPCController(cbFuncs=cbFuncs,
-                                        address=address)
+        self.controller = None
+        self.address = address
         
         
-        self.thread = DL.MyThread("RPCInterfaceHandlerThread")
-                             
-        self.moveToThread(self.thread)         
-        self.thread.start()
+#         self.thread = DL.MyThread("RPCInterfaceHandlerThread")
+#                              
+#         self.moveToThread(self.thread)         
+#         self.thread.start()
         
         self.wait4NextJobSig.connect(self.wait4NextJob)
         self.initWaiting()
@@ -69,9 +71,21 @@ class RPCInterfaceHandler(QtCore.QObject):
         
         
     def initWaiting(self):
+        if self.controller is None:
+            cbFuncs = {'noNewJob': self.noNewJob, 
+                       'labelFrame': self.labelFrame, 
+                       'updateFDVT': self.updateFDVT,
+                       'labelFrameRange': self.labelFrameRange}
+            self.controller = RPCController(cbFuncs=cbFuncs,
+                                        address=self.address)
+            
         self.currentQuery = None
         self.waitingForReply = False
-        self.wait4NextJobSig.emit()
+#         self.wait4NextJobSig.emit()
+        
+        
+    def getNextJob(self):
+        self.controller.requestNewJob()
         
         
     @QtCore.Slot()
@@ -92,7 +106,7 @@ class RPCInterfaceHandler(QtCore.QObject):
     def updateFDVT(self, query):
         self.waitingForReply = True
         self.currentQuery = query
-        self.updateFDVTSig.emit(query.query)
+        self.updateFDVTSig.emit([query.query])
         self.initWaiting()
         
     def labelFrameRange(self, query):

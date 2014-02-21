@@ -137,6 +137,8 @@ class ComServerBase(object):
         if self.clientIDs:
             cid = max(self.clientIDs) + 1
             self.clientIDs += [cid]
+            print self.clientIDs
+            print cid
             return cid
         else:
             self.clientIDs = [0]
@@ -222,5 +224,5 @@ class ComServerFDVT(ComServerBase):
         
 if __name__ == "__main__":    
     s = zerorpc.Server(ComServerFDVT())
-    s.bind("tcp://0.0.0.0:4244")
+    s.bind("tcp://0.0.0.0:4242")
     s.run()
