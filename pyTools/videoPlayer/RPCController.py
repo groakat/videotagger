@@ -47,6 +47,7 @@ class RPCInterfaceHandler(QtCore.QObject):
     labelFrameRangeSig = QtCore.Signal(list)
     updateFDVTSig = QtCore.Signal(list)
     wait4NextJobSig = QtCore.Signal()
+    sendLabelFDVTSig = QtCore.Signal(list)
     
     
     def __init__(self, address="tcp://127.0.0.1:4242"):
@@ -71,13 +72,17 @@ class RPCInterfaceHandler(QtCore.QObject):
         
         
     def initWaiting(self):
+        import pyTools.system.videoPlayerComServer as ComServer
+        self.cServer = ComServer.ComServerFDVT()
+        
         if self.controller is None:
             cbFuncs = {'noNewJob': self.noNewJob, 
                        'labelFrame': self.labelFrame, 
                        'updateFDVT': self.updateFDVT,
                        'labelFrameRange': self.labelFrameRange}
             self.controller = RPCController(cbFuncs=cbFuncs,
-                                        address=self.address)
+                                        address=self.address,
+                                        cServer=self.cServer)
             
         self.currentQuery = None
         self.waitingForReply = False
@@ -98,16 +103,19 @@ class RPCInterfaceHandler(QtCore.QObject):
     def noNewJob(self):
         return
         
+        
     def labelFrame(self, query):
         self.waitingForReply = True
         self.currentQuery = query
         self.labelFrameSig.emit(query.query)
+        
         
     def updateFDVT(self, query):
         self.waitingForReply = True
         self.currentQuery = query
         self.updateFDVTSig.emit([query.query])
         self.initWaiting()
+        
         
     def labelFrameRange(self, query):
         self.waitingForReply = True
@@ -134,7 +142,12 @@ class RPCInterfaceHandler(QtCore.QObject):
         self.initWaiting()
         
     
-                
+    @QtCore.Slot(list)
+    def sendLabelFDVT(self, lst):
+        fdvt = lst[0]
+        self.controller.fdvt = fdvt
+        self.controller.sendLabelTree()
+        
         
         
         

@@ -802,6 +802,9 @@ class VideoHandler(QtCore.QObject):
         if vials == None:
             vials = [None]
             
+        rng = None
+        curFilter = None
+            
         if self.annoAltStart == None:
             self.annoAltStart = bsc.FramePosition(self.annoDict, self.posPath, 
                                                                     self.idx)
@@ -868,6 +871,8 @@ class VideoHandler(QtCore.QObject):
                                        "metadata":self.tempValue[key]}))
                 
                 self.annoAltStart = None
+                
+        return rng, curFilter
         
     @cfg.logClassFunction
     def eraseAnnotation(self, vials, annotator, behaviour):
@@ -884,6 +889,9 @@ class VideoHandler(QtCore.QObject):
                        
         if vials == None:
             vials = [None]
+            
+        rng = None
+        curFilter = None
              
         if self.annoAltStart == None:
             self.annoAltStart = bsc.FramePosition(self.annoDict, self.posPath, 
@@ -941,6 +949,7 @@ class VideoHandler(QtCore.QObject):
                 
                 self.annoAltStart = None
         
+        return rng, curFilter
                         
     @cfg.logClassFunction
     def escapeAnnotationAlteration(self):

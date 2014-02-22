@@ -5,6 +5,34 @@ import cPickle as pickle
 import time
 import pyTools.videoProc.annotation as Annotation
 import warnings
+import json
+
+        
+    
+def filename2Time(f):
+    timestamp = f.split('/')[-1]
+    day, timePart = timestamp.split('.')[:-1]
+    hour, minute, second = timePart.split('-')
+    
+    return day, hour, minute, second
+
+
+def filename2TimeRunningIndeces(f):
+    timestamp = f.split('/')[-1].split('.')[0]
+    rawMinutes = timestamp.split('_')[-1]
+    day, hour, minute, second = minutes2Time(int(rawMinutes))
+    
+    return day, hour, minute, second
+
+
+def minutes2Time(rawMinutes):
+    days = rawMinutes // (60 * 24)
+    hours = rawMinutes // 60
+    minutes = rawMinutes % 60
+    second = 0    
+    return days, hours, minutes, second
+
+
 
 class FrameDataVisualizationTreeBase(object):
     def __init__(self):
@@ -228,9 +256,17 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
         self.ranges = dict()
         
         
+    def save(self, filename):
+        with open(filename, "w") as f:
+            json.dump(self.serializeData(), f)
+        
+        
     def load(self, filename):
-        super(FrameDataVisualizationTreeArrayBase, self).load(filename)  
+        with open(filename, "r") as f:
+            self.deserialize(json.load(f))
+        
         self.computeInternalRanges()
+        
     
     def insertFrameArray(self, day, hour, minute, frames):
         self.addedNewData = True
@@ -545,30 +581,6 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
             self.plotData['frames']['weight'] += [sum(tmpVal) / cnt]
             self.plotData['frames']['tick'] += [tmpKeys]
     
-        
-    
-    def filename2Time(self, f):
-        timestamp = f.split('/')[-1]
-        day, timePart = timestamp.split('.')[:-1]
-        hour, minute, second = timePart.split('-')
-        
-        return day, hour, minute, second
-
-
-    def filename2TimeRunningIndeces(self, f):
-        timestamp = f.split('/')[-1].split('.')[0]
-        rawMinutes = timestamp.split('_')[-1]
-        day, hour, minute, second = self.minutes2Time(int(rawMinutes))
-        
-        return day, hour, minute, second
-    
-    
-    def minutes2Time(self, rawMinutes):
-        days = rawMinutes // (60 * 24)
-        hours = rawMinutes // 60
-        minutes = rawMinutes % 60
-        second = 0    
-        return days, hours, minutes, second
     
             
 class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
@@ -600,9 +612,9 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
                 filteredAnno = anno.filterFrameList(filtList[l])
                 
                 if not runningIndeces:
-                    day, hour, minute, second = self.filename2Time(f)
+                    day, hour, minute, second = filename2Time(f)
                 else:
-                    day, hour, minute, second = self.filename2TimeRunningIndeces(f)
+                    day, hour, minute, second = filename2TimeRunningIndeces(f)
                     
                 
                 
@@ -620,18 +632,18 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
                      
 class FrameDataVisualizationTreeTrajectories(\
                                         FrameDataVisualizationTreeArrayBase):
-    def filename2Time(self, f):
-        timestamp = f.split('/')[-1]
-        day, timePart = timestamp.split('.')[:-2]
-        hour, minute, second = timePart.split('-')
-        
-        return day, hour, minute, second
+#     def filename2Time(self, f):
+#         timestamp = f.split('/')[-1]
+#         day, timePart = timestamp.split('.')[:-2]
+#         hour, minute, second = timePart.split('-')
+#         
+#         return day, hour, minute, second
     
     
     def importTrajectories(self, posList, vial=0):
         tmpPos = np.zeros((1,2))
         for f in sorted(posList):
-            day, hour, minute, second = self.filename2Time(f)
+            day, hour, minute, second = filename2Time(f)
             
             posMat = np.load(f)    
             data = np.empty(posMat.shape[0])

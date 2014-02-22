@@ -20,6 +20,7 @@ import pyTools.system.misc as systemMisc
 import pyTools.misc.config as cfg
 import pyTools.videoPlayer.eventFilter as EF
 import pyTools.videoPlayer.RPCController as RPC
+import pyTools.misc.FrameDataVisualization as FDV
 
 import numpy as np
 import scipy.misc as scim
@@ -218,10 +219,9 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.cb_trajectory.setChecked(self.showTraject)
         self.showTrajectories(self.showTraject)
         
-        self.setupFrameView()
-        if serverAddress is not None:
-            self.rpcIH = RPC.RPCInterfaceHandler(serverAddress)
-            self.rpcIH.updateFDVTSig.connect(self.setFrameView)
+        self.serverAddress = serverAddress
+        self.connectedToServer = False
+        self.rpcIH = None
             
         
         
@@ -242,7 +242,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.pb_test.clicked.connect(self.testFunction)
         self.ui.pb_addAnno.clicked.connect(self.addAnno)
         self.ui.pb_eraseAnno.clicked.connect(self.eraseAnno)
-        self.ui.pb_jmp2frame.clicked.connect(self.jump2selectedVideo)
+        self.ui.pb_connect2server.clicked.connect(self.connectToServer)
         
         self.ui.sldr_paths.valueChanged.connect(self.selectVideo)
         self.ui.lv_frames.activated.connect(self.selectFrame)
@@ -339,8 +339,8 @@ class videoPlayer(QtGui.QMainWindow):
     def setupFrameView(self):
         frameView = self.ui.frameView
         frameView.registerButtonPressCallback('frames', self.selectVideoTime)
-        if self.fdvtPath is not None:
-            frameView.loadSequence(self.fdvtPath)
+#         if self.fdvtPath is not None:
+#             frameView.loadSequence(self.fdvtPath)
             
             
     def createPrevFrames(self, xPos, yPos):
@@ -399,6 +399,28 @@ class videoPlayer(QtGui.QMainWindow):
         
         return fl
         
+        
+    def connectToServer(self):
+        
+        if self.serverAddress is not None:
+            print "connecting to server .."
+            self.rpcIH = RPC.RPCInterfaceHandler(self.serverAddress)
+            self.rpcIH.updateFDVTSig.connect(self.setFrameView)
+            
+            self.connectedToServer = True
+            
+            self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+            if self.fdvtPath is not None:
+                self.fdvt.load(self.fdvtPath)
+            else:
+                print "importing annotations for display (may take a while)"
+                self.fdvt.importAnnotations(self.fileList, self.annotations, 
+                                            self.selectedVial)
+                print "finished importing annotations"
+                
+            self.rpcIH.sendLabelFDVT([self.fdvt])
+                
+            self.setFrameView([self.fdvt.serializeData()])
                    
             
     @QtCore.Slot(list)
@@ -1142,27 +1164,54 @@ class videoPlayer(QtGui.QMainWindow):
                 
                 ##
             else:
-                self.vh.addAnnotation(self.selectedVial, annotator, 
+                labelledFrames = self.vh.addAnnotation(self.selectedVial, 
+                                                       annotator, 
                                       behaviour, metadata=self.getMetadata())
                 
                 if oneClickAnnotation:                
-                    self.vh.addAnnotation(self.selectedVial, annotator, 
+                    labelledFrames = self.vh.addAnnotation(self.selectedVial, 
+                                                           annotator, 
                                       behaviour, metadata=self.getMetadata())
                 
                 self.stopRewind()
                     
         
         else:    
-            self.vh.addAnnotation(self.selectedVial, annotator, 
+            labelledFrames = self.vh.addAnnotation(self.selectedVial, annotator, 
                                   behaviour, metadata=self.getMetadata())
                 
             if oneClickAnnotation:                
-                self.vh.addAnnotation(self.selectedVial, annotator, 
+                labelledFrames = self.vh.addAnnotation(self.selectedVial, annotator, 
                                   behaviour, metadata=self.getMetadata())
                 
         self.annoIsOpen = not self.annoIsOpen
-#     @cfg.logClassFunction
-
+        
+        if labelledFrames is not None:
+            if self.isLabelingSingleFrame:
+                self.rpcIH.sendReply(labelledFrames)
+        
+    def convertLabelListAndReply(self, labelledFrames):
+        """
+        Args
+            labelledFrames (output from vh.addAnnotation or vh.eraseAnnotation
+        
+        """
+        frames = labelledFrames[0]
+        filt = labelledFrames[1]
+        
+        deltaVector = []
+        for key in frames.keys():
+            treeKey = FDV.filename2Time(key)
+            day = treeKey[0]
+            hour = treeKey[1]
+            minute = treeKey[2]
+            for frame in frames[key]:
+                deltaVector += [{'day': day,
+                                 'hour': hour,
+                                 'minute': minute,
+                                 'frame': frame},
+                                filt]
+        
         
 #     @cfg.logClassFunction
     def eraseAnno(self, annotator="peter", behaviour="just testing"):      

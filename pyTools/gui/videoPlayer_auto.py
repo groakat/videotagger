@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Tue Feb  4 11:10:13 2014
+# Created: Sat Feb 22 01:24:43 2014
 #      by: pyside-uic 0.2.14 running on PySide 1.1.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -31,9 +31,9 @@ class Ui_Form(object):
         self.pb_stopVideo = QtGui.QPushButton(Form)
         self.pb_stopVideo.setGeometry(QtCore.QRect(1120, 590, 151, 23))
         self.pb_stopVideo.setObjectName("pb_stopVideo")
-        self.pb_jmp2frame = QtGui.QPushButton(Form)
-        self.pb_jmp2frame.setGeometry(QtCore.QRect(1120, 610, 151, 23))
-        self.pb_jmp2frame.setObjectName("pb_jmp2frame")
+        self.pb_connect2server = QtGui.QPushButton(Form)
+        self.pb_connect2server.setGeometry(QtCore.QRect(1120, 610, 151, 23))
+        self.pb_connect2server.setObjectName("pb_connect2server")
         self.pb_compDist = QtGui.QPushButton(Form)
         self.pb_compDist.setGeometry(QtCore.QRect(1120, 630, 151, 23))
         self.pb_compDist.setObjectName("pb_compDist")
@@ -248,7 +248,7 @@ class Ui_Form(object):
         self.lbl_v0.setText(QtGui.QApplication.translate("Form", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.lbl_v1.setText(QtGui.QApplication.translate("Form", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.pb_stopVideo.setText(QtGui.QApplication.translate("Form", "stop video", None, QtGui.QApplication.UnicodeUTF8))
-        self.pb_jmp2frame.setText(QtGui.QApplication.translate("Form", "jump to frame", None, QtGui.QApplication.UnicodeUTF8))
+        self.pb_connect2server.setText(QtGui.QApplication.translate("Form", "connect to server", None, QtGui.QApplication.UnicodeUTF8))
         self.pb_compDist.setText(QtGui.QApplication.translate("Form", "compute distances", None, QtGui.QApplication.UnicodeUTF8))
         self.pb_test.setText(QtGui.QApplication.translate("Form", "test button", None, QtGui.QApplication.UnicodeUTF8))
         self.cb_trajectory.setText(QtGui.QApplication.translate("Form", "Show Trajectory", None, QtGui.QApplication.UnicodeUTF8))

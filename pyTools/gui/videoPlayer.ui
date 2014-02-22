@@ -87,7 +87,7 @@
     <string>stop video</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="pb_jmp2frame">
+  <widget class="QPushButton" name="pb_connect2server">
    <property name="geometry">
     <rect>
      <x>1120</x>
@@ -97,7 +97,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>jump to frame</string>
+    <string>connect to server</string>
    </property>
   </widget>
   <widget class="QPushButton" name="pb_compDist">
