@@ -6,6 +6,7 @@ import time
 import pyTools.videoProc.annotation as Annotation
 import warnings
 import json
+import copy
 
         
     
@@ -428,7 +429,7 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                     rng = slice(cnt,cnt+frames.shape[0])
                     
                     self.ranges[day][hour][minute] = rng
-                    cnt += 1      
+                    cnt += frames.shape[0]   
                     self.totalNoFrames = rng.stop   
                            
         self.addedNewData = False
@@ -479,7 +480,7 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                 self.ranges[day][hour] = dict()
                 for minute in sorted(ranges[day][hour].keys()):
                     rng = slice(*ranges[day][hour][minute])
-                    self.ranges[day][hour][minute] = rng
+                    self.ranges[day][hour][minute] = copy.copy(rng)
                     frames = data[rng]
                     self.insertFrameArray(day, hour, minute, frames)
                     
