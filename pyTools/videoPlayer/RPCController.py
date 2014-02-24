@@ -17,17 +17,19 @@ class RPCController(comClient.GUIComBase):
             cbFuncts (dict)
                                 dictionary to callback function to be called
                                 keys:
-                                    'noNewJob', 'labelFrame', 'updateFDVT', 
-                                    'labelFrameRange'
+                                    'newJob','noNewJob', 'labelFrame', 
+                                    'updateFDVT', 'labelFrameRange'
         """
         super(RPCController, self).__init__(address, cServer, debug)
         
-        if set(cbFuncs.keys()) != set(['noNewJob', 'labelFrame', 'updateFDVT', 
+        if set(cbFuncs.keys()) != set(['newJob', 'noNewJob', 'labelFrame', 'updateFDVT', 
                                     'labelFrameRange']):
             raise ValueError("Not all callback functions defined")
         
         self.cbFuncs = cbFuncs
         
+    def newJob(self):
+        self.cbFuncs['newJob']()
                         
     def noNewJob(self):
         self.cbFuncs['noNewJob']()
@@ -43,6 +45,7 @@ class RPCController(comClient.GUIComBase):
         
         
 class RPCInterfaceHandler(QtCore.QObject):
+    newJobSig = QtCore.Signal()
     labelFrameSig = QtCore.Signal(int)
     labelFrameRangeSig = QtCore.Signal(list)
     updateFDVTSig = QtCore.Signal(list)
@@ -77,7 +80,8 @@ class RPCInterfaceHandler(QtCore.QObject):
         self.cServer = None
         
         if self.controller is None:
-            cbFuncs = {'noNewJob': self.noNewJob, 
+            cbFuncs = {'newJob':self.newJob,
+                       'noNewJob': self.noNewJob, 
                        'labelFrame': self.labelFrame, 
                        'updateFDVT': self.updateFDVT,
                        'labelFrameRange': self.labelFrameRange}
@@ -92,6 +96,10 @@ class RPCInterfaceHandler(QtCore.QObject):
         
     def getNextJob(self):
         self.controller.requestNewJob()
+    
+    
+    def checkForNewJob(self):
+        self.controller.checkForNewJob()
         
         
     @QtCore.Slot()
@@ -101,6 +109,10 @@ class RPCInterfaceHandler(QtCore.QObject):
             self.thread.mssleep(1)
     
                         
+    def newJob(self):
+        self.newJobSig.emit()
+    
+    
     def noNewJob(self):
         return
         

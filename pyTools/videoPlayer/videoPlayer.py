@@ -284,6 +284,10 @@ class videoPlayer(QtGui.QMainWindow):
         
         self.createAnnoViews()
         
+        
+        self.ui.pb_check4requests.setVisible(False)
+        
+        
     def createAnnoView(self, xPos, yPos, width, height, idx):
         self.annoViewList += [AV.AnnoView(self, vialNo=self.selectedVial, 
                                        annotator=[self.annotations[idx]["annot"]], 
@@ -401,9 +405,6 @@ class videoPlayer(QtGui.QMainWindow):
         
         return fl
         
-    
-    def check4Requests(self):
-        self.rpcIH.getNextJob()
         
         
     def connectToServer(self):
@@ -434,12 +435,25 @@ class videoPlayer(QtGui.QMainWindow):
             print "connected to server!"
                    
             self.rpcIH.labelFrameSig.connect(self.labelSingleFrame)
+            self.rpcIH.newJobSig.connect(self.newJobOnServer)
+#             self.ui.pb_check4requests.setVisible(False)
                    
             
+    
+    def check4Requests(self):
+        self.rpcIH.getNextJob()
+        self.ui.pb_check4requests.setVisible(False)
+        
+        
     @QtCore.Slot(list)
     def setFrameView(self, lst):
         fdvt = lst[0]
-        self.ui.frameView.setSerializedSequence(fdvt)
+        self.ui.frameView.setSerializedSequence(fdvt)        
+        
+        
+    @QtCore.Slot()
+    def newJobOnServer(self):
+        self.ui.pb_check4requests.setVisible(True)
         
         
     @QtCore.Slot(int)
@@ -888,6 +902,9 @@ class videoPlayer(QtGui.QMainWindow):
             elif(QtCore.QTime.currentTime() < dieTime.addMSecs(15)):
                 frameNo = self.vh.getCurrentFrameNo()
                 self.ui.lbl_v1.setText("no: {0}".format(frameNo))
+                
+                if self.rpcIH is not None:
+                    self.rpcIH.checkForNewJob()
              
 #             cfg.log.debug("---------------------------------------- while loop() - begin")
 

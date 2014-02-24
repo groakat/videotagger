@@ -146,8 +146,7 @@ class ComServerBase(object):
 
     def nextQuery(self):
         """ requests the next open query """
-        for r in sorted(self.queryQueue.keys(), reverse=True):
-            
+        for r in sorted(self.queryQueue.keys(), reverse=True):            
             print "retrieving ", r
             try:
                 query = self.queryQueue[r].popitem(last=False)[1]
@@ -158,6 +157,15 @@ class ComServerBase(object):
             
         print "return None"
         return None
+    
+    
+    def newQueriesInQueue(self):
+        """ requests if a new query exists on the server """
+        for r in sorted(self.queryQueue.keys(), reverse=True):            
+            if self.queryQueue[r].keys():
+                return True
+            
+        return False
                 
     
     def pushQuery(self, queryDict):
@@ -170,6 +178,7 @@ class ComServerBase(object):
         self.queryQueue[queryTpl.priority][queryTpl.qid] = queryTpl
         
         print "inserted queryDict"
+    
     
     def nextReply(self, qid=None):
         """ request the next query which has a reply 
@@ -203,6 +212,18 @@ class ComServerBase(object):
                     
         self.replyQueue[replyTpl.priority][replyTpl.qid] = replyTpl
         self.replyList[replyTpl.qid] = replyTpl
+        
+    
+    
+    def newRepliesInQueue(self):
+        """ requests if a new reply exists on the server """
+        for r in sorted(self.replyQueue.keys(), reverse=True):            
+            if self.replyQueue[r].keys():
+                return True
+            
+        return False
+        
+        
         
     def pushTestData(self, data):
         print data

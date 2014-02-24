@@ -96,6 +96,11 @@ class GUIComBase(object):
         self.bus.pushBaseLabelTree(query.convertToDict())
         
     
+    def checkForNewJob(self):
+        if self.bus.newQueriesInQueue():
+            self.newJob()
+    
+    
     def requestNewJob(self):
         msg = self.bus.nextQuery()
         if msg is None:
@@ -136,6 +141,9 @@ class GUIComBase(object):
         
         
     ###### FUNCTIONS TO OVERLOAD ##############################################
+        
+    def newJob(self):
+        print "new job available on the server, call `requestNewJob()`"
         
     def noNewJob(self):
         print "GUIComBase: no more queries in the server"      
