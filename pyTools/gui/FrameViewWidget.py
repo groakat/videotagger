@@ -13,7 +13,7 @@ from time import time
 import sys , copy
 sys.path.append("/home/peter/phd/code")
 from pyTools.misc.FrameDataVisualization import FrameDataView, \
-                                FrameDataVisualizationTreeTrajectories
+                                FrameDataVisualizationTreeArrayBase
                                 
 from pyTools.gui.FrameViewWidget_auto import Ui_FrameViewWidget
 from pyTools.gui.mplwidget import MplWidget
@@ -29,7 +29,7 @@ class FrameViewWidget(QtGui.QWidget, Ui_FrameViewWidget):
         self.frameResolution = 15
         self.customCallbacks = []
         
-        self.fdvTree = FrameDataVisualizationTreeTrajectories()
+        self.fdvTree = FrameDataVisualizationTreeArrayBase()
         self.initializeConfidenceStructure()
         self.connectElements()
         

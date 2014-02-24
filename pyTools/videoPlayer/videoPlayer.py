@@ -223,6 +223,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.connectedToServer = False
         self.rpcIH = None
         self.fdvt = None
+        self.setupFrameView()
             
         
         
@@ -895,17 +896,21 @@ class videoPlayer(QtGui.QMainWindow):
             else:
                 skipCnt = 0
                 
-            while(QtCore.QTime.currentTime() < dieTime) or (skipCnt > 10):
+            if(QtCore.QTime.currentTime() < dieTime) or (skipCnt > 10):
                 skipCnt = 0
 #                 cfg.log.debug("processEvents() - begin")
                 QtGui.QApplication.processEvents(QtCore.QEventLoop.AllEvents, QtCore.QTime.currentTime().msecsTo(dieTime))
 #                 cfg.log.debug("processEvents() - end")
+
                  
             if not(QtCore.QTime.currentTime() < (dieTime.addMSecs(1))):
                 cfg.log.warning("no realtime display!!! " + 
                                 cfg.Back.YELLOW + 
                                 "mainloop overflow after processEvents(): {0}ms".format(
                                         dieTime.msecsTo(QtCore.QTime.currentTime())))
+#             else:                
+#                 self.thread().msleep(QtCore.QTime.currentTime().msecsTo(dieTime))
+                
         self.vh.loadProgressive = False
         cfg.logGUI.info('"--------- stopped mainloop ------------"')
         cfg.log.info('"--------- stopped mainloop ------------"')
@@ -994,6 +999,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.showNextFrame(0)
 #         self.startLoop.emit()
         
+    @cfg.logClassFunctionInfo
     def selectVideoTime(self, day, hour, minute, frame, data=None):
         
         print "selectVideoTime: clicked on day {0}, hour {1}, minute {2}, frame {3}, data {4}".format(

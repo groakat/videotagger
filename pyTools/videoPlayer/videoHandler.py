@@ -255,7 +255,7 @@ class VideoHandler(QtCore.QObject):
         return frameList
     
     
-    @cfg.logClassFunctionInfo
+    @cfg.logClassFunction#Info
     def getCurrentFrameUnbuffered(self, doBufferCheck=False, 
                                   updateAnnotationViews=False,
                                   posOnly=False):
