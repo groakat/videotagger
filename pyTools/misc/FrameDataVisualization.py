@@ -11,7 +11,7 @@ import json
     
 def filename2Time(f):
     timestamp = f.split('/')[-1]
-    day, timePart = timestamp.split('.')[:-1]
+    day, timePart = timestamp.split('.')[:2]
     hour, minute, second = timePart.split('-')
     
     return day, hour, minute, second
@@ -43,7 +43,7 @@ class FrameDataVisualizationTreeBase(object):
     def resetAllSamples(self):
         self.tree = dict()  
         self.tree['meta'] = dict()  
-        self.tree['meta']['max'] = 0  
+        self.tree['meta']['max'] = -np.Inf  
         self.tree['meta']['mean'] = 0
         self.tree['meta']['sampleN'] = 0
         
@@ -453,9 +453,9 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                     data[rng] = frames
                     
                     ranges[day][hour][minute] = [rng.start, rng.stop]
-                    cnt += 1                    
+                    cnt += frames.shape[0]                   
         
-        msg = {'data': data, 'ranges':ranges}
+        msg = {'data': data, 'ranges':ranges, 'meta':self.tree['meta']}
                 
         return msg
     
@@ -475,6 +475,16 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                     self.ranges[day][hour][minute] = rng
                     frames = data[rng]
                     self.insertFrameArray(day, hour, minute, frames)
+                    
+        if not np.allclose(self.tree['meta']['mean'], msg['meta']['mean']) \
+        or not np.allclose(self.tree['meta']['sampleN'], msg['meta']['sampleN']):
+            raise ValueError("meta data does not align, data probably corrupted")
+        else:
+            for k in msg['meta'].keys():
+                if k == 'mean' or k == 'sampleN':
+                    continue
+                
+                self.tree['meta'][k] = msg['meta'][k]
                     
                     
 
@@ -628,6 +638,13 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
             
             self.tree['meta']['filtList'] = filtList
                   
+                  
+    def getAnnotationFilterCode(self, filt):
+        for i in range(self.tree['meta']['filtList']):
+            if self.tree['meta']['filtList'] == filt:
+                return i
+            
+        return None
                      
                      
 class FrameDataVisualizationTreeTrajectories(\
