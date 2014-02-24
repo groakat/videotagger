@@ -1,6 +1,11 @@
 pyTools
 =======
 
+# Download:
+
+git clone https://github.com/groakat/pyTools.git
+
+
 # Install
 
 
