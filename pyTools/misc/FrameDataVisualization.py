@@ -376,7 +376,7 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                         return cnt + iFrame 
                         
                     rng = self.ranges[day][hour][minute]                    
-                    cnt += rng.stop
+                    cnt += rng.stop - rng.start 
                     
                     
     def idx2key(self, idx):
@@ -396,10 +396,10 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                         
                     rng = self.ranges[day][hour][minute]
                     
-                    if idx < rng.stop:
+                    if idx < (rng.stop - rng.start):
                         return day, hour, minute, idx
                     
-                    idx -= rng.stop 
+                    idx -= rng.stop - rng.start 
         
                     
     def computeInternalRanges(self):        

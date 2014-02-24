@@ -445,7 +445,7 @@ class videoPlayer(QtGui.QMainWindow):
     @QtCore.Slot(int)
     def labelSingleFrame(self, idx):
         self.isLabelingSingleFrame = True
-        day, hour, minute, frame = self.ui.frameView.fdvTree.idx2key(idx)        
+        day, hour, minute, frame = self.ui.frameView.fdvTree.idx2key(idx) 
         self.selectVideoTime(day, hour, minute, frame)
         
         

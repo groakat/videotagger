@@ -198,14 +198,28 @@ def createFeatureVectorFromAnnotationSections(aS, ending=['feat.hog3d']):
             
     return feats
             
-def computeConfusionMatrix(predict, label):
-    size = np.max(label) + 1
-    cmat = np.zeros((size, size), dtype=np.int32)
-    
-    for i in range(predict.shape[0]):
-        cmat[np.int32(label[i]), np.int32(predict[i])] += 1
-        
+def computeConfusionMatrix(pred, labels):   
+    """
+    Computes confusion matrix:
+        sum rows: no. of true labels (actual class)
+        sum cols: no. of classifications (predicted class)
+    """ 
+    classes = np.int(np.max([np.max(pred),  np.max(labels)])) + 1
+    cmat = np.zeros((classes,classes), dtype=np.int32)
+    for i in range(classes):
+        for k in range(classes):
+            cmat[i,k] = np.int(np.sum(np.logical_and(pred == k, labels == i)))
+            
     return cmat
+    
+    
+#     size = np.max(label) + 1
+#     cmat = np.zeros((size, size), dtype=np.int32)
+#     
+#     for i in range(predict.shape[0]):
+#         cmat[np.int32(label[i]), np.int32(predict[i])] += 1
+#         
+#     return cmat
 
 from sklearn.cross_validation import StratifiedKFold
 def crossValidateIndependentSamples(data, labels, classifier, Nfolds=2):
@@ -847,6 +861,21 @@ def reduceMulticlassCMat(cmat, c):
     redCMat[1,0] = np.sum(cmat.flatten()) - np.sum(redCMat.flatten())
     
     return redCMat
+
+
+def computeBalancedInlierRate(cmat):
+    """
+    Args:
+        confusion matrix
+        
+    As seen in 
+    Active Rare Class Discovery and Classification Using Dirichlet Processes
+    Tom S. F. Haines   and Tao Xiang
+    International Journal of Computer Vision (2013) 
+    """
+    normCmat = cmat / np.sum(cmat, axis=0).astype(np.float)
+    res = np.mean(np.diag(normCmat))
+    return res
 
 
 def calcBaseStatsFromCMat(cmat):

@@ -154,7 +154,7 @@ class GUIComBase(object):
     
 class ALComBase(object):
     def __init__(self, address="tcp://127.0.0.1:4242", comServer=None):
-        self.fdtv = FDVT.FrameDataVisualizationTreeArrayBase()
+        self.fdvt = FDVT.FrameDataVisualizationTreeArrayBase()
         
         if comServer is not None:
             self.bus = comServer
@@ -216,7 +216,7 @@ class ALComBase(object):
         
     def requestBaseLabelTree(self):
         reply = comServer.ReplyTuple(**self.bus.requestBaseLabelTree())
-        self.fdtv.deserialize(reply.reply)
+        self.fdvt.deserialize(reply.reply)
         
         
     ###### FUNCTIONS TO OVERLOAD ##############################################
