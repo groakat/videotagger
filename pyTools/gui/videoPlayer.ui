@@ -100,7 +100,7 @@
     <string>connect to server</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="pb_compDist">
+  <widget class="QPushButton" name="pb_check4requests">
    <property name="geometry">
     <rect>
      <x>1120</x>
@@ -110,7 +110,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>compute distances</string>
+    <string>check for requests</string>
    </property>
   </widget>
   <widget class="QPushButton" name="pb_test">

@@ -216,6 +216,7 @@ class ComServerFDVT(ComServerBase):
         
     def pushBaseLabelTree(self, replyDict):
         self.baseFDVT = replyDict
+        print "received base label tree"
         
     def requestBaseLabelTree(self):
         return self.baseFDVT

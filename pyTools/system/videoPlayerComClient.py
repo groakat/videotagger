@@ -103,6 +103,10 @@ class GUIComBase(object):
             return
         
         query = comServer.QueryTuple(**msg)
+        
+        print "job: ", query
+        
+        
         if query.job == 0:
             self.updateFDVT(query)
         elif query.job == 1:
@@ -224,7 +228,7 @@ class ALComBase(object):
         print "ALComBase: updatedFDVT -- {0}".format(reply)
         
     def updateFrame(self, reply):
-        print "ALComBase: updateFrame -- {0}".format(reply)
+        print "ALComBase: updateFrame -- {0}".format(reply.reply)
         
     def updateFrameRange(self, reply):
         print "ALComBase: updateFrameRange -- {0}".format(reply)

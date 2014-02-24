@@ -222,6 +222,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.serverAddress = serverAddress
         self.connectedToServer = False
         self.rpcIH = None
+        self.fdvt = None
             
         
         
@@ -243,6 +244,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.pb_addAnno.clicked.connect(self.addAnno)
         self.ui.pb_eraseAnno.clicked.connect(self.eraseAnno)
         self.ui.pb_connect2server.clicked.connect(self.connectToServer)
+        self.ui.pb_check4requests.clicked.connect(self.check4Requests)
         
         self.ui.sldr_paths.valueChanged.connect(self.selectVideo)
         self.ui.lv_frames.activated.connect(self.selectFrame)
@@ -257,7 +259,6 @@ class videoPlayer(QtGui.QMainWindow):
         
         #~ self.ui.pb_startVideo.installEventFilter(self.eventFilter)
         self.ui.pb_stopVideo.installEventFilter(self.eventFilter)
-        self.ui.pb_compDist.installEventFilter(self.eventFilter)
         self.ui.pb_test.installEventFilter(self.eventFilter)
         self.ui.pb_addAnno.installEventFilter(self.eventFilter)
         self.ui.pb_eraseAnno.installEventFilter(self.eventFilter)
@@ -395,9 +396,13 @@ class videoPlayer(QtGui.QMainWindow):
     def convertFileList(self, fileList, videoEnding):
         fl = []
         for f in sorted(fileList):
-            fl += ['.'.join(f.split('.')[:-1]) + videoEnding]
+            fl += ['.'.join(f.split('.')[:2]) + videoEnding]
         
         return fl
+        
+    
+    def check4Requests(self):
+        self.rpcIH.getNextJob()
         
         
     def connectToServer(self):
@@ -409,18 +414,25 @@ class videoPlayer(QtGui.QMainWindow):
             
             self.connectedToServer = True
             
-            self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
-            if self.fdvtPath is not None:
-                self.fdvt.load(self.fdvtPath)
-            else:
-                print "importing annotations for display (may take a while)"
-                self.fdvt.importAnnotations(self.fileList, self.annotations, 
-                                            self.selectedVial)
-                print "finished importing annotations"
-                
-            self.rpcIH.sendLabelFDVT([self.fdvt])
+            if self.fdvt is None:            
+                self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+                if self.fdvtPath is not None:
+                    self.fdvt.load(self.fdvtPath)
+                else:
+                    print "importing annotations for display (may take a while)"
+                    self.fdvt.importAnnotations(self.convertFileList(self.fileList, 
+                                                                     '.bhvr'), 
+                                                self.annotations, 
+                                                self.selectedVial)
+                    print "finished importing annotations"
                 
             self.setFrameView([self.fdvt.serializeData()])
+            
+            self.rpcIH.sendLabelFDVT([self.fdvt])
+                
+            print "connected to server!"
+                   
+            self.rpcIH.labelFrameSig.connect(self.labelSingleFrame)
                    
             
     @QtCore.Slot(list)
@@ -433,7 +445,7 @@ class videoPlayer(QtGui.QMainWindow):
     def labelSingleFrame(self, idx):
         self.isLabelingSingleFrame = True
         day, hour, minute, frame = self.ui.frameView.fdvTree.idx2key(idx)        
-        self.selectVideoTime(self, day, hour, minute, frame)
+        self.selectVideoTime(day, hour, minute, frame)
         
         
     @cfg.logClassFunction#Info
@@ -1186,9 +1198,9 @@ class videoPlayer(QtGui.QMainWindow):
                 
         self.annoIsOpen = not self.annoIsOpen
         
-        if labelledFrames is not None:
+        if labelledFrames != (None, None):
             if self.isLabelingSingleFrame:
-                self.rpcIH.sendReply(labelledFrames)
+                self.convertLabelListAndReply(labelledFrames)
         
     def convertLabelListAndReply(self, labelledFrames):
         """
@@ -1206,11 +1218,18 @@ class videoPlayer(QtGui.QMainWindow):
             hour = treeKey[1]
             minute = treeKey[2]
             for frame in frames[key]:
-                deltaVector += [{'day': day,
-                                 'hour': hour,
-                                 'minute': minute,
-                                 'frame': frame},
-                                filt]
+                deltaVector += [self.fdvt.key2idx(day, hour, minute, frame),                                
+                                self.fdvt.getAnnotationFilterCode(filt)]
+                                
+                                
+                                
+#                                 {'day': day,
+#                                  'hour': hour,
+#                                  'minute': minute,
+#                                  'frame': frame},
+                
+        self.rpcIH.sendReply([deltaVector])
+        self.isLabelingSingleFrame = False
         
         
 #     @cfg.logClassFunction

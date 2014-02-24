@@ -72,8 +72,9 @@ class RPCInterfaceHandler(QtCore.QObject):
         
         
     def initWaiting(self):
-        import pyTools.system.videoPlayerComServer as ComServer
-        self.cServer = ComServer.ComServerFDVT()
+#         import pyTools.system.videoPlayerComServer as ComServer
+#         self.cServer = ComServer.ComServerFDVT()
+        self.cServer = None
         
         if self.controller is None:
             cbFuncs = {'noNewJob': self.noNewJob, 

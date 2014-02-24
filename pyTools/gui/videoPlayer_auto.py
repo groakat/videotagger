@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Sat Feb 22 01:24:43 2014
+# Created: Sun Feb 23 21:57:05 2014
 #      by: pyside-uic 0.2.14 running on PySide 1.1.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -34,9 +34,9 @@ class Ui_Form(object):
         self.pb_connect2server = QtGui.QPushButton(Form)
         self.pb_connect2server.setGeometry(QtCore.QRect(1120, 610, 151, 23))
         self.pb_connect2server.setObjectName("pb_connect2server")
-        self.pb_compDist = QtGui.QPushButton(Form)
-        self.pb_compDist.setGeometry(QtCore.QRect(1120, 630, 151, 23))
-        self.pb_compDist.setObjectName("pb_compDist")
+        self.pb_check4requests = QtGui.QPushButton(Form)
+        self.pb_check4requests.setGeometry(QtCore.QRect(1120, 630, 151, 23))
+        self.pb_check4requests.setObjectName("pb_check4requests")
         self.pb_test = QtGui.QPushButton(Form)
         self.pb_test.setGeometry(QtCore.QRect(1120, 650, 151, 23))
         self.pb_test.setObjectName("pb_test")
@@ -249,7 +249,7 @@ class Ui_Form(object):
         self.lbl_v1.setText(QtGui.QApplication.translate("Form", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.pb_stopVideo.setText(QtGui.QApplication.translate("Form", "stop video", None, QtGui.QApplication.UnicodeUTF8))
         self.pb_connect2server.setText(QtGui.QApplication.translate("Form", "connect to server", None, QtGui.QApplication.UnicodeUTF8))
-        self.pb_compDist.setText(QtGui.QApplication.translate("Form", "compute distances", None, QtGui.QApplication.UnicodeUTF8))
+        self.pb_check4requests.setText(QtGui.QApplication.translate("Form", "check for requests", None, QtGui.QApplication.UnicodeUTF8))
         self.pb_test.setText(QtGui.QApplication.translate("Form", "test button", None, QtGui.QApplication.UnicodeUTF8))
         self.cb_trajectory.setText(QtGui.QApplication.translate("Form", "Show Trajectory", None, QtGui.QApplication.UnicodeUTF8))
         self.pb_eraseAnno.setText(QtGui.QApplication.translate("Form", "erase annotation", None, QtGui.QApplication.UnicodeUTF8))
