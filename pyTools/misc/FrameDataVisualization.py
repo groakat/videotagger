@@ -257,14 +257,21 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
         
         
     def save(self, filename):
-        with open(filename, "w") as f:
-            json.dump(self.serializeData(), f)
+        """        Save tree
+        Args:
+            filename (String)
+                                _Needs to have ending '.npy'_
+        """
+#         with open(filename, "w") as f:
+#             json.dump(self.serializeData(), f)
+        np.save(filename, [self.flatten()])
         
         
     def load(self, filename):
-        with open(filename, "r") as f:
-            self.deserialize(json.load(f))
-        
+#         with open(filename, "r") as f:
+#             self.deserialize(json.load(f))
+
+        self.unflatten(np.load(filename)[0])        
         self.computeInternalRanges()
         
     
@@ -640,8 +647,8 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
                   
                   
     def getAnnotationFilterCode(self, filt):
-        for i in range(self.tree['meta']['filtList']):
-            if self.tree['meta']['filtList'] == filt:
+        for i in range(len(self.tree['meta']['filtList'])):
+            if self.tree['meta']['filtList'][i] == filt:
                 return i
             
         return None
