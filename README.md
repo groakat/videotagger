@@ -50,6 +50,7 @@ Communication to other services is done with zerorpc, which has additional depen
 
 * libzmq (`apt get install libzmq-dev`)
 * `pip install pyzmq`
+* headers of libffi (for ubuntu: `apt-get install libffi-dev`)
 * `pip install cffi`
 * `pip install zerorpc`
   
