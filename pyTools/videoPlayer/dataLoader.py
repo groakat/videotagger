@@ -460,7 +460,9 @@ class AnnotationLoader(QtCore.QObject):
         
     def init(self, path, thread, vialNames=None):
         if vialNames is None:
-            vialNames = [None]
+            self.vialNames = [None]
+        else:
+            self.vialNames = vialNames
         
         self.loading = False
         
@@ -494,6 +496,7 @@ class AnnotationLoader(QtCore.QObject):
             cfg.log.warning("AnnotationLoader: f does NOT exist create empty Annotation")
             videoLength = self.retrieveVideoLength(self.path)
             out = Annotation.Annotation(frameNo=videoLength, vialNames=self.vialNames)
+            cfg.log.info("new annotation with length {0}".format(videoLength))
             
         self.annotation = out
 #         self.loadedAnnotation.emit([self, self.path])
@@ -512,6 +515,12 @@ class AnnotationLoader(QtCore.QObject):
         idx = 0
         modi = initialStepSize
         vE = VE.videoExplorer()
+        
+        if self.vialNames == [None]:
+            filename = filename.split('.bhvr')[0] + '.avi'
+        else:            
+            filename = filename.split('.bhvr')[0] + '.v{0}.avi'.format(
+                                                            self.vialNames[0])
         
         while modi > 1:
             while True:

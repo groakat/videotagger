@@ -122,7 +122,11 @@ class videoPlayer(QtGui.QMainWindow):
         if croppedVideo:
             videoEnding = ".v{0}{1}".format(selectedVial, videoEnding)
         
-        if bhvrListPath is None:
+        
+        if path.endswith('.avi'):
+            self.fileList = [path.split('.avi')[0] + '.bhvr']
+            print self.fileList
+        elif bhvrListPath is None:
             self.fileList = systemMisc.providePosList(path, ending='.bhvr')
         else:
             with open(bhvrListPath, "r") as f:
@@ -401,7 +405,10 @@ class videoPlayer(QtGui.QMainWindow):
     def convertFileList(self, fileList, videoEnding):
         fl = []
         for f in sorted(fileList):
-            fl += ['.'.join(f.split('.')[:2]) + videoEnding]
+            if self.usingVideoRunningIndeces:
+                fl += [f.split('.')[0] + videoEnding]                
+            else:
+                fl += ['.'.join(f.split('.')[:2]) + videoEnding]
         
         return fl
         
@@ -1382,41 +1389,15 @@ if __name__ == "__main__":
                 print("exception on %s!" % option)
                 dict1[option] = None
         return dict1
-    
-    
-    def configSectionMapInt(section):
-        " https://wiki.python.org/moin/ConfigParserExamples"
-        dict1 = {}
-        options = config.options(section)
-        for option in options:
-            try:
-                dict1[option] = config.getint(section, option)
-                if dict1[option] == -1:
-                    print("skip: %s" % option)
-            except:
-                print("exception on %s!" % option)
-                dict1[option] = None
-        return dict1
-    
-    
-    def configSectionMapBool(section):
-        " https://wiki.python.org/moin/ConfigParserExamples"
-        dict1 = {}
-        options = config.options(section)
-        for option in options:
-            try:
-                dict1[option] = config.getboolean(section, option)
-                if dict1[option] == -1:
-                    print("skip: %s" % option)
-            except:
-                print("exception on %s!" % option)
-                dict1[option] = None
-        return dict1
         
     #### parsing config file
     
     # Video
-    selectedVial = config.getint('Video','vial')
+    try:
+        selectedVial = config.getint('Video','vial')
+    except:
+        selectedVial = None
+        
     vialROI = json.loads(configSectionMap('Video')['vialroi'])
     backgroundPath = configSectionMap('Video')['background']
     videoPath = configSectionMap('Video')['videopath']
@@ -1437,7 +1418,7 @@ if __name__ == "__main__":
         startVideo = None
         
     try:
-        croppedVideo = configSectionMap('Video')['cropped-video']
+        croppedVideo = config.getboolean('Video','cropped-video')
     except KeyError:
         croppedVideo = False
         
@@ -1513,8 +1494,12 @@ if __name__ == "__main__":
     annotations = json.loads(configSectionMap('Annotation')['annotations'])
         
     #### finish parsing config file
-        
-    hGUI = logging.FileHandler(os.path.join(videoPath, 
+    
+    if videoPath.endswith('.avi'):
+        vp = os.path.split(videoPath)[0]
+    else:
+        vp = videoPath
+    hGUI = logging.FileHandler(os.path.join(vp, 
                     "videoPlayer." + \
                     time.strftime("%Y-%m-%d.%H-%M-%S", time.localtime()) +\
                     ".log"))
