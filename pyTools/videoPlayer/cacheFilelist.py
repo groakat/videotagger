@@ -60,13 +60,29 @@ if __name__ == "__main__":
             Run 'python videoPlayer_pySide.py -h' for more information
             """)
         sys.exit()
+        
+    import ConfigParser    
+    config = ConfigParser.ConfigParser()
+    config.read(args.config_file)
     
-    with open(args.config_file, 'r') as f:
-        config = json.load(f)
+    def configSectionMap(section):
+        " https://wiki.python.org/moin/ConfigParserExamples"
+        dict1 = {}
+        options = config.options(section)
+        for option in options:
+            try:
+                dict1[option] = config.get(section, option)
+                if dict1[option] == -1:
+                    print("skip: %s" % option)
+            except:
+                print("exception on %s!" % option)
+                dict1[option] = None
+        return dict1
+        
+    videoPath = configSectionMap('Video')['videopath']
+    bhvrCachePath = configSectionMap('Video')['bhvr-cache']    
     
     
-    videoPath = config['videoPath']
-    bhvrCachePath = config["bhvr-cache"]
     
     print "start parsing"
     bhvrList = systemMisc.providePosList(videoPath, ending='.bhvr')
