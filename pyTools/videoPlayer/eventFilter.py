@@ -52,7 +52,7 @@ class filterObj(QtCore.QObject):
                             "anno-2": QtCore.Qt.Key_2,
                             "anno-3": QtCore.Qt.Key_3,
                             "anno-4": QtCore.Qt.Key_3,
-                            "quit-anno": QtCore.Qt.Key_Q,
+                            "erase-anno": QtCore.Qt.Key_Q,
                             "info": QtCore.Qt.Key_I}
         else:
             self.keyMap = keyMap
@@ -291,7 +291,7 @@ class filterObj(QtCore.QObject):
                                         confidence=1, 
                                         oneClickAnnotation=self.oneClickAnnotation[3])
                     
-                if key == self.keyMap["quit-anno"]:
+                if key == self.keyMap["erase-anno"]:
                     self.parent.addingAnnotations = not self.parent.addingAnnotations
                     if not self.parent.addingAnnotations:
                         cfg.log.info("changed to erasing mode")

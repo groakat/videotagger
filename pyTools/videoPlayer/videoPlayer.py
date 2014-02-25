@@ -1360,78 +1360,161 @@ if __name__ == "__main__":
             Run 'python videoPlayer_pySide.py -h' for more information
             """)
         sys.exit()
-    
-    with open(args.config_file, 'r') as f:
-        config = json.load(f)
-    
-    
-    path = config['videoPath']
-    annotations = config['annotations']
-    backgroundPath = config['background']
-    selectedVial = config['vial']
-    vialROI = config['vialROI']
-    
-    filterObjArgs = dict()
-    
-    try:
-        keyMap = dict()
-        for key in config['keyMap']:
-            keyMap[key] = eval("Qt." + config['keyMap'][key], {"Qt":QtCore.Qt})
-    except KeyError:
-        keyMap = None
-    
-    filterObjArgs["keyMap"] = keyMap
-    
-    try:
-        stepSize = config['stepSize']
-    except KeyError:
-        stepSize = None
+#     
+#     with open(args.config_file, 'r') as f:
+#         config = json.load(f)
         
-    filterObjArgs["stepSize"] = stepSize
-
+        
+    import ConfigParser    
+    config = ConfigParser.ConfigParser()
+    config.read(args.config_file)
+    
+    def configSectionMap(section):
+        " https://wiki.python.org/moin/ConfigParserExamples"
+        dict1 = {}
+        options = config.options(section)
+        for option in options:
+            try:
+                dict1[option] = config.get(section, option)
+                if dict1[option] == -1:
+                    print("skip: %s" % option)
+            except:
+                print("exception on %s!" % option)
+                dict1[option] = None
+        return dict1
+    
+    
+    def configSectionMapInt(section):
+        " https://wiki.python.org/moin/ConfigParserExamples"
+        dict1 = {}
+        options = config.options(section)
+        for option in options:
+            try:
+                dict1[option] = config.getint(section, option)
+                if dict1[option] == -1:
+                    print("skip: %s" % option)
+            except:
+                print("exception on %s!" % option)
+                dict1[option] = None
+        return dict1
+    
+    
+    def configSectionMapBool(section):
+        " https://wiki.python.org/moin/ConfigParserExamples"
+        dict1 = {}
+        options = config.options(section)
+        for option in options:
+            try:
+                dict1[option] = config.getboolean(section, option)
+                if dict1[option] == -1:
+                    print("skip: %s" % option)
+            except:
+                print("exception on %s!" % option)
+                dict1[option] = None
+        return dict1
+        
+    #### parsing config file
+    
+    # Video
+    selectedVial = config.getint('Video','vial')
+    vialROI = json.loads(configSectionMap('Video')['vialroi'])
+    backgroundPath = configSectionMap('Video')['background']
+    videoPath = configSectionMap('Video')['videopath']
+    
     try:
-        oneClickAnnotation = config['oneClickAnnotation']
+        fdvtPath = configSectionMap('Video')['frame-data-visualization-path']
     except KeyError:
-        oneClickAnnotation = None
-    
-    filterObjArgs["oneClickAnnotation"] = oneClickAnnotation
-    
+        fdvtPath = None
+                    
     try:
-        startVideo = config['startVideo']
+        bhvrListPath = configSectionMap('Video')['bhvr-cache']
+    except KeyError:
+        bhvrListPath = None
+                
+    try:
+        startVideo = configSectionMap('Video')['startvideo']
     except KeyError:
         startVideo = None
         
     try:
-        rewindOnClick = config['rewind-on-click']
-    except KeyError:
-        rewindOnClick = False
-        
-    try:
-        croppedVideo = config['cropped-video']
+        croppedVideo = configSectionMap('Video')['cropped-video']
     except KeyError:
         croppedVideo = False
         
     try:
-        runningIndeces = config['files-running-indeces']
+        runningIndeces = config.getboolean('Video','files-running-indices')
     except KeyError:
         runningIndeces = True
-        
+                    
     try:
-        fdvtPath = config['frame-data-visualization-path']
+        rewindOnClick = config.getboolean('Video','rewind-on-click')
     except KeyError:
-        fdvtPath = None
-        
+        rewindOnClick = False
+    
+    #Active Learning
+    serverAddress = configSectionMap('ActiveLearning')['remote-request-server']
+    
+    # KeyMap
+    keyMap = { "stop": configSectionMap('KeyMap')['stop'],
+                "step-f": configSectionMap('KeyMap')['step-f'],
+                "step-b": configSectionMap('KeyMap')['step-b'],
+                "fwd-1": configSectionMap('KeyMap')['fwd-1'],
+                "fwd-2": configSectionMap('KeyMap')['fwd-2'],
+                "fwd-3": configSectionMap('KeyMap')['fwd-3'],
+                "fwd-4": configSectionMap('KeyMap')['fwd-4'],
+                "fwd-5": configSectionMap('KeyMap')['fwd-5'],
+                "fwd-6": configSectionMap('KeyMap')['fwd-6'],
+                "bwd-1": configSectionMap('KeyMap')['bwd-1'],
+                "bwd-2": configSectionMap('KeyMap')['bwd-2'],
+                "bwd-3": configSectionMap('KeyMap')['bwd-3'],
+                "bwd-4": configSectionMap('KeyMap')['bwd-4'],
+                "bwd-5": configSectionMap('KeyMap')['bwd-5'],
+                "bwd-6": configSectionMap('KeyMap')['bwd-6'],
+                "escape": configSectionMap('KeyMap')['escape'],
+                "anno-1": configSectionMap('KeyMap')['anno-1'],
+                "anno-2": configSectionMap('KeyMap')['anno-2'],
+                "anno-3": configSectionMap('KeyMap')['anno-3'],
+                "anno-4": configSectionMap('KeyMap')['anno-4'],
+                "erase-anno": configSectionMap('KeyMap')['erase-anno'],
+                "info": configSectionMap('KeyMap')['info']}
+    
+      
     try:
-        bhvrListPath = config['bhvr-cache']
+        for key in keyMap:
+            keyMap[key] = eval("Qt." + keyMap[key], {"Qt":QtCore.Qt})
     except KeyError:
-        bhvrListPath = None
+        keyMap = None
+
+
+    # Step size
+    stepSize = {"stop": config.getint('StepSize','stop'),
+                "step-f": config.getint('StepSize','step-f'),
+                "step-b": config.getint('StepSize','step-b'),
+                "fwd-1": config.getint('StepSize','fwd-1'),
+                "fwd-2": config.getint('StepSize','fwd-2'),
+                "fwd-3": config.getint('StepSize','fwd-3'),
+                "fwd-4": config.getint('StepSize','fwd-4'),
+                "fwd-5": config.getint('StepSize','fwd-5'),
+                "fwd-6": config.getint('StepSize','fwd-6'),
+                "bwd-1": config.getint('StepSize','bwd-1'),
+                "bwd-2": config.getint('StepSize','bwd-2'),
+                "bwd-3": config.getint('StepSize','bwd-3'),
+                "bwd-4": config.getint('StepSize','bwd-4'),
+                "bwd-5": config.getint('StepSize','bwd-5'),
+                "bwd-6": config.getint('StepSize','bwd-6'), 
+                "allow-steps": config.getboolean('StepSize','allow-steps')}
+    
+    filterObjArgs = dict()  
+    filterObjArgs['keyMap'] = keyMap
+    filterObjArgs['stepSize'] = stepSize
+    
+    
+    # Annotations
+    annotations = json.loads(configSectionMap('Annotation')['annotations'])
         
-    try:
-        serverAddress = config['remote-request-server']
-    except KeyError:
-        serverAddress = "tcp://127.0.0.1:4242"
+    #### finish parsing config file
         
-    hGUI = logging.FileHandler(os.path.join(path, 
+    hGUI = logging.FileHandler(os.path.join(videoPath, 
                     "videoPlayer." + \
                     time.strftime("%Y-%m-%d.%H-%M-%S", time.localtime()) +\
                     ".log"))
@@ -1445,7 +1528,7 @@ if __name__ == "__main__":
     
     app = QtGui.QApplication(sys.argv)
     
-    w = videoPlayer(path, annotations, backgroundPath, selectedVial, vialROI,
+    w = videoPlayer(videoPath, annotations, backgroundPath, selectedVial, vialROI,
                      videoFormat='avi', filterObjArgs=filterObjArgs,
                      startVideoName=startVideo, rewindOnClick=rewindOnClick,
                      croppedVideo=croppedVideo, runningIndeces=runningIndeces,
