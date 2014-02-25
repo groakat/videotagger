@@ -68,5 +68,5 @@ Once the videoPath is set, one should run
 With `<configuration file>` being the filename of a configuration file. This will speed up the start up of the video player significantly.
 
 
-Detailed explanation follows...
+The configuration files `fly_example.cfg` and `fly_videos.cfg` are commented and should be easy to change. Please let me know if anything is still unclear.
 
