@@ -264,14 +264,15 @@ class videoPlayer(QtGui.QMainWindow):
         
         #~ self.ui.pb_startVideo.installEventFilter(self.eventFilter)
         self.ui.pb_stopVideo.installEventFilter(self.eventFilter)
-        self.ui.pb_test.installEventFilter(self.eventFilter)
+#         self.ui.pb_test.installEventFilter(self.eventFilter)
         self.ui.pb_addAnno.installEventFilter(self.eventFilter)
         self.ui.pb_eraseAnno.installEventFilter(self.eventFilter)
         self.ui.sldr_paths.installEventFilter(self.eventFilter)
         self.ui.lv_frames.installEventFilter(self.eventFilter)
-        self.ui.lv_jmp.installEventFilter(self.eventFilter)
+#         self.ui.lv_jmp.installEventFilter(self.eventFilter)
         self.ui.lv_paths.installEventFilter(self.eventFilter)
         self.ui.cb_trajectory.installEventFilter(self.eventFilter)
+        self.ui.pb_check4requests.installEventFilter(self.eventFilter)
         
     @cfg.logClassFunction
     def configureUI(self):
@@ -1124,7 +1125,7 @@ class videoPlayer(QtGui.QMainWindow):
         cfg.log.debug("testFunction")
 #         1/0
 #         self.increment = 40
-        self.rpcIH.getNextJob()
+#         self.rpcIH.getNextJob()
         
     def initRewind(self):        
         self.rewinding = True
