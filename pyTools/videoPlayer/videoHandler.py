@@ -48,8 +48,8 @@ class VideoHandler(QtCore.QObject):
         ### old stuff ?
         
         self.bufferWidth  = 100     # width of each buffer
-        self.bufferLength = 1       # number of buffers on EITHER SIDE
-        self.bufferJut = 1          # number of buffers outside of the core 
+        self.bufferLength = 3       # number of buffers on EITHER SIDE
+        self.bufferJut = 2          # number of buffers outside of the core 
                                     # buffer area on EITHER SIDEthat are not 
                                     # deleted immediately
         self.videoLengths = dict()  # lengths of each video chunk
@@ -322,12 +322,14 @@ class VideoHandler(QtCore.QObject):
     def getPosition(self, bhvrPath, idx):
         posA = self.getPositionArray(bhvrPath)
         if posA == None:
-            posA = np.ones((2,1)) * -1
+            pos = np.ones((2,1)) * -1
+        else:
+            pos = posA[idx]
             
-        return posA
+        return pos
         
         
-    @cfg.logClassFunctionInfo
+    @cfg.logClassFunction#Info
     def getVideoLength(self, posPath):
         vidLength = 0
         if self.videoLengths[self.posPath] != None:
@@ -335,6 +337,7 @@ class VideoHandler(QtCore.QObject):
         else:
             res = self.getPositionArray(self.posPath)
             if res == None:
+                # hack will probably break if video is longer than 300 frames
                 vidLength = 300
             else:
                 vidLength = res.shape[0]
@@ -350,7 +353,7 @@ class VideoHandler(QtCore.QObject):
 #         if self.videoLengths[self.posPath] is None:
 #             return self.getCurrentFrameNull()
             
-        cfg.log.info("self.idx: {2}, increment: {0}, doBufferCheck: {1}".format(increment, doBufferCheck, self.idx))
+        cfg.log.debug("self.idx: {2}, increment: {0}, doBufferCheck: {1}".format(increment, doBufferCheck, self.idx))
         self.idx += increment
 
         if self.idx >= self.getVideoLength(self.posPath):
