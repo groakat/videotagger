@@ -88,7 +88,9 @@ class videoPlayer(QtGui.QMainWindow):
                         runningIndeces=True,
                         fdvtPath=None,
                         bhvrListPath=None,
-                        serverAddress="tcp://127.0.0.1:4242"
+                        serverAddress="tcp://127.0.0.1:4242",
+                        bufferWidth=300, 
+                        bufferLength=4
                         ):
         """
         
@@ -203,7 +205,9 @@ class videoPlayer(QtGui.QMainWindow):
         
         self.vh = VH.VideoHandler(self.fileList, self.changeVideo, 
                                self.selectedVial, startIdx=startIdx,
-                               videoEnding=videoEnding)
+                               videoEnding=videoEnding,
+                               bufferWidth=bufferWidth, 
+                               bufferLength=bufferLength)
         
         
         self.updateFrameList(range(2000))
@@ -228,6 +232,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.rpcIH = None
         self.fdvt = None
         self.setupFrameView()
+        self.bookmark = None
             
         
         
@@ -448,9 +453,17 @@ class videoPlayer(QtGui.QMainWindow):
                    
             
     
+    @cfg.logClassFunction#Info
     def check4Requests(self):
+        self.bookmark = self.vh.getCurrentKey_idx()
         self.rpcIH.getNextJob()
         self.ui.pb_check4requests.setVisible(False)
+        
+        
+    @cfg.logClassFunction#Info
+    def jumpToBookmark(self):
+        self.vh.getFrame(*self.bookmark, checkBuffer=True)
+        self.showNextFrame(0)
         
         
     @QtCore.Slot(list)
@@ -1261,6 +1274,7 @@ class videoPlayer(QtGui.QMainWindow):
                 
         self.rpcIH.sendReply([deltaVector])
         self.isLabelingSingleFrame = False
+        self.jumpToBookmark()
         
         
 #     @cfg.logClassFunction
@@ -1417,6 +1431,16 @@ if __name__ == "__main__":
         startVideo = configSectionMap('Video')['startvideo']
     except KeyError:
         startVideo = None
+                
+    try:
+        bufferWidth = config.getint('Video','bufferwidth')
+    except KeyError:
+        bufferWidth = 300
+                
+    try:
+        bufferLength = config.getint('Video','bufferlength')
+    except KeyError:
+        bufferLength = 4
         
     try:
         croppedVideo = config.getboolean('Video','cropped-video')
@@ -1518,7 +1542,8 @@ if __name__ == "__main__":
                      videoFormat='avi', filterObjArgs=filterObjArgs,
                      startVideoName=startVideo, rewindOnClick=rewindOnClick,
                      croppedVideo=croppedVideo, runningIndeces=runningIndeces,
-                     fdvtPath=fdvtPath, bhvrListPath=bhvrListPath)
+                     fdvtPath=fdvtPath, bhvrListPath=bhvrListPath,
+                     bufferWidth=bufferWidth, bufferLength=bufferLength)
     
     app.connect(app, QtCore.SIGNAL("aboutToQuit()"), w.exit)
     w.quit.connect(app.quit)

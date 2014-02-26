@@ -30,7 +30,7 @@ class VideoHandler(QtCore.QObject):
     
     @cfg.logClassFunction
     def __init__(self, posList, fileChangeCb, selectedVials=[0], startIdx=0,
-                 videoEnding='.avi'):
+                 videoEnding='.avi', bufferWidth=300, bufferLength=4):
         super(VideoHandler, self).__init__()        
         
         self.videoDict = dict()
@@ -47,8 +47,8 @@ class VideoHandler(QtCore.QObject):
         self.delBuffer = 5
         ### old stuff ?
         
-        self.bufferWidth  = 300     # width of each buffer
-        self.bufferLength = 4       # number of buffers on EITHER SIDE
+        self.bufferWidth  = bufferWidth     # width of each buffer
+        self.bufferLength = bufferLength    # number of buffers on EITHER SIDE
         self.bufferJut = 2          # number of buffers outside of the core 
                                     # buffer area on EITHER SIDEthat are not 
                                     # deleted immediately
@@ -127,6 +127,11 @@ class VideoHandler(QtCore.QObject):
     @cfg.logClassFunction
     def setFrameIdx(self, idx):
         self.idx = idx
+        
+        
+    @cfg.logClassFunction
+    def getCurrentKey_idx(self):
+        return self.posPath, self.idx
     
     @cfg.logClassFunction
     def getCurrentPosList(self):
@@ -156,10 +161,10 @@ class VideoHandler(QtCore.QObject):
         return self.idx
     
     @cfg.logClassFunction
-    def getFrame(self, posPath, idx):        
+    def getFrame(self, posPath, idx, checkBuffer=False):        
         self.idx = idx
         self.posPath = posPath
-        self.checkBuffer(False)
+        self.checkBuffer(checkBuffer)
         return self.getCurrentFrame()
         
         

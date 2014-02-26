@@ -124,6 +124,8 @@ class FrameViewWidget(QtGui.QWidget, Ui_FrameViewWidget):
             
         if frame == None:
             self.frame = sorted(self.fdvTree.tree[self.day][self.hour][self.minute].keys())[0]
+            if self.frame == 'data':
+                self.frame = 0
         else:
             self.frame = frame
         

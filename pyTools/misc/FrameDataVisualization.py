@@ -935,7 +935,8 @@ class FrameDataView:
         ax = plt.imshow(a,aspect='auto',cmap=self.cm,origin="lower")
         ax.axes.set_axis_off()
                    
-    def plotColorCodedBar(self, data, ax, weight=None, rng=None, cm=None):
+    def plotColorCodedBar(self, data, ax, weight=None, rng=None, cm=None, 
+                          activeBar=None):
         if weight is None:
             weight = data
         
@@ -950,8 +951,16 @@ class FrameDataView:
         plt.cla()
 #         cm = mpl.colors.LinearSegmentedColormap('my_colormap',self.cdict, 256)
         for i in range(len(data)):
-            ax.bar(i, data[i], 0.8, color=cm(weight[i] / rng[1]), 
-                   edgecolor=(0,0,0,0))
+            if i == activeBar:
+                if data[i] != 0:
+                    ax.bar(i, data[i], 0.8, color=cm(weight[i] / rng[1]),
+                       edgecolor='red', linewidth=1) 
+                else:
+                    ax.bar(i, 1, 0.8, color=[0,0,0,0],
+                       edgecolor='red', linewidth=1)             
+            else: 
+                ax.bar(i, data[i], 0.8, color=cm(weight[i] / rng[1]), 
+                       edgecolor=(0,0,0,0))
             
         ax.set_axis_off()
         plt.ylim(rng[0], rng[1])
@@ -982,7 +991,9 @@ class FrameDataView:
             ax = self.figs['days'].axes[0]
             data = self.fdvTree.plotData['days']['data']
             weight = self.fdvTree.plotData['days']['weight']
-            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm)   
+            day = sorted(self.fdvTree.tree.keys()).index(self.day)
+            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm, 
+                                   activeBar=day)   
         
         if self.hour != hour or self.updateRemaining:
             self.hour = hour
@@ -991,7 +1002,9 @@ class FrameDataView:
             data = self.fdvTree.plotData['hours']['data']
             weight = self.fdvTree.plotData['hours']['weight']
             maxVal = self.fdvTree.range[1]
-            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm)  
+            hour = sorted(self.fdvTree.tree[self.day].keys()).index(self.hour)
+            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm, 
+                                   activeBar=hour)  
         
         if self.minute != minute or self.updateRemaining:
             self.minute = minute
@@ -1000,14 +1013,20 @@ class FrameDataView:
             data = self.fdvTree.plotData['minutes']['data']
             weight = self.fdvTree.plotData['minutes']['weight']
             maxVal = self.fdvTree.range[1]
-            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm)  
+            minute = sorted(self.fdvTree.tree[self.day][self.hour].keys()\
+                            ).index(self.minute)
+            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm, 
+                                   activeBar=minute)  
         
-        if self.updateRemaining:
+        if self.frame != frame or self.updateRemaining:
+            self.frame = frame
             ax = self.figs['frames'].axes[0]
             data = self.fdvTree.plotData['frames']['data']
             weight = self.fdvTree.plotData['frames']['weight']
             maxVal = self.fdvTree.range[1]
-            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm)  
+            frame = self.frame / self.frameResolution
+            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm, 
+                                   activeBar=frame )  
         
         
         self.updateRemaining = False
