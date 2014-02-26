@@ -43,12 +43,12 @@ class VideoHandler(QtCore.QObject):
         self.videoEnding = videoEnding
         
         ### old stuff ?
-        self.dictLength = 5         # should be odd, otherwise fix checkBuffers()!
+        self.dictLength = 3         # should be odd, otherwise fix checkBuffers()!
         self.delBuffer = 5
         ### old stuff ?
         
-        self.bufferWidth  = 100     # width of each buffer
-        self.bufferLength = 3       # number of buffers on EITHER SIDE
+        self.bufferWidth  = 300     # width of each buffer
+        self.bufferLength = 4       # number of buffers on EITHER SIDE
         self.bufferJut = 2          # number of buffers outside of the core 
                                     # buffer area on EITHER SIDEthat are not 
                                     # deleted immediately
