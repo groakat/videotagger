@@ -47,6 +47,7 @@ class FrameDataVisualizationTreeBase(object):
         self.tree['meta']['max'] = -np.Inf  
         self.tree['meta']['mean'] = 0
         self.tree['meta']['sampleN'] = 0
+        self.tree['meta']['isCategoric'] = False
         
         
     def save(self, filename):
@@ -408,6 +409,9 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
         
         self.ranges = dict()        
         
+        min = np.Inf
+        max = - np.Inf
+        
         cnt = 0
         for day in sorted(self.tree.keys()):
             if day == 'meta':
@@ -426,12 +430,22 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                         continue
                         
                     frames = self.tree[day][hour][minute]['data']
+                    
+                    m = np.max(frames)
+                    if m > max:
+                        max = m
+                        
+                    m = np.min(frames)
+                    if m < min:
+                        min = m                    
+                    
                     rng = slice(cnt,cnt+frames.shape[0])
                     
                     self.ranges[day][hour][minute] = rng
                     cnt += frames.shape[0]   
                     self.totalNoFrames = rng.stop   
                            
+        self.range = [min, max]
         self.addedNewData = False
         
                     
@@ -604,6 +618,10 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
 class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
     def __init__(self):
         super(FrameDataVisualizationTreeBehaviour, self).__init__()
+        
+    def resetAllSamples(self):
+        super(FrameDataVisualizationTreeBehaviour, self).resetAllSamples()        
+        self.tree['meta']['isCategoric'] = True
 
 
     def importAnnotations(self, bhvrList, annotations, vials, runningIndeces=False):
