@@ -1,5 +1,6 @@
 import math
 from collections import namedtuple
+import numpy as np
 
 def chunks(l, n):
     """ Yield successive n-sized chunks from l
@@ -68,6 +69,19 @@ def generateRangeValuesFromKeys(start, end, includingEnd=True, lenFunc=None):
                 rng[key] = range(rngS, rngE)
                 
         return rng
+    
+    
+def countInt(x, minLength=None):
+    m = np.min(x)
+    cnt = np.bincount(x - m, minlength=minLength)
+    cntMat = np.asarray(list(enumerate(cnt)))
+    cntMat[:,0] += m
+    return cntMat
+    
+    
+    
+    
+    
         
 if __name__ == "__main__":
     """ testing chunks function """

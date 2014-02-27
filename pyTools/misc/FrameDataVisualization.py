@@ -4,6 +4,7 @@ import numpy as np
 import cPickle as pickle
 import time
 import pyTools.videoProc.annotation as Annotation
+import pyTools.misc.basic as bsc
 import warnings
 import json
 import copy
@@ -671,6 +672,60 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
                 return i
             
         return None
+    
+    
+            
+    def generatePlotDataFrames(self, day, hour, minute, frame, 
+                               frameResolution=1):
+        self.plotData['frames'] = dict()
+        self.plotData['frames']['data'] = []
+        self.plotData['frames']['weight'] = []
+        self.plotData['frames']['tick'] = []
+        
+        
+        maxClass = self.range[1]
+        data = self.tree[day][hour][minute]['data'].astype(np.int)
+        
+        res = np.zeros((maxClass, np.ceil(data.shape[0] / 
+                                          np.float(frameResolution))))
+        rng = slice(0, frameResolution)
+        
+        for i in range(res.shape[1]):
+            res[:, i] = bsc.countInt(data[rng], minLength=maxClass + 1)[1:,1]
+            rng = slice(rng.stop, rng.stop + frameResolution)
+        
+        self.plotData['frames']['data'] = res
+        self.plotData['frames']['weight'] = np.ones((res.shape[1]))
+        self.plotData['frames']['tick'] = range(0, data.shape[0], 
+                                                frameResolution)
+        
+        
+#         cnt = 0        
+#         tmpVal = []
+#         tmpKeys = []
+#         for i in range(self.tree[day][hour][minute]['data'].shape[0]):            
+#             tmpVal += [self.tree[day][hour][minute]['data'][i]]
+#             tmpKeys += [i]      
+#             cnt += 1  
+#             
+#             if not (cnt < frameResolution):
+# #                 tmpVal /= frameResolution
+#                 self.plotData['frames']['data'] += [max(tmpVal)]
+#                 self.plotData['frames']['weight'] += [sum(tmpVal) / 
+#                                                                 frameResolution]
+#                 self.plotData['frames']['tick'] += [tmpKeys]
+#                 cnt = 0        
+#                 tmpVal = []
+#                 tmpKeys = []
+#                 
+#                 
+#         if cnt != 0:
+# #             tmpVal /= cnt
+#             self.plotData['frames']['data'] += [max(tmpVal)]
+#             self.plotData['frames']['weight'] += [sum(tmpVal) / cnt]
+#             self.plotData['frames']['tick'] += [tmpKeys]
+            
+            
                      
                      
 class FrameDataVisualizationTreeTrajectories(\
@@ -955,6 +1010,7 @@ class FrameDataView:
                    
     def plotColorCodedBar(self, data, ax, weight=None, rng=None, cm=None, 
                           activeBar=None):
+                
         if weight is None:
             weight = data
         
@@ -982,7 +1038,30 @@ class FrameDataView:
             
         ax.set_axis_off()
         plt.ylim(rng[0], rng[1])
-        plt.xlim(0, len(data) - 0.2)
+        plt.xlim(0, len(data) - 0.1)
+        
+        
+        
+    def plotColorCodedStackedBar(self, data, ax, weight=None, rng=None, cm=None, 
+                          activeBar=None):
+        c  = ['r', 'y', 'b', 'g', 'orange', 'black']
+
+        ind = range(data.shape[1])
+        
+        fig = plt.figure(ax.get_figure().number)
+        plt.cla()
+#         ax.bar(ind, data[1], 0.5, color='r', linewidth=0)
+        acc = np.zeros(data[0].shape)
+        for i in range(1, data.shape[0]):
+            ax.bar(ind, data[i], 0.5, color=c[i],
+                         bottom=acc, linewidth=0)
+            acc += data[i]
+                        
+        ax.set_axis_off()
+#         plt.ylim(0, np.max(data.ravel()))
+        plt.xlim(0, data.shape[1] - 0.2)
+        
+#         plt.show()
     
     def plotData(self, day, hour, minute, frame, frameResolution=None):
         """
@@ -1043,7 +1122,7 @@ class FrameDataView:
             weight = self.fdvTree.plotData['frames']['weight']
             maxVal = self.fdvTree.range[1]
             frame = self.frame / self.frameResolution
-            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm, 
+            self.plotColorCodedStackedBar(data, ax, weight, rng=rng, cm=self.cm, 
                                    activeBar=frame )  
         
         
