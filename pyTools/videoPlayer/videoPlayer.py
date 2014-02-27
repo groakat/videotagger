@@ -462,8 +462,9 @@ class videoPlayer(QtGui.QMainWindow):
         
     @cfg.logClassFunction#Info
     def jumpToBookmark(self):
-        self.vh.getFrame(*self.bookmark, checkBuffer=True)
-        self.showNextFrame(0)
+        if self.bookmark:
+            self.vh.getFrame(*self.bookmark, checkBuffer=True)
+            self.showNextFrame(0)
         
         
     @QtCore.Slot(list)
@@ -1243,8 +1244,8 @@ class videoPlayer(QtGui.QMainWindow):
         self.annoIsOpen = not self.annoIsOpen
         
         if labelledFrames != (None, None):
-            if self.isLabelingSingleFrame:
-                self.convertLabelListAndReply(labelledFrames)
+#             if self.isLabelingSingleFrame:
+            self.convertLabelListAndReply(labelledFrames)
         
     def convertLabelListAndReply(self, labelledFrames):
         """
@@ -1262,8 +1263,8 @@ class videoPlayer(QtGui.QMainWindow):
             hour = treeKey[1]
             minute = treeKey[2]
             for frame in frames[key]:
-                deltaVector += [self.fdvt.key2idx(day, hour, minute, frame),                                
-                                self.fdvt.getAnnotationFilterCode(filt)]
+                deltaVector += [[self.fdvt.key2idx(day, hour, minute, frame),                                
+                                self.fdvt.getAnnotationFilterCode(filt)]]
                                 
                                 
                                 

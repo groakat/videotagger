@@ -23,6 +23,7 @@ class ALToyLearner(ComClient.ALComBase):
         self.loadFeatureMatrix()
         
         self.running = True
+        self.isDataUpdated = False
         self.selectNewFrame2Label()
         self.mainloop()
         
@@ -30,7 +31,9 @@ class ALToyLearner(ComClient.ALComBase):
 ########## Communication stuff #######################
     def mainloop(self):
         while(self.running):
-            self.queryNextCompletedJob()
+            self.queryAllCompletedJobs()
+            self.retrain()
+                
         
         
     def noNewReply(self):
@@ -42,15 +45,16 @@ class ALToyLearner(ComClient.ALComBase):
         
     def updateFrame(self, reply):
         print "ALComBase: updateFrame -- {0}".format(reply.reply)
-        dv = reply.reply
+        dv = np.asarray(reply.reply)
         self.deltaVectors += [dv]
-        self.labels[dv[0]] = dv[1]
         
-        self.retrain()
+        self.labels[dv[:, 0]] = dv[:, 1]
+        self.isDataUpdated =  True
         
         
     def updateFrameRange(self, reply):
         print "ALComBase: updateFrameRange -- {0}".format(reply)
+        self.updateFrame(reply)
 
 
 ########## Learning stuff ##################################
@@ -74,6 +78,11 @@ class ALToyLearner(ComClient.ALComBase):
         
 
     def retrain(self):
+        if not self.isDataUpdated:
+            return
+        
+        self.isDataUpdated = False
+        
         print "retraining.."
         testSet = self.labels.shape[0] / 5
         self.cfr.fit(self.fm[:-testSet], self.labels[:-testSet])

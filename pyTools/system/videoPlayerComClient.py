@@ -131,10 +131,25 @@ class GUIComBase(object):
         
         """
         reply = dict()
-        reply['qid'] = query.cid
+        reply['qid'] = query.qid
         reply['cid'] = self.cid
         reply['priority'] = query.priority
         reply['job'] = query.job
+        reply['reply'] = data
+        
+        self.bus.pushReply(reply)  
+    
+    def sendUpdatedLabels(self, data):
+        """
+        Args:
+            data (either data requested by job or any standard python Error if job completion failed)
+        
+        """
+        reply = dict()
+        reply['qid'] = None
+        reply['cid'] = self.cid
+        reply['priority'] = 1
+        reply['job'] = 3
         reply['reply'] = data
         
         self.bus.pushReply(reply)     
@@ -174,11 +189,16 @@ class ALComBase(object):
         self.qid = 0
         
         
+    def queryAllCompletedJobs(self):
+        while True:
+            if not self.queryNextCompletedJob():
+                break
+        
     def queryNextCompletedJob(self):
         msg = self.bus.nextReply()
         if msg is None:
             self.noNewReply()
-            return
+            return False
             
         reply = comServer.ReplyTuple(**msg)
         
@@ -191,9 +211,12 @@ class ALComBase(object):
             self.updateFrame(reply)
         elif reply.job == 2:
             self.updateFrameRange(reply)
+        elif reply.job == 3:
+            self.updateFrameRange(reply)
         else:
             self.rejectJob(reply, ValueError('Cannot identify the job task'))
             
+        return True
             
     def prepareQuery(self, job, priority, data):
         query = dict()
@@ -239,11 +262,14 @@ class ALComBase(object):
         print "ALComBase: updateFrame -- {0}".format(reply.reply)
         
     def updateFrameRange(self, reply):
-        print "ALComBase: updateFrameRange -- {0}".format(reply)
-            
+        print "ALComBase: updateFrameRange -- {0}".format(reply)            
         
     def jobFailed(self, reply):
         raise reply.reply
+    
+    def rejectJob(self, error):
+        raise error
+        
     
     ###### FUNCTIONS TO OVERLOAD ##############################################
     

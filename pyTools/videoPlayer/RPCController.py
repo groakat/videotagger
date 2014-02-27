@@ -151,7 +151,12 @@ class RPCInterfaceHandler(QtCore.QObject):
                             lblX -- label assigned to that frame
         """ 
         dVector = lst[0]
-        self.controller.sendCompletedJob(self.currentQuery, dVector)
+        if self.currentQuery:
+            self.controller.sendCompletedJob(self.currentQuery, dVector)
+            self.currentQuery = None
+        else:
+            self.controller.sendUpdatedLabels(dVector)
+            
         self.initWaiting()
         
     

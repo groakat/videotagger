@@ -104,6 +104,7 @@ class ReplyTuple(Reply):
             job  -- 0: transmitting new FDVT (update FDVT)
                     1: requesting specific frame label
                     2: requesting frame range
+                    3: transmitting update frame range
                     
             reply -- data
         """
@@ -132,6 +133,7 @@ class ComServerBase(object):
         self.replyQueue = dict()
         self.replyList = dict()
         self.clientIDs = []
+        self.qid = 0
         
     def requestClientID(self):
         if self.clientIDs:
@@ -143,6 +145,12 @@ class ComServerBase(object):
         else:
             self.clientIDs = [0]
             return 0
+        
+    def assignID(self, tplDict):
+        tplDict['qid'] = self.qid
+        self.qid += 1
+        
+        return tplDict
 
     def nextQuery(self):
         """ requests the next open query """
@@ -170,7 +178,7 @@ class ComServerBase(object):
     
     def pushQuery(self, queryDict):
         """ pushes a new query in the queue """
-        queryTpl = QueryTuple(**queryDict)
+        queryTpl = QueryTuple(**self.assignID(queryDict))
         
         if not queryTpl.priority in self.queryQueue.keys():
             self.queryQueue[queryTpl.priority] = OrderedDict()
@@ -205,7 +213,7 @@ class ComServerBase(object):
     
     def pushReply(self, replyDict):
         """ pushes the reply to a query into the queue """
-        replyTpl = ReplyTuple(**replyDict)
+        replyTpl = ReplyTuple(**self.assignID(replyDict))
         
         if not replyTpl.priority in self.replyQueue.keys():
             self.replyQueue[replyTpl.priority] = OrderedDict()
