@@ -1,4 +1,5 @@
 import pyTools.system.misc as systemMisc
+import pyTools.misc.FrameDataVisualization as FDV
 import json
 import sys
 import argparse
@@ -81,8 +82,7 @@ if __name__ == "__main__":
         
     videoPath = configSectionMap('Video')['videopath']
     bhvrCachePath = configSectionMap('Video')['bhvr-cache']    
-    
-    
+    fdvtPath = configSectionMap('Video')['frame-data-visualization-path']
     
     print "start parsing"
     bhvrList = systemMisc.providePosList(videoPath, ending='.bhvr')
@@ -91,4 +91,16 @@ if __name__ == "__main__":
         json.dump(bhvrList, f)
         
     print "finished caching"
+    
+    print "cache behaviour visualization"    
+    annotations = json.loads(configSectionMap('Annotation')['annotations'])
+    try:
+        selectedVial = [config.getint('Video','vial')]
+    except:
+        selectedVial = None
+        
+    fdtv = FDV.FrameDataVisualizationTreeBehaviour()
+    fdtv.importAnnotations(bhvrList, annotations, selectedVial)
+    fdtv.save(fdvtPath)
+    
     

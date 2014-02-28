@@ -365,9 +365,10 @@ class videoPlayer(QtGui.QMainWindow):
         frameView.registerButtonPressCallback('frames', self.selectVideoTime)
         
         colors = [a['color'] for a in self.annotations]
-        frameView.setColors(colors)
-#         if self.fdvtPath is not None:
-#             frameView.loadSequence(self.fdvtPath)
+        frameView.setColors(colors)       
+        
+        if self.fdvtPath is not None:
+            frameView.loadSequence(self.fdvtPath)
             
             
     def createPrevFrames(self, xPos, yPos):
