@@ -1135,12 +1135,17 @@ class FrameDataView:
 #         ax.bar(ind, data[1], 0.5, color='r', linewidth=0)
         acc = np.zeros(data[0].shape)
         for i in range(data.shape[0]):
-            ax.bar(ind, data[i], 0.5, color=c[i],
+            ax.bar(ind, data[i], 0.8, color=c[i],
                          bottom=acc, linewidth=0)
             acc += data[i]
             
+        
+                    
+        ax.bar(activeBar, np.max(acc), 0.8, color=[0,0,0,0],
+                       edgecolor='black', linewidth=1)  
+            
         ax.set_axis_off()
-#         plt.ylim(0, np.max(data.ravel()))
+        plt.ylim(0, np.max(acc))
         plt.xlim(0, data.shape[1] - 0.2)
         
 #         plt.show()
