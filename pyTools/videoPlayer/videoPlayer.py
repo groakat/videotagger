@@ -316,7 +316,15 @@ class videoPlayer(QtGui.QMainWindow):
         self.annoViewLabel[-1].setText("{0}: {1}".format(\
                                             self.annotations[idx]["annot"],
                                             self.annotations[idx]["behav"]))
-        self.annoViewLabel[-1].move(xPos + width + 10, yPos)          
+        self.annoViewLabel[-1].move(xPos + width + 10, yPos)     
+        self.annoViewLabel[-1].setStyleSheet("""
+        QLabel {{ 
+        border-bottom-color: {0};
+        border-top: transparent;
+        border-left: transparent;
+        border-right: transparent;
+        border-width : 1.5px;
+        border-style:inset; }}""".format(self.annotations[idx]["color"].name()))     
         self.annoViewLabel[-1].adjustSize() 
         
         
@@ -339,6 +347,13 @@ class videoPlayer(QtGui.QMainWindow):
         self.annotations[1]["color"] = QtGui.QColor(self.annotations[1]["color"])
         self.annotations[2]["color"] = QtGui.QColor(self.annotations[2]["color"])
         self.annotations[3]["color"] = QtGui.QColor(self.annotations[3]["color"])
+        
+        self.annotations[0]["color"].setAlphaF(0.8)
+        self.annotations[1]["color"].setAlphaF(0.8)
+        self.annotations[2]["color"].setAlphaF(0.8)
+        self.annotations[3]["color"].setAlphaF(0.8)
+        
+        
 
         self.createPrevFrames(xPos + 135, yPos - (self.prevSize + 20))
         
