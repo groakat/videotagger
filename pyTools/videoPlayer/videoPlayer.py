@@ -678,6 +678,7 @@ class videoPlayer(QtGui.QMainWindow):
     
     @cfg.logClassFunction
     def showTempFrame(self, increment):
+        self.increment = 0
         self.tempIncrement = increment
         self.showNextFrame(self.tempIncrement, checkBuffer=False)
         self.update()
