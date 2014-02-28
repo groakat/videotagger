@@ -212,6 +212,17 @@ class videoPlayer(QtGui.QMainWindow):
         
         self.updateFrameList(range(2000))
         
+        
+        
+        self.serverAddress = serverAddress
+        self.connectedToServer = False
+        self.rpcIH = None
+        self.fdvt = None
+        self.setupFrameView()
+        self.bookmark = None
+        
+        
+        
         self.configureUI()
         
         if self.croppedVideo:
@@ -226,13 +237,6 @@ class videoPlayer(QtGui.QMainWindow):
         
         self.ui.cb_trajectory.setChecked(self.showTraject)
         self.showTrajectories(self.showTraject)
-        
-        self.serverAddress = serverAddress
-        self.connectedToServer = False
-        self.rpcIH = None
-        self.fdvt = None
-        self.setupFrameView()
-        self.bookmark = None
             
         
         
@@ -325,12 +329,16 @@ class videoPlayer(QtGui.QMainWindow):
         xPos = 60 
         height = 20
         width = 1000
+#         
+#         self.annotations[0]["color"] = QtGui.QColor(0,0,255,150)
+#         self.annotations[1]["color"] = QtGui.QColor(0,0,255,150)
+#         self.annotations[2]["color"] = QtGui.QColor(0,255,0,150)
+#         self.annotations[3]["color"] = QtGui.QColor(0,255,0,150)
         
-        self.annotations[0]["color"] = QtGui.QColor(0,0,255,150)
-        self.annotations[1]["color"] = QtGui.QColor(0,0,255,150)
-        self.annotations[2]["color"] = QtGui.QColor(0,255,0,150)
-        self.annotations[3]["color"] = QtGui.QColor(0,255,0,150)
-        
+        self.annotations[0]["color"] = QtGui.QColor(self.annotations[0]["color"])
+        self.annotations[1]["color"] = QtGui.QColor(self.annotations[1]["color"])
+        self.annotations[2]["color"] = QtGui.QColor(self.annotations[2]["color"])
+        self.annotations[3]["color"] = QtGui.QColor(self.annotations[3]["color"])
 
         self.createPrevFrames(xPos + 135, yPos - (self.prevSize + 20))
         
@@ -355,6 +363,9 @@ class videoPlayer(QtGui.QMainWindow):
     def setupFrameView(self):
         frameView = self.ui.frameView
         frameView.registerButtonPressCallback('frames', self.selectVideoTime)
+        
+        colors = [a['color'] for a in self.annotations]
+        frameView.setColors(colors)
 #         if self.fdvtPath is not None:
 #             frameView.loadSequence(self.fdvtPath)
             

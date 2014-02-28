@@ -28,6 +28,7 @@ class FrameViewWidget(QtGui.QWidget, Ui_FrameViewWidget):
         
         self.frameResolution = 15
         self.customCallbacks = []
+        self.colors = None
         
         self.fdvTree = FDV.FrameDataVisualizationTreeBehaviour()
         self.initializeConfidenceStructure()
@@ -80,6 +81,9 @@ class FrameViewWidget(QtGui.QWidget, Ui_FrameViewWidget):
 
         self.frameView.registerMPLCallback('frames', 'button_press_event', 
                                            self.printDatumLocation)
+        
+        
+        self.frameView.setColors(self.colors)
         
         tmpCallbacks = copy.copy(self.customCallbacks)
         self.customCallbacks = []
@@ -193,7 +197,9 @@ class FrameViewWidget(QtGui.QWidget, Ui_FrameViewWidget):
         self.le_min.setText("{0:.2f}".format(displayRange[0]))
         self.le_max.setText("{0:.2f}".format(displayRange[1]))
         
-        
+    def setColors(self, colors):
+        self.colors = colors
+        self.frameView.setColors(self.colors)
 
 
 class TestClass(QtGui.QMainWindow):

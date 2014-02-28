@@ -882,9 +882,16 @@ class FrameDataView:
         self.cbMinutes = dict()
         self.cbFrames = dict()
         
+        self.setColors()
         self.resetLocation()
         
         self.range = None
+        
+    def setColors(self, colors=None):
+        if colors == None:            
+            self.colors  = ['r', 'y', 'b', 'g', 'orange', 'black']
+        else:
+            self.colors = colors
         
     def resetLocation(self):
         self.day = None
@@ -1126,20 +1133,26 @@ class FrameDataView:
         
     def plotColorCodedStackedBar(self, data, ax, weight=None, rng=None, cm=None, 
                           activeBar=None):
-        c  = ['r', 'y', 'b', 'g', 'orange', 'black']
 
+        def amplifySmallValues(datak, thresh):
+            acc = np.max(np.sum(data, axis=0))  
+            smallLoc = np.bitwise_and(data < (acc * thresh), data != 0)        
+            data[smallLoc] = np.ceil(acc * thresh)
+            
+            return data                                
+            
+        data = amplifySmallValues(data, 0.05)
+        
         ind = range(data.shape[1])
         
         fig = plt.figure(ax.get_figure().number)
         plt.cla()
-#         ax.bar(ind, data[1], 0.5, color='r', linewidth=0)
         acc = np.zeros(data[0].shape)
         for i in range(data.shape[0]):
-            ax.bar(ind, data[i], 0.8, color=c[i],
+            ax.bar(ind, data[i], 0.8, color=self.colors[i],
                          bottom=acc, linewidth=0)
             acc += data[i]
-            
-        
+                   
                     
         ax.bar(activeBar, np.max(acc), 0.8, color=[0,0,0,0],
                        edgecolor='black', linewidth=1)  
