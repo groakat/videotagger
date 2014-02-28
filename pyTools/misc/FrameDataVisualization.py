@@ -619,11 +619,55 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
 class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
     def __init__(self):
         super(FrameDataVisualizationTreeBehaviour, self).__init__()
+        self.maxClass = 0
         
     def resetAllSamples(self):
         super(FrameDataVisualizationTreeBehaviour, self).resetAllSamples()        
         self.tree['meta']['isCategoric'] = True
-
+    
+    def verifyStructureExists(self, day, hour, minute, frame):
+        super(FrameDataVisualizationTreeBehaviour, self).verifyStructureExists()
+        self.tree[day]['meta']['stack'] = np.zeros(self.maxClass)
+        self.tree[day][hour]['meta']['stack'] = np.zeros(self.maxClass)
+        self.tree[day][hour][minute]['meta']['stack'] = np.zeros(self.maxClass)
+         
+    
+    def insertFrameArray(self, day, hour, minute, frames):
+        super(FrameDataVisualizationTreeBehaviour, self).insertFrameArray() 
+        self.addFrameArrayToStack(day, hour, minute, frames)
+        
+        
+    def addFrameArrayToStack(self, day, hour, minute, frames):
+        stack = self.calcStack(frames)
+        self.propagateStack(day, hour, minute, stack)
+        
+        
+    def propagateStack(self, day, hour, minute, stack):
+        self.addFrameArrayToStumpMean(self.tree[day][hour][minute], stack)
+        self.addFrameArrayToStumpMean(self.tree[day][hour], stack)
+        self.addFrameArrayToStumpMean(self.tree[day], stack)
+        self.addFrameArrayToStumpMean(self.tree, stack)
+        
+        
+    def addFrameArrayToStumpStack(self, stump, stack):
+        stump['meta']['stack'] += stack
+        
+            
+    def updateValue(self, day, hour, minute, frame, data):
+        super(FrameDataVisualizationTreeBehaviour, self).updateValue() 
+        
+        stack = self.calcStack(self.tree[day][hour][minute]['data'])
+        self.propagateStack(day, hour, minute, -stack)
+                
+        self.tree[day][hour][minute]['data'][frame] = data
+        
+        stack = self.calcStack(self.tree[day][hour][minute]['data'])
+        self.propagateStack(day, hour, minute, stack)
+        
+        
+    def calcStack(self, data):
+        return bsc.countInt(data, minLength=self.maxClass + 1)[1:,1]
+     
 
     def importAnnotations(self, bhvrList, annotations, vials, runningIndeces=False):
         filtList = []
@@ -636,6 +680,9 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
                                                           [annotator],
                                                           [behaviour])]
         
+        self.maxClass = len(filtList)
+        self.tree['meta']['filtList'] = filtList
+            
         for f in bhvrList:
             # load annotation and filter it #
             anno = Annotation.Annotation()
@@ -663,7 +710,6 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
                     
             self.insertFrameArray(day, hour, minute, data)
             
-            self.tree['meta']['filtList'] = filtList
                   
                   
     def getAnnotationFilterCode(self, filt):
@@ -677,27 +723,31 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
             
     def generatePlotDataFrames(self, day, hour, minute, frame, 
                                frameResolution=1):
-        self.plotData['frames'] = dict()
-        self.plotData['frames']['data'] = []
-        self.plotData['frames']['weight'] = []
-        self.plotData['frames']['tick'] = []
+        self.createStackData(self.plotData['frames'],
+                             self.tree[day][hour][minute]['data'], 
+                             frameResolution)
+    
+    
+    def createStackData(self, plotData, data, frameResolution):    
+        plotData = dict()
+        plotData['data'] = []
+        plotData['weight'] = []
+        plotData['tick'] = []
         
         
-        maxClass = self.range[1]
-        data = self.tree[day][hour][minute]['data'].astype(np.int)
+        data = data.astype(np.int) #self.tree[day][hour][minute]['data'].astype(np.int)
         
-        res = np.zeros((maxClass, np.ceil(data.shape[0] / 
+        res = np.zeros((self.maxClass, np.ceil(data.shape[0] / 
                                           np.float(frameResolution))))
         rng = slice(0, frameResolution)
         
         for i in range(res.shape[1]):
-            res[:, i] = bsc.countInt(data[rng], minLength=maxClass + 1)[1:,1]
+            res[:, i] = self.calcStack(data[rng])
             rng = slice(rng.stop, rng.stop + frameResolution)
         
-        self.plotData['frames']['data'] = res
-        self.plotData['frames']['weight'] = np.ones((res.shape[1]))
-        self.plotData['frames']['tick'] = range(0, data.shape[0], 
-                                                frameResolution)
+        plotData['data'] = res
+        plotData['weight'] = np.ones((res.shape[1]))
+        plotData['tick'] = range(0, data.shape[0], frameResolution)
         
         
 #         cnt = 0        
@@ -1089,7 +1139,7 @@ class FrameDataView:
             data = self.fdvTree.plotData['days']['data']
             weight = self.fdvTree.plotData['days']['weight']
             day = sorted(self.fdvTree.tree.keys()).index(self.day)
-            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm, 
+            self.plotColorCodedStackedBar(data, ax, weight, rng=rng, cm=self.cm, 
                                    activeBar=day)   
         
         if self.hour != hour or self.updateRemaining:
@@ -1100,7 +1150,7 @@ class FrameDataView:
             weight = self.fdvTree.plotData['hours']['weight']
             maxVal = self.fdvTree.range[1]
             hour = sorted(self.fdvTree.tree[self.day].keys()).index(self.hour)
-            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm, 
+            self.plotColorCodedStackedBar(data, ax, weight, rng=rng, cm=self.cm, 
                                    activeBar=hour)  
         
         if self.minute != minute or self.updateRemaining:
@@ -1112,7 +1162,7 @@ class FrameDataView:
             maxVal = self.fdvTree.range[1]
             minute = sorted(self.fdvTree.tree[self.day][self.hour].keys()\
                             ).index(self.minute)
-            self.plotColorCodedBar(data, ax, weight, rng=rng, cm=self.cm, 
+            self.plotColorCodedStackedBar(data, ax, weight, rng=rng, cm=self.cm, 
                                    activeBar=minute)  
         
         if self.frame != frame or self.updateRemaining:
