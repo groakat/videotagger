@@ -453,6 +453,7 @@ class AnnoView(QtGui.QWidget):
             self.setPosition(key, idx, tempPositionOnly=True, metadata=metadata)
         else:
             self.addingAnno = False  
+            self.activeMarker.setVisible(False)
 
              
     @cfg.logClassFunction
@@ -471,6 +472,7 @@ class AnnoView(QtGui.QWidget):
             self.erasingAnno = False
             self.tempRng = dict()
             self.tempAnno = dict()
+            self.activeMarker.setVisible(False)
 
             
     @cfg.logClassFunction
