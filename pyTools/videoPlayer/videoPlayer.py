@@ -778,9 +778,14 @@ class videoPlayer(QtGui.QMainWindow):
         
         
         # showing trajectory #
+        if increment == 0:
+            prevIncrement = 10
+        else:
+            prevIncrement = increment            
+            
         self.frames = []
         for i in range(self.trajNo):
-            self.frames += [self.vh.getTempFrame(increment * (i - offset), 
+            self.frames += [self.vh.getTempFrame(prevIncrement * (i - offset), 
                                                  posOnly=True)] 
          
         for i in range(len(self.frames)-1, -1, -1):
