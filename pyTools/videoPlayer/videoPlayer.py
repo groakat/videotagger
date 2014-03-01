@@ -26,6 +26,7 @@ import numpy as np
 import scipy.misc as scim
 import pylab as plt
 import time
+import copy
 
 import qimage2ndarray as qim2np
 import json
@@ -156,6 +157,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.prevSize = 100
         self.fdvtPath = fdvtPath
         self.isLabelingSingleFrame = False
+        self.templateFrame = None
         
         
         self.rewindOnClick = rewindOnClick
@@ -524,15 +526,44 @@ class videoPlayer(QtGui.QMainWindow):
             
         if increment != None:
             width += (increment / 10) 
+            if width < 0:
+                width = 2
+                
         if x == None:        
             self.prevXCrop = slice(None, None)
         else:
-            self.prevXCrop = slice(x-width/2, x+width/2)
+            if x-width/2 < 0:
+                start = 0
+            else:
+                start = x-width/2
+                
+            if self.templateFrame != None:
+                if x+width/2 > self.templateFrame.shape[1]:
+                    stop = self.templateFrame.shape[1]
+                else:
+                    stop = x+width/2
+            else:
+                stop =  x+width/2           
+            
+            self.prevXCrop = slice(start, stop)
             
         if y == None:
             self.prevYCrop = slice(None, None)
         else:
-            self.prevYCrop = slice(y-width/2, y+width/2)
+            if y-width/2 < 0:
+                start = 0
+            else:
+                start = y-width/2
+                
+            if self.templateFrame != None:
+                if y+width/2 > self.templateFrame.shape[0]:
+                    stop = self.templateFrame.shape[0]
+                else:
+                    stop = y+width/2
+            else:
+                stop = y+width/2
+            
+            self.prevYCrop = slice(start, stop)
             
         if x == None or y == None:
             self.cropRect.setPos(-1000, -1000)            
@@ -645,6 +676,8 @@ class videoPlayer(QtGui.QMainWindow):
         
     @cfg.logClassFunction
     def updateMainLabel(self, lbl, img):
+        self.templateFrame = img
+            
         h = img.shape[0]
         w = img.shape[1]
         if self.sceneRect != QtCore.QRectF(0, 0, w,h):
