@@ -385,6 +385,8 @@ class videoPlayer(QtGui.QMainWindow):
         if self.fdvtPath is not None:
             frameView.loadSequence(self.fdvtPath)
             
+        self.fdvt = frameView.fdvTree
+            
             
     def createPrevFrames(self, xPos, yPos):
         size = self.prevSize
@@ -1281,6 +1283,9 @@ class videoPlayer(QtGui.QMainWindow):
             labelledFrames (output from vh.addAnnotation or vh.eraseAnnotation
         
         """
+        if self.rpcIH == None:
+            return 
+        
         frames = labelledFrames[0]
         filt = labelledFrames[1]
         
