@@ -91,6 +91,19 @@ class AnnoView(QtGui.QWidget):
         if geo is not None:
             self.setGeometry(geo)
             
+        amWidth = 10
+        topBuffer = (geo.height() - amWidth) / 2
+        self.activeMarker = QtGui.QLabel(parent)
+        self.activeMarker.setGeometry(QtCore.QRect(geo.x() - amWidth - 5, 
+                                                   geo.y() + topBuffer,
+                                                   amWidth, amWidth))
+        self.activeMarker.setStyleSheet("""
+        QLabel {{ 
+        background-color: {0}
+        }}""".format(color.name())) 
+        self.activeMarker.setVisible(False)
+        
+            
         self.setStyleSheet("* {margin: 0px; border-width: 0px; padding: 0px}")
         self.gV = QtGui.QGraphicsView(self)
         self.gV.setGeometry(QtCore.QRect(-5, 0, geo.width(), geo.height()))
@@ -102,6 +115,8 @@ class AnnoView(QtGui.QWidget):
                                        geo.y() -15, 1, geo.height() + 30))
         self.cMarker1.setFrameStyle(QtGui.QFrame.VLine)
         self.cMarker1.raise_()
+        
+        
         
         self.prevConnectHooks = []
         parPos = self.mapToParent(QtCore.QPoint(0,0))
@@ -414,6 +429,8 @@ class AnnoView(QtGui.QWidget):
                 self.frames[i].setPen(self.penI)
                 
             self.frames[i].update()
+            
+        self.activeMarker.setVisible(self.addingAnno or self.erasingAnno)
         
     @cfg.logClassFunction
     def addAnno(self, key=None, idx=None, metadata=None):
