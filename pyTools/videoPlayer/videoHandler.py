@@ -417,9 +417,9 @@ class VideoHandler(QtCore.QObject):
 #                 else:
 #                     vidLength  = self.getPositionArray(self.posPath).shape[0]
                     
-                vidLength = self.getVideoLength(self.posPath)
                 if pos != 0:
                     self.posPath = keys[pos-1] 
+                    vidLength = self.getVideoLength(self.posPath)
                     self.idx += vidLength
                     pos -= 1              
                     changedFile = True
