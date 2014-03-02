@@ -1210,7 +1210,7 @@ class videoPlayer(QtGui.QMainWindow):
         
     def testFunction(self):
         cfg.log.debug("testFunction")
-#         1/0
+        1/0
 #         self.increment = 40
 #         self.rpcIH.getNextJob()
         
@@ -1365,6 +1365,7 @@ class videoPlayer(QtGui.QMainWindow):
         cfg.log.info("escape annotation")    
         cfg.logGUI.info('"------escape annotation--------"')
         self.vh.escapeAnnotationAlteration()
+        self.annoIsOpen = False
         
         
         
