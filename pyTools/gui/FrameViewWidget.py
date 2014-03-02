@@ -175,10 +175,11 @@ class FrameViewWidget(QtGui.QWidget, Ui_FrameViewWidget):
         self.draw()
         self.setDisplayRange()
         
-    def plotSequence(self):        
+    def plotSequence(self, refreshAll=False):        
         self.initLocations(self.day, self.hour, self.minute, self.frame)
         self.frameView.plotData(self.day, self.hour, self.minute, 
-                                      self.frame, self.frameResolution)
+                                      self.frame, self.frameResolution,
+                                      refreshAll=refreshAll)
         
         self.confWidget1.draw()
         self.confWidget2.draw()

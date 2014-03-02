@@ -619,11 +619,11 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
 class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
     def __init__(self):
         super(FrameDataVisualizationTreeBehaviour, self).__init__()
-        self.maxClass = 0
         
     def resetAllSamples(self):
         super(FrameDataVisualizationTreeBehaviour, self).resetAllSamples()        
         self.tree['meta']['isCategoric'] = True
+        self.maxClass = 0
         
     
     def verifyStructureExists(self, day, hour, minute, frame):
@@ -660,23 +660,25 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
         self.addFrameArrayToStumpStack(self.tree, stack)
         
         
-    def addFrameArrayToStumpStack(self, stump, stack):
+    def addFrameArrayToStumpStack(self, stump, stack):            
         if stump['meta']['stack'].shape[0] != self.maxClass:
-            tmp = np.zeros(self.maxClass)
+            tmp = np.zeros(self.maxClass) #+ 1
             tmp[:stump['meta']['stack'].shape[0]] = stump['meta']['stack']
             stump['meta']['stack'] = tmp
+            
             
         stump['meta']['stack'] += stack
         
             
     def updateValue(self, day, hour, minute, frame, data):
-        super(FrameDataVisualizationTreeBehaviour, self).updateValue() 
-        
         stack = self.calcStack(self.tree[day][hour][minute]['data'])
         self.propagateStack(day, hour, minute, -stack)
-                
-        self.tree[day][hour][minute]['data'][frame] = data
         
+        super(FrameDataVisualizationTreeBehaviour, self).updateValue(day, hour, 
+                                                                     minute, 
+                                                                     frame, 
+                                                                     data) 
+                
         stack = self.calcStack(self.tree[day][hour][minute]['data'])
         self.propagateStack(day, hour, minute, stack)
         
@@ -699,7 +701,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
                                                           [annotator],
                                                           [behaviour])]
         
-        self.maxClass = len(filtList)
+#         self.maxClass = len(filtList)
         self.tree['meta']['filtList'] = filtList
             
         for f in bhvrList:
@@ -734,7 +736,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
     def getAnnotationFilterCode(self, filt):
         for i in range(len(self.tree['meta']['filtList'])):
             if self.tree['meta']['filtList'][i] == filt:
-                return i
+                return i + 1
             
         return None
     
@@ -749,8 +751,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
                     tmp[:stump[k]['meta']['stack'].shape[0]] = \
                                                     stump[k]['meta']['stack']
                     stump[k]['meta']['stack'] = tmp
-                    
-                
+                                        
                 stack += [stump[k]['meta']['stack']]
                 
         return stack
@@ -1163,7 +1164,8 @@ class FrameDataView:
         
 #         plt.show()
     
-    def plotData(self, day, hour, minute, frame, frameResolution=None):
+    def plotData(self, day, hour, minute, frame, frameResolution=None,
+                 refreshAll=False):
         """
         frameResolution (int):
                     if None, standard (constructor) frameResolution will be
@@ -1171,6 +1173,9 @@ class FrameDataView:
         """
         if frameResolution is not None:
             self.frameResolution = frameResolution
+            
+        if refreshAll:
+            self.updateRemaining = True
             
         self.fdvTree.generateConfidencePlotData(day, hour, minute, frame, 
                                                 self.frameResolution)

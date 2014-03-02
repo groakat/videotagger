@@ -1206,6 +1206,8 @@ class videoPlayer(QtGui.QMainWindow):
     def saveAll(self):
         cfg.logGUI.info('""')
         self.vh.saveAll()
+        if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
+            self.fdvt.save(self.fdvtPath) 
 
         
     def testFunction(self):
@@ -1326,7 +1328,7 @@ class videoPlayer(QtGui.QMainWindow):
             labelledFrames (output from vh.addAnnotation or vh.eraseAnnotation
         
         """
-        if self.rpcIH == None:
+        if not self.fdvt:
             return 
         
         frames = labelledFrames[0]
@@ -1342,16 +1344,15 @@ class videoPlayer(QtGui.QMainWindow):
                 deltaVector += [[self.fdvt.key2idx(day, hour, minute, frame),                                
                                 self.fdvt.getAnnotationFilterCode(filt)]]
                                 
-                                
-                                
-#                                 {'day': day,
-#                                  'hour': hour,
-#                                  'minute': minute,
-#                                  'frame': frame},
                 
-        self.rpcIH.sendReply([deltaVector])
-        self.isLabelingSingleFrame = False
-        self.jumpToBookmark()
+        if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
+            self.fdvt.insertDeltaVector(deltaVector)
+            self.ui.frameView.plotSequence(refreshAll=True)
+                                        
+        if self.rpcIH:
+            self.rpcIH.sendReply([deltaVector])
+            self.isLabelingSingleFrame = False
+            self.jumpToBookmark()
         
         
 #     @cfg.logClassFunction
