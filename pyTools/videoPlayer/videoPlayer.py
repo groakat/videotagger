@@ -747,7 +747,10 @@ class videoPlayer(QtGui.QMainWindow):
         #~ logGUI.debug(json.dumps({"increment":increment, 
                                  #~ "checkBuffer":checkBuffer}))
                 
-        
+        if self.annoIsOpen:
+            if np.abs(increment) > 1:
+                # set increment to either 1 or -1
+                increment /= int(np.abs(increment))
         
         if increment is None:
             increment = self.increment
