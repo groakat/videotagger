@@ -34,6 +34,10 @@ class FrameViewWidget(QtGui.QWidget, Ui_FrameViewWidget):
         self.initializeConfidenceStructure()
         self.connectElements()
         
+    
+    def sizeHint(self):
+        return QtCore.QSize(500, 250)
+        
         
     def draw(self):
         self.confWidget1.draw()

@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'FrameViewWidget.ui'
 #
-# Created: Mon Feb 17 09:02:51 2014
+# Created: Tue Mar  4 11:01:38 2014
 #      by: pyside-uic 0.2.14 running on PySide 1.1.2
 #
 # WARNING! All changes made in this file will be lost!
