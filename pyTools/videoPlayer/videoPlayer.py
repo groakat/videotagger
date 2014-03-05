@@ -868,7 +868,7 @@ class videoPlayer(QtGui.QMainWindow):
         if self.selectedVial is None:
             sv = 0            
         else:
-            sv = 0
+            sv = self.selectedVial[0]
         
         offset = 5  
         
@@ -889,7 +889,7 @@ class videoPlayer(QtGui.QMainWindow):
         if not self.croppedVideo:
             self.updateMainLabel(self.lbl_v0, frame[1][sv][0])
         else:
-            self.updateLabel(self.lbl_v0, frame[0][2], frame[1][sv][0])
+            self.updateLabel(self.lbl_v0, frame[0][sv], frame[1][sv][0])
         
         
         
@@ -935,7 +935,7 @@ class videoPlayer(QtGui.QMainWindow):
          
         for i in range(len(self.frames)-1, -1, -1):
             frame = self.frames[i]
-            self.updateLabel(self.trajLabels[i][0], frame[0][2], None)
+            self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
 
 
         # showing previews #

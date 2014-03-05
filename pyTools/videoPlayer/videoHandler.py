@@ -258,7 +258,7 @@ class VideoHandler(QtCore.QObject):
             
         frameList += [annotation]
         
-        return frameList
+        return [pos, frame, annotation]
     
     
     @cfg.logClassFunction#Info
