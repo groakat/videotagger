@@ -655,11 +655,13 @@ class VideoHandler(QtCore.QObject):
             self.videoLengths[key] = None
             
         self.annoDict[key] = None
-        self.newAnnotationLoader.emit([key])
+        
+        path = key.split(self.videoEnding)[0] + '.bhvr'
+        self.newAnnotationLoader.emit([key, path])
         
     @QtCore.Slot(list)
     def endOfFileNotice(self, lst):
-        key = lst[0] 
+        key = lst[0]
         length = lst[1]
         
         if key.endswith('.bhvr'):
@@ -759,7 +761,7 @@ class VideoHandler(QtCore.QObject):
     @QtCore.Slot(list)
     def updateNewAnnotation(self, annotationBundle):  
         """
-        annotationBundle = [annotationLoader, path]
+        annotationBundle = [key, path, annotationLoader]
         """
         self.annotationBundle += [annotationBundle]
         self.loadingFinished = True
@@ -769,19 +771,20 @@ class VideoHandler(QtCore.QObject):
         self.annotationBundle = sorted(self.annotationBundle, key=lambda x: x[1])
         
         for annotationBundle in self.annotationBundle:
-            aL = annotationBundle[0]
+            key = annotationBundle[0]
+#             path = annotationBundle[1]
+            aL = annotationBundle[2]
             annotation = aL.annotation
-            path = annotationBundle[1]
             for aV in self.annoViewList:
-                aV.addAnnotation(annotation, path , 
+                aV.addAnnotation(annotation, key, 
                                  addAllAtOnce=(not self.loadProgressive))
                 
-            self.annoDict[path] = aL
+            self.annoDict[key] = aL
             # save pathlength and bufferEnding if requested earlier
-            self.videoLengths[path] = len(annotation.frameList)
-            if path in self.bufferEndingQueue:
-                self.bufferEndingQueue.pop(self.bufferEndingQueue.index(path))
-                self.bufferEnding(path)
+            self.videoLengths[key] = len(annotation.frameList)
+            if key in self.bufferEndingQueue:
+                self.bufferEndingQueue.pop(self.bufferEndingQueue.index(key))
+                self.bufferEnding(key)
             
         self.annotationBundle = []
         
@@ -888,8 +891,11 @@ class VideoHandler(QtCore.QObject):
                                 v=vials, r=rng[key], a=annotator,
                                   b=behaviour, c=self.tempValue[key]))
                     
+                    cfg.log.info("check annodict {0}".format(self.annoDict[key].annotation.hasChanged))
+                    
+                                        
                     tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
-                    self.annoDict[key].annotation.saveToFile(tmpFilename)
+                    self.annoDict[key].annotation.saveToTmpFile(tmpFilename)
                     
                     # refresh annotation in anno view
                     for aV in self.annoViewList:
@@ -967,7 +973,7 @@ class VideoHandler(QtCore.QObject):
                                                 rng[key], 
                                                 annotator, behaviour)
                         tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
-                        self.annoDict[key].annotation.saveToFile(tmpFilename)
+                        self.annoDict[key].annotation.saveToTmpFile(tmpFilename)
                 
                     # refresh annotation in anno view
                     for aV in self.annoViewList:
@@ -1005,5 +1011,9 @@ class VideoHandler(QtCore.QObject):
     @cfg.logClassFunction
     def saveAll(self):
         for key in self.annoDict:
-            tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr"
+            tmpFilename = '.'.join(key.split(".")[:2]) + ".bhvr"
             self.annoDict[key].annotation.saveToFile(tmpFilename)
+            
+            
+            
+            

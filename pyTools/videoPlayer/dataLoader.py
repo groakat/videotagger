@@ -373,12 +373,13 @@ class AnnotationLoaderLuncher(QtCore.QObject):
     
     @QtCore.Slot(list)
     def lunchAnnotationLoader(self, lst):
-        path = lst[0]
+        key = lst[0]
+        path = lst[1]
         aL = None
         
         videoPath = copy.copy(path)
         
-        path = '.'.join(path.split(self.videoEnding)[:1]) + '.bhvr'
+#         path = '.'.join(path.split(self.videoEnding)[:1]) + '.bhvr'
         
         if len(self.availableALs) == 0:
             cfg.log.debug("create new AnnotationLoader {0}".format(path))     
@@ -388,7 +389,7 @@ class AnnotationLoaderLuncher(QtCore.QObject):
             annotationLoaderThread = MyThread("AnnotationLoader {0}".format(len(
                                                         self.threads.keys())))
             
-            aL = AnnotationLoader(path, annotationLoaderThread)                 
+            aL = AnnotationLoader(path, key, annotationLoaderThread)                 
             aL.moveToThread(annotationLoaderThread)         
             annotationLoaderThread.start()
 
@@ -405,10 +406,10 @@ class AnnotationLoaderLuncher(QtCore.QObject):
             aL = self.availableALs.pop()
             cfg.log.info("recycle new AnnotationLoader {0}, was previous: {1}".format(path, aL.path))
             thread, signal = self.threads[aL]
-            aL.init(path, thread)     
+            aL.init(path, key, thread)     
             signal.emit()
 
-        self.createdAnnotationLoader.emit([aL, videoPath])
+        self.createdAnnotationLoader.emit([key, path, aL])
         
 #     @cfg.logClassFunction
     @QtCore.Slot(list)
@@ -416,9 +417,9 @@ class AnnotationLoaderLuncher(QtCore.QObject):
         for aL in self.dumpingPlace:
             if aL is not None and not aL.loading:  
                 if aL.annotation.hasChanged:
-                    cfg.log.info("saving {0}".format(aL))     
+                    cfg.log.info("saving (dumping ground) {0}".format(aL))     
                     aL.annotation.saveToFile(aL.path)    
-                cfg.log.info("making {0} available again".format(aL))           
+                cfg.log.info("making {0} available again (dumping ground)".format(aL))           
                 self.availableALs += [aL]
                 self.dumpingPlace.remove(aL)
                 
@@ -428,9 +429,11 @@ class AnnotationLoaderLuncher(QtCore.QObject):
         # TODO is this potential memory leak?
         if aL is not None and not aL.loading:  
             if aL.annotation.hasChanged:
+                cfg.log.info("saving {0}".format(aL.path))
                 aL.annotation.saveToFile(aL.path)
                 
-            cfg.log.info("making {0} available again".format(aL))   
+            cfg.log.info("making {0} available again".format(aL.path))
+                
             self.availableALs += [aL]
         else:
             self.dumpingPlace += [aL]
@@ -451,15 +454,15 @@ class AnnotationLoader(QtCore.QObject):
         self.exiting = True
         self.wait()
                 
-        if self.annotation is not None:
-            self.annotation.saveToFile('.'.join(self.posPath.split('.')[:-1]) + '.bhvr')
+#         if self.annotation is not None:
+#             self.annotation.saveToFile('.'.join(self.posPath.split('.')[:-1]) + '.bhvr')
     
     @cfg.logClassFunction
-    def __init__(self, path, thread, vialNames=None):
+    def __init__(self, path, key, thread, vialNames=None):
         super(AnnotationLoader, self).__init__(None)        
-        self.init(path, thread, vialNames=None)
+        self.init(path, key, thread, vialNames=None)
         
-    def init(self, path, thread, vialNames=None):
+    def init(self, path, key, thread, vialNames=None):
         if vialNames is None:
             self.vialNames = [None]
         else:
@@ -471,8 +474,8 @@ class AnnotationLoader(QtCore.QObject):
         
 #         self.annotation = None # annotation object
         
-        self.path = copy.copy(path)      
-        
+        self.path = path# '.'.join(path.split('.')[:2]) + '.bhvr'      
+        self.key = key
         self.thread = thread        
     
     @cfg.logClassFunction
@@ -481,7 +484,7 @@ class AnnotationLoader(QtCore.QObject):
         
         self.loading = True     
                     
-        f = '.'.join(self.path.split('.')[:-1]) + '.bhvr'
+        f = self.path
         if isfile(f):
             cfg.log.debug("AnnotationLoader: f exists create empty Annotation")
             out = Annotation.Annotation()
@@ -503,7 +506,7 @@ class AnnotationLoader(QtCore.QObject):
 #         self.loadedAnnotation.emit([self, self.path])
 
         cfg.log.debug("finished loading annotation {0}".format(self.path))
-        self.loadedAnnotation.emit([self.path, len(self.annotation.frameList)])
+        self.loadedAnnotation.emit([self.key, len(self.annotation.frameList)])
         self.loading = False
         
         

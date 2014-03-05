@@ -64,6 +64,11 @@ class Annotation():
         f.close()
         self.hasChanged = False
         
+    def saveToTmpFile(self, filename):
+        f = open(filename, 'w')
+        json.dump(self.frameList, f, sort_keys=True,indent=4, separators=(',', ': '))
+        f.close()
+        
     def loadFromFile(self, filename):
         f = open(filename, 'r')
         self.setFrameList(json.load(f))
@@ -218,7 +223,7 @@ class Annotation():
             metadata = dict()
             for frame in frames:
                 metadata[frame] = tmpVal
-            
+        
         self.hasChanged = True
         if len(self.frameList) < max(frames):
             raise ValueError("Trying to add annotation to frame that" +
