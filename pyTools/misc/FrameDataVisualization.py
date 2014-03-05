@@ -245,6 +245,8 @@ class FrameDataVisualizationTreeBase(object):
             self.plotData['frames']['tick'] += [tmpKeys]
             
             
+                      
+            
             
 class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
     
@@ -478,7 +480,8 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                     ranges[day][hour][minute] = [rng.start, rng.stop]
                     cnt += frames.shape[0]                   
         
-        msg = {'data': data, 'ranges':ranges, 'meta':self.tree['meta']}
+        msg = {'data': data, 'ranges':ranges, 
+               'meta':copy.copy(self.tree['meta'])}
                 
         return msg
     
@@ -499,15 +502,17 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                     frames = data[rng]
                     self.insertFrameArray(day, hour, minute, frames)
                     
-        if not np.allclose(self.tree['meta']['mean'], msg['meta']['mean']) \
-        or not np.allclose(self.tree['meta']['sampleN'], msg['meta']['sampleN']):
-            raise ValueError("meta data does not align, data probably corrupted")
-        else:
-            for k in msg['meta'].keys():
-                if k == 'mean' or k == 'sampleN':
-                    continue
-                
-                self.tree['meta'][k] = msg['meta'][k]
+#         if not np.allclose(self.tree['meta']['mean'], msg['meta']['mean']) \
+#         or not np.allclose(self.tree['meta']['sampleN'], msg['meta']['sampleN'])\
+#         or not np.allclose(self.tree['meta']['stack'], msg['meta']['stack']):
+#             raise ValueError("meta data does not align, data probably corrupted")
+#         else:
+        for k in msg['meta'].keys():
+            if k == 'mean' or k == 'sampleN':
+                if not np.allclose(self.tree['meta'][k], msg['meta'][k]):
+                    raise ValueError("meta data does not align, data probably corrupted")
+            else:          
+                self.tree['meta'][k] = copy.copy(msg['meta'][k])
                     
                     
 
@@ -525,7 +530,7 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                     
     def testSerialization(self):
         tmp = self.serializeData()
-        tmpFDVT = FrameDataVisualizationTreeArrayBase()
+        tmpFDVT = type(self)()
         tmpFDVT.deserialize(tmp)
         
         isSame = True
@@ -805,6 +810,22 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
         plotData['weight'] = np.ones((res.shape[1]))
         plotData['tick'] = range(0, data.shape[0], frameResolution)
             
+                     
+       
+
+    def serializeData(self):
+        msg = self.flatten()
+        msg['data'] = msg['data'].tostring()
+        msg['meta']['stack'] = msg['meta']['stack'].tostring()
+        
+        return msg
+    
+                    
+    def deserialize(self, msg):
+        msg['data'] = np.fromstring(msg['data'])   
+        msg['meta']['stack'] = np.fromstring(msg['meta']['stack'])        
+                
+        self.unflatten(msg)
                      
                      
 class FrameDataVisualizationTreeTrajectories(\

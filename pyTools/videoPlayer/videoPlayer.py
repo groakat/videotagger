@@ -577,7 +577,8 @@ class videoPlayer(QtGui.QMainWindow):
                                                 self.selectedVial)
                     print "finished importing annotations"
                 
-            self.setFrameView([self.fdvt.serializeData()])
+                
+                self.setFrameView([self.fdvt.serializeData()])
             
             self.rpcIH.sendLabelFDVT([self.fdvt])
                 

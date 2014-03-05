@@ -1,5 +1,6 @@
 import pyTools.system.videoPlayerComClient as comClient
 import pyTools.videoPlayer.dataLoader as DL
+import pyTools.misc.config as cfg
 
 from PySide import QtCore
 
@@ -108,7 +109,8 @@ class RPCInterfaceHandler(QtCore.QObject):
             self.controller.requestNewJob()
             self.thread.mssleep(1)
     
-                        
+                     
+#     @cfg.logClassFunctionInfo   
     def newJob(self):
         self.newJobSig.emit()
     
@@ -117,19 +119,21 @@ class RPCInterfaceHandler(QtCore.QObject):
         return
         
         
+#     @cfg.logClassFunctionInfo
     def labelFrame(self, query):
         self.waitingForReply = True
         self.currentQuery = query
         self.labelFrameSig.emit(query.query)
         
         
+#     @cfg.logClassFunctionInfo
     def updateFDVT(self, query):
         self.waitingForReply = True
         self.currentQuery = query
         self.updateFDVTSig.emit([query.query])
         self.initWaiting()
         
-        
+#     @cfg.logClassFunctionInfo
     def labelFrameRange(self, query):
         self.waitingForReply = True
         self.currentQuery = query

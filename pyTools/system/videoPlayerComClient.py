@@ -66,7 +66,7 @@ class FDVTComClientReplier(VideoPlayerComClientBase):
 class GUIComBase(object):
     def __init__(self, address="tcp://127.0.0.1:4242", comServer=None, 
                  debug=False):
-        self.fdvt = FDVT.FrameDataVisualizationTreeArrayBase()
+        self.fdvt = FDVT.FrameDataVisualizationTreeBehaviour()
         
         if debug:
             self.generateRandomFDVT()

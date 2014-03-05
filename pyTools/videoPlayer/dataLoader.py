@@ -416,6 +416,7 @@ class AnnotationLoaderLuncher(QtCore.QObject):
         for aL in self.dumpingPlace:
             if aL is not None and not aL.loading:  
                 if aL.annotation.hasChanged:
+                    cfg.log.info("saving {0}".format(aL))     
                     aL.annotation.saveToFile(aL.path)    
                 cfg.log.info("making {0} available again".format(aL))           
                 self.availableALs += [aL]
