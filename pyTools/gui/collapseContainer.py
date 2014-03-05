@@ -48,15 +48,17 @@ class collapseWidget(QtGui.QWidget, collapse.Ui_collapseWidget):
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap("../icon/downArrow.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_expand.setIcon(icon1)
-        self.btn_expand.setIconSize(QtCore.QSize(10, 10))
+        self.btn_expand.setIconSize(QtCore.QSize(5, 5))
         self.btn_expand.setFlat(True)
         self.btn_expand.setObjectName("btn_expand")
         
         self.titleLbl.setText(QtGui.QApplication.translate("collapseWidget", "Test Title", None, QtGui.QApplication.UnicodeUTF8))
         
         
-        self.btn_swap.resize(10,10)
+#         self.btn_swap.resize(10,10)
+        self.btn_swap.setIconSize(QtCore.QSize(5, 5))
         self.btn_swap.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
+        self.btn_expand.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
         
         geo = self.lay_main.geometry()
 #         
@@ -72,7 +74,7 @@ class collapseWidget(QtGui.QWidget, collapse.Ui_collapseWidget):
         if self.isCollapsed or not self.mainWidget:
             return QtCore.QSize(self.width, 10)
         else:
-            height = self.mainWidget.sizeHint().height()
+            height = self.layHeight
             return QtCore.QSize(self.width, height)
         
     def minimumSizeHint(self):
@@ -100,11 +102,8 @@ class collapseWidget(QtGui.QWidget, collapse.Ui_collapseWidget):
         lineY = geo.y()
         
         self.hLine.setGeometry(geo)
-        
-        
+                
         lblGeo = self.titleLbl.geometry()
-#         lblGeo.setX(lineWidth / 2 - lblGeo.width() / 2)
-#         lblGeo.setY(lineY + (lineHeight / 2 - lblGeo.height()))
         self.titleLbl.move(lineWidth / 2 - lblGeo.width() / 2,
                            lineY + (lineHeight / 2 - lblGeo.height() / 2))
          
@@ -129,6 +128,7 @@ class collapseWidget(QtGui.QWidget, collapse.Ui_collapseWidget):
         self.layWidth = geo.width()
         geo.setHeight(0)
         self.lay_main.setGeometry(geo)
+        self.mainWidget.setVisible(False)
         
         self.positionTitle()
         self.setFixedHeight(20)
@@ -138,12 +138,11 @@ class collapseWidget(QtGui.QWidget, collapse.Ui_collapseWidget):
     @QtCore.Slot()
     def expand(self):
         self.hideTitle()
-        geo = self.lay_main.geometry()
-        geo.setHeight(self.layHeight)
-        self.lay_main.setGeometry(geo)
-        self.isCollapsed = False
+        self.mainWidget.setVisible(True)
+
         if self.mainWidget:
-            self.setFixedHeight(self.mainWidget.sizeHint().height())
+#             self.setFixedHeight(self.mainWidget.sizeHint().height())
+            self.setFixedHeight(self.layHeight)
         else:
             self.setFixedHeight(50)
         self.updateGeometry()
@@ -151,7 +150,12 @@ class collapseWidget(QtGui.QWidget, collapse.Ui_collapseWidget):
         
         
     def setMainWidget(self, w):
-        self.layHeight = w.geometry().height()
+        try:
+            self.layHeight = w.geometry().height()
+        except AttributeError:
+            self.layHeight = w.height()
+            
+            
         self.lay_main.removeWidget(self.mainWidget)
         self.mainWidget = w
         self.lay_main.insertWidget(0, self.mainWidget)        
@@ -170,6 +174,7 @@ class collapseContainer(QtGui.QWidget):
         
         self.verticalLayout = QtGui.QVBoxLayout(self)
         self.verticalLayout.setObjectName("verticalLayout")
+        self.verticalLayout.setSpacing(0)
         
         spacerItem = QtGui.QSpacerItem(1,1, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
         self.verticalLayout.addItem(spacerItem)
@@ -180,7 +185,11 @@ class collapseContainer(QtGui.QWidget):
     def sizeHint(self):
         height = 0
         for w, col in self.widgetList:
-            height += col.sizeHint().height()
+            try:
+                height += col.sizeHint().height()
+            except AttributeError:
+                height += col.height()
+                
             
         if height < 20:
             height = 20
@@ -195,10 +204,15 @@ class collapseContainer(QtGui.QWidget):
     def addWidget(self, w, title=""):        
         col = collapseWidget(self, title, self.width)        
         col.setMainWidget(w)
+        w.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Minimum)
         
         self.widgetList += [[w, col]]
         self.verticalLayout.insertWidget(len(self.widgetList) -1, col)
-        self.updateGeometry()
+#         self.updateGeometry()
+        self.setFixedHeight(self.sizeHint().height())
+        
+        
+        
 #         self.verticalLayout.addWidget(col)
         
         
@@ -226,13 +240,29 @@ class TestClass(QtGui.QMainWindow):
         
         fvw0 = FVW.FrameViewWidget(self)
         fvw1 = FVW.FrameViewWidget(self)
-        
+          
         self.col = collapseContainer(self)
-        
+         
         self.col.addWidget(fvw0, "FrameViewWidget 0")
         self.col.addWidget(fvw1, "FrameViewWidget 1")
+           
+        self.centralwidget.addWidget(fvw0, "")
         
-        self.centralwidget.addWidget(self.col, "")
+        #################################################################
+        
+#         self.tabWidget = QtGui.QTabWidget(self)
+#         self.tabWidget.setGeometry(QtCore.QRect(30, 560, 1071, 251))
+#         self.tabWidget.setObjectName("tabWidget")
+#         self.tab_1 = QtGui.QWidget()
+#         self.tab_1.setObjectName("tab_1")
+#         self.tabWidget.addTab(self.tab_1, "")
+#          
+#         print self.tabWidget.sizeHint()
+#         print self.tabWidget.minimumSizeHint()
+#         print self.tabWidget.geometry()
+#          
+#         self.centralwidget.addWidget(self.tabWidget, "")
+#         print self.tabWidget.geometry()
         
         
 

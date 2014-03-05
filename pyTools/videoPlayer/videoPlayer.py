@@ -21,6 +21,7 @@ import pyTools.misc.config as cfg
 import pyTools.videoPlayer.eventFilter as EF
 import pyTools.videoPlayer.RPCController as RPC
 import pyTools.misc.FrameDataVisualization as FDV
+import pyTools.gui.collapseContainer as CC
 
 import numpy as np
 import scipy.misc as scim
@@ -183,7 +184,7 @@ class videoPlayer(QtGui.QMainWindow):
             self.selectedVial = [selectedVial]
         else:
             self.selectedVial = selectedVial#3
-        self.ui.lbl_vial.setText("vial: {0}".format(self.selectedVial))
+        self.ui.lbl_vial.setText("<b>vial</b>: {0}".format(self.selectedVial))
                 
         
         
@@ -240,7 +241,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.cb_trajectory.setChecked(self.showTraject)
         self.showTrajectories(self.showTraject)
             
-        
+        self.transferElementsInCollapseContainer()
         
         self.show()        
         cfg.logGUI.info(json.dumps(
@@ -285,6 +286,72 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.cb_trajectory.installEventFilter(self.eventFilter)
         self.ui.pb_check4requests.installEventFilter(self.eventFilter)
         
+        
+    def transferElementsInCollapseContainer(self):
+        self.createControlWidget()
+        self.createDebugWidget()
+        self.colCont = CC.collapseContainer(width= 1200)        
+        self.setCentralWidget(self.colCont)
+        
+        self.colCont.addWidget(self.glw, "Video View")
+        self.colCont.addWidget(self.prevFramesWidget, "frame preview")
+        self.colCont.addWidget(self.annoViewCol, "annotation views")
+        self.colCont.addWidget(self.controlWidget, "control elements")
+        self.colCont.addWidget(self.ui.tabWidget, "Navigation and Inspection")
+        self.colCont.addWidget(self.debugWidget, "debugging ")
+        
+        
+    def createControlWidget(self):
+        w = QtGui.QWidget(self)
+        self.pb_playback = QtGui.QPushButton(">", w)
+        self.pb_playback.clicked.connect(self.playback)
+        self.pb_stopPlayback = QtGui.QPushButton("||", w)
+        self.pb_stopPlayback.clicked.connect(self.stopPlayback)
+        layout = QtGui.QHBoxLayout()
+        
+        layout.addWidget(self.ui.lbl_vial)
+        layout.addWidget(self.ui.lbl_v0)
+        layout.addWidget(self.ui.lbl_v1)
+        layout.addWidget(self.ui.pb_check4requests)
+        layout.addWidget(self.ui.speed_lbl)
+        layout.addWidget(self.pb_playback)
+        layout.addWidget(self.pb_stopPlayback)
+        layout.addWidget(self.ui.cb_trajectory)
+        
+        w.setLayout(layout)
+        w.show()
+        w.setFixedHeight(40)
+        
+        self.controlWidget = w
+        
+    def createDebugWidget(self):
+        w = QtGui.QWidget(self)
+        
+        layout = QtGui.QHBoxLayout()
+        layout.addWidget(self.ui.pb_startVideo)
+        layout.addWidget(self.ui.pb_stopVideo)
+        layout.addWidget(self.ui.pb_connect2server)
+        layout.addWidget(self.ui.pb_test)
+        layout.addWidget(self.ui.pb_addAnno)
+        layout.addWidget(self.ui.pb_eraseAnno)
+        
+        w.setLayout(layout)
+        w.show()
+        w.setFixedHeight(40)
+        
+        self.debugWidget = w
+        
+    @QtCore.Slot()
+    def playback(self):
+        self.increment = 1
+        
+        if not self.play:
+            self.play = True
+            
+    @QtCore.Slot()
+    def stopPlayback(self):
+        self.increment = 0
+        
     @cfg.logClassFunction
     def configureUI(self):
         
@@ -304,31 +371,47 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.pb_check4requests.setVisible(False)
         
         
-    def createAnnoView(self, xPos, yPos, width, height, idx):
-        self.annoViewList += [AV.AnnoView(self, vialNo=self.selectedVial, 
+    def createAnnoView(self, xPos, yPos, width, height, idx):                
+        w = QtGui.QWidget(self)
+        
+        # AnnoView
+        av = AV.AnnoView(self, w, vialNo=self.selectedVial, 
                                        annotator=[self.annotations[idx]["annot"]], 
                                        behaviourName=[self.annotations[idx]["behav"]], 
                                        color = self.annotations[idx]["color"], 
-                                       geo=QtCore.QRect(xPos, yPos, width, 
-                                                       height))]
-
-        self.annoViewList[-1].show()
-        self.vh.addAnnoView(self.annoViewList[-1])     
-        self.annoViewLabel += [QtGui.QLabel(self)]
-        self.annoViewLabel[-1].setText("{0}: {1}".format(\
+                                       geo=QtCore.QRect(10, 5, width, 
+                                                       height))        
+        av.show()
+        av.move(15, 5)     
+        self.annoViewList += [av]
+        
+        # label        
+        lbl = QtGui.QLabel(w)
+        lbl.setText("{0}: {1}".format(\
                                             self.annotations[idx]["annot"],
                                             self.annotations[idx]["behav"]))
-        self.annoViewLabel[-1].move(xPos + width + 10, yPos)     
-        self.annoViewLabel[-1].setStyleSheet("""
+        lbl.move(width + 30, 0)     
+        lbl.setStyleSheet("""
         QLabel {{ 
         border-bottom-color: {0};
         border-top: transparent;
         border-left: transparent;
         border-right: transparent;
         border-width : 1.5px;
-        border-style:inset; }}""".format(self.annotations[idx]["color"].name()))     
-        self.annoViewLabel[-1].adjustSize() 
+        border-style:inset; }}""".format(self.annotations[idx]["color"].name()))  
+        lbl.adjustSize()           
+        self.annoViewLabel += [lbl]
         
+        # layout        
+#         lay = QtGui.QHBoxLayout()
+#         lay.addWidget(av, alignment=QtCore.Qt.AlignHCenter)
+#         lay.addWidget(lbl,  alignment=QtCore.Qt.AlignHCenter)
+#         
+#         w.setLayout(lay)
+#         
+        w.setFixedHeight(height + 20)
+        
+        return w
         
     @cfg.logClassFunction
     def createAnnoViews(self):
@@ -337,13 +420,8 @@ class videoPlayer(QtGui.QMainWindow):
         
         yPos = 430 
         xPos = 60 
-        height = 20
+        height = 10
         width = 1000
-#         
-#         self.annotations[0]["color"] = QtGui.QColor(0,0,255,150)
-#         self.annotations[1]["color"] = QtGui.QColor(0,0,255,150)
-#         self.annotations[2]["color"] = QtGui.QColor(0,255,0,150)
-#         self.annotations[3]["color"] = QtGui.QColor(0,255,0,150)
         
         self.annotations[0]["color"] = QtGui.QColor(self.annotations[0]["color"])
         self.annotations[1]["color"] = QtGui.QColor(self.annotations[1]["color"])
@@ -354,23 +432,23 @@ class videoPlayer(QtGui.QMainWindow):
         self.annotations[1]["color"].setAlphaF(0.8)
         self.annotations[2]["color"].setAlphaF(0.8)
         self.annotations[3]["color"].setAlphaF(0.8)
+                
+        self.annoViewCol = CC.collapseContainer(width=1100)
         
-        
-
-        self.createPrevFrames(xPos + 135, yPos - (self.prevSize + 20))
-        
-        self.createAnnoView(xPos, yPos, width, height, 0)
-        yPos += height + 5  
-        self.createAnnoView(xPos, yPos, width, height, 1)
-        yPos += height + 5  
-        self.createAnnoView(xPos, yPos, width, height, 2)
-        yPos += height + 5  
-        self.createAnnoView(xPos, yPos, width, height, 3)
-        yPos += height + 5  
-        
+        for i in range(4):
+            w = self.createAnnoView(xPos, yPos, width, height, i)
+            title = "Annotation View: {a}: {b}".format(\
+                                                a=self.annotations[i]['annot'],
+                                                b=self.annotations[i]['behav'])
+            self.annoViewCol.addWidget(w, title)
+            
         for aV in self.annoViewList:
+            self.vh.addAnnoView(aV)  
+            
             cfg.log.debug("av: {aV}".format(aV=aV))
             
+        
+        self.prevFramesWidget = self.createPrevFrames(xPos + 135, yPos - (self.prevSize + 20))
             
         #~ width = 
         self.ui.progBar.setVisible(False)        
@@ -391,52 +469,78 @@ class videoPlayer(QtGui.QMainWindow):
             
             
     def createPrevFrames(self, xPos, yPos):
+        w = QtGui.QWidget(self)
+        
+#         xPos = 0
+        yPos = 0
+        
         size = self.prevSize
         
         self.noPrevFrames = 7
         self.prevFrameLbls = []
-        self.prevConnectHooks = []
+#         self.prevConnectHooks = []
         
         for i in range(self.noPrevFrames):
-            self.prevFrameLbls += [QtGui.QLabel(self)]
+            self.prevFrameLbls += [QtGui.QLabel(w)]
             self.prevFrameLbls[-1].setGeometry(QtCore.QRect(xPos, yPos, size, size))
-            
-            self.prevConnectHooks += [[QtCore.QPoint(xPos + size / 2, yPos + size), 
-                                      QtCore.QPoint(xPos + size / 2, yPos + size + 2)]]
+#             
+#             self.prevConnectHooks += [[QtCore.QPoint(xPos + size / 2, yPos + size), 
+#                                       QtCore.QPoint(xPos + size / 2, yPos + size + 2)]]
             
             if i == (self.noPrevFrames - 1) / 2:
                 self.prevFrameLbls[-1].setLineWidth(3)
                 self.prevFrameLbls[-1].setFrameShape(QtGui.QFrame.Box)
             xPos += size + 5
         
+        w.setFixedHeight(self.prevSize + 10)
+        return w
     
+    
+    def calculatePrevConnectHooks(self):
+        self.prevConnectHooks = []
+        l = QtGui.QLabel()
+                    
+        for lbl in self.prevFrameLbls:
+            rect = lbl.geometry()
+            xPos = rect.x()
+            yPos = rect.y()
+            size = rect.width()
+            pnt = lbl.mapToGlobal(QtCore.QPoint(xPos, yPos))
+            xPos = pnt.x()
+            yPos = pnt.y()
+            
+            self.prevConnectHooks += [[QtCore.QPoint(xPos + size / 2, yPos + size), 
+                                      QtCore.QPoint(xPos + size / 2, yPos + size + 2)]]
         
-    def paintEvent(self, event):
-        painter = QtGui.QPainter()
-        painter.begin(self) 
-        painter.resetTransform() 
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
-        
-        pen = QtGui.QPen(QtGui.QColor(100,100,100))
-        pen.setWidth(0.2)
-        
-        painter.setPen(pen)
-        
-        avHooks = self.annoViewList[0].prevConnectHooks
-        midAVHook = len(avHooks) / 2
-        startAVHook = midAVHook - (len(self.prevConnectHooks) - 1) / 2 + \
-                        self.tempIncrement
-                                    
-        for i in range(0,len(self.prevConnectHooks),2):            
-            aVi = startAVHook + i
-            try:
-                painter.drawLine(self.prevConnectHooks[i][0], self.prevConnectHooks[i][1])   
-                painter.drawLine(self.prevConnectHooks[i][1], avHooks[aVi][1])            
-                
-                painter.drawLine(avHooks[aVi][0], avHooks[aVi][1])  
-            except:
-                pass
-        painter.end()
+    
+#         
+#     def paintEvent(self, event):
+#         painter = QtGui.QPainter()
+#         painter.begin(self) 
+#         painter.resetTransform() 
+#         painter.setRenderHint(QtGui.QPainter.Antialiasing)
+#         
+#         pen = QtGui.QPen(QtGui.QColor(100,100,100))
+#         pen.setWidth(0.2)
+#         
+#         painter.setPen(pen)
+#         
+#         self.calculatePrevConnectHooks()
+#         avHooks = self.annoViewList[0].prevConnectHooks
+#         midAVHook = len(avHooks) / 2
+#         startAVHook = midAVHook - (len(self.prevConnectHooks) - 1) / 2 + \
+#                         self.tempIncrement
+#                                     
+#         for i in range(0,len(self.prevConnectHooks),2):            
+#             aVi = startAVHook + i
+#             try:
+#                 painter.drawLine(self.prevConnectHooks[i][0], self.prevConnectHooks[i][1])   
+#                 painter.drawLine(self.prevConnectHooks[i][1], avHooks[aVi][1])            
+#                 
+#                 painter.drawLine(avHooks[aVi][0], avHooks[aVi][1])  
+#             except:
+#                 pass
+#         painter.end()
         
         
     def convertFileList(self, fileList, videoEnding):
@@ -755,6 +859,7 @@ class videoPlayer(QtGui.QMainWindow):
         if increment is None:
             increment = self.increment
             
+            
         self.rewindIncrement()
         self.frames = []    
         
@@ -937,10 +1042,10 @@ class videoPlayer(QtGui.QMainWindow):
         fmt.setDoubleBuffer(True);                 
         fmt.setDirectRendering(True);
          
-        glw = QtOpenGL.QGLWidget(fmt)
+        self.glw = QtOpenGL.QGLWidget(fmt)
 #         glw.setMouseTracking(True)
         
-        self.videoView.setViewport(glw)
+        self.videoView.setViewport(self.glw)
         self.videoView.viewport().setCursor(QtCore.Qt.BlankCursor)
         self.videoView.setGeometry(QtCore.QRect(100, 10, w, h))#1920/2, 1080/2))
         self.videoView.show()
@@ -984,7 +1089,8 @@ class videoPlayer(QtGui.QMainWindow):
                          
             if self.play:            
                 self.showNextFrame(self.increment)
-                 
+                self.ui.speed_lbl.setText("<b>speed</b>: {0}x".format(\
+                                                                self.increment)) 
 #                 if self.increment == 0:
 #                     self.play = False
                     
@@ -996,7 +1102,7 @@ class videoPlayer(QtGui.QMainWindow):
                 
             elif(QtCore.QTime.currentTime() < dieTime.addMSecs(15)):
                 frameNo = self.vh.getCurrentFrameNo()
-                self.ui.lbl_v1.setText("no: {0}".format(frameNo))
+                self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
                 
                 if self.rpcIH is not None:
                     self.rpcIH.checkForNewJob()
@@ -1104,7 +1210,7 @@ class videoPlayer(QtGui.QMainWindow):
     def selectVideo(self, idx, frame=0):
         self.idx = idx
         self.vh.getFrame(sorted(self.fileList)[idx], frame)
-        self.ui.lbl_v0.setText("current file: {0}".format( \
+        self.ui.lbl_v0.setText("<b>current file</b>: {0}".format( \
                                                     sorted(self.fileList)[idx]))
         
         self.increment = 0 
@@ -1173,7 +1279,6 @@ class videoPlayer(QtGui.QMainWindow):
                 for k in range(len(self.trajLabels[i])):
                     self.videoScene.removeItem(self.trajLabels[i].pop())
                     
-        self.ui.label.update()
         self.trajLabels = []
         for i in range(self.trajNo):
             lbl = []

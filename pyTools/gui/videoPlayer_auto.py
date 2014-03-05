@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Tue Mar  4 11:01:38 2014
+# Created: Wed Mar  5 17:01:13 2014
 #      by: pyside-uic 0.2.14 running on PySide 1.1.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -16,9 +16,6 @@ class Ui_Form(object):
         self.pb_startVideo = QtGui.QPushButton(Form)
         self.pb_startVideo.setGeometry(QtCore.QRect(1120, 570, 151, 23))
         self.pb_startVideo.setObjectName("pb_startVideo")
-        self.label = QtGui.QLabel(Form)
-        self.label.setGeometry(QtCore.QRect(10, 10, 1000, 550))
-        self.label.setObjectName("label")
         self.lbl_v0 = QtGui.QLabel(Form)
         self.lbl_v0.setGeometry(QtCore.QRect(70, 530, 841, 16))
         self.lbl_v0.setFrameShape(QtGui.QFrame.NoFrame)
@@ -349,7 +346,7 @@ class Ui_Form(object):
         self.progBar.setProperty("value", 24)
         self.progBar.setObjectName("progBar")
         self.tabWidget = QtGui.QTabWidget(Form)
-        self.tabWidget.setGeometry(QtCore.QRect(30, 560, 1071, 251))
+        self.tabWidget.setGeometry(QtCore.QRect(30, 550, 1071, 251))
         self.tabWidget.setObjectName("tabWidget")
         self.tab_1 = QtGui.QWidget()
         self.tab_1.setObjectName("tab_1")
@@ -375,13 +372,12 @@ class Ui_Form(object):
         self.tabWidget.addTab(self.tab_2, "")
 
         self.retranslateUi(Form)
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(Form)
 
     def retranslateUi(self, Form):
         Form.setWindowTitle(QtGui.QApplication.translate("Form", "Form", None, QtGui.QApplication.UnicodeUTF8))
         self.pb_startVideo.setText(QtGui.QApplication.translate("Form", "start video", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("Form", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.lbl_v0.setText(QtGui.QApplication.translate("Form", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.lbl_v1.setText(QtGui.QApplication.translate("Form", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.pb_stopVideo.setText(QtGui.QApplication.translate("Form", "stop video", None, QtGui.QApplication.UnicodeUTF8))

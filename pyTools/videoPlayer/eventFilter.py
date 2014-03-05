@@ -304,7 +304,7 @@ class filterObj(QtCore.QObject):
                     cfg.logGUI.info(json.dumps({"addingAnnotations": 
                                             self.parent.addingAnnotations}))
                     
-                self.parent.ui.speed_lbl.setText("Speed: {0}x".format(self.parent.increment)) 
+#                 self.parent.ui.speed_lbl.setText("Speed: {0}x".format(self.parent.increment)) 
             
         
         return False

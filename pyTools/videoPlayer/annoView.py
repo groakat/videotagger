@@ -81,20 +81,25 @@ class AnnoViewItem(QtGui.QGraphicsRectItem):
 class AnnoView(QtGui.QWidget):
     
     @cfg.logClassFunction
-    def __init__(self, parent, vialNo=None, behaviourName=None, annotator=None,
+    def __init__(self, parent, parentWidget, vialNo=None, behaviourName=None, annotator=None,
                 color=None, geo=None):
-        super(AnnoView, self).__init__(parent)
+        super(AnnoView, self).__init__(parentWidget)
         #QGraphicsView.__init__(parent)
         
         # draw center markers of graphics view
         
+        self.parentVP = parent
+        
         if geo is not None:
             self.setGeometry(geo)
+            self.width = geo.width()
             
         amWidth = 10
+        cMarkerExtra = 5
+        
         topBuffer = (geo.height() - amWidth) / 2
-        self.activeMarker = QtGui.QLabel(parent)
-        self.activeMarker.setGeometry(QtCore.QRect(geo.x() - amWidth - 5, 
+        self.activeMarker = QtGui.QLabel(parentWidget)
+        self.activeMarker.setGeometry(QtCore.QRect(geo.x(), 
                                                    geo.y() + topBuffer,
                                                    amWidth, amWidth))
         self.activeMarker.setStyleSheet("""
@@ -105,21 +110,21 @@ class AnnoView(QtGui.QWidget):
         
             
         self.setStyleSheet("* {margin: 0px; border-width: 0px; padding: 0px}")
-        self.gV = QtGui.QGraphicsView(self)
-        self.gV.setGeometry(QtCore.QRect(-5, 0, geo.width(), geo.height()))
+        self.gV = QtGui.QGraphicsView(parentWidget)
+        self.gV.setGeometry(QtCore.QRect(amWidth + 15, cMarkerExtra, geo.width(), geo.height()))
         self.gV.setFrameStyle(QtGui.QFrame.NoFrame)
         self.gV.setStyleSheet("* {margin: 0px; border-width: 0px; padding: 0px}")
         
-        self.cMarker1 = QtGui.QLabel(parent)
-        self.cMarker1.setGeometry(QtCore.QRect(geo.x() + geo.width() / 2, 
-                                       geo.y() -15, 1, geo.height() + 30))
+        self.cMarker1 = QtGui.QLabel(parentWidget)
+        self.cMarker1.setGeometry(QtCore.QRect(amWidth + 20 + geo.width() / 2, 
+                                       0, 1, geo.height() + cMarkerExtra * 2))
         self.cMarker1.setFrameStyle(QtGui.QFrame.VLine)
         self.cMarker1.raise_()
         
         
         
         self.prevConnectHooks = []
-        parPos = self.mapToParent(QtCore.QPoint(0,0))
+        parPos = self.mapToGlobal(QtCore.QPoint(0,0))
         for i in range(100):
             self.prevConnectHooks += [[QtCore.QPoint(parPos.x(), parPos.y()), 
                                        QtCore.QPoint(parPos.x(), 
@@ -204,6 +209,15 @@ class AnnoView(QtGui.QWidget):
         center = self.frameAmount / 2 + 1
         self.gV.centerOn(self.frames[center])
         self.setZoom(0)
+        
+        
+        
+#     def sizeHint(self):
+#         return QtCore.QSize(self.width, int(self.boxHeight))
+#     
+#     def minimumSizeHint(self):
+#         return self.sizeHint()
+        
             
     def centerAt(self, avItem):
         for i in range(len(self.frames)):
@@ -217,7 +231,7 @@ class AnnoView(QtGui.QWidget):
                                          "annotator":self.annotator,
                                          "behaviour":self.behaviourName}))
                 
-                self.parent().showTempFrame(i-mid)
+                self.parentVP.showTempFrame(i-mid)
                 self.setPosition(key, idx, tempPositionOnly=True)
                 
         if avItem is None:                
@@ -226,32 +240,32 @@ class AnnoView(QtGui.QWidget):
                                      "idx":None,
                                      "annotator":self.annotator,
                                      "behaviour":self.behaviourName}))
-            self.parent().resetTempFrame()
+            self.parentVP.resetTempFrame()
             
     def alterAnnotation(self, avItem):        
         for i in range(len(self.frames)):
             if avItem is self.frames[i]:
                 if self.addingAnno:
-                    self.parent().addAnno(annotator=self.annotator[0], 
+                    self.parentVP.addAnno(annotator=self.annotator[0], 
                                           behaviour=self.behaviourName[0],
                                           confidence=1)
                 elif self.erasingAnno:
-                    self.parent().eraseAnno(annotator=self.annotator[0], 
+                    self.parentVP.eraseAnno(annotator=self.annotator[0], 
                                           behaviour=self.behaviourName[0])
                 else:                  
                     key = self.confidenceList[i].key
                     idx = self.confidenceList[i].idx  
                     if self.annotationDict[key].frameList[idx] is not None:
-                        self.parent().eraseAnno(annotator=self.annotator[0], 
+                        self.parentVP.eraseAnno(annotator=self.annotator[0], 
                                               behaviour=self.behaviourName[0])
                     else: 
-                        self.parent().addAnno(annotator=self.annotator[0], 
+                        self.parentVP.addAnno(annotator=self.annotator[0], 
                                               behaviour=self.behaviourName[0],
                                               confidence=1)
 #                 
                 
         if avItem is None:
-            self.parent().resetTempFrame()
+            self.parentVP.resetTempFrame()
         
     @cfg.logClassFunction
     def addAnnotation(self, annotation, key, addAllAtOnce=True):
