@@ -566,6 +566,7 @@ class videoPlayer(QtGui.QMainWindow):
             
             if self.fdvt is None:            
                 self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+                cfg.log.warning("making new FDVT")
                 if self.fdvtPath is not None:
                     self.fdvt.load(self.fdvtPath)
                 else:
