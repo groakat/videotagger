@@ -290,6 +290,8 @@ class videoPlayer(QtGui.QMainWindow):
     def transferElementsInCollapseContainer(self):
         self.createControlWidget()
         self.createDebugWidget()
+        self.createProgressWidget()
+        
         self.colCont = CC.collapseContainer(width= 1200)        
         self.setCentralWidget(self.colCont)
         
@@ -297,6 +299,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.colCont.addWidget(self.prevFramesWidget, "frame preview")
         self.colCont.addWidget(self.annoViewCol, "annotation views")
         self.colCont.addWidget(self.controlWidget, "control elements")
+        self.colCont.addWidget(self.progressWidget, "progress")
         self.colCont.addWidget(self.ui.tabWidget, "Navigation and Inspection")
         self.colCont.addWidget(self.debugWidget, "debugging ")
         
@@ -340,6 +343,35 @@ class videoPlayer(QtGui.QMainWindow):
         w.setFixedHeight(40)
         
         self.debugWidget = w
+        
+    def createProgressWidget(self):
+        w = QtGui.QWidget(self)
+        
+        
+        self.progFilter = EF.ProgressFilterObj(self)
+        self.ui.progBar.installEventFilter(self.progFilter)        
+        
+        layout = QtGui.QHBoxLayout()
+        layout.addWidget(self.ui.progBar)
+        
+        w.setLayout(layout)
+        w.show()
+        w.setFixedHeight(30)
+        
+        self.progressWidget = w
+        
+        
+    def updateProgress(self):
+        path, idx = self.vh.getCurrentKey_idx()
+        percent = self.fileList.index(path) / float(len(self.fileList))
+        self.ui.progBar.setValue(percent * 100)
+        
+        
+    def jumpToPercent(self, pixel):
+        percent = pixel / float(self.ui.progBar.width())
+        print percent, pixel
+        self.selectVideo(int(percent * len(self.fileList)))
+        
         
     @QtCore.Slot()
     def playback(self):
@@ -451,8 +483,6 @@ class videoPlayer(QtGui.QMainWindow):
         self.prevFramesWidget = self.createPrevFrames(xPos + 135, yPos - (self.prevSize + 20))
             
         #~ width = 
-        self.ui.progBar.setVisible(False)        
-        self.ui.progBar.move(xPos + 220, yPos + 3)
     
         
     def setupFrameView(self):
@@ -1092,7 +1122,8 @@ class videoPlayer(QtGui.QMainWindow):
             if self.play:            
                 self.showNextFrame(self.increment)
                 self.ui.speed_lbl.setText("<b>speed</b>: {0}x".format(\
-                                                                self.increment)) 
+                                                                self.increment))
+                self.updateProgress()
 #                 if self.increment == 0:
 #                     self.play = False
                     

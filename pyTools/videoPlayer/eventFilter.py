@@ -24,6 +24,21 @@ class MouseFilterObj(QtCore.QObject):
             self.increment -= event.delta()
             
         return False
+    
+    
+    
+class ProgressFilterObj(QtCore.QObject):
+    def __init__(self, parent):
+        QtCore.QObject.__init__(self)
+        self.parent = parent
+        self.increment = 0
+        
+    @cfg.logClassFunction
+    def eventFilter(self, obj, event):
+        if (event.type() == QtCore.QEvent.MouseButtonRelease):
+            self.parent.jumpToPercent(event.x())
+            
+    
             
 
 class filterObj(QtCore.QObject):
