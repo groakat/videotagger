@@ -166,8 +166,8 @@ class videoPlayer(QtGui.QMainWindow):
         self.rewinding = False
         self.rewindCnt = 0
         
-        if self.rewindOnClick:
-            self.eventFilter.oneClickAnnotation = [True, True, True, True]
+#         if self.rewindOnClick:
+#             self.eventFilter.oneClickAnnotation = [True, True, True, True]
         
         self.annotations = annotations 
         self.tmpAnnotation = Annotation.Annotation(0, [''])
@@ -638,7 +638,7 @@ class videoPlayer(QtGui.QMainWindow):
         
     @cfg.logClassFunction#Info
     def jumpToBookmark(self):
-        if self.bookmark:
+        if self.bookmark and self.rewindOnClick:
             self.vh.getFrame(*self.bookmark, checkBuffer=True)
             self.bookmark = None
             self.showNextFrame(0)
@@ -658,6 +658,7 @@ class videoPlayer(QtGui.QMainWindow):
     @QtCore.Slot(int)
     def labelSingleFrame(self, idx):
         self.isLabelingSingleFrame = True
+        self.ui.pb_check4requests.setVisible(False)
         day, hour, minute, frame = self.ui.frameView.fdvTree.idx2key(idx) 
         self.selectVideoTime(day, hour, minute, frame)
         
@@ -1370,19 +1371,19 @@ class videoPlayer(QtGui.QMainWindow):
 #         self.increment = 40
 #         self.rpcIH.getNextJob()
         
-    def initRewind(self):        
-        self.rewinding = True
-        ## set filterObj to normal playback
-        self.eventFilter.swapToConstantSpeed(1)
-        ## rewind
-        self.rewindCnt = 0
-        self.increment = 1
-        self.ui.progBar.setMaximum(self.rewindStepSize)
-        self.ui.progBar.setValue(0)
-        self.ui.progBar.setVisible(True)        
-        self.showNextFrame(-self.rewindStepSize)
-        self.startVideo()    
-        
+#     def initRewind(self):        
+#         self.rewinding = True
+#         ## set filterObj to normal playback
+#         self.eventFilter.swapToConstantSpeed(1)
+#         ## rewind
+#         self.rewindCnt = 0
+#         self.increment = 1
+#         self.ui.progBar.setMaximum(self.rewindStepSize)
+#         self.ui.progBar.setValue(0)
+#         self.ui.progBar.setVisible(True)        
+#         self.showNextFrame(-self.rewindStepSize)
+#         self.startVideo()    
+#         
     def stopRewind(self):        
         self.rewinding = False               
         ## set filterObj to normal playback
@@ -1443,32 +1444,32 @@ class videoPlayer(QtGui.QMainWindow):
         
         if not self.annoIsOpen:
             self.confidence = confidence     
-                                
-        if self.rewindOnClick:
-            if not self.rewinding:
-                self.initRewind()
-                
-                ##
-            else:
-                labelledFrames = self.vh.addAnnotation(self.selectedVial, 
-                                                       annotator, 
-                                      behaviour, metadata=self.getMetadata())
-                
-                if oneClickAnnotation:                
-                    labelledFrames = self.vh.addAnnotation(self.selectedVial, 
-                                                           annotator, 
-                                      behaviour, metadata=self.getMetadata())
-                
-                self.stopRewind()
-                    
-        
-        else:    
+#                                 
+#         if self.rewindOnClick:
+#             if not self.rewinding:
+#                 self.initRewind()
+#                 
+#                 ##
+#             else:
+#                 labelledFrames = self.vh.addAnnotation(self.selectedVial, 
+#                                                        annotator, 
+#                                       behaviour, metadata=self.getMetadata())
+#                 
+#                 if oneClickAnnotation:                
+#                     labelledFrames = self.vh.addAnnotation(self.selectedVial, 
+#                                                            annotator, 
+#                                       behaviour, metadata=self.getMetadata())
+#                 
+#                 self.stopRewind()
+#                     
+#         
+#         else:    
+        labelledFrames = self.vh.addAnnotation(self.selectedVial, annotator, 
+                              behaviour, metadata=self.getMetadata())
+            
+        if oneClickAnnotation:                
             labelledFrames = self.vh.addAnnotation(self.selectedVial, annotator, 
-                                  behaviour, metadata=self.getMetadata())
-                
-            if oneClickAnnotation:                
-                labelledFrames = self.vh.addAnnotation(self.selectedVial, annotator, 
-                                  behaviour, metadata=self.getMetadata())
+                              behaviour, metadata=self.getMetadata())
                 
         self.annoIsOpen = not self.annoIsOpen
         
