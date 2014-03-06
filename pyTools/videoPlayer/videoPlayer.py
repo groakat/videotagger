@@ -586,7 +586,6 @@ class videoPlayer(QtGui.QMainWindow):
         
         
     def connectToServer(self):
-        
         if self.serverAddress is not None:
             print "connecting to server .."
             self.rpcIH = RPC.RPCInterfaceHandler(self.serverAddress)
@@ -631,6 +630,7 @@ class videoPlayer(QtGui.QMainWindow):
     def jumpToBookmark(self):
         if self.bookmark:
             self.vh.getFrame(*self.bookmark, checkBuffer=True)
+            self.bookmark = None
             self.showNextFrame(0)
         
         
@@ -1248,7 +1248,7 @@ class videoPlayer(QtGui.QMainWindow):
         
         self.increment = 0 
         self.showNextFrame(0)
-#         self.startLoop.emit()
+        self.startLoop.emit()
         
     @cfg.logClassFunctionInfo
     def selectVideoTime(self, day, hour, minute, frame, data=None):
