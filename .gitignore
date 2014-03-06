@@ -67,6 +67,11 @@ doc/sphinx/build/*
 # metadata
 .metadata
 
+# userdata
+*.awr
+*.req
+*.npy
+
 # eclipse stuff
 .project
 .pydevproject
