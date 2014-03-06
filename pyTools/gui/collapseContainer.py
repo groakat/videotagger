@@ -149,12 +149,14 @@ class collapseWidget(QtGui.QWidget, collapse.Ui_collapseWidget):
         self.expandSig.emit()
         
         
-    def setMainWidget(self, w):
-        try:
-            self.layHeight = w.geometry().height()
-        except AttributeError:
-            self.layHeight = w.height()
-            
+    def setMainWidget(self, w, height=None):
+        if height == None:            
+            try:
+                self.layHeight = w.geometry().height()
+            except AttributeError:
+                self.layHeight = w.height()
+        else:
+            self.layHeight = height
             
         self.lay_main.removeWidget(self.mainWidget)
         self.mainWidget = w
@@ -193,7 +195,7 @@ class collapseContainer(QtGui.QWidget):
             
         if height < 20:
             height = 20
-                
+
         return QtCore.QSize(self.width, height)
         
     def minimumSizeHint(self):
@@ -201,9 +203,9 @@ class collapseContainer(QtGui.QWidget):
     
     
 
-    def addWidget(self, w, title=""):        
+    def addWidget(self, w, title="", height = None):        
         col = collapseWidget(self, title, self.width)        
-        col.setMainWidget(w)
+        col.setMainWidget(w, height)
         w.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Minimum)
         
         self.widgetList += [[w, col]]

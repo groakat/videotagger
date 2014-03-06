@@ -288,6 +288,7 @@ class videoPlayer(QtGui.QMainWindow):
         
         
     def transferElementsInCollapseContainer(self):
+        self.createVideoDisplayWidget()
         self.createControlWidget()
         self.createDebugWidget()
         self.createProgressWidget()
@@ -295,7 +296,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.colCont = CC.collapseContainer(width= 1200)        
         self.setCentralWidget(self.colCont)
         
-        self.colCont.addWidget(self.glw, "Video View")
+        self.colCont.addWidget(self.glw, "Video View", height=self.videoHeight+ 30)
         self.colCont.addWidget(self.prevFramesWidget, "frame preview")
         self.colCont.addWidget(self.annoViewCol, "annotation views")
         self.colCont.addWidget(self.controlWidget, "control elements")
@@ -360,6 +361,19 @@ class videoPlayer(QtGui.QMainWindow):
         
         self.progressWidget = w
         
+        
+    def createVideoDisplayWidget(self):
+        w = QtGui.QWidget(self)
+        
+        height = self.vialRoi[self.selectedVial[0]][1] - \
+                    self.vialRoi[self.selectedVial[0]][0]
+                    
+        layout = QtGui.QHBoxLayout()
+        layout.addWidget(self.glw)
+        
+#         w.setFixedHeight(height + 10)
+        
+        self.videoDisplayWidget = w
         
     def updateProgress(self):
         path, idx = self.vh.getCurrentKey_idx()
@@ -480,7 +494,7 @@ class videoPlayer(QtGui.QMainWindow):
             cfg.log.debug("av: {aV}".format(aV=aV))
             
         
-        self.prevFramesWidget = self.createPrevFrames(xPos + 135, yPos - (self.prevSize + 20))
+        self.prevFramesWidget = self.createPrevFrames(xPos + 125, yPos - (self.prevSize + 20))
             
         #~ width = 
     
@@ -1073,15 +1087,20 @@ class videoPlayer(QtGui.QMainWindow):
         fmt.setOverlay(True)
         fmt.setDoubleBuffer(True);                 
         fmt.setDirectRendering(True);
-         
+        
+        
         self.glw = QtOpenGL.QGLWidget(fmt)
+        self.glw.setFixedHeight(h + 50)
+        
+        
 #         glw.setMouseTracking(True)
         
         self.videoView.setViewport(self.glw)
         self.videoView.viewport().setCursor(QtCore.Qt.BlankCursor)
-        self.videoView.setGeometry(QtCore.QRect(100, 10, w, h))#1920/2, 1080/2))
+        self.videoView.setGeometry(QtCore.QRect(0, 0, w + 200, h+ 50))#1920/2, 1080/2))
         self.videoView.show()
-        self.videoView.fitInView(self.bgImg, QtCore.Qt.KeepAspectRatio)
+#         self.videoView.fitInView(self.bgImg, QtCore.Qt.KeepAspectRatio)
+        self.videoView.fitInView(QtCore.QRect(0, 0, w, h + 50), QtCore.Qt.KeepAspectRatio)
         
 #         self.videoView.installEventFilter(self.mouseEventFilter)
         self.videoView.setMouseTracking(True)
@@ -1089,6 +1108,7 @@ class videoPlayer(QtGui.QMainWindow):
 #         self.videoScene.setAcceptHoverEvents(True)
         self.videoScene.installEventFilter(self.mouseEventFilter)
         
+        self.videoHeight = h + 50
         
         
         geo = QtCore.QRectF(0, 0, 64, 64)
