@@ -1,6 +1,6 @@
 import sys
 from PySide import QtCore, QtGui
-import pyTools.sandbox.collapseWidget_auto as collapse
+import pyTools.gui.collapseWidget_auto as collapse
 import pyTools.gui.FrameViewWidget as FVW
 
 
