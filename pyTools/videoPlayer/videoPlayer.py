@@ -919,7 +919,7 @@ class videoPlayer(QtGui.QMainWindow):
         if not self.croppedVideo:
             self.updateMainLabel(self.lbl_v0, frame[1][sv][0])
         else:
-            self.updateLabel(self.lbl_v0, frame[0][sv], frame[1][sv][0])
+            self.updateLabel(self.lbl_v0, frame[0][sv], frame[1][0][0])
         
         
         
@@ -974,7 +974,7 @@ class videoPlayer(QtGui.QMainWindow):
                  
         for i in range(len(self.prevFrameLbls)):
             self.prevFrames += [self.vh.getTempFrame(i - offset)]
-            self.updatePreviewLabel(self.prevFrameLbls[i], self.prevFrames[i][1][sv][0])
+            self.updatePreviewLabel(self.prevFrameLbls[i], self.prevFrames[i][1][0][0])
              
         
         self.vh.updateAnnotationProperties(self.getMetadata())
