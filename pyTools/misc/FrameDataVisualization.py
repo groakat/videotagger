@@ -708,6 +708,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
         
 #         self.maxClass = len(filtList)
         self.tree['meta']['filtList'] = filtList
+        self.maxClass = len(filtList) #+ 1
             
         for f in bhvrList:
             # load annotation and filter it #
@@ -827,6 +828,11 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
                 
         self.unflatten(msg)
                      
+                     
+    def load(self, filename):
+        super(FrameDataVisualizationTreeBehaviour, self).load(filename)
+        
+        self.maxClass = len(self.tree['meta']['filtList'])# + 1
                      
 class FrameDataVisualizationTreeTrajectories(\
                                         FrameDataVisualizationTreeArrayBase):
@@ -1133,7 +1139,9 @@ class FrameDataView:
         rng[1] += np.spacing(1)
             
         fig = plt.figure(ax.get_figure().number)
-        plt.cla()
+        plt.clf()        
+        ax = fig.add_subplot(111)        
+        ax.set_axis_off()
 #         cm = mpl.colors.LinearSegmentedColormap('my_colormap',self.cdict, 256)
         for i in range(len(data)):
             if i == activeBar:
@@ -1168,7 +1176,11 @@ class FrameDataView:
         ind = range(data.shape[1])
         
         fig = plt.figure(ax.get_figure().number)
-        plt.cla()
+        plt.clf()
+        
+        ax = fig.add_subplot(111)        
+        ax.set_axis_off()
+        
         acc = np.zeros(data[0].shape)
         for i in range(data.shape[0]):
             ax.bar(ind, data[i], 0.8, color=self.colors[i],

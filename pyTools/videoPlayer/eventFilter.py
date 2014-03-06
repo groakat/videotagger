@@ -149,7 +149,7 @@ class filterObj(QtCore.QObject):
                     if self.stepSize["allow-steps"] == "true":
                         self.parent.play = True
                     else:
-                        self.parent.play = True
+                        self.parent.play = False
                         
                     self.parent.increment = self.stepSize["stop"]
                     

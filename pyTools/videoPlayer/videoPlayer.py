@@ -251,6 +251,7 @@ class videoPlayer(QtGui.QMainWindow):
         
         self.selectVideo(startIdx)
         self.startLoop.emit()
+        self.stopPlayback()
         
         
     @cfg.logClassFunction
@@ -274,17 +275,18 @@ class videoPlayer(QtGui.QMainWindow):
         
         
         
-        #~ self.ui.pb_startVideo.installEventFilter(self.eventFilter)
-        self.ui.pb_stopVideo.installEventFilter(self.eventFilter)
-#         self.ui.pb_test.installEventFilter(self.eventFilter)
-        self.ui.pb_addAnno.installEventFilter(self.eventFilter)
-        self.ui.pb_eraseAnno.installEventFilter(self.eventFilter)
-        self.ui.sldr_paths.installEventFilter(self.eventFilter)
-        self.ui.lv_frames.installEventFilter(self.eventFilter)
-#         self.ui.lv_jmp.installEventFilter(self.eventFilter)
-        self.ui.lv_paths.installEventFilter(self.eventFilter)
-        self.ui.cb_trajectory.installEventFilter(self.eventFilter)
-        self.ui.pb_check4requests.installEventFilter(self.eventFilter)
+#         
+#         #~ self.ui.pb_startVideo.installEventFilter(self.eventFilter)
+#         self.ui.pb_stopVideo.installEventFilter(self.eventFilter)
+# #         self.ui.pb_test.installEventFilter(self.eventFilter)
+#         self.ui.pb_addAnno.installEventFilter(self.eventFilter)
+#         self.ui.pb_eraseAnno.installEventFilter(self.eventFilter)
+#         self.ui.sldr_paths.installEventFilter(self.eventFilter)
+#         self.ui.lv_frames.installEventFilter(self.eventFilter)
+# #         self.ui.lv_jmp.installEventFilter(self.eventFilter)
+#         self.ui.lv_paths.installEventFilter(self.eventFilter)
+#         self.ui.cb_trajectory.installEventFilter(self.eventFilter)
+#         self.ui.pb_check4requests.installEventFilter(self.eventFilter)
         
         
     def transferElementsInCollapseContainer(self):
@@ -455,7 +457,7 @@ class videoPlayer(QtGui.QMainWindow):
 #         
 #         w.setLayout(lay)
 #         
-        w.setFixedHeight(height + 20)
+        w.setFixedHeight(height + 25)
         
         return w
         
@@ -469,19 +471,14 @@ class videoPlayer(QtGui.QMainWindow):
         height = 10
         width = 1000
         
-        self.annotations[0]["color"] = QtGui.QColor(self.annotations[0]["color"])
-        self.annotations[1]["color"] = QtGui.QColor(self.annotations[1]["color"])
-        self.annotations[2]["color"] = QtGui.QColor(self.annotations[2]["color"])
-        self.annotations[3]["color"] = QtGui.QColor(self.annotations[3]["color"])
-        
-        self.annotations[0]["color"].setAlphaF(0.8)
-        self.annotations[1]["color"].setAlphaF(0.8)
-        self.annotations[2]["color"].setAlphaF(0.8)
-        self.annotations[3]["color"].setAlphaF(0.8)
-                
+                        
         self.annoViewCol = CC.collapseContainer(width=1100)
         
-        for i in range(4):
+        for i in range(len(self.annotations)):            
+            self.annotations[i]["color"] = QtGui.QColor(self.annotations[i]["color"])
+            self.annotations[i]["color"].setAlphaF(0.8)
+            
+            
             w = self.createAnnoView(xPos, yPos, width, height, i)
             title = "Annotation View: {a}: {b}".format(\
                                                 a=self.annotations[i]['annot'],
@@ -496,7 +493,6 @@ class videoPlayer(QtGui.QMainWindow):
         
         self.prevFramesWidget = self.createPrevFrames(xPos + 125, yPos - (self.prevSize + 20))
             
-        #~ width = 
     
         
     def setupFrameView(self):
