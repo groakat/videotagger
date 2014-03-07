@@ -690,7 +690,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
         
     def calcStack(self, data):
         if np.max(data) > self.maxClass:
-            self.maxClass = np.max(data)
+            self.maxClass = int(np.max(data))
         return bsc.countInt(data.astype(np.int), 
                             minLength=self.maxClass + 1)[1:,1]
      

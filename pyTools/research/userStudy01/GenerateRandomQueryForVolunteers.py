@@ -3,6 +3,13 @@
 
 # <codecell>
 
+fdvtBehaviourBasePath='/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v{v}_exp{exp}.npy'
+requestsBasePath = '/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/requests_v{v}_exp{exp}.req'
+exps = ["00", "01", "02", "03"]
+vial = 3
+
+# <codecell>
+
 import pyTools.system.videoPlayerComClient as ComClient
 import pyTools.system.labelExplorer as LE
 import pyTools.videoProc.annotation as Annotation
@@ -11,11 +18,6 @@ import numpy as np
 import time
 import copy
 import cPickle as pickle
-
-# <codecell>
-
-queryFDVT = FDV.FrameDataVisualizationTreeBehaviour()
-queryFDVT.load(fdvtBehaviourPath)
 
 # <codecell>
 
@@ -59,9 +61,13 @@ class Test(object):
     def drawSamples(self, amount=10):
         self.samples = []
         for i in range(amount):
-            choice = np.random.randint(0, len(self.annoIdces))
-            clses = self.annoIdces[choice]
-            self.samples += [[choice, self.drawSampleFromFDVT(clses)]]
+            for k in range(10):
+                choice = np.random.randint(0, len(self.annoIdces))
+                clses = self.annoIdces[choice]
+                sample = [choice, self.drawSampleFromFDVT(clses)]
+                if sample not in self.samples:
+                    self.samples += [sample]
+                    continue
             
                    
         return self.samples
@@ -118,72 +124,14 @@ class Test(object):
 
 # <codecell>
 
-fdvtBehaviourPath='/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v3_exp03.npy'
-
-# <codecell>
-
-t = Test(fdvtBehaviourPath=fdvtBehaviourPath, vial=3)
-
-# <codecell>
-
-s = t.drawSamples(200)
-
-# <codecell>
-
-t.queryFDVT.key2idx(*s[0][1])
-
-# <codecell>
-
-with open('/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/requests_v3_exp03.req', 'wb') as f:
-    pickle.dump(s,f)
-
-# <codecell>
-
-t.queryFDVT.tree.keys()
-
-# <codecell>
-
-'data' in t.queryFDVT.tree['2013-02-19']['00']['00'].keys()
-
-# <codecell>
-
-
-# <codecell>
-
-a
-
-# <codecell>
-
-getStumpWeight(c = 1,stump = t.queryFDVT.tree)
-
-# <codecell>
-
-t.queryFDVT.tree['meta']
-
-# <codecell>
-
-t.queryFDVT.tree['2013-02-19']['meta']
-
-# <codecell>
-
-a = np.arange(10)
-
-# <codecell>
-
-np.arange(len(a))[np.logical_or(a==1, a ==2)]
-
-# <codecell>
-
-targets = np.asarray([1,2])
-
-# <codecell>
-
-np.arange(a.size)[(a == targets[..., None]).any(axis=0)]
-
-# <codecell>
-
-%qtconsole
-
-# <codecell>
-
+for exp in exps:
+    fdvtBehaviourPath= fdvtBehaviourBasePath.format(v=vial, exp=exp)
+    
+    queryFDVT = FDV.FrameDataVisualizationTreeBehaviour()
+    queryFDVT.load(fdvtBehaviourPath)
+    t = Test(fdvtBehaviourPath=fdvtBehaviourPath, vial=vial)
+    
+    s = t.drawSamples(200)
+    with open(requestsBasePath.format(v=vial, exp=exp), 'wb') as f:
+        pickle.dump(s,f)
 

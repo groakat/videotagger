@@ -71,6 +71,7 @@ doc/sphinx/build/*
 *.awr
 *.req
 *.npy
+*.cfg
 
 # eclipse stuff
 .project
