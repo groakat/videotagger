@@ -965,7 +965,7 @@ class videoPlayer(QtGui.QMainWindow):
         
         # showing trajectory #
         if increment == 0:
-            prevIncrement = 10
+            prevIncrement = 2
         else:
             prevIncrement = increment            
             
@@ -1500,9 +1500,9 @@ class videoPlayer(QtGui.QMainWindow):
                                 self.fdvt.getAnnotationFilterCode(filt)]]
                                 
                 
-        if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
-            self.fdvt.insertDeltaVector(deltaVector)
-            self.ui.frameView.plotSequence(refreshAll=True)
+#         if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
+#             self.fdvt.insertDeltaVector(deltaVector)
+#             self.ui.frameView.plotSequence(refreshAll=True)
                                         
         if self.rpcIH:
             self.rpcIH.sendReply([deltaVector])

@@ -72,10 +72,13 @@ def generateRangeValuesFromKeys(start, end, includingEnd=True, lenFunc=None):
     
     
 def countInt(x, minLength=None):
+    if minLength != None:
+        minLength = int(minLength)
+    
     m = np.min(x)
     if m > 0:
         m = 0
-    cnt = np.bincount((x - m).astype(np.int), minlength=int(minLength))
+    cnt = np.bincount((x - m).astype(np.int), minlength=minLength)
     cntMat = np.asarray(list(enumerate(cnt)))
     cntMat[:,0] += m
     return cntMat

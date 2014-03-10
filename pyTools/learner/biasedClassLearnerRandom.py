@@ -31,9 +31,12 @@ class biasedClassLearnerRandom(ComClient.ALComBase):
             
         self.idx = 0
         self.answerList = []
+        self.prevFrames = []
         self.updated = True
         self.running = True
         self.timing = None
+        
+        
         self.mainloop()
         
     
@@ -57,6 +60,9 @@ class biasedClassLearnerRandom(ComClient.ALComBase):
         self.answerList += [[self.requestList[self.idx - 1], 
                              reply.reply,
                              time.time() - self.timing]]
+        
+        for idx, lbl in reply.reply:
+            self.prevFrames += [idx]
         
         with open(self.answerPath, 'wb') as f:
             pickle.dump(self.answerList,f)
@@ -82,9 +88,13 @@ class biasedClassLearnerRandom(ComClient.ALComBase):
         
         qery = self.requestList[self.idx]
         fIdx = int(self.queryFDVT.key2idx(*qery[1]))
+        self.idx += 1
+        
+        if fIdx in self.prevFrames:
+            return self.selectNewFrame2Label()
+        
         print "requesting frame {0} ({1})".format(qery, fIdx)
         
-        self.idx += 1
         self.updated = False
         self.timing = time.time()
         self.queryFrameLabel(fIdx)
@@ -94,5 +104,5 @@ class biasedClassLearnerRandom(ComClient.ALComBase):
 
 
 if __name__ == "__main__":
-    ALCom = biasedClassLearnerRandom(exp="02", vol="00")
+    ALCom = biasedClassLearnerRandom(exp="01", vol="03", vial=3)
     

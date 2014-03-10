@@ -147,9 +147,9 @@ class filterObj(QtCore.QObject):
                 if key == self.keyMap["stop"]:
                     # stop playback
                     if self.stepSize["allow-steps"] == "true":
-                        self.parent.play = True
-                    else:
                         self.parent.play = False
+                    else:
+                        self.parent.play = True
                         
                     self.parent.increment = self.stepSize["stop"]
                     
