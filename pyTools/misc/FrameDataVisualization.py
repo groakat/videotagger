@@ -58,6 +58,13 @@ class FrameDataVisualizationTreeBase(object):
     def load(self, filename):
         with open(filename, "rb") as f:
             self.tree = pickle.load(f) 
+            
+            
+    def getValue(self, day, hour, minute, frame):
+        return self.tree[day][hour][minute]['data'][frame]
+            
+    def getValueFilename(self, filename, frame):
+        return self.getValue(*filename2Time(filename)[:3], frame=frame)
     
     def generateRandomSequence(self, dayRng, hourRng, minuteRng, frameRng):
         for day in dayRng:
