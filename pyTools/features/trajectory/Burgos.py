@@ -33,10 +33,7 @@ def generateTrajFeatures(traj, dt=0.033):
     dy = traj[:, 1] - t_m1(traj[:, 1])
 
     # direction
-    # direction = dy / dx
-    # direction[np.isnan(direction)] = 0
     direction = np.arctan2(dy, dx)
-
     dir_change = direction - t_m1(direction)
 
     # velocity
@@ -51,6 +48,6 @@ def generateTrajFeatures(traj, dt=0.033):
     # using np.c_ instead of np.concatenate to avoid problems with
     # shape of position and the other features
     feat = np.c_[position, direction, dir_change,
-                           vx, vy, ax, ay]
+                 vx, vy, ax, ay]
 
     return feat

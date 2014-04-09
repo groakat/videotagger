@@ -285,7 +285,7 @@ for i in range(len(recRngs)):
             
             progress = curI / float(totI)
             if progress == 0:
-	      progress = 1
+                progress = 1
             passedTime = currentTime - startTime
             eta = passedTime * int(100 / progress)
             finish = currentTime + eta
@@ -318,7 +318,7 @@ for i in range(len(recRngs)):
             
             progress = curI / float(totI)
             if progress == 0:
-	      progress = 1
+                progress = 1
             passedTime = currentTime - startTime
             eta = passedTime * int(100.0 / progress)
             finish = currentTime + eta
@@ -363,7 +363,7 @@ for i in range(len(recRngs)):
             
             if errorCnt[1] >= maxErrors:
                 logMessage("== stopping process of {0} ==".format(user),
-                       '!!!! STOPPING !!!! Too many errors in {0}'.format(user))
+                           '!!!! STOPPING !!!! Too many errors in {0}'.format(user))
                 
                 raise Exception("Process failed too often: Stop.")
             
