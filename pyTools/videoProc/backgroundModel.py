@@ -279,7 +279,7 @@ class backgroundModel(object):
             # endTime = max(times)
             self.bgModelList[0] = [self.modelDay]#, startTime, endTime]
         else:
-            self.histDay = np.ones((sampleSize, 768))
+            self.histDay = np.ones((sampleSize, 768)) * -1
             
         if self.histNight is not None:
             self.trainDayNightClassifier()
@@ -298,8 +298,9 @@ class backgroundModel(object):
                                 "before calling this function")
         
         hist = np.concatenate((self.histDay, self.histNight))
-        lbl = np.concatenate((np.zeros((len(self.histDay))), 
+        lbl = np.concatenate((np.zeros((len(self.histDay))),
                               np.ones((len(self.histNight)))))
+
         
         self.modelClassifier = LDA()
         self.modelClassifier.fit(hist, lbl)
@@ -323,7 +324,7 @@ class backgroundModel(object):
             hist = colorHistogramFeature(img)
             isNight = (self.modelClassifier.predict(hist) == 1)            
         else:
-            raise RuntimeError("background model classifier trained")
+            raise RuntimeError("No background model classifier trained")
             #if debug:
                 #print time
             #if time >= self.bgModelList[0][1] and time <= self.bgModelList[0][2]:

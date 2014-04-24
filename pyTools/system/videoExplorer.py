@@ -197,7 +197,7 @@ class videoExplorer(object):
             raise ValueError("There are less then 2 files in the list. That usually means that a wrong folder was selected.")
         
         for i in range(len(fileList) - 1):
-            if start == None:
+            if start is None:
                 start = fileList[i][0]
                 if not ((fileList[i + 1][0] - fileList[i][0]) <= dt.timedelta(minutes=1)):
                     stop = fileList[i][0]
@@ -206,12 +206,12 @@ class videoExplorer(object):
                 stop = fileList[i][0]
             
             if stop is not None:
-                rngs += [[start, stop]]
+                rngs += [[start, stop, i]]
                 start = None
                 stop = None
                 
         stop = fileList[i+1][0]
-        rngs += [[start, stop]]
+        rngs += [[start, stop, i]]
                 
         return rngs
                 

@@ -152,7 +152,7 @@ class imgViewer(object):
             xRng, yRng:
                                 slices of x and y direction
         """  
-        xy = np.round(copy(center))
+        xy = np.round(copy(center)).astype(np.int)
         xy[0] -= patchSize[0]/2
         xy[1] -= patchSize[1]/2
         
