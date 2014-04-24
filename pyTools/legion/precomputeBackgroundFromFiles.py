@@ -145,20 +145,30 @@ class backgroundPrecompute(object):
         self.updateCnt = 0
         if self.update is not None:
             self.bgImg.updateBackgroundModel(self.update)
+
             print "update backgroundmodel v0: {0} --  v1: {1} --  v2: {2} --  v3: {3} -- ".format(self.wasUpdated[0],
-                                             self.wasUpdated[1],
-                                             self.wasUpdated[2],
-                                             self.wasUpdated[3])
+                                         self.wasUpdated[1],
+                                         self.wasUpdated[2],
+                                         self.wasUpdated[3])
+        else:
+            #arcane procedure stolen from self.bgImg.updateBackgroundModel
+            self.update = np.zeros(tuple(self.frame.shape), dtype=np.uint8)
 
-            if self.targetFolder is not None:
-                bgFilename = self.createBackgroundFilename(baseFilename)
-                plt.imsave(bgFilename.format(self.wasUpdated[0],
-                                             self.wasUpdated[1],
-                                             self.wasUpdated[2],
-                                             self.wasUpdated[3]),
-                            self.update)
+            if len(self.update.shape) > 2:
+                for i in range(self.update.shape[2]):
+                    self.update[:,:,i] = self.bgImg.bgStack[i][self.bgImg.stackIdx, :].reshape(tuple(self.frame.shape[:2]))
+            else:
+                self.update[:,:] = self.bgImg.bgStack[self.bgImg.stackIdx, :].reshape(tuple(self.frame.shape))
 
-            self.update = None
+        if self.targetFolder is not None:
+            bgFilename = self.createBackgroundFilename(baseFilename)
+            plt.imsave(bgFilename.format(self.wasUpdated[0],
+                                         self.wasUpdated[1],
+                                         self.wasUpdated[2],
+                                         self.wasUpdated[3]),
+                        self.update)
+
+        self.update = None
 
         self.wasUpdated = [False for i in range(len(self.rois))]
 
@@ -173,8 +183,11 @@ class backgroundPrecompute(object):
         bgFilename = os.path.basename(baseFilename[1])[:-4]
         baseFolder =  V.constructSaveDir(self.targetFolder,
                                         baseFilename[1])
-        bgFilename = baseFolder + '/' + bgFilename
+        bgFilename = os.path.join(baseFolder, "bg", bgFilename)
         bgFilename += '-bg-{0}-{1}-{2}-{3}.png'
+        if not os.path.exists(os.path.dirname(bgFilename)):
+            os.makedirs(os.path.dirname(bgFilename))
+
         return bgFilename
 
 
@@ -224,10 +237,10 @@ class backgroundPrecompute(object):
     def generateRecordingRanges(self, folder):
         fileList = self.parseVideofiles(folder)
         recRngs = self.vE.findInteruptions(fileList)
-        return recRngs
+        return fileList, recRngs
 
     def computeBackgroundFromFolder(self, folder, idx=None):
-        self.generateRecordingRanges(folder)
+        fileList, recRngs = self.generateRecordingRanges(folder)
         rngStart = 0
         if  idx is not None:
             recRngs = [recRngs[idx]]
@@ -243,7 +256,7 @@ class backgroundPrecompute(object):
 def generateConfigFile(configPath, flyClassifierPath, noveltyClassfyPath,
                        sourceFolder, targetFolder):
     bP = backgroundPrecompute(None, None, targetFolder=None)
-    recRngs = bP.generateRecordingRanges(sourceFolder)
+    fileList, recRngs = bP.generateRecordingRanges(sourceFolder)
 
     configs = []
     baseString = "{idx} {clfPath} {novPath} {src} {target}"
