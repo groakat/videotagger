@@ -333,7 +333,7 @@ class Vials(object):
                 actPos = self.localizeFly(diffImg, p, img=img, 
                                         plotIterations=plotIt, retIt=retIt)
             else:
-                actPos = self.acceptPosFunc(self, diffImg, p, i, img=img, 
+                actPos = self.acceptPosFunc(self, diffImg, p, i, img=frame,
                                         plotIterations=plotIt, retIt=retIt,
                                         args=self.acceptPosFuncArgs)
             if debug:
@@ -350,7 +350,7 @@ class Vials(object):
                 # everything again
                 continue
             
-            patch = self.iV.extractPatch(diffImg, 
+            patch = self.iV.extractPatch(frame,
                             [pos[i][0], pos[i][1]], patchSize)
             
             if clfyFunc(patch):
@@ -365,9 +365,9 @@ class Vials(object):
                     print("background changed, write update")
                     self.updateCnt = self.updateLimit
         
-        self.updateCnt += 1
-        if self.updateCnt >= self.updateLimit:
-            self.updateBackgroundModel()
+        # self.updateCnt += 1
+        # if self.updateCnt >= self.updateLimit:
+        #     self.updateBackgroundModel()
         
         if not debug:
             return pos
@@ -1082,13 +1082,14 @@ class Vials(object):
                     print "patch outside of image"
                     continue
 
+                patch = self.iV.extractPatch(img, [initPos[0], initPos[1]], [64, 64])
                 hog = computeHog(patch)
                 
                 if np.isnan(np.sum(hog.flatten())):
                     # happens if all values in patch are low(?)
                     # whatever it is, it will not represent a fly
                     continue
-                
+
                 if not(noveltyClassfy.predict(hog) == 1):
                     # hog features were not modelled, very likely to be background
                     continue
