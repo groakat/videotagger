@@ -147,13 +147,13 @@ class videoExplorer(object):
             out (datetime object):
                                 conversion of filename
         """
-        
-        folders = re.split("/",  fn)
-        parts = re.split("[.]",  folders[-1])
+
+        basename = os.path.basename(fn)
+        parts = re.split("[.]",  basename)
         date = re.split("[-]", parts[0])
         time = re.split("[-]", parts[1])
-        
-        if parts[-1] != ending:
+
+        if fn[-len(ending):] != ending:
             return -1        
         
         if len(date) != 3:

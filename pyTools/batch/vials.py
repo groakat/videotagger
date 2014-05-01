@@ -950,9 +950,9 @@ class Vials(object):
             # as for the first frame. If not, probably a day/night switch 
             # occurred. So make sure that nothing of this minute is used
             # TODO
-            if bgImg is not bgModel.getBgImg(frame, debug=vial.verbose):
-                print("background model changed this minute. DO SOMETHING")
-                vial.updateBackgroundModel()
+            # if bgImg is not bgModel.getBgImg(frame, debug=vial.verbose):
+            #     print("background model changed this minute. DO SOMETHING")
+            #     vial.updateBackgroundModel()
                 
             # use ffmpeg to render frames into videos
             tmpBaseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4')

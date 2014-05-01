@@ -27,7 +27,7 @@ class backgroundPrecompute(object):
         self.iV = IV.imgViewer()
         self.vE = VE.videoExplorer()
         self.update = None
-        self.currentBgImg = None
+        self.bgImg = None
         self.wasUpdated = [False for i in range(4)]
         self.diffImg = None
         self.frame = None
@@ -140,6 +140,9 @@ class backgroundPrecompute(object):
         for f in fileList:
             self.getFlyPatches(f[1])
 
+    def resetUpdate(self):
+        self.update = None
+        self.wasUpdated = [False for i in range(len(self.rois))]
 
     def saveBackgroundModel(self, baseFilename):
         self.updateCnt = 0
@@ -168,14 +171,12 @@ class backgroundPrecompute(object):
                                          self.wasUpdated[3]),
                         self.update)
 
-        self.update = None
+        self.resetUpdate()
 
-        self.wasUpdated = [False for i in range(len(self.rois))]
+        bgImg = self.bgModel.getBgImg(self.frame)
 
-#         bgImg = self.bgModel.getBgImg(self.frame,debug=self.verbose)
-
-#         if bgImg is not self.currentBgImg:
-#             self.setBackgroundImage(bgImg)
+        if bgImg is not self.bgImg:
+            self.setBackgroundImage(bgImg)
 
 
     def createBackgroundFilename(self, baseFilename):
@@ -223,7 +224,7 @@ class backgroundPrecompute(object):
             bgFunc = bgImg.backgroundSubtractionWeaverF
             bgImg.configureStackSubtraction(bgFunc)
             self.bgImg = bgImg
-
+            self.resetUpdate()
 
     def configureBackgroundModel(self, folder, start, stop):
         self.bgModel = BM.backgroundModel(verbose=True, colorMode='rgb')
