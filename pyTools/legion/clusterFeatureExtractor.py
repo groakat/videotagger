@@ -12,14 +12,20 @@ class featureFilter(object):
         if not type(featureLst) == list:
             featureLst = [featureLst]
 
+        self.vialIdces = [0,1,2,3]
+        self.filelists = []
         self.featureLst = featureLst
+
+        self.prepareFilelist()
         self.scanForFeatures()
 
     def prepareFilelist(self):
-        self.filelists = {}
+        self.filelists = []
 
-        for featDesc in self.featureLst:
-            self.filelists[featDesc] = []
+        for v in self.vialIdces:
+            self.filelists += {}
+            for featDesc in self.featureLst:
+                self.filelists[v][featDesc] = []
 
     def scanForFeatures(self):
         self.prepareFilelist()
@@ -29,7 +35,8 @@ class featureFilter(object):
                 for featDesc in self.featureLst:
                     if root.endswith(featDesc.path) \
                     and f.endswith(featDesc.ext):
-                        self.filelists[featDesc] += [os.path.join(root, f)]
+                        vialNo = int(f[-(len(featDesc.ext) + 1)])
+                        self.filelists[vialNo][featDesc] += [os.path.join(root, f)]
 
 
 class ClusterFeatureExtratorBase(object):

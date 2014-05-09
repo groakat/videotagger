@@ -260,7 +260,7 @@ def generateConfigFile(configPath, flyClassifierPath, noveltyClassfyPath,
     fileList, recRngs = bP.generateRecordingRanges(sourceFolder)
 
     configs = []
-    baseString = "{idx} {clfPath} {novPath} {src} {target}"
+    baseString = "{idx} {clfPath} {novPath} {src} {target}\n"
 
     for i in range(len(recRngs)):
         configs += [baseString.format(idx=i,
