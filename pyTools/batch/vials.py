@@ -454,7 +454,7 @@ class Vials(object):
         
         for p in pathList:
             #bgImg = bgModel.getBgImg(p[0].time(), debug=True)
-            self.extractPatchesFromList([p[1]], baseSaveDir, bgModel, self)
+            self.extractPatchesFromList([p], baseSaveDir, bgModel, self)
             
     def updateBackgroundMask(self, frame, bgImg, vialNo, center, patchSize):
         """
@@ -915,7 +915,7 @@ class Vials(object):
         for f in fileList:
             # extract patches around flies for each frame
             patchPaths = []
-            accPos = []
+            accPos = [[] for i in range(len(vial.rois))]
             
             vial.currentFile = f
             vE.setVideoStream(f, info=True, frameMode='RGB')
@@ -943,8 +943,8 @@ class Vials(object):
                                                                     '.{0}{1}{2}'
                 
                 cnt += 1
-            
-                accPos.append(pos)
+                for k in range(len(pos)):
+                    accPos[k] += [pos[k]]
             
             # at the last frame check if this background model is the same
             # as for the first frame. If not, probably a day/night switch 
@@ -957,8 +957,8 @@ class Vials(object):
             # use ffmpeg to render frames into videos
             tmpBaseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4')
                         
-            baseFolder = constructSaveDir(baseSaveDir, f)    
-            baseName =  baseFolder + os.path.basename(f).strip('.mp4')
+            baseFolder = constructSaveDir(baseSaveDir, f, "patches")
+            baseName =  os.path.join(baseFolder, os.path.basename(f)[:-4])
             
             # render images as avi for complete losslessness
             
@@ -984,10 +984,19 @@ class Vials(object):
             if delTmpImg:
                 for filePath in patchPaths:
                     os.remove(filePath)                    
-            
-            fl = open(baseFolder + os.path.basename(f).strip('.mp4') + '.pos', 'w')
-            fl.write('{0}'.format(accPos))
-            fl.close()
+
+            baseFolder =   constructSaveDir(baseSaveDir, f, ["feat", "pos"])
+
+            for k in range(len(accPos)):
+                baseName = os.path.join(baseFolder, os.path.basename(f)[:-4] + ".v{v}.pos".format(v=k))
+
+                with open(baseName, "w") as fl:
+                    fl.write('{0}'.format(accPos[k]))
+
+
+                baseName = os.path.join(baseFolder, os.path.basename(f)[:-4] + ".v{v}.pos.npy".format(v=k))
+                np.save(baseName, np.asarray(accPos[k]))
+
             
             if vial.verbose:
                 print("processed ", f)
@@ -1107,9 +1116,12 @@ class Vials(object):
         # return default position
         return [33, 33]
 
-def constructSaveDir(baseSaveDir, filename):    
+def constructSaveDir(baseSaveDir, filename, appendix):
     folders = videoExplorer.splitFolders(filename)
-    baseFolder = baseSaveDir + folders[-3] + "/" + folders[-2] + "/"
+    if type(appendix) == list:
+        baseFolder = os.path.join(baseSaveDir, folders[-3], folders[-2], *appendix)
+    else:
+        baseFolder = os.path.join(baseSaveDir, folders[-3], folders[-2], appendix)
     
     if not os.path.exists(baseFolder):
         os.makedirs(baseFolder)
