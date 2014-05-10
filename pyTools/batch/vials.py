@@ -1116,7 +1116,7 @@ class Vials(object):
         # return default position
         return [33, 33]
 
-def constructSaveDir(baseSaveDir, filename, appendix):
+def constructSaveDir(baseSaveDir, filename, appendix=""):
     folders = videoExplorer.splitFolders(filename)
     if type(appendix) == list:
         baseFolder = os.path.join(baseSaveDir, folders[-3], folders[-2], *appendix)

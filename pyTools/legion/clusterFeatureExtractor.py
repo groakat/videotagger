@@ -52,6 +52,7 @@ class ClusterFeatureExtratorBase(object):
         self.targetFeat = targetFeat
         self.lstRange = range(startIdx, stopIdx)
         self.overlap = overlap
+        self.vialIdces = [0,1,2,3]
 
         if params is None:
             params = {}
