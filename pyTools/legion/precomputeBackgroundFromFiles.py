@@ -269,13 +269,16 @@ def generateConfigFile(configPath, flyClassifierPath, noveltyClassfyPath,
     cnt = 0
     for i in range(len(recRngs)):
         if (recRngs[i][1] - recRngs[i][0]) > dt.timedelta(minutes=10):
-            configs += [baseString.format(cnt=cnt,
+            str = baseString.format(cnt=cnt,
                                          idx=i,
                                          clfPath=flyClassifierPath,
                                          novPath=noveltyClassfyPath,
                                          src=sourceFolder,
-                                         target=targetFolder)]
+                                         target=targetFolder)
+            configs += [str]
             cnt += 1
+            print("{cnt} {idx} {rng}".format(cnt=cnt, idx=i, rng=recRngs[i]))
+
 
     if not os.path.exists(os.path.dirname(configPath)):
         os.makedirs(os.path.dirname(configPath))

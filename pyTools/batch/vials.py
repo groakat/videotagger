@@ -1124,8 +1124,14 @@ def constructSaveDir(baseSaveDir, filename, appendix=""):
         baseFolder = os.path.join(baseSaveDir, folders[-3], folders[-2], appendix)
     
     if not os.path.exists(baseFolder):
-        os.makedirs(baseFolder)
-        
+        try:
+            os.makedirs(baseFolder)
+        except OSError, e:
+            if str(e).startswith("[Errno 17] File exists:"):
+                pass
+            else:
+                raise(e)
+            
     return baseFolder
 
 import pyTools.libs.faceparts.vanillaHogUtils as vanHog
