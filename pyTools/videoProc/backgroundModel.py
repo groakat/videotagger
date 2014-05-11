@@ -45,7 +45,7 @@ class backgroundModel(object):
         self.histNight = None           # histogram of night images used to
                                         # create background model        
         
-        self.bgModelList = [None]*2      # [bgImg, startTime, endTime]
+        self.bgModelList = [None, None]      # [bgImg, startTime, endTime]
                 
         self.colorIdx = self.getcolorModes().index(colorMode)
         
@@ -149,7 +149,7 @@ class backgroundModel(object):
         
         ## framebuffer a list with one element per dimension of reference image
         if len(refFrame.shape) > 2:
-            frameBuffer = [None] * refFrame.shape[2]
+            frameBuffer = [None  for i in range(refFrame.shape[2])]
             
             for i in range(len(frameBuffer)):
                 frameBuffer[i] = np.empty([ refFrame.shape[0],  
@@ -164,7 +164,7 @@ class backgroundModel(object):
                 for i in range(len(frameBuffer)):
                     frameBuffer[i][:, :, s] = frame[:, :, i]
                 if calcHistFeatures:
-                    hst[i,:] = colorHistogramFeature(frame)
+                    hst[s,:] = colorHistogramFeature(frame)
             
             medianImage = np.zeros(refFrame.shape,  np.uint8)
             
@@ -321,8 +321,14 @@ class backgroundModel(object):
         if self.modelClassifier is not None:
             if debug:
                 print ("background model selection: use classifier")
-            hist = colorHistogramFeature(img)
-            isNight = (self.modelClassifier.predict(hist) == 1)            
+
+            if self.bgModelList[0] is None:
+                isNight = True
+            elif self.bgModelList[1] is None:
+                isNight = False
+            else:
+                hist = colorHistogramFeature(img)
+                isNight = (self.modelClassifier.predict(hist) == 1)
         else:
             raise RuntimeError("No background model classifier trained")
             #if debug:

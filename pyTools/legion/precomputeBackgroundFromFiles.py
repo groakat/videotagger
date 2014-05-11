@@ -1,6 +1,7 @@
 __author__ = 'peter'
 
 import numpy as np
+import datetime as dt
 import scipy.misc as spm
 import matplotlib.pyplot as plt
 import os
@@ -138,7 +139,10 @@ class backgroundPrecompute(object):
     def updateBackground(self, fileList):
         self.wasUpdated = [False for i in range(4)]
         for f in fileList:
-            self.getFlyPatches(f[1])
+            try:
+                self.getFlyPatches(f[1])
+            except:
+                print("Skipping file because of error {0}".format(f[1]))
 
     def resetUpdate(self):
         self.update = None
@@ -260,14 +264,18 @@ def generateConfigFile(configPath, flyClassifierPath, noveltyClassfyPath,
     fileList, recRngs = bP.generateRecordingRanges(sourceFolder)
 
     configs = []
-    baseString = "{idx} {clfPath} {novPath} {src} {target}\n"
+    baseString = "{cnt} {idx} {clfPath} {novPath} {src} {target}\n"
 
+    cnt = 0
     for i in range(len(recRngs)):
-        configs += [baseString.format(idx=i,
-                                     clfPath=flyClassifierPath,
-                                     novPath=noveltyClassfyPath,
-                                     src=sourceFolder,
-                                     target=targetFolder)]
+        if (recRngs[i][1] - recRngs[i][0]) > dt.timedelta(minutes=10):
+            configs += [baseString.format(cnt=cnt,
+                                         idx=i,
+                                         clfPath=flyClassifierPath,
+                                         novPath=noveltyClassfyPath,
+                                         src=sourceFolder,
+                                         target=targetFolder)]
+            cnt += 1
 
     if not os.path.exists(os.path.dirname(configPath)):
         os.makedirs(os.path.dirname(configPath))

@@ -188,7 +188,9 @@ class videoExplorer(object):
         """
         # set file chunk size to 1 minute
         chunkSize = dt.time(0, 1)
-        
+
+        fileList = sorted(fileList)
+
         rngs = []
         start = None
         stop = None
@@ -199,10 +201,12 @@ class videoExplorer(object):
         for i in range(len(fileList) - 1):
             if start is None:
                 start = fileList[i][0]
-                if not ((fileList[i + 1][0] - fileList[i][0]) <= dt.timedelta(minutes=1)):
+                if (not (fileList[i + 1][0] - fileList[i][0]) <= dt.timedelta(minutes=1))\
+                    or fileList[i + 1][0].second != 0:
                     stop = fileList[i][0]
                 
-            elif not ((fileList[i + 1][0] - fileList[i][0]) == dt.timedelta(minutes=1)):
+            elif (not (fileList[i + 1][0] - fileList[i][0]) == dt.timedelta(minutes=1))\
+                    or fileList[i + 1][0].second != 0:
                 stop = fileList[i][0]
             
             if stop is not None:
