@@ -191,7 +191,13 @@ class backgroundPrecompute(object):
         bgFilename = os.path.join(baseFolder, "bg", bgFilename)
         bgFilename += '-bg-{0}-{1}-{2}-{3}.png'
         if not os.path.exists(os.path.dirname(bgFilename)):
-            os.makedirs(os.path.dirname(bgFilename))
+            try:
+                os.makedirs(os.path.dirname(bgFilename))
+            except OSError, e:
+                if str(e).startswith("[Errno 17] File exists:"):
+                    pass
+                else:
+                    raise(e)
 
         return bgFilename
 

@@ -1131,7 +1131,7 @@ def constructSaveDir(baseSaveDir, filename, appendix=""):
                 pass
             else:
                 raise(e)
-            
+
     return baseFolder
 
 import pyTools.libs.faceparts.vanillaHogUtils as vanHog
