@@ -43,7 +43,7 @@ class Vials(object):
     """
     def __init__(self,  rois=None, gaussWeight=1000, sigma=10, xoffsetFact=0.7, 
                 updateLimit = 5000, clfyFunc=None, acceptPosFunc=None,
-                acceptPosFuncArgs=None, verbose=False):
+                acceptPosFuncArgs=None, verbose=False, ffmpegpath=None):
         """
         
         Args:            
@@ -154,6 +154,7 @@ class Vials(object):
         self.currentFrame = None
         
         self.verbose = verbose
+        self.ffmpegpath = ffmpegpath
         
     def batchProcessImage(self,  img,  funct,  args):
         """
@@ -423,7 +424,7 @@ class Vials(object):
                                 plotIterations=plotIterations, img=img,
                                 retIt=retIt, viewer=self.iV)
                                 
-    def extractPatches(self, pathList, bgModel, baseSaveDir=None):
+    def extractPatches(self, pathList, bgModel, baseSaveDir=None, ffmpegpath=None):
         """
         extracts all fly locations from all videos in the path list and saves
         them as individual videos (centered around the flies) and position files
@@ -458,7 +459,7 @@ class Vials(object):
         
         for p in pathList:
             #bgImg = bgModel.getBgImg(p[0].time(), debug=True)
-            self.extractPatchesFromList([p], baseSaveDir, bgModel, self)
+            self.extractPatchesFromList([p], baseSaveDir, bgModel, self, ffmpegpath=self.ffmpegpath)
             
     def updateBackgroundMask(self, frame, bgImg, vialNo, center, patchSize):
         """
@@ -881,8 +882,8 @@ class Vials(object):
     
     @staticmethod
     def extractPatchesFromList(fileList, baseSaveDir, bgModel, vial, fps=30, 
-                                 tmpBaseSaveDir=None, delTmpImg=True,
-                                 patchSize=[64, 64]):
+                                 tmpBaseSaveDir='/tmp/', delTmpImg=True,
+                                 patchSize=[64, 64], ffmpegpath=None):
         """
         extracts patches from a given list of files and encodes the patches
         in two versions ("lossless" mp4 and FFV1 (avi)) in the given folder.
@@ -915,9 +916,12 @@ class Vials(object):
         """
 
 
-        if tmpBaseSaveDir is None:
-            tmpBaseSaveDir = os.environ.get('TMPDIR','/tmp') + '/'
-            # tmpBaseSaveDir = '/tmp/'
+        # if tmpBaseSaveDir is None:
+        #     tmpBaseSaveDir = os.environ.get('TMPDIR','/tmp') + '/'
+        #     # tmpBaseSaveDir = '/tmp/'
+
+        if ffmpegpath is None:
+            ffmpegpath = 'ffmpeg'
 
         viewer = imgViewer()
         vE = videoExplorer()
@@ -973,10 +977,10 @@ class Vials(object):
             # render images as avi for complete losslessness
             
             # ffmpeg -y -f image2 -r 29.97 -i /tmp/2013-02-19.00-01-00.v0.%05d.png -vcodec ffv1 -sameq /tmp/test.avi
-            ffmpegCmd = "ffmpeg -y -f image2 -r {2} -i {3}.v{1}.%05d.tif -vcodec ffv1 -qscale 0 -r {2} {0}.v{1}.avi"
+            ffmpegCmd = "{ffmpeg} -y -f image2 -r {2} -i {3}.v{1}.%05d.tif -vcodec ffv1 -qscale 0 -r {2} {0}.v{1}.avi"
             
             for patchNo in range(len(pos)):
-                p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName),
+                p = subprocess.Popen(ffmpegCmd.format(ffmpeg=ffmpegpath, baseName, patchNo, fps, tmpBaseName),
                                     shell=True, stdout=subprocess.PIPE, 
                                     stderr=subprocess.STDOUT)
                 output = p.communicate()[0]
@@ -984,9 +988,9 @@ class Vials(object):
             
             # render images as mp4 for very fast playback
             #ffmpeg -y -f image2 -r 29.97 -i 2013-02-19.00-00-00.v0.%05d.tif -c:v libx264 -preset faster -qp 0 test.mp4
-            ffmpegCmd = "ffmpeg -y -i {3}.v{1}.%05d.tif -c:v libx264 -preset faster -qp 0 -r {2} {0}.v{1}.mp4"
+            ffmpegCmd = "{ffmpeg} -y -i {3}.v{1}.%05d.tif -c:v libx264 -preset faster -qp 0 -r {2} {0}.v{1}.mp4"
             for patchNo in range(len(pos)):
-                p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName),
+                p = subprocess.Popen(ffmpegCmd.format(ffmpeg=ffmpegpath, baseName, patchNo, fps, tmpBaseName),
                                     shell=True, stdout=subprocess.PIPE, 
                                     stderr=subprocess.STDOUT)
                 output = p.communicate()[0]

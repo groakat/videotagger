@@ -24,7 +24,7 @@ import skimage.transform
 class FlyExtractor(object):
 
     def __init__(self, videoFolder, backgroundFolder, patchFolder, flyClassifierPath, noveltyClassfyPath,
-                 recIdx, runIdx, minPerRun=20):
+                 recIdx, runIdx, minPerRun=20, ffmpegpath=None):
 
         self.flyClassifierPath = flyClassifierPath
         self.noveltyClassfyPath = noveltyClassfyPath
@@ -38,7 +38,7 @@ class FlyExtractor(object):
         self.vial = V.Vials(self.roi, gaussWeight=2000, sigma=20,
                             xoffsetFact=0.6, clfyFunc=self.flyClassify,
                             acceptPosFunc=V.Vials.acceptPosFunc,
-                            acceptPosFuncArgs=self.acceptArgs)
+                            acceptPosFuncArgs=self.acceptArgs, ffmpegpath=ffmpegpath)
 
         self.bgModel = BG.backgroundModel(verbose=False, colorMode='rgb')
 
@@ -320,5 +320,5 @@ if __name__ == "__main__":
 
 
     fe = FlyExtractor(videoFolder, backgroundFolder, backgroundFolder, flyClassifierPath, noveltyClassfyPath,
-                      recIdx=recIdx, runIdx=runIdx, minPerRun=minPerRun)
+                      recIdx=recIdx, runIdx=runIdx, minPerRun=minPerRun, ffmpegpath='~/usr/bin/ffmpeg')
     fe.extractPatches()
