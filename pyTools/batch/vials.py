@@ -980,8 +980,8 @@ class Vials(object):
             ffmpegCmd = "{ffmpeg} -y -f image2 -r {2} -i {3}.v{1}.%05d.tif -vcodec ffv1 -qscale 0 -r {2} {0}.v{1}.avi"
             
             for patchNo in range(len(pos)):
-                p = subprocess.Popen(ffmpegCmd.format(ffmpeg=ffmpegpath, baseName, patchNo, fps, tmpBaseName),
-                                    shell=True, stdout=subprocess.PIPE, 
+                p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName, ffmpeg=ffmpegpath),
+                                    shell=True, stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT)
                 output = p.communicate()[0]
                 print output
@@ -990,7 +990,7 @@ class Vials(object):
             #ffmpeg -y -f image2 -r 29.97 -i 2013-02-19.00-00-00.v0.%05d.tif -c:v libx264 -preset faster -qp 0 test.mp4
             ffmpegCmd = "{ffmpeg} -y -i {3}.v{1}.%05d.tif -c:v libx264 -preset faster -qp 0 -r {2} {0}.v{1}.mp4"
             for patchNo in range(len(pos)):
-                p = subprocess.Popen(ffmpegCmd.format(ffmpeg=ffmpegpath, baseName, patchNo, fps, tmpBaseName),
+                p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName,ffmpeg=ffmpegpath),
                                     shell=True, stdout=subprocess.PIPE, 
                                     stderr=subprocess.STDOUT)
                 output = p.communicate()[0]
