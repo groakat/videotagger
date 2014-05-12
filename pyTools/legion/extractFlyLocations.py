@@ -246,10 +246,13 @@ class FlyExtractor(object):
         recCfgList = []
         for i in range(len(self.recRngs)):
             recRng = self.recRngs[i]
-            timeDiff = recRng[1] - recRng[0]
-            seconds = timeDiff.total_seconds() / 60 / self.minPerRun
-            for k in range(int(np.ceil(seconds))):
-                recCfgList += [[i, k]]
+            if (recRng[1] - recRng[0]) > dt.timedelta(minutes=10):
+                timeDiff = recRng[1] - recRng[0]
+                seconds = timeDiff.total_seconds() / 60 / self.minPerRun
+                for k in range(int(np.ceil(seconds))):
+                    recCfgList += [[i, k]]
+
+
 
         return recCfgList
 

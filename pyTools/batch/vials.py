@@ -423,7 +423,7 @@ class Vials(object):
                                 plotIterations=plotIterations, img=img,
                                 retIt=retIt, viewer=self.iV)
                                 
-    def extractPatches(self, pathList, bgModel, baseSaveDir='/tmp/'):
+    def extractPatches(self, pathList, bgModel, baseSaveDir=None):
         """
         extracts all fly locations from all videos in the path list and saves
         them as individual videos (centered around the flies) and position files
@@ -447,8 +447,12 @@ class Vials(object):
                                 times (currently just day and night)
             baseSaveDir (string):
                                 folder that will hold the new video data
+                                if none, $TMPDIR or /tmp/ will be used
         
         """
+        if baseSaveDir is None:
+            baseSaveDir = os.environ.get('TMPDIR','/tmp/')
+
         self.baseSaveDir = baseSaveDir
         self.bgModel = bgModel
         
