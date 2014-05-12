@@ -20,10 +20,10 @@ class featureFilter(object):
         self.scanForFeatures()
 
     def prepareFilelist(self):
-        self.filelists = []
+        self.filelists = {}
 
         for v in self.vialIdces:
-            self.filelists += {}
+            self.filelists[v] = {}
             for featDesc in self.featureLst:
                 self.filelists[v][featDesc] = []
 
@@ -87,11 +87,12 @@ class ClusterFeatureExtratorBase(object):
 
 
     def createFeatureSavePath(self, i):
-        srcFilename = self.ff.filelists[self.featureLst[0]][i]
+        v = self.ff.filelists.keys()[0]
+        srcFilename = self.ff.filelists[v][self.featureLst[0]][i]
         featPath = self.featureLst[0].path
 
         dirname = self.constructSaveDir(self.baseFolder, srcFilename, featPath, self.targetFeat.path)
-        basename = os.path.basename(self.ff.filelists[self.featureLst[0]][i])
+        basename = os.path.basename(self.ff.filelists[v][self.featureLst[0]][i])
         basename = basename[:-len(self.featureLst[0].ext)]
         basename += self.targetFeat.ext
 
@@ -100,6 +101,7 @@ class ClusterFeatureExtratorBase(object):
 
 
     def extractFeatures(self):
+
         filelistLength = len(self.ff.filelists[self.featureLst[0]])
         for i in self.lstRange:
             paths = []
