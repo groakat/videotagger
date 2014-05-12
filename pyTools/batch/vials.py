@@ -917,7 +917,7 @@ class Vials(object):
 
         if tmpBaseSaveDir is None:
             tmpBaseSaveDir = os.environ.get('TMPDIR','/tmp') + '/'
-            tmpBaseSaveDir = '/tmp/'
+            # tmpBaseSaveDir = '/tmp/'
 
         viewer = imgViewer()
         vE = videoExplorer()
@@ -980,7 +980,7 @@ class Vials(object):
                                     shell=True, stdout=subprocess.PIPE, 
                                     stderr=subprocess.STDOUT)
                 output = p.communicate()[0]
-                # print output
+                print output
             
             # render images as mp4 for very fast playback
             #ffmpeg -y -f image2 -r 29.97 -i 2013-02-19.00-00-00.v0.%05d.tif -c:v libx264 -preset faster -qp 0 test.mp4
