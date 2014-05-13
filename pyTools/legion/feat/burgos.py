@@ -62,7 +62,8 @@ if __name__ == "__main__":
     stop = args.stop
     batchIdx = args.batchIdx
 
-    params = {"rois":[[350, 660], [661, 960], [971, 1260], [1270, 1600]]}
+    params = OrderedDict()
+    params["rois"] = [[350, 660], [661, 960], [971, 1260], [1270, 1600]]
 
     fd1 = CFE.featureDesc('feat/pos', ".pos.npy")
     targetFeat = CFE.featureDesc('feat/traj/borgus/','.borgus.npy')
