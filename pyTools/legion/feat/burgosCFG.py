@@ -23,5 +23,5 @@ if __name__ == "__main__":
     fd1 = CFE.featureDesc('feat/pos', ".pos.npy")
     targetFeat = CFE.featureDesc('feat/traj/borgus/','.borgus.npy')
 
-    cfe = B.BurgosFeatureExtractor(baseFolder, fd1, targetFeat, 0, 0, params={}, overlap=[1,1])
+    cfe = B.BurgosFeatureExtractor(baseFolder, fd1, targetFeat, 0, 0, 0, params={}, overlap=[1,1])
     cfe.generateConfig(cfgFile, noPerBatch=noPerBatch)

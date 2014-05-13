@@ -262,14 +262,17 @@ class FlyExtractor(object):
 
         return res
 
-    def checkIfSectionWasProcessed(self, runIdx, minPerRun):
+    def checkIfSectionWasProcessed(self, recIdx, runIdx):
         self.runIdx = runIdx
-        self.minPerRun = minPerRun
+        self.recIdx = self.recIdx
         self.filterFileList()
 
         res = True
         for f in self.fileList:
             res = res and self.checkIfOutputExists(f)
+
+            if not res:
+                break
 
         return res
 
