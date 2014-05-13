@@ -234,6 +234,9 @@ class FlyExtractor(object):
         self.loadBGImagesIntoBackgroundModel()
 
     def extractPatches(self):
+        if self.checkIfSectionWasProcessed(self.recIdx, runIdx):
+            return
+        
         self.generateBackgroundModel()
         self.filterFileList()
         print(self.fileList)
