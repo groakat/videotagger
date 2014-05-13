@@ -242,6 +242,39 @@ class FlyExtractor(object):
 
 
 ############## CFG
+    def checkIfOutputExists(self, videoPath):
+        f = videoPath
+
+        patchFolder = V.constructSaveDir(self.backgroundFolder, f, "patches")
+        posFolder = V.constructSaveDir(self.backgroundFolder, f, ["feat", "pos"])
+
+        res = True
+        for k in range(4):
+            v1baseName = os.path.join(patchFolder, os.path.basename(f)[:-4] + ".v{v}.avi".format(v=k))
+            v2baseName = os.path.join(patchFolder, os.path.basename(f)[:-4] + ".v{v}.mp4".format(v=k))
+            p1baseName = os.path.join(posFolder, os.path.basename(f)[:-4] + ".v{v}.pos".format(v=k))
+            p2baseName = os.path.join(posFolder, os.path.basename(f)[:-4] + ".v{v}.pos.npy".format(v=k))
+
+            res = res and os.path.exists(v1baseName)
+            res = res and os.path.exists(v2baseName)
+            res = res and os.path.exists(p1baseName)
+            res = res and os.path.exists(p2baseName)
+
+        return res
+
+    def checkIfSectionWasProcessed(self, runIdx, minPerRun):
+        self.runIdx = runIdx
+        self.minPerRun = minPerRun
+        self.filterFileList()
+
+        res = True
+        for f in self.fileList:
+            res = res and self.checkIfOutputExists(f)
+
+        return res
+
+
+
     def retrieveScriptList(self):
         recCfgList = []
         for i in range(len(self.recRngs)):
@@ -257,11 +290,15 @@ class FlyExtractor(object):
         return recCfgList
 
 
-    def generateScriptConfigString(self, recCfgList):
+    def generateScriptConfigString(self, recCfgList,redoAll):
         baseString = "{i} {vf} {bf} {pf} {fcp} {ncp} {recIdx} {runIdx} {mpr}\n"
         cfgString = ""
         cnt = 0
         for recIdx, runIdx in recCfgList:
+            if not redoAll:
+                if self.checkIfSectionWasProcessed(recIdx, runIdx):
+                    continue
+
             cfgString += baseString.format(i=cnt,
                                            vf=self.videoFolder,
                                            bf=self.backgroundFolder,
@@ -275,10 +312,10 @@ class FlyExtractor(object):
 
         return cfgString
 
-    def generateConfig(self, filename):
+    def generateConfig(self, filename, redoAll=False):
         self.generateRecordingRanges(self.videoFolder)
         recCfgList = self.retrieveScriptList()
-        cfgString = self.generateScriptConfigString(recCfgList)
+        cfgString = self.generateScriptConfigString(recCfgList, redoAll)
         with open(filename, "w") as f:
             f.write(cfgString)
 

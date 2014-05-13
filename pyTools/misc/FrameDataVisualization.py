@@ -840,6 +840,32 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
         super(FrameDataVisualizationTreeBehaviour, self).load(filename)
         
         self.maxClass = len(self.tree['meta']['filtList'])# + 1
+
+    def getClassOccurances(self, classNo):
+        occurranceList = []
+
+        isSame = True
+        for day in sorted(self.tree.keys()):
+            if day == 'meta':
+                continue
+
+            for hour in sorted(self.tree[day].keys()):
+                if hour == 'meta':
+                    continue
+
+                for minute in sorted(self.tree[day][hour].keys()):
+                    if minute == 'meta':
+                        continue
+
+                    # print day, hour, minute,
+
+                    idces = np.where(self.tree[day][hour][minute]['data'] == classNo)
+                    for i in range(idces[0].shape[0]):
+                        occurranceList += [[day, hour, minute, idces[0][i]]]
+
+        return occurranceList
+
+
                      
 class FrameDataVisualizationTreeTrajectories(\
                                         FrameDataVisualizationTreeArrayBase):
