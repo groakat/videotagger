@@ -229,14 +229,14 @@ class FlyExtractor(object):
         self.bgModel.updateModelWithBgImages(bgList)
 
     def generateBackgroundModel(self):
-        self.generateRecordingRanges(self.videoFolder)
         self.filterBackgroundDates(self.backgroundFolder)
         self.loadBGImagesIntoBackgroundModel()
 
     def extractPatches(self):
-        if self.checkIfSectionWasProcessed(self.recIdx, runIdx):
+        self.generateRecordingRanges(self.videoFolder)
+        if self.checkIfSectionWasProcessed(self.recIdx, self.runIdx):
             return
-        
+
         self.generateBackgroundModel()
         self.filterFileList()
         print(self.fileList)
@@ -267,7 +267,7 @@ class FlyExtractor(object):
 
     def checkIfSectionWasProcessed(self, recIdx, runIdx):
         self.runIdx = runIdx
-        self.recIdx = self.recIdx
+        self.recIdx = recIdx
         self.filterFileList()
 
         res = True
