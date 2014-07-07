@@ -5,9 +5,11 @@ import cPickle as pickle
 import time
 import pyTools.videoProc.annotation as Annotation
 import pyTools.misc.basic as bsc
+import pyTools.legion.clusterFeatureExtractor as CFE
 import warnings
 import json
 import copy
+import os
 
         
     
@@ -33,6 +35,23 @@ def minutes2Time(rawMinutes):
     minutes = rawMinutes % 60
     second = 0    
     return days, hours, minutes, second
+
+def provideFileList(baseFolder, featFolder, vial, ending='.pos.npy'):
+    fileList  = []
+    posList = []
+    print("scaning files...")
+    for root,  dirs,  files in os.walk(baseFolder):
+        # if os.path.split(root)[1] == featFolder:
+        if root[-len(featFolder):] == featFolder:
+            for f in files:
+                if f.endswith(ending):
+                    if int(f[-(len(ending) + 1)]) == vial:
+                        fullPath = root + '/' + f
+                        fileList.append(fullPath)
+
+    fileList = sorted(fileList)
+    print("scaning files done")
+    return fileList
 
 
 
@@ -460,7 +479,7 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
         
                     
     def flatten(self):
-        data = np.empty((self.totalNoFrames))
+        data = None
         ranges = dict()        
         
         cnt = 0
@@ -481,6 +500,14 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                         continue
                         
                     frames = self.tree[day][hour][minute]['data']
+
+                    if data is None:
+                        if len(frames.shape) > 1:
+                            data = np.empty((self.totalNoFrames, frames.shape[1]))
+                        else:
+                            data = np.empty((self.totalNoFrames, ))
+
+
                     rng = slice(cnt,cnt+frames.shape[0])
                     data[rng] = frames
                     
@@ -776,17 +803,17 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
         
         self.plotData['days'] = dict()
         stack = self.getStackFromStump(self.tree)
-        self.plotData['days']['data'] = np.asarray(stack).T
+        self.plotData['days']['data'] = np.asarray(stack)#.T
         self.plotData['days']['weight'] = 0
         
         self.plotData['hours'] = dict()
         stack = self.getStackFromStump(self.tree[day])
-        self.plotData['hours']['data'] = np.asarray(stack).T
+        self.plotData['hours']['data'] = np.asarray(stack)#.T
         self.plotData['hours']['weight'] = 0
         
         self.plotData['minutes'] = dict()
         stack = self.getStackFromStump(self.tree[day][hour])
-        self.plotData['minutes']['data'] = np.asarray(stack).T
+        self.plotData['minutes']['data'] = np.asarray(stack)#.T
         self.plotData['minutes']['weight'] = 0
         
         
@@ -805,18 +832,19 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
         
         data = data.astype(np.int) #self.tree[day][hour][minute]['data'].astype(np.int)
         
-        res = np.zeros((self.maxClass, np.ceil(data.shape[0] / 
-                                          np.float(frameResolution))))
+        res = np.zeros((np.ceil(data.shape[0] / np.float(frameResolution)),
+                        self.maxClass))
         rng = slice(0, frameResolution)
         
-        for i in range(res.shape[1]):
-            res[:, i] = self.calcStack(data[rng])
+        for i in range(res.shape[0]):
+            res[i,:] = self.calcStack(data[rng])
             rng = slice(rng.stop, rng.stop + frameResolution)
         
 
         plotData['data'] = res
         plotData['weight'] = np.ones((res.shape[1]))
         plotData['tick'] = range(0, data.shape[0], frameResolution)
+
             
                      
        
@@ -866,7 +894,75 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
         return occurranceList
 
 
-                     
+class FrameDataVisualizationTreeFeature(FrameDataVisualizationTreeArrayBase):
+    def __init__(self, featPath, featExt):
+        super(FrameDataVisualizationTreeFeature, self).__init__()
+        self.clfFeat = CFE.featureDesc(featPath, featExt)
+
+
+    def importFeatures(self, baseFolder, vial, runningIndeces=False):
+        clfyList = provideFileList(baseFolder, self.clfFeat.path, vial, self.clfFeat.ext)
+
+        self.resetAllSamples()
+
+
+        for f in clfyList:
+            try:
+                data = np.load(f)
+            except IOError, e:
+                if str(e) == '[Errno 22] Invalid argument':
+                    warnings.warn("skipping {f}, because of invalid file".format(f=f))
+                    continue
+                else:
+                    raise e
+
+            if not runningIndeces:
+                day, hour, minute, second = filename2Time(f)
+            else:
+                day, hour, minute, second = filename2TimeRunningIndeces(f)
+
+            self.insertFrameArray(day, hour, minute, data)
+
+
+
+class FrameDataVisualizationTreeClassifier(FrameDataVisualizationTreeBehaviour):
+    def __init__(self, featPath):
+        super(FrameDataVisualizationTreeClassifier, self).__init__()
+        self.clfFeat = CFE.featureDesc(featPath, '.cls.npy')
+
+
+    def importAnnotations(self, baseFolder, annotations, vial, runningIndeces=False):
+        clfyList = provideFileList(baseFolder, self.clfFeat.path, vial, self.clfFeat.ext)
+
+        self.resetAllSamples()
+
+
+        for f in clfyList:
+
+            data = np.load(f)
+
+            if not runningIndeces:
+                day, hour, minute, second = filename2Time(f)
+            else:
+                day, hour, minute, second = filename2TimeRunningIndeces(f)
+
+            self.insertFrameArray(day, hour, minute, data)
+        # super(FrameDataVisualizationTreeClassifier, self).importFeatures(baseFolder,
+        #                                                                     vial,
+        #                                                                     runningIndeces=False)
+
+        filtList = []
+        for i in range(len(annotations)):
+            annotator = annotations[i]["annot"]
+            behaviour = annotations[i]["behav"]
+            filtList += [Annotation.AnnotationFilter([vial],
+                                                          [annotator],
+                                                          [behaviour])]
+
+        self.tree['meta']['filtList'] = filtList
+        self.maxClass = len(filtList) #+ 1
+
+
 class FrameDataVisualizationTreeTrajectories(\
                                         FrameDataVisualizationTreeArrayBase):
 #     def filename2Time(self, f):
@@ -885,7 +981,7 @@ class FrameDataVisualizationTreeTrajectories(\
             posMat = np.load(f)    
             data = np.empty(posMat.shape[0])
             for i in range(posMat.shape[0]):
-                curPos = posMat[i][vial]
+                curPos = posMat[i]#[vial]
                 diff = abs(curPos - tmpPos)
                 data[i] = np.sum(diff)
                 tmpPos = curPos
@@ -896,8 +992,10 @@ class FrameDataVisualizationTreeTrajectories(\
     
     
     def load(self, filename):
-        with open(filename, "rb") as f:
-            self.tree = pickle.load(f) 
+        # with open(filename, "rb") as f:
+        #     self.tree = pickle.load(f)
+
+        super(FrameDataVisualizationTreeTrajectories, self).load(filename)
         self.range = [0, self.tree['meta']['max']]
         
 class FrameDataView:    
@@ -1203,7 +1301,7 @@ class FrameDataView:
             data[smallLoc] = np.ceil(acc * thresh)
             
             return data                                
-            
+
         data = amplifySmallValues(data, 0.05)
         
         ind = range(data.shape[1])

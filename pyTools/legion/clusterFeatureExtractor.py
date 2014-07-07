@@ -249,11 +249,11 @@ class ClusterFeatureExtratorBase(object):
         while params:
             baseString += " {{{0}}}".format(params.popitem(last=False)[0])
 
-        baseString += '\n'
+        baseString += " {addParams}\n"
 
         return baseString
 
-    def generateScriptConfigString(self, noPerBatch):
+    def generateScriptConfigString(self, noPerBatch, additionalParams):
         cfgString = ''
         baseString = self.generateBaseString()
 
@@ -270,6 +270,7 @@ class ClusterFeatureExtratorBase(object):
                                                i,
                                                stop,
                                                self.baseFolder,
+                                               addParams=additionalParams,
                                                **self.params)
                 cnt += 1
 
@@ -277,14 +278,14 @@ class ClusterFeatureExtratorBase(object):
 
 
 
-    def generateConfig(self, filename, noPerBatch=100):
-        cfgString = self.generateScriptConfigString(noPerBatch)
+    def generateConfig(self, filename, noPerBatch=100, additionalParams=''):
+        cfgString = self.generateScriptConfigString(noPerBatch, additionalParams)
         with open(filename, "w") as f:
             f.write(cfgString)
 
 
     ############## VIRTUAL FUNCTIONS ###################
-    def calculateFeatures(self, paths, loc, **params):
+    def calculateFeatures(self, paths, loc, v, **params):
         print paths
         print loc
         print params
