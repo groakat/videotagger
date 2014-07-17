@@ -1296,12 +1296,13 @@ class FrameDataView:
                           activeBar=None):
 
         def amplifySmallValues(datak, thresh):
-            acc = np.max(np.sum(data, axis=0))  
+            acc = np.max(np.sum(data, axis=0))
             smallLoc = np.bitwise_and(data < (acc * thresh), data != 0)        
             data[smallLoc] = np.ceil(acc * thresh)
             
             return data                                
 
+        data = data.T # stupid fix, could also adjust all indeces below
         data = amplifySmallValues(data, 0.05)
         
         ind = range(data.shape[1])

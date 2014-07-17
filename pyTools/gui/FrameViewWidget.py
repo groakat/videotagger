@@ -213,8 +213,7 @@ class TestClass(QtGui.QMainWindow):
         QtGui.QMainWindow.__init__(self)
         self.ui = FrameViewWidget(self)
 #         self.ui.setupUi(self)
-        self.show()   
-        
+        self.show()
 
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
