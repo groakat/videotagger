@@ -122,6 +122,8 @@ class videoPlayer(QtGui.QMainWindow):
         
         
         self.croppedVideo = croppedVideo
+        self.cropWidth = 64
+        self.cropHeight = 32
         
         if croppedVideo:
             videoEnding = ".v{0}{1}".format(selectedVial, videoEnding)
@@ -664,19 +666,34 @@ class videoPlayer(QtGui.QMainWindow):
         
         
     @cfg.logClassFunction#Info
-    def setCropCenter(self, x, y, width=None, increment=None):        
+    def setCropCenter(self, x, y, width=None, height=None, increment=None):
         if width != None and increment != None:
             raise ValueError("width and increment cannot be both specified")
         cfg.log.debug("width: {0}, increment {1}".format(width, increment))
-        if width == None: 
-            width = 64
-            
-        if increment != None:
+        if width is None:
+            width = self.cropWidth
+        else:
+            self.cropWidth = width
+
+        if height is None:
+            height = self.cropHeight
+        else:
+            self.cropHeight = height
+
+
+        # self.cropWidth = 64
+        # self.cropHeight = 32
+
+        if increment is not None:
             width += (increment / 10) 
             if width < 0:
                 width = 2
+
+            height += (increment / 10)
+            if height < 0:
+                height = 2
                 
-        if x == None:        
+        if x is None:
             self.prevXCrop = slice(None, None)
         else:
             if x-width/2 < 0:
@@ -684,7 +701,7 @@ class videoPlayer(QtGui.QMainWindow):
             else:
                 start = x-width/2
                 
-            if self.templateFrame != None:
+            if self.templateFrame is not None:
                 if x+width/2 > self.templateFrame.shape[1]:
                     stop = self.templateFrame.shape[1]
                 else:
@@ -694,34 +711,34 @@ class videoPlayer(QtGui.QMainWindow):
             
             self.prevXCrop = slice(start, stop)
             
-        if y == None:
+        if y is None:
             self.prevYCrop = slice(None, None)
         else:
-            if y-width/2 < 0:
+            if y-height/2 < 0:
                 start = 0
             else:
-                start = y-width/2
+                start = y-height/2
                 
-            if self.templateFrame != None:
-                if y+width/2 > self.templateFrame.shape[0]:
+            if self.templateFrame is not None:
+                if y+height/2 > self.templateFrame.shape[0]:
                     stop = self.templateFrame.shape[0]
                 else:
-                    stop = y+width/2
+                    stop = y+height/2
             else:
-                stop = y+width/2
+                stop = y+height/2
             
             self.prevYCrop = slice(start, stop)
             
-        if x == None or y == None:
+        if x is None or y is None:
             self.cropRect.setPos(-1000, -1000)            
             return
             
         x -= width / 2 
-        y -= width / 2
+        y -= height / 2
 #         
         
             
-        self.cropRect.setRect(0,0, width, width)
+        self.cropRect.setRect(0,0, height, width)
         self.cropRect.setPos(x, y)
         r = self.cropRect.rect()
             
