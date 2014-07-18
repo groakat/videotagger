@@ -7,21 +7,29 @@ class MouseFilterObj(QtCore.QObject):
         QtCore.QObject.__init__(self)
         self.parent = parent
         self.increment = 0
+        self.isRectangleOpen = False
         
     @cfg.logClassFunction
     def eventFilter(self, obj, event):
         cfg.log.debug("mouse event!!!!!!!!!!!!!! {0}".format(event.type()))
-        if (event.type() == QtCore.QEvent.GraphicsSceneMouseMove):
-            self.parent.setCropCenter(int(event.scenePos().x()), 
-                                      int( event.scenePos().y()),
-                                      increment = self.increment)
+        if event.type() == QtCore.QEvent.Type.GraphicsSceneMouseRelease:
+            self.parent.clickInScene(int(event.scenePos().x()),
+                                          int( event.scenePos().y()))
+
+        if event.type() == QtCore.QEvent.GraphicsSceneMouseMove:
+            self.parent.moveInScene(int(event.scenePos().x()),
+                                      int( event.scenePos().y()))
+            #
+            # self.parent.setCropCenter(int(event.scenePos().x()),
+            #                           int( event.scenePos().y()),
+            #                           increment = self.increment)
 
             
-        if (event.type() == QtCore.QEvent.Leave):
+        if event.type() == QtCore.QEvent.Leave:
             self.parent.setCropCenter(None, None, increment=self.increment)
             
-        if (event.type() == QtCore.QEvent.GraphicsSceneWheel):
-            self.increment -= event.delta()
+        if event.type() == QtCore.QEvent.GraphicsSceneWheel:
+            self.parent.mouseWheelInScene(event.delta())
             
         return False
     

@@ -124,7 +124,9 @@ class videoPlayer(QtGui.QMainWindow):
         self.croppedVideo = croppedVideo
         self.cropWidth = 64
         self.cropHeight = 32
-        
+        self.cropIncrement = 0
+        self.isCropRectOpen = False
+
         if croppedVideo:
             videoEnding = ".v{0}{1}".format(selectedVial, videoEnding)
         
@@ -685,11 +687,11 @@ class videoPlayer(QtGui.QMainWindow):
         # self.cropHeight = 32
 
         if increment is not None:
-            width += (increment / 10) 
+            width += (self.cropWidth / float(self.cropWidth + self.cropHeight) * increment / 5)
             if width < 0:
                 width = 2
 
-            height += (increment / 10)
+            height += (self.cropHeight / float(self.cropWidth + self.cropHeight) * increment / 5)
             if height < 0:
                 height = 2
                 
@@ -738,15 +740,45 @@ class videoPlayer(QtGui.QMainWindow):
 #         
         
             
-        self.cropRect.setRect(0,0, height, width)
+        self.cropRect.setRect(0,0, width, height)
         self.cropRect.setPos(x, y)
         r = self.cropRect.rect()
             
-        cfg.log.debug("after width: {0}, increment {1}, rect {2}".format(width, increment, r))
+        cfg.log.info("after width: {0}, height: {3}, increment {1}, rect {2}".format(width, increment, r, height))
         
-        
-            
-        
+
+    def openNewCropRectangle(self, x, y):
+        self.cropX = x
+        self.cropY = y
+        self.cropWidth = 0
+        self.cropHeight = 0
+
+    def resizeCropRectangle(self, x, y):
+        self.cropWidth = x - self.cropX
+        self.cropHeight = y - self.cropY
+        self.setCropCenter(x - self.cropWidth/2.0, y - self.cropHeight/2.0,
+                           self.cropWidth, self.cropHeight)
+
+    def closeNewCropRectangle(self, x, y):
+        self.resizeCropRectangle(x, y)
+        self.cropIncrement = 0
+
+    def clickInScene(self, x, y):
+        if not self.isCropRectOpen:
+            self.openNewCropRectangle(x,y)
+            self.isCropRectOpen = True
+        else:
+            self.closeNewCropRectangle(x,y)
+            self.isCropRectOpen = False
+
+    def moveInScene(self, x, y):
+        if self.isCropRectOpen:
+            self.resizeCropRectangle(x, y)
+        else:
+            self.setCropCenter(x, y, increment = self.cropIncrement)
+
+    def mouseWheelInScene(self, delta):
+        self.cropIncrement -= delta
         
     @cfg.logClassFunction
     def updateFrameList(self, intList):
