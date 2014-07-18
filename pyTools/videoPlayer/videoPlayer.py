@@ -419,7 +419,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.pb_check4requests.setVisible(False)
         
         
-    def createAnnoView(self, xPos, yPos, width, height, idx):                
+    def createAnnoView(self, width, height, idx):
         w = QtGui.QWidget(self)
         
         # AnnoView
@@ -479,7 +479,7 @@ class videoPlayer(QtGui.QMainWindow):
             self.annotations[i]["color"].setAlphaF(0.8)
             
             
-            w = self.createAnnoView(xPos, yPos, width, height, i)
+            w = self.createAnnoView(width, height, i)
             title = "Annotation View: {a}: {b}".format(\
                                                 a=self.annotations[i]['annot'],
                                                 b=self.annotations[i]['behav'])
@@ -1364,10 +1364,35 @@ class videoPlayer(QtGui.QMainWindow):
         if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
             self.fdvt.save(self.fdvtPath) 
 
+
         
     def testFunction(self):
         cfg.log.debug("testFunction")
-        1/0
+
+        self.addNewAnnotation(Annotation.AnnotationFilter([0],
+                                            ["Peter"],
+                                            ["shit"]),
+                             QtGui.QColor(0,0,0))
+
+
+    ### new stuff
+
+    def addNewAnnotation(self, af, color):
+        self.annotations += [{'annot': af.annotators,
+                              'behav': af.behaviours,
+                              'color': color}]
+
+        height = 10
+        width = 1000
+        i = len(self.annotations) - 1
+
+        w = self.createAnnoView(width, height, i)
+        title = "Annotation View: {a}: {b}".format(\
+                                            a=self.annotations[i]['annot'],
+                                            b=self.annotations[i]['behav'])
+        self.annoViewCol.addWidget(w, title)
+
+
 #         self.increment = 40
 #         self.rpcIH.getNextJob()
         
@@ -1528,7 +1553,21 @@ class videoPlayer(QtGui.QMainWindow):
     
     def aboutToQuit(self):
         self.exit()
-        
+
+
+class ContextLineEdit(QtGui.QLineEdit):
+
+    def __init__(self, *args, **kwargs):
+        super(ContextLineEdit, self).__init__(*args, **kwargs)
+        self.comp = QtGui.QCompleter([""], self)
+        self.comp.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        self.setCompleter(self.comp)#
+        self.setModel(["hallo", "world", "we", "are"])
+
+    def setModel(self, strList):
+        self.comp.model().setStringList(strList)
+
+
         
 if __name__ == "__main__":
     
