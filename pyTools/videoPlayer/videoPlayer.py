@@ -302,7 +302,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.colCont = CC.collapseContainer(width= 1200)        
         self.setCentralWidget(self.colCont)
         
-        self.colCont.addWidget(self.glw, "Video View", height=self.videoHeight+ 30)
+        self.colCont.addWidget(self.glw, "Video View", height=self.videoHeight)# + 30)
         self.colCont.addWidget(self.prevFramesWidget, "frame preview")
         self.colCont.addWidget(self.annoViewCol, "annotation views")
         self.colCont.addWidget(self.controlWidget, "control elements")
@@ -371,8 +371,8 @@ class videoPlayer(QtGui.QMainWindow):
     def createVideoDisplayWidget(self):
         w = QtGui.QWidget(self)
         
-        height = self.vialRoi[self.selectedVial[0]][1] - \
-                    self.vialRoi[self.selectedVial[0]][0]
+        # height = self.vialRoi[self.selectedVial[0]][1] - \
+        #             self.vialRoi[self.selectedVial[0]][0]
                     
         layout = QtGui.QHBoxLayout()
         layout.addWidget(self.glw)
@@ -1090,7 +1090,7 @@ class videoPlayer(QtGui.QMainWindow):
             px = QtGui.QPixmap.fromImage(im)
             
         else:
-            h = 0
+            h = 250
             w = 0            
             
         
@@ -1136,7 +1136,7 @@ class videoPlayer(QtGui.QMainWindow):
         
         
         self.glw = QtOpenGL.QGLWidget(fmt)
-        self.glw.setFixedHeight(h + 50)
+        # self.glw.setFixedHeight(h + 50)
         
         
 #         glw.setMouseTracking(True)
@@ -1153,8 +1153,9 @@ class videoPlayer(QtGui.QMainWindow):
 #         self.lbl_v0.setAcceptHoverEvents(True)
 #         self.videoScene.setAcceptHoverEvents(True)
         self.videoScene.installEventFilter(self.mouseEventFilter)
-        
+
         self.videoHeight = h + 50
+
         
         
         geo = QtCore.QRectF(0, 0, 64, 64)

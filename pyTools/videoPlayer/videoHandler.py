@@ -1011,7 +1011,7 @@ class VideoHandler(QtCore.QObject):
     @cfg.logClassFunction
     def saveAll(self):
         for key in self.annoDict:
-            tmpFilename = '.'.join(key.split(".")[:2]) + ".bhvr"
+            tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr"
             self.annoDict[key].annotation.saveToFile(tmpFilename)
             
             
