@@ -993,11 +993,15 @@ class videoPlayer(QtGui.QMainWindow):
             filt = Annotation.AnnotationFilter(None, 
                                             [self.annotations[i]["annot"]],
                                             [self.annotations[i]["behav"]])
-            tmpAnno  = self.tmpAnnotation.filterFrameList(filt)      
+            tmpAnno  = self.tmpAnnotation.filterFrameList(
+                                    filt,
+                                    exactMatch=False)
             
             if tmpAnno.frameList[0][sv] == None:
                 continue
-                         
+
+            # print tmpAnno.frameList[0][sv]
+
             bb = Annotation.getPropertyFromFrameAnno(tmpAnno.frameList[0][sv], 
                                                      "boundingBox")
             
@@ -1518,27 +1522,8 @@ class videoPlayer(QtGui.QMainWindow):
                                 "confidence": confidence}))
         
         if not self.annoIsOpen:
-            self.confidence = confidence     
-#                                 
-#         if self.rewindOnClick:
-#             if not self.rewinding:
-#                 self.initRewind()
-#                 
-#                 ##
-#             else:
-#                 labelledFrames = self.vh.addAnnotation(self.selectedVial, 
-#                                                        annotator, 
-#                                       behaviour, metadata=self.getMetadata())
-#                 
-#                 if oneClickAnnotation:                
-#                     labelledFrames = self.vh.addAnnotation(self.selectedVial, 
-#                                                            annotator, 
-#                                       behaviour, metadata=self.getMetadata())
-#                 
-#                 self.stopRewind()
-#                     
-#         
-#         else:    
+            self.confidence = confidence
+
         labelledFrames = self.vh.addAnnotation(self.selectedVial, annotator, 
                               behaviour, metadata=self.getMetadata())
             
@@ -1549,7 +1534,6 @@ class videoPlayer(QtGui.QMainWindow):
         self.annoIsOpen = not self.annoIsOpen
         
         if labelledFrames != (None, None):
-#             if self.isLabelingSingleFrame:
             self.convertLabelListAndReply(labelledFrames)
         
     def convertLabelListAndReply(self, labelledFrames):

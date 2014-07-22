@@ -830,7 +830,56 @@ class VideoHandler(QtCore.QObject):
                 self.tempValue[key][idx] =  metadata
                 
         self.annoEnd = curAnnoEnd
-        
+
+    def getHighestBehaviourNumber(self, bhvrs):
+        maxN = 0
+
+        for bhvr in bhvrs:
+            n = bhvr.split("_")[-1]
+            try:
+                n = int(n)
+            except:
+                continue
+
+            if maxN < n:
+                maxN = n
+
+        return maxN
+
+    @cfg.logClassFunction
+    def disambiguateDoubleBehaviourNames(self, vials, annotator, behaviour,
+                                         rng):
+
+        filt = Annotation.AnnotationFilter(vials, [annotator], [behaviour])
+
+        annos = []
+        for key in rng:
+            annos += [self.annoDict[key].annotation.filterFrameList(
+                                                            filt,
+                                                            rng[key],
+                                                            exactMatch=False)]
+
+        maxCounter = 0
+        for anno in annos:
+            for frame in anno.frameList:
+                if frame is None:
+                    continue
+
+                for lbl in frame:
+                    if lbl is None:
+                        continue
+
+                    nMaxBehaviour = self.getHighestBehaviourNumber(
+                                            lbl['behaviour'].keys())
+                    if maxCounter < nMaxBehaviour:
+                        maxCounter = nMaxBehaviour
+
+
+        if maxCounter > 0:
+            return "{bvhr}_{no}".format(bvhr=behaviour, no=maxCounter + 1)
+
+        return behaviour
+
     @cfg.logClassFunction
     def addAnnotation(self, vials, annotator, behaviour, metadata):
         for aV in self.annoViewList:
@@ -843,7 +892,8 @@ class VideoHandler(QtCore.QObject):
                     if vials == aV.vialNo:
                         cfg.log.debug("calling aV.addAnno()")
                         aV.addAnno(self.posPath, self.idx, metadata)
-                        
+
+
         if vials == None:
             vials = [None]
             
@@ -880,7 +930,10 @@ class VideoHandler(QtCore.QObject):
                 lenFunc = lambda x: len(x.annotation.frameList)#[0])
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
-                            
+
+
+                behaviour = self.disambiguateDoubleBehaviourNames(vials, annotator, behaviour, rng)
+
                 for key in rng:
                     for v in vials:
                         self.annoDict[key].annotation.addAnnotation(v, rng[key], 

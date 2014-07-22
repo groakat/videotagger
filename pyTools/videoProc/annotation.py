@@ -102,8 +102,24 @@ class Annotation():
                 frames += [frameNo]
         
         return frames
-    
-    def filterFrameList(self, filterTuple): #vialNo=None, behaviourName=None, annotator=None):
+
+    def behaviourMatch(self, bhvrName, bhvrList, exactMatch=True):
+        if exactMatch:
+            if bhvrName in bhvrList:
+                return [bhvrName]
+            else:
+                return []
+        else:
+            res = []
+            for bhvr in bhvrList:
+                if bhvrName in bhvr:
+                    res += [bhvr]
+
+            return res
+
+
+
+    def filterFrameList(self, filterTuple, frameRange=None, exactMatch=True): #vialNo=None, behaviourName=None, annotator=None):
         """
         Returns a new annotation object that contains only annotations that 
         satisfy all filter criteria.
@@ -135,6 +151,9 @@ class Annotation():
                                     do not filter any specific annotator
                                 list of strings:
                                     annotators to be filtered for
+
+            frameRange (list of int):
+                                frames in which the filterTuple is searched for
                                     
         Returns:
             new annotator object satisfying the filter criteria
@@ -144,16 +163,20 @@ class Annotation():
         behaviourName = filterTuple.behaviours
         annotator = filterTuple.annotators
         
-        if vialNo is None:
+        if vialNo is None\
+        or vialNo == [None]:
             vials = range(len(self.frameList[0]))
         elif type(vialNo) == int:
             vials = [vialNo]
         else:
             # asuming vialNo to be a list
             vials = vialNo
+
+        if frameRange is None:
+            frameRange = range(len(self.frameList))
             
         filteredList = []
-        for frameNo in range(len(self.frameList)):
+        for frameNo in frameRange:
             behaviourPresent = False
             newVials = []
             
@@ -170,9 +193,13 @@ class Annotation():
                     else:
                         bhvrList = behaviourName
                     
-                    for bhvrName in bhvrList:                        
-                        if bhvrName in v["behaviour"]:
-                            bhvr = v["behaviour"][bhvrName]   
+                    for bhvrName in bhvrList:
+                        matchList = self.behaviourMatch(bhvrName, v["behaviour"].keys(),
+                                               exactMatch=exactMatch)
+
+                        for bhvrMatch in matchList:
+                        # if bhvrName in v["behaviour"]:
+                            bhvr = v["behaviour"][bhvrMatch]
                             an = dict()
                             
                             if annotator is None:
@@ -185,7 +212,7 @@ class Annotation():
                                     an[anName] = bhvr[anName]
                             
                             if an:
-                                bNew[bhvrName] = an
+                                bNew[bhvrMatch] = an
                                 
                     if bNew:
                         if "name" in v:
