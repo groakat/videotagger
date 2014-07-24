@@ -1119,6 +1119,22 @@
     </widget>
    </widget>
   </widget>
+  <widget class="QCheckBox" name="cb_edit">
+   <property name="geometry">
+    <rect>
+     <x>1130</x>
+     <y>720</y>
+     <width>91</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>editmode</string>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+  </widget>
  </widget>
  <customwidgets>
   <customwidget>

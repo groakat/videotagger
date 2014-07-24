@@ -16,6 +16,7 @@ import pyTools.videoPlayer.videoHandler as VH
 import pyTools.videoPlayer.dataLoader as DL
 import pyTools.videoPlayer.annoView as AV
 import pyTools.videoProc.annotation as Annotation
+import pyTools.videoPlayer.modifyableRect as MR
 import pyTools.system.misc as systemMisc
 import pyTools.misc.config as cfg
 import pyTools.videoPlayer.eventFilter as EF
@@ -107,6 +108,7 @@ class videoPlayer(QtGui.QMainWindow):
         # Set up the user interface from Designer.
         self.ui = Ui_Form()
         self.ui.setupUi(self)
+
         self.ui.cb_trajectory.setChecked(True)
         
         
@@ -126,6 +128,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.cropHeight = 32
         self.cropIncrement = 0
         self.isCropRectOpen = False
+        self.inEditMode = True
 
         if croppedVideo:
             videoEnding = ".v{0}{1}".format(selectedVial, videoEnding)
@@ -252,9 +255,10 @@ class videoPlayer(QtGui.QMainWindow):
                             {"message":'"--------- opened GUI ------------"'})) 
         
         self.setCropCenter(None, None)
-        
+
+        self.firstLoop = True
         self.selectVideo(startIdx)
-        self.startLoop.emit()
+        # self.startLoop.emit()
         self.stopPlayback()
         
         
@@ -267,6 +271,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.pb_eraseAnno.clicked.connect(self.eraseAnno)
         self.ui.pb_connect2server.clicked.connect(self.connectToServer)
         self.ui.pb_check4requests.clicked.connect(self.check4Requests)
+        self.ui.cb_edit.toggled.connect(self.editToggle)
         
         self.ui.sldr_paths.valueChanged.connect(self.selectVideo)
         self.ui.lv_frames.activated.connect(self.selectFrame)
@@ -344,6 +349,7 @@ class videoPlayer(QtGui.QMainWindow):
         layout.addWidget(self.ui.pb_test)
         layout.addWidget(self.ui.pb_addAnno)
         layout.addWidget(self.ui.pb_eraseAnno)
+        layout.addWidget(self.ui.cb_edit)
         
         w.setLayout(layout)
         w.show()
@@ -418,6 +424,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.lv_paths.setCurrentIndex(self.lm.index(0,0))
         
         self.createAnnoViews()
+        self.setupLabelMenu()
         
         
         self.ui.pb_check4requests.setVisible(False)
@@ -764,6 +771,9 @@ class videoPlayer(QtGui.QMainWindow):
         self.cropIncrement = 0
 
     def clickInScene(self, x, y):
+        if self.inEditMode:
+            return
+
         if not self.isCropRectOpen:
             self.openNewCropRectangle(x,y)
             self.isCropRectOpen = True
@@ -891,14 +901,29 @@ class videoPlayer(QtGui.QMainWindow):
     def positionAnnotationRoi(self, rois):
         while len(self.annotationRoiLabels) < len(rois):
             rect = QtCore.QRectF(0, 0, 64, 64)
-            self.annotationRoiLabels += [self.videoScene.addRect(rect)]
+
+            # anRect
+
+            anRect = MR.LabelRectItem(self.menu,
+                                              self.registerLastLabelRectContext,
+                                              '',
+                                              rectChangedCallback=self.labelRectChangedSlot)
+            anRect.setRect(rect)
+            # anRect.setColor(penCol)
+            anRect.setResizeBoxColor(QtGui.QColor(255,255,255,50))
+            anRect.setupInfoTextItem(fontSize=10)
+            self.videoScene.addItem(anRect)
+            self.annotationRoiLabels += [anRect]
+
+            if not self.inEditMode:
+                anRect.deactivate()
             
         usedRoi = 0
         
         cfg.log.debug("Rois: {0}".format(rois))
         for i in range(len(rois)):        
             x1, y1, x2, y2 = rois[i][0]
-            color = rois[i][1]
+            color = rois[i][1]['color']
             
             width = x2 - x1
             height = y2 - y1
@@ -909,7 +934,10 @@ class videoPlayer(QtGui.QMainWindow):
                                                                    height / 2))
             self.annotationRoiLabels[i].setRect(0,0, width / 2, height / 2)
             self.annotationRoiLabels[i].setPos(x1/2, y1/2)
-            self.annotationRoiLabels[i].setPen(QtGui.QPen(color))
+            self.annotationRoiLabels[i].setColor(color)
+            self.annotationRoiLabels[i].setInfoString("{a}:\n{b}".format(
+                                                    a=rois[i][1]['annot'],
+                                                    b=rois[i][1]['behav']))
              
             cfg.log.debug("set rect to: {0}".format(self.annotationRoiLabels[i].rect()))
             usedRoi = i + 1
@@ -1010,7 +1038,7 @@ class videoPlayer(QtGui.QMainWindow):
                 # anything
                 if None in b:
                     continue
-                rois += [[b, self.annotations[i]["color"]]]
+                rois += [[b, self.annotations[i]]]
                 
         self.positionAnnotationRoi(rois)
         
@@ -1068,7 +1096,89 @@ class videoPlayer(QtGui.QMainWindow):
         lbl.update()
         
         return img
-        
+
+
+    ##### MOVEABLE RECT
+    def setupLabelMenu(self):
+        wa = QtGui.QWidgetAction(self)
+        self.cle = MR.ContextLineEdit(wa, self)
+
+        labels = []
+
+        for i in range(len(self.annotations)):
+            labels += ["{a}: {b}".format(a=self.annotations[i]['annot'],
+                                         b=self.annotations[i]['behav'])]
+
+        self.cle.setModel(labels)
+
+        wa.setDefaultWidget(self.cle)
+
+        self.menu = QtGui.QMenu(self)
+        delAction = self.menu.addAction("delete")
+        self.menu.addAction(wa)
+
+        delAction.triggered.connect(self.deleteLabel)
+        wa.triggered.connect(self.lineEditChanged)
+
+
+    def deleteLabel(self):
+        self.activeLabel = self.labelRects.index(self.lastLabelRectContext)
+        self.deteleActiveLabel()
+
+    def lineEditChanged(self):
+        print "lineEditChanged", self.lastLabelRectContext
+        self.menu.hide()
+        c = self.cle.text()
+
+        self.lastLabelRectContext.setColor(self.labelTypes[c])
+        self.lastLabelRectContext.setInfoString(c)
+        self.rectClasses[self.lastLabelRectContext] = c
+        self.contentChanged = True
+
+    def registerLastLabelRectContext(self, labelRect):
+        self.lastLabelRectContext = labelRect
+
+    def labelRectChangedSlot(self):
+        self.contentChanged = True
+
+
+    def deactivateAllLabelRects(self):
+        for lr in self.annotationRoiLabels:
+            if lr:
+                lr.deactivate()
+
+    def activateAllLabelRects(self):
+        for lr in self.annotationRoiLabels:
+            if lr:
+                lr.activate()
+
+    def activateEditMode(self):
+        self.activateAllLabelRects()
+        self.inEditMode = True
+        self.isCropRectOpen = False
+        self.cropRect.setVisible(False)
+        self.stopVideo()
+
+    def deactivateEditMode(self):
+        self.deactivateAllLabelRects()
+        self.inEditMode = False
+        self.cropRect.setVisible(True)
+        self.increment = 0
+        if not self.play:
+            self.startVideo()
+
+    def editToggle(self, state):
+        if state:
+            self.activateEditMode()
+        else:
+            self.deactivateEditMode()
+
+    def addCropRect(self):
+        geo = QtCore.QRectF(0, 0, 64, 64)
+        penCol = QtGui.QColor()
+        penCol.setHsv(50, 255, 255, 255)
+        self.cropRect = self.videoScene.addRect(geo, QtGui.QPen(penCol))
+
     @cfg.logClassFunction
     def setBackground(self, path=None):
         
@@ -1159,14 +1269,8 @@ class videoPlayer(QtGui.QMainWindow):
         self.videoScene.installEventFilter(self.mouseEventFilter)
 
         self.videoHeight = h + 50
-
-        
-        
-        geo = QtCore.QRectF(0, 0, 64, 64)
-        penCol = QtGui.QColor()
-        penCol.setHsv(50, 255, 255, 255)
-        self.cropRect = self.videoScene.addRect(geo, QtGui.QPen(penCol))
-#         self.videoView.setCursor(QCursor(Qt.CrossCursor))
+        self.addCropRect()
+        self.videoView.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
         
         
     @QtCore.Slot()
@@ -1230,7 +1334,11 @@ class videoPlayer(QtGui.QMainWindow):
                                 cfg.Back.YELLOW + 
                                 "mainloop overflow after processEvents(): {0}ms".format(
                                         dieTime.msecsTo(QtCore.QTime.currentTime())))
-#             else:                
+
+            if self.firstLoop:
+                self.firstLoop = False
+                self.deactivateEditMode()
+#             else:
 #                 self.thread().msleep(QtCore.QTime.currentTime().msecsTo(dieTime))
                 
         self.vh.loadProgressive = False
@@ -1277,6 +1385,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.timer.stop()
         self.timerID = None
         self.stop = True
+        self.play = False
         self.vh.loadProgressive = False
         
     @cfg.logClassFunction
