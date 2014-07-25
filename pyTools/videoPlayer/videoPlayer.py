@@ -786,6 +786,7 @@ class videoPlayer(QtGui.QMainWindow):
             self.resizeCropRectangle(x, y)
         else:
             self.setCropCenter(x, y, increment = self.cropIncrement)
+            self.updatePreviewLabels()
 
     def mouseWheelInScene(self, delta):
         self.cropIncrement -= delta
@@ -1061,6 +1062,10 @@ class videoPlayer(QtGui.QMainWindow):
 
 
         # showing previews #
+        self.updatePreviewLabels()
+        self.vh.updateAnnotationProperties(self.getMetadata())
+
+    def updatePreviewLabels(self):
         offset = (len(self.prevFrameLbls) - 1) / 2
         self.prevFrames = []
                  
@@ -1068,8 +1073,7 @@ class videoPlayer(QtGui.QMainWindow):
             self.prevFrames += [self.vh.getTempFrame(i - offset)]
             self.updatePreviewLabel(self.prevFrameLbls[i], self.prevFrames[i][1][0][0])
              
-        
-        self.vh.updateAnnotationProperties(self.getMetadata())
+
 
         
     @cfg.logClassFunction
