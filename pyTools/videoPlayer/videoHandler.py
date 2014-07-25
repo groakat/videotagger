@@ -159,6 +159,26 @@ class VideoHandler(QtCore.QObject):
     @cfg.logClassFunction
     def getCurrentFrameNo(self):
         return self.idx
+
+    def generateFullResolutionVideoPath(self):
+        # split _small.avi / _small.mp4
+        corePath = self.posPath[:-10]
+        # append _full.avi / _full.mp4
+        fullResPath = corePath + '_full.{suf}'.format(suf=self.posPath[-3:])
+        return fullResPath
+
+    def getFullResolutionFrame(self):
+        fullResPath = self.generateFullResolutionVideoPath()
+
+        pos = self.getPosition(self.posPath, self.idx)
+
+        img = self.vE.getFrame(fullResPath, frameNo=self.idx, frameMode='RGB')
+        frame =  [[img]  * (self.maxOfSelectedVials() + 1)]
+
+        annotation = self.getCurrentAnnotation()
+
+        return [pos, frame, annotation]
+
     
     @cfg.logClassFunction
     def getFrame(self, posPath, idx, checkBuffer=False):        
@@ -189,7 +209,21 @@ class VideoHandler(QtCore.QObject):
         self.posPath = path
         
         return frame
-        
+
+
+    def getCurrentAnnotation(self):
+        if self.posPath in self.annoDict.keys():
+            if self.annoDict[self.posPath] is not None:
+                annotation = self.annoDict[self.posPath].annotation.frameList[self.idx]
+            else:
+                annotation = [[{'confidence': 0}]
+                                for i in range(self.maxOfSelectedVials() + 1)]
+        else:
+            annotation = [[{'confidence': 0}]
+                                for i in range(self.maxOfSelectedVials() + 1)]
+
+        return annotation
+
     @cfg.logClassFunction
     def getCurrentFrame(self, doBufferCheck=True, updateAnnotationViews=True,
                         posOnly=False):
@@ -243,24 +277,18 @@ class VideoHandler(QtCore.QObject):
             
             cfg.logGUI.debug(json.dumps({"key":self.posPath, 
                                      "idx":self.idx}))
-                
+
+        annotation = self.getCurrentAnnotation()
+
         frameList += [frame]
-         
-        if self.posPath in self.annoDict.keys():
-            if self.annoDict[self.posPath] is not None:
-                annotation = self.annoDict[self.posPath].annotation.frameList[self.idx]
-            else:
-                annotation = [[{'confidence': 0}] 
-                                for i in range(self.maxOfSelectedVials() + 1)]
-        else:
-            annotation = [[{'confidence': 0}] 
-                                for i in range(self.maxOfSelectedVials() + 1)]
             
         frameList += [annotation]
         
         return [pos, frame, annotation]
     
-    
+
+
+
     @cfg.logClassFunction#Info
     def getCurrentFrameUnbuffered(self, doBufferCheck=False, 
                                   updateAnnotationViews=False,
