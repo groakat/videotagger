@@ -171,6 +171,9 @@ class videoPlayer(QtGui.QMainWindow):
         self.templateFrame = None
 
         self.fullVideoDialog = None
+        self.displayingFullResolution = False
+        self.fullResFrame = None
+        self.videoSizeSmallToFullMult = 5
         
         self.rewindOnClick = rewindOnClick
         self.rewindStepSize = 500
@@ -715,8 +718,10 @@ class videoPlayer(QtGui.QMainWindow):
                 start = x-width/2
                 
             if self.templateFrame is not None:
-                if x+width/2 > self.templateFrame.shape[1]:
-                    stop = self.templateFrame.shape[1]
+                if x+width/2 > self.templateFrame.shape[1] * \
+                               self.videoSizeSmallToFullMult:
+                    stop = self.templateFrame.shape[1] * \
+                           self.videoSizeSmallToFullMult
                 else:
                     stop = x+width/2
             else:
@@ -733,8 +738,10 @@ class videoPlayer(QtGui.QMainWindow):
                 start = y-height/2
                 
             if self.templateFrame is not None:
-                if y+height/2 > self.templateFrame.shape[0]:
-                    stop = self.templateFrame.shape[0]
+                if y+height/2 > self.templateFrame.shape[0] * \
+                           self.videoSizeSmallToFullMult:
+                    stop = self.templateFrame.shape[0] * \
+                           self.videoSizeSmallToFullMult
                 else:
                     stop = y+height/2
             else:
@@ -836,6 +843,11 @@ class videoPlayer(QtGui.QMainWindow):
     def loadImageIntoLabel(self, lbl, img):
         if img is not None:
             qi = qim2np.array2qimage(img)
+            if self.fullResFrame:
+                h = self.fullResFrame[1][0][0].shape[0]
+                w = self.fullResFrame[1][0][0].shape[1]
+                qi = qi.scaled(w, h)
+
             cfg.log.debug("copy image to pixmap")
             px = QtGui.QPixmap().fromImage(qi)     
             cfg.log.debug("set pixmap")
@@ -857,13 +869,40 @@ class videoPlayer(QtGui.QMainWindow):
         lbl.setPos(newX,newY)
         
     @cfg.logClassFunction
-    def updatePreviewLabel(self, lbl, img):
+    def updatePreviewLabel(self, lbl, img, multiplicator=1):
 #         img = data[0]
         if self.croppedVideo:
             img = np.rot90(img)
 
         if not self.croppedVideo:
-            img = scim.imresize(img[self.prevYCrop, self.prevXCrop], 
+            if multiplicator != 1:
+                if self.prevYCrop.start:
+                    ystart = self.prevYCrop.start * multiplicator
+                else:
+                    ystart = None
+
+                if self.prevYCrop.stop:
+                    ystop = self.prevYCrop.stop * multiplicator
+                else:
+                    ystop = None
+
+                if self.prevXCrop.start:
+                    xstart = self.prevXCrop.start * multiplicator
+                else:
+                    xstart = None
+
+                if self.prevXCrop.stop:
+                    xstop = self.prevXCrop.stop * multiplicator
+                else:
+                    xstop = None
+
+                prevYCrop = slice(ystart, ystop)
+                prevXCrop = slice(xstart, xstop)
+            else:
+                prevYCrop = self.prevYCrop
+                prevXCrop = self.prevXCrop
+
+            img = scim.imresize(img[prevYCrop, prevXCrop],
                                         (self.prevSize,self.prevSize))
         else:
             img = scim.imresize(img, (self.prevSize,self.prevSize))
@@ -888,9 +927,15 @@ class videoPlayer(QtGui.QMainWindow):
     @cfg.logClassFunction
     def updateMainLabel(self, lbl, img):
         self.templateFrame = img
-            
-        h = img.shape[0]
-        w = img.shape[1]
+
+
+        if self.fullResFrame:
+            h = self.fullResFrame[1][0][0].shape[0]
+            w = self.fullResFrame[1][0][0].shape[1]
+        else:
+            h = img.shape[0]
+            w = img.shape[1]
+
         if self.sceneRect != QtCore.QRectF(0, 0, w,h):
             cfg.log.debug("changing background")
             # self.videoView.setGeometry(QtCore.QRect(380, 10, w, h))#1920/2, 1080/2))
@@ -974,7 +1019,25 @@ class videoPlayer(QtGui.QMainWindow):
         self.update()
 
 
+    def displayFullResolutionFrame(self):
+        self.displayingFullResolution = True
+        self.fullResFrame = self.vh.getFullResolutionFrame()
+        self.videoSizeSmallToFullMult = self.fullResFrame[1][0][0].shape[0] / \
+                                        float(self.frames[0][1][0][0].shape[0])
 
+        if self.selectedVial is None:
+            sv = 0
+        else:
+            sv = self.selectedVial[0]
+
+        self.displayFrame(self.fullResFrame, sv)
+
+        if self.fullVideoDialog is None:
+            self.fullVideoDialog = FVD(self)
+            self.fullVideoDialog.setScene(self.videoScene)
+            self.fullVideoDialog.show()
+        else:
+            self.fullVideoDialog.show()
 
     def displayFrame(self, frame, selectedVial):
         sv = selectedVial
@@ -1037,16 +1100,26 @@ class videoPlayer(QtGui.QMainWindow):
     def updatePreviewLabels(self):
         offset = (len(self.prevFrameLbls) - 1) / 2
         self.prevFrames = []
+        multipliers = []
 
         for i in range(len(self.prevFrameLbls)):
             self.prevFrames += [self.vh.getTempFrame(i - offset)]
-            self.updatePreviewLabel(self.prevFrameLbls[i], self.prevFrames[i][1][0][0])
+            multipliers += [1.0 / self.videoSizeSmallToFullMult]
+
+        if self.displayingFullResolution:
+            self.prevFrames[offset] = self.fullResFrame
+            multipliers[offset] = 1
+
+        for i in range(len(self.prevFrameLbls)):
+            self.updatePreviewLabel(self.prevFrameLbls[i], self.prevFrames[i][1][0][0], multipliers[i])
     
     @cfg.logClassFunction
     def showNextFrame(self, increment=None, checkBuffer=True):
         #~ logGUI.debug(json.dumps({"increment":increment, 
                                  #~ "checkBuffer":checkBuffer}))
-                
+
+        self.displayingFullResolution = False
+
         if self.annoIsOpen:
             if np.abs(increment) > 1:
                 # set increment to either 1 or -1
@@ -1557,22 +1630,7 @@ class videoPlayer(QtGui.QMainWindow):
         #                                     ["Peter"],
         #                                     ["shit"]),
         #                      QtGui.QColor(0,0,0))
-
-        frame = self.vh.getFullResolutionFrame()
-
-        if self.selectedVial is None:
-            sv = 0
-        else:
-            sv = self.selectedVial[0]
-
-        self.displayFrame(frame, sv)
-
-        if self.fullVideoDialog is None:
-            self.fullVideoDialog = FVD(self)
-            self.fullVideoDialog.setScene(self.videoScene)
-            self.fullVideoDialog.show()
-        else:
-            self.fullVideoDialog.show()
+        self.displayFullResolutionFrame()
 
 
     ### new stuff

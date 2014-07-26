@@ -177,6 +177,8 @@ class VideoHandler(QtCore.QObject):
 
         annotation = self.getCurrentAnnotation()
 
+        print self.posPath, self.idx
+
         return [pos, frame, annotation]
 
     
