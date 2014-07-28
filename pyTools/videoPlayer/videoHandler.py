@@ -1003,6 +1003,30 @@ class VideoHandler(QtCore.QObject):
                 self.annoAltStart = None
                 
         return rng, curFilter
+
+    def eraseAnnotationRange(self, rng, vials, annotator, behaviour):
+        for key in rng:
+            for v in vials:
+                self.annoDict[key].annotation.removeAnnotation(v,
+                                        rng[key],
+                                        annotator, behaviour)
+                tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
+                self.annoDict[key].annotation.saveToTmpFile(tmpFilename)
+
+            # refresh annotation in anno view
+            for aV in self.annoViewList:
+                if (aV.behaviourName == None) \
+                or (behaviour == aV.behaviourName) \
+                or (behaviour in aV.behaviourName):
+                    if (aV.annotator == None) \
+                    or (annotator == aV.annotator) \
+                    or (annotator in aV.annotator):
+                        if v == None and aV.vialNo == None \
+                        or v in aV.vialNo:
+                            cfg.log.debug("refreshing annotation")
+                            aV.addAnnotation(\
+                                        self.annoDict[key].annotation,
+                                             key)
         
     @cfg.logClassFunction
     def eraseAnnotation(self, vials, annotator, behaviour):
@@ -1049,28 +1073,7 @@ class VideoHandler(QtCore.QObject):
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                 self.annoAltStart = None
                 
-                for key in rng:
-                    for v in vials:
-                        self.annoDict[key].annotation.removeAnnotation(v,
-                                                rng[key], 
-                                                annotator, behaviour)
-                        tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
-                        self.annoDict[key].annotation.saveToTmpFile(tmpFilename)
-                
-                    # refresh annotation in anno view
-                    for aV in self.annoViewList:
-                        if (aV.behaviourName == None) \
-                        or (behaviour == aV.behaviourName) \
-                        or (behaviour in aV.behaviourName):
-                            if (aV.annotator == None) \
-                            or (annotator == aV.annotator) \
-                            or (annotator in aV.annotator):
-                                if v == None and aV.vialNo == None \
-                                or v in aV.vialNo:
-                                    cfg.log.debug("refreshing annotation")
-                                    aV.addAnnotation(\
-                                                self.annoDict[key].annotation,
-                                                     key)
+                self.eraseAnnotationRange(rng, vials, annotator, behaviour)
                                     
                 cfg.logGUI.info(json.dumps({"vials":vials,
                                        "key-range":rng, 
@@ -1081,45 +1084,64 @@ class VideoHandler(QtCore.QObject):
         
         return rng, curFilter
 
-    def findRangeOfAnnotation(self, frameIdx, posKey, filterTuple):
+    def findRangeOfAnnotation(self, frameIdx, posKey, filterTuple,
+                              direction='both'):
+        """
+        direction (string):
+                direction in which the annotation is traced.
+                Possible values:
+                                'both'
+                                'right'
+                                'left'
+
+        """
         rngs = dict()
-        rngs[posKey] =self.annoDict[posKey].annotation.\
-                     findConsequtiveAnnotationFrames(filterTuple, frameIdx)
+        rngs[posKey] = self.annoDict[posKey].annotation.\
+                     findConsequtiveAnnotationFrames(filterTuple,
+                                                     frameIdx,
+                                                     direction=direction)
 
         # check whether the range extends over the right edge of the current
         # annotation file
         curKey = posKey
-        while rngs[curKey][-1] == len(self.annoDict[curKey].annotation.frameList):
-            curKey = sorted(self.annoDict.keys()).index(curKey) + 1
-            if curKey >= len(self.annoDict.keys()):
-                break
+        if direction == 'both' or direction == 'right':
+            while rngs[curKey][-1] == \
+                    len(self.annoDict[curKey].annotation.frameList):
+                curKey = sorted(self.annoDict.keys()).index(curKey) + 1
+                if curKey >= len(self.annoDict.keys()):
+                    break
 
-            a = self.annoDict[curKey].annotation.filterFrameList(filterTuple,
-                                                             [0],
-                                                             exactMatch=True)
-            if a.frameList:
-                rngs[curKey] = self.annoDict[curKey].annotation.\
-                     findConsequtiveAnnotationFrames(filterTuple, 0)
-            else:
-                break
+                a = self.annoDict[curKey].annotation.filterFrameList(
+                                                            filterTuple,
+                                                            [0],
+                                                            exactMatch=True)
+                if a.frameList:
+                    rngs[curKey] = self.annoDict[curKey].annotation.\
+                         findConsequtiveAnnotationFrames(filterTuple,
+                                                         0,
+                                                         direction=direction)
+                else:
+                    break
 
         # check whether the range extends over the left edge of the current
         # annotation file
         curKey = posKey
-        while rngs[curKey][0] == 0:
-            curKey = sorted(self.annoDict.keys()).index(curKey) - 1
-            if curKey < 0:
-                break
+        if direction == 'both' or direction == 'left':
+            while rngs[curKey][0] == 0:
+                curKey = sorted(self.annoDict.keys()).index(curKey) - 1
+                if curKey < 0:
+                    break
 
-            l = len(self.annoDict[curKey].annotation.frameList)
-            a = self.annoDict[curKey].annotation.filterFrameList(filterTuple,
-                                                             [l],
-                                                             exactMatch=True)
-            if a.frameList:
-                rngs[curKey] = self.annoDict[curKey].annotation.\
-                     findConsequtiveAnnotationFrames(filterTuple, 0)
-            else:
-                break
+                l = len(self.annoDict[curKey].annotation.frameList)
+                a = self.annoDict[curKey].annotation.filterFrameList(
+                                                            filterTuple,
+                                                            [l],
+                                                            exactMatch=True)
+                if a.frameList:
+                    rngs[curKey] = self.annoDict[curKey].annotation.\
+                         findConsequtiveAnnotationFrames(filterTuple, 0)
+                else:
+                    break
 
         return rngs
 
@@ -1136,6 +1158,28 @@ class VideoHandler(QtCore.QObject):
                                                 vial, rng,
                                                 annotatorOld, behaviourOld,
                                                 annotatorNew, behaviourNew)
+
+    def eraseAnnotationSequence(self, vials, annotator, behaviour,
+                                direction='both'):
+        filt = Annotation.AnnotationFilter(vials, [annotator],
+                                              [behaviour])
+
+        rngs = self.findRangeOfAnnotation(self.idx, self.posPath,
+                                          filt, direction)
+
+        if vials is None:
+            vials = [None]
+
+        self.eraseAnnotationRange(rngs, vials, annotator, behaviour)
+
+    def eraseAnnotationCurrentFrame(self, vials, annotator, behaviour):
+        rngs = {self.posPath: [self.idx]}
+
+        if vials is None:
+            vials = [None]
+
+        self.eraseAnnotationRange(rngs, vials, annotator, behaviour)
+
 
     @cfg.logClassFunction
     def escapeAnnotationAlteration(self):

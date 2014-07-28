@@ -1198,6 +1198,46 @@ class videoPlayer(QtGui.QMainWindow):
 
 
     ##### MOVEABLE RECT
+    def deleteLeftLabels(self):
+        annotator = self.lastLabelRectContext.annotator
+        behaviour = self.lastLabelRectContext.behaviour
+        self.vh.eraseAnnotationSequence(self.selectedVial, annotator,
+                                        behaviour, direction='left')
+
+    def deleteRightLabels(self):
+        annotator = self.lastLabelRectContext.annotator
+        behaviour = self.lastLabelRectContext.behaviour
+        self.vh.eraseAnnotationSequence(self.selectedVial, annotator,
+                                        behaviour, direction='right')
+
+    def deleteAllLabels(self):
+        annotator = self.lastLabelRectContext.annotator
+        behaviour = self.lastLabelRectContext.behaviour
+        self.vh.eraseAnnotationSequence(self.selectedVial, annotator,
+                                        behaviour, direction='both')
+
+    def deleteLabel(self):
+        annotator = self.lastLabelRectContext.annotator
+        behaviour = self.lastLabelRectContext.behaviour
+        self.vh.eraseAnnotationCurrentFrame(self.selectedVial, annotator,
+                                            behaviour)
+
+    def lineEditChanged(self):
+        self.menu.hide()
+        behaviourNew = self.cle.text()
+
+        behaviourOld = self.lastLabelRectContext.behaviour
+        annotatorOld = self.lastLabelRectContext.annotator
+
+        self.editAnnoLabel(annotatorOld, behaviourOld,
+                           annotatorOld, behaviourNew)
+
+    def registerLastLabelRectContext(self, labelRect):
+        self.lastLabelRectContext = labelRect
+
+    def labelRectChangedSlot(self):
+        self.contentChanged = True
+
     def setupLabelMenu(self):
         wa = QtGui.QWidgetAction(self)
         self.cle = MR.ContextLineEdit(wa, self)
@@ -1212,39 +1252,17 @@ class videoPlayer(QtGui.QMainWindow):
         wa.setDefaultWidget(self.cle)
 
         self.menu = QtGui.QMenu(self)
-        delAction = self.menu.addAction("delete")
         self.menu.addAction(wa)
+        delAction = self.menu.addAction("delete (this frame)")
+        delAllAction = self.menu.addAction("delete (all)")
+        delRightAction = self.menu.addAction("delete (this and all to right)")
+        delLeftAction = self.menu.addAction("delete (this and all to left)")
 
-        delAction.triggered.connect(self.deleteLabel)
         wa.triggered.connect(self.lineEditChanged)
-
-
-    def deleteLabel(self):
-        self.activeLabel = self.labelRects.index(self.lastLabelRectContext)
-        self.deteleActiveLabel()
-
-    def lineEditChanged(self):
-        print "lineEditChanged", self.lastLabelRectContext
-        self.menu.hide()
-        behaviourNew = self.cle.text()
-
-        behaviourOld = self.lastLabelRectContext.behaviour
-        annotatorOld = self.lastLabelRectContext.annotator
-
-        self.editAnnoLabel(annotatorOld, behaviourOld,
-                           annotatorOld, behaviourNew)
-
-        # self.lastLabelRectContext.setColor(self.labelTypes[c])
-        # self.lastLabelRectContext.setInfoString(c)
-        # self.rectClasses[self.lastLabelRectContext] = c
-        # self.contentChanged = True
-
-    def registerLastLabelRectContext(self, labelRect):
-        self.lastLabelRectContext = labelRect
-
-    def labelRectChangedSlot(self):
-        self.contentChanged = True
-
+        delAction.triggered.connect(self.deleteLabel)
+        delAllAction.triggered.connect(self.deleteAllLabels)
+        delRightAction.triggered.connect(self.deleteRightLabels)
+        delLeftAction.triggered.connect(self.deleteLeftLabels)
 
     def deactivateAllLabelRects(self):
         for lr in self.annotationRoiLabels:

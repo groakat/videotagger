@@ -329,22 +329,37 @@ class Annotation():
 
         self.removeAnnotation(vial, frames, annotatorOld, behaviourOld)
 
-    def findConsequtiveAnnotationFrames(self, filterTuple, frameIdx, exactMatch=True):
-        endFrame = frameIdx + 1
-        while endFrame < len(self.frameList):
-            match = self.filterFrameList(filterTuple, [endFrame], exactMatch).frameList
-            if match == [[None]]:
-                break
+    def findConsequtiveAnnotationFrames(self, filterTuple, frameIdx,
+                                        exactMatch=True, direction='both'):
+        """
+        direction (string):
+                direction in which the annotation is traced.
+                Possible values:
+                                'both'
+                                'right'
+                                'left'
 
-            endFrame += 1
+        """
+        endFrame = frameIdx + 1
+        if direction == "both" or direction == "right":
+            while endFrame < len(self.frameList):
+                match = self.filterFrameList(filterTuple,
+                                             [endFrame],
+                                             exactMatch).frameList
+                if match == [[None]]:
+                    break
+
+                endFrame += 1
 
         startFrame = frameIdx - 1
-
-        while startFrame >= 0:
-            match = self.filterFrameList(filterTuple, [startFrame], exactMatch).frameList
-            startFrame -= 1
-            if match == [[None]]:
-                break
+        if direction == "both" or direction == "left":
+            while startFrame >= 0:
+                match = self.filterFrameList(filterTuple,
+                                             [startFrame],
+                                             exactMatch).frameList
+                startFrame -= 1
+                if match == [[None]]:
+                    break
 
         startFrame += 1
 
