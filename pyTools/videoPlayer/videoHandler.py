@@ -1080,22 +1080,78 @@ class VideoHandler(QtCore.QObject):
                 self.annoAltStart = None
         
         return rng, curFilter
-                        
+
+    def findRangeOfAnnotation(self, frameIdx, posKey, filterTuple):
+        rngs = dict()
+        rngs[posKey] =self.annoDict[posKey].annotation.\
+                     findConsequtiveAnnotationFrames(filterTuple, frameIdx)
+
+        # check whether the range extends over the right edge of the current
+        # annotation file
+        curKey = posKey
+        while rngs[curKey][-1] == len(self.annoDict[curKey].annotation.frameList):
+            curKey = sorted(self.annoDict.keys()).index(curKey) + 1
+            if curKey >= len(self.annoDict.keys()):
+                break
+
+            a = self.annoDict[curKey].annotation.filterFrameList(filterTuple,
+                                                             [0],
+                                                             exactMatch=True)
+            if a.frameList:
+                rngs[curKey] = self.annoDict[curKey].annotation.\
+                     findConsequtiveAnnotationFrames(filterTuple, 0)
+            else:
+                break
+
+        # check whether the range extends over the left edge of the current
+        # annotation file
+        curKey = posKey
+        while rngs[curKey][0] == 0:
+            curKey = sorted(self.annoDict.keys()).index(curKey) - 1
+            if curKey < 0:
+                break
+
+            l = len(self.annoDict[curKey].annotation.frameList)
+            a = self.annoDict[curKey].annotation.filterFrameList(filterTuple,
+                                                             [l],
+                                                             exactMatch=True)
+            if a.frameList:
+                rngs[curKey] = self.annoDict[curKey].annotation.\
+                     findConsequtiveAnnotationFrames(filterTuple, 0)
+            else:
+                break
+
+        return rngs
+
+
+
+    def editAnnotationLabel(self, vial, annotatorOld,
+                                behaviourOld, annotatorNew, behaviourNew):
+        filtOld = Annotation.AnnotationFilter(vial, [annotatorOld],
+                                              [behaviourOld])
+
+        rngs = self.findRangeOfAnnotation(self.idx, self.posPath, filtOld)
+        for k, rng in rngs.items():
+            self.annoDict[k].annotation.renameAnnotation(
+                                                vial, rng,
+                                                annotatorOld, behaviourOld,
+                                                annotatorNew, behaviourNew)
+
     @cfg.logClassFunction
     def escapeAnnotationAlteration(self):
         self.annoAltStart = None
         self.annoAltFilter = None
-        
+
         for aV in self.annoViewList:
             aV.escapeAnno()
             aV.setPosition()
-            
+
     @cfg.logClassFunction
     def saveAll(self):
         for key in self.annoDict:
             tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr"
             self.annoDict[key].annotation.saveToFile(tmpFilename)
-            
+
             
             
             

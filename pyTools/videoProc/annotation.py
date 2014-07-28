@@ -1,5 +1,5 @@
 import json
-import os
+import copy
 from collections import namedtuple
 
 
@@ -301,6 +301,60 @@ class Annotation():
         
         #~ for child in self.children:
             #~ child.removeAnnotation(v, frames, b, a)
+
+    def renameAnnotation(self, vial, frames, annotatorOld, behaviourOld,
+                         annotatorNew, behaviourNew):
+        if vial == None:
+            # just use first index
+            vial = 0
+
+        self.hasChanged = True
+        if len(self.frameList) < max(frames):
+            raise ValueError("Trying to add annotation to frame that" +
+                             " exceeds length of existing annotation")
+
+        for frame in frames:
+            if self.frameList[frame][vial] is None:
+                self.frameList[frame][vial] = dict()
+
+            if not ("behaviour" in self.frameList[frame][vial]):
+                self.frameList[frame][vial]["behaviour"] = dict()
+
+            if not (behaviourNew in self.frameList[frame][vial]["behaviour"]):
+                a = dict()
+                self.frameList[frame][vial]["behaviour"][behaviourNew] = a
+
+            self.frameList[frame][vial]["behaviour"][behaviourNew][annotatorNew] = \
+                copy.copy(self.frameList[frame][vial]["behaviour"][behaviourOld][annotatorOld])
+
+        self.removeAnnotation(vial, frames, annotatorOld, behaviourOld)
+
+    def findConsequtiveAnnotationFrames(self, filterTuple, frameIdx, exactMatch=True):
+        endFrame = frameIdx + 1
+        while endFrame < len(self.frameList):
+            match = self.filterFrameList(filterTuple, [endFrame], exactMatch).frameList
+            if match == [[None]]:
+                break
+
+            endFrame += 1
+
+        startFrame = frameIdx - 1
+
+        while startFrame >= 0:
+            match = self.filterFrameList(filterTuple, [startFrame], exactMatch).frameList
+            startFrame -= 1
+            if match == [[None]]:
+                break
+
+        startFrame += 1
+
+        return range(startFrame, endFrame)
+
+
+
+def getExactBehavioursFromFrameAnno(a):
+    return sorted(a['behaviour'].keys())
+
             
 def getPropertyFromFrameAnno(a, prop):
     """
@@ -318,10 +372,10 @@ def getPropertyFromFrameAnno(a, prop):
         List containing values of the properties
     """
     out = []
-    for bk in a:
+    for bk in sorted(a):
         if bk != 'name':
-            for bnk in a[bk]:
-                for ak in a[bk][bnk]:
+            for bnk in sorted(a[bk]):
+                for ak in sorted(a[bk][bnk]):
                     if type(a[bk][bnk][ak]) == int:
                         if prop == "confidence":
                             out += [a[bk][bnk][ak]]

@@ -956,14 +956,14 @@ class videoPlayer(QtGui.QMainWindow):
 
             # anRect
 
-            anRect = MR.LabelRectItem(self.menu,
+            anRect = BehaviourRectItem(self.menu,
                                               self.registerLastLabelRectContext,
                                               '',
                                               rectChangedCallback=self.labelRectChangedSlot)
             anRect.setRect(rect)
             # anRect.setColor(penCol)
             anRect.setResizeBoxColor(QtGui.QColor(255,255,255,50))
-            anRect.setupInfoTextItem(fontSize=10)
+            anRect.setupInfoTextItem(fontSize=18)
             self.videoScene.addItem(anRect)
             self.annotationRoiLabels += [anRect]
 
@@ -976,6 +976,7 @@ class videoPlayer(QtGui.QMainWindow):
         for i in range(len(rois)):        
             x1, y1, x2, y2 = rois[i][0]
             color = rois[i][1]['color']
+            lbl = rois[i][2]
             
             width = x2 - x1
             height = y2 - y1
@@ -989,7 +990,9 @@ class videoPlayer(QtGui.QMainWindow):
             self.annotationRoiLabels[i].setColor(color)
             self.annotationRoiLabels[i].setInfoString("{a}:\n{b}".format(
                                                     a=rois[i][1]['annot'],
-                                                    b=rois[i][1]['behav']))
+                                                    b=lbl))
+            self.annotationRoiLabels[i].setAnnotationLabel(rois[i][1]['annot'],
+                                                           lbl)
              
             cfg.log.debug("set rect to: {0}".format(self.annotationRoiLabels[i].rect()))
             usedRoi = i + 1
@@ -1068,13 +1071,15 @@ class videoPlayer(QtGui.QMainWindow):
 
             bb = Annotation.getPropertyFromFrameAnno(tmpAnno.frameList[0][sv],
                                                      "boundingBox")
+            lbls = Annotation.getExactBehavioursFromFrameAnno(
+                                                    tmpAnno.frameList[0][sv])
 
-            for b in bb:
+            for b, l in zip(bb, lbls):
                 # ensure that annotations without boundingbox do not mess up
                 # anything
                 if None in b:
                     continue
-                rois += [[b, self.annotations[i]]]
+                rois += [[b, self.annotations[i], l]]
 
         self.positionAnnotationRoi(rois)
 
@@ -1200,8 +1205,7 @@ class videoPlayer(QtGui.QMainWindow):
         labels = []
 
         for i in range(len(self.annotations)):
-            labels += ["{a}: {b}".format(a=self.annotations[i]['annot'],
-                                         b=self.annotations[i]['behav'])]
+            labels += ["{b}".format(b=self.annotations[i]['behav'])]
 
         self.cle.setModel(labels)
 
@@ -1222,12 +1226,18 @@ class videoPlayer(QtGui.QMainWindow):
     def lineEditChanged(self):
         print "lineEditChanged", self.lastLabelRectContext
         self.menu.hide()
-        c = self.cle.text()
+        behaviourNew = self.cle.text()
 
-        self.lastLabelRectContext.setColor(self.labelTypes[c])
-        self.lastLabelRectContext.setInfoString(c)
-        self.rectClasses[self.lastLabelRectContext] = c
-        self.contentChanged = True
+        behaviourOld = self.lastLabelRectContext.behaviour
+        annotatorOld = self.lastLabelRectContext.annotator
+
+        self.editAnnoLabel(annotatorOld, behaviourOld,
+                           annotatorOld, behaviourNew)
+
+        # self.lastLabelRectContext.setColor(self.labelTypes[c])
+        # self.lastLabelRectContext.setInfoString(c)
+        # self.rectClasses[self.lastLabelRectContext] = c
+        # self.contentChanged = True
 
     def registerLastLabelRectContext(self, labelRect):
         self.lastLabelRectContext = labelRect
@@ -1717,6 +1727,38 @@ class videoPlayer(QtGui.QMainWindow):
                                              yStop]}
         
         return metadata
+
+    def convertLabelListAndReply(self, labelledFrames):
+        """
+        Args
+            labelledFrames (output from vh.addAnnotation or vh.eraseAnnotation
+
+        """
+        if not self.fdvt:
+            return
+
+        frames = labelledFrames[0]
+        filt = labelledFrames[1]
+
+        deltaVector = []
+        for key in frames.keys():
+            treeKey = FDV.filename2Time(key)
+            day = treeKey[0]
+            hour = treeKey[1]
+            minute = treeKey[2]
+            for frame in frames[key]:
+                deltaVector += [[self.fdvt.key2idx(day, hour, minute, frame),
+                                self.fdvt.getAnnotationFilterCode(filt)]]
+
+
+#         if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
+#             self.fdvt.insertDeltaVector(deltaVector)
+#             self.ui.frameView.plotSequence(refreshAll=True)
+
+        if self.rpcIH:
+            self.rpcIH.sendReply([deltaVector])
+            self.isLabelingSingleFrame = False
+            self.jumpToBookmark()
         
 #     @cfg.logClassFunction
     def addAnno(self, annotator="peter", behaviour="just testing", 
@@ -1740,44 +1782,24 @@ class videoPlayer(QtGui.QMainWindow):
         if labelledFrames != (None, None):
             self.convertLabelListAndReply(labelledFrames)
         
-    def convertLabelListAndReply(self, labelledFrames):
-        """
-        Args
-            labelledFrames (output from vh.addAnnotation or vh.eraseAnnotation
-        
-        """
-        if not self.fdvt:
-            return 
-        
-        frames = labelledFrames[0]
-        filt = labelledFrames[1]
-        
-        deltaVector = []
-        for key in frames.keys():
-            treeKey = FDV.filename2Time(key)
-            day = treeKey[0]
-            hour = treeKey[1]
-            minute = treeKey[2]
-            for frame in frames[key]:
-                deltaVector += [[self.fdvt.key2idx(day, hour, minute, frame),                                
-                                self.fdvt.getAnnotationFilterCode(filt)]]
-                                
-                
-#         if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
-#             self.fdvt.insertDeltaVector(deltaVector)
-#             self.ui.frameView.plotSequence(refreshAll=True)
-                                        
-        if self.rpcIH:
-            self.rpcIH.sendReply([deltaVector])
-            self.isLabelingSingleFrame = False
-            self.jumpToBookmark()
-        
-        
+
 #     @cfg.logClassFunction
     def eraseAnno(self, annotator="peter", behaviour="just testing"):      
         cfg.logGUI.info(json.dumps({"annotator": annotator,
                                 "behaviour": behaviour}))
         self.vh.eraseAnnotation(self.selectedVial, annotator, behaviour)
+
+    def editAnnoLabel(self, annotatorOld, behaviourOld, annotatorNew, behaviourNew):
+        self.vh.editAnnotationLabel(self.selectedVial, annotatorOld,
+                                behaviourOld, annotatorNew, behaviourNew)
+
+        if self.selectedVial is None:
+            sv = 0
+        else:
+            sv = self.selectedVial[0]
+
+        anno = self.frames[0][2]
+        self.displayAnnotationROIs(anno, sv)
         
 #     @cfg.logClassFunction
     def escapeAnnotationAlteration(self):
@@ -1805,6 +1827,15 @@ class ContextLineEdit(QtGui.QLineEdit):
     def setModel(self, strList):
         self.comp.model().setStringList(strList)
 
+class BehaviourRectItem(MR.LabelRectItem):
+    def __init__(self, *args, **kwargs):
+        super(BehaviourRectItem, self).__init__(*args, **kwargs)
+        self.annotator = None
+        self.behaviour = None
+
+    def setAnnotationLabel(self, annotator, behaviour):
+        self.annotator = annotator
+        self.behaviour = behaviour
 
         
 if __name__ == "__main__":
