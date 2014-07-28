@@ -889,7 +889,7 @@ class VideoHandler(QtCore.QObject):
                                                             rng[key],
                                                             exactMatch=False)]
 
-        maxCounter = 0
+        maxCounter = -1
         for anno in annos:
             for frame in anno.frameList:
                 if frame is None:
@@ -904,8 +904,7 @@ class VideoHandler(QtCore.QObject):
                     if maxCounter < nMaxBehaviour:
                         maxCounter = nMaxBehaviour
 
-
-        if maxCounter > 0:
+        if maxCounter > -1:
             return "{bvhr}_{no}".format(bvhr=behaviour, no=maxCounter + 1)
 
         return behaviour
