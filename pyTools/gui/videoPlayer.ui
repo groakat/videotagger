@@ -1053,7 +1053,7 @@
     </rect>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>1</number>
    </property>
    <widget class="QWidget" name="tab_1">
     <attribute name="title">
@@ -1107,16 +1107,6 @@
     <attribute name="title">
      <string>Frame View</string>
     </attribute>
-    <widget class="FrameViewWidget" name="frameView" native="true">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>-10</y>
-       <width>941</width>
-       <height>221</height>
-      </rect>
-     </property>
-    </widget>
    </widget>
   </widget>
   <widget class="QCheckBox" name="cb_edit">
@@ -1136,14 +1126,6 @@
    </property>
   </widget>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>FrameViewWidget</class>
-   <extends>QWidget</extends>
-   <header>FrameViewWidget.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

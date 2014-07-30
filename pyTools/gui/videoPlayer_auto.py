@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Thu Jul 24 18:59:41 2014
+# Created: Wed Jul 30 23:26:52 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -357,9 +357,6 @@ class Ui_Form(object):
         self.tabWidget.addTab(self.tab_1, "")
         self.tab_2 = QtGui.QWidget()
         self.tab_2.setObjectName("tab_2")
-        self.frameView = FrameViewWidget(self.tab_2)
-        self.frameView.setGeometry(QtCore.QRect(10, -10, 941, 221))
-        self.frameView.setObjectName("frameView")
         self.tabWidget.addTab(self.tab_2, "")
         self.cb_edit = QtGui.QCheckBox(Form)
         self.cb_edit.setGeometry(QtCore.QRect(1130, 720, 91, 21))
@@ -367,7 +364,7 @@ class Ui_Form(object):
         self.cb_edit.setObjectName("cb_edit")
 
         self.retranslateUi(Form)
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(Form)
 
     def retranslateUi(self, Form):
@@ -389,4 +386,3 @@ class Ui_Form(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QtGui.QApplication.translate("Form", "Frame View", None, QtGui.QApplication.UnicodeUTF8))
         self.cb_edit.setText(QtGui.QApplication.translate("Form", "editmode", None, QtGui.QApplication.UnicodeUTF8))
 
-from FrameViewWidget import FrameViewWidget

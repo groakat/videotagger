@@ -239,7 +239,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.connectedToServer = False
         self.rpcIH = None
         self.fdvt = None
-        self.setupFrameView()
+        # self.setupFrameView()
         self.bookmark = None
         
         
@@ -654,7 +654,7 @@ class videoPlayer(QtGui.QMainWindow):
     @QtCore.Slot(list)
     def setFrameView(self, lst):
         fdvt = lst[0]
-        self.ui.frameView.setSerializedSequence(fdvt)        
+        # self.ui.frameView.setSerializedSequence(fdvt)
         
         
     @QtCore.Slot()
