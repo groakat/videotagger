@@ -22,6 +22,8 @@ import json
 class VideoHandler(QtCore.QObject):       
     newVideoLoader = QtCore.Signal(list)
     deleteVideoLoader = QtCore.Signal(list)
+
+    newFullResVideoLoader = QtCore.Signal(list)
     
     newAnnotationLoader = QtCore.Signal(list)
     deleteAnnotationLoader = QtCore.Signal(list)
@@ -73,6 +75,17 @@ class VideoHandler(QtCore.QObject):
         self.vLL.createdVideoLoader.connect(self.linkToAnnoview)
         self.newVideoLoader.connect(self.vLL.lunchVideoLoader)
         self.deleteVideoLoader.connect(self.vLL.deleteVideoLoader)
+
+
+        ## full resolution video loading
+        # self.fVLL = DL.VideoLoaderLuncher(eofCallback=self.endOfFileNotice)
+        # self.fullResVideoLoaderLuncherThread = DL.MyThread("fullResVideoLuncher")
+        # self.fVLL.moveToThread(self.fullResVideoLoaderLuncherThread)
+        #
+        # self.fullResVideoLoaderLuncherThread.start()
+        # self.fullResVideoLoaderLuncherThread.wrapUp.connect(self.fVLL.aboutToQuit)
+        # self.newFullResVideoLoader.connect(self.fVLL.lunchVideoLoader)
+
         
         ## annotation loading
         self.aLL = DL.AnnotationLoaderLuncher(self.endOfFileNotice, videoEnding)
@@ -177,9 +190,67 @@ class VideoHandler(QtCore.QObject):
 
         annotation = self.getCurrentAnnotation()
 
-        print self.posPath, self.idx
-
         return [pos, frame, annotation]
+
+    def alignFullResVideo(self):
+        pass
+
+    def serveFullResVideo(self):
+        pass
+
+    def alignAndServeFullResVideo(self):
+        self.alignFullResVideo()
+        self.serveFullResVideo()
+
+
+    def getFullResolutionFrames(self, left=10, right=50):
+        path = self.posPath
+        idx  = 0
+        if self.idx - left < 0:
+            start = 0
+        else:
+            start = self.idx - left
+
+        if self.idx + right > self.getVideoLength(self.posPath):
+            stop = self.getVideoLength(self.posPath)
+        else:
+            stop = self.idx + right
+
+        idxSlice = slice(start, stop)
+
+        lst = list()
+        lst[0] = path
+        lst[1] = self
+        lst[2] = self.selectedVials
+        lst[3] = idx
+        lst[4] = idxSlice
+
+        self.newFullResVideoLoader.emit(lst)
+
+        #############################################
+
+        self.fullResVideoLoaderThread = DL.MyThread("fullResVideoLuncher")
+
+        self.fullResVL = DL.VideoLoader(path, idxSlice=idxSlice,
+                         thread=self.fullResVideoLoaderThread,
+                         selectedVials=self.selectedVials)
+
+
+
+        self.fullResVL.moveToThread(self.fullResVideoLoaderThread)
+        self.fullResVideoLoaderThread.start()
+
+        self.fullResVL.startLoading.connect(self.fullResVL.loadVideos)
+        self.fullResVL.eof.connect(self.eofCallback)
+        self.fullResVL.finished.connect(self.alignAndServeFullResVideo)
+
+        cfg.log.debug("finished thread coonecting signal create new VideoLoader {0}".format(path))
+        self.fullResVL.startLoading.emit()
+        # cfg.log.debug("finished thread emit create new VideoLoader {0}".format(path))
+        # self.threads[self.fullResVL] = [self.fullResVideoLoaderThread, self.fullResVL.startLoading]
+
+
+
 
     
     @cfg.logClassFunction

@@ -193,7 +193,7 @@ class VideoLoader(QtCore.QObject):
             self.eof.emit([self.posPath, lastFrameNo])
                 
         self.loading = False
-#         self.finished.emit()  
+        self.finished.emit()
 #         self.loadedAnnotation.emit([self.annotation, self.posPath])
         
         cfg.log.debug("finsihed loadVideos: {0} [{1}] @ {2}".format(self.posPath, self.idxSlice, QtCore.QThread.currentThread().objectName()))
