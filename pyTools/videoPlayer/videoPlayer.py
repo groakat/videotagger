@@ -118,8 +118,12 @@ class videoPlayer(QtGui.QMainWindow):
             filterObjArgs = {"keyMap":None, "stepSize":None,
                              "oneClickAnnotation":None}
         
-        self.eventFilter = EF.filterObj(self, **filterObjArgs)
-        self.installEventFilter(self.eventFilter)
+        # self.eventFilter = EF.filterObj(self, **filterObjArgs)
+        # self.installEventFilter(self.eventFilter)
+        self.filterObjArgs = filterObjArgs
+
+        self.mainShortCutFilter = EF.shortcutHandler(self, self, **self.filterObjArgs)
+        self.dialogShortCutFilter = None
         self.connectSignals()       
         
         self.mouseEventFilter = EF.MouseFilterObj(self)
@@ -241,7 +245,7 @@ class videoPlayer(QtGui.QMainWindow):
         
         
         self.configureUI()
-        
+
         if self.croppedVideo:
             self.setBackground(backgroundPath)
         else:
@@ -288,22 +292,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.cb_trajectory.stateChanged.connect(self.showTrajectories)
         
         self.startLoop.connect(self.startVideo)
-        
-        
-        
-#         
-#         #~ self.ui.pb_startVideo.installEventFilter(self.eventFilter)
-#         self.ui.pb_stopVideo.installEventFilter(self.eventFilter)
-# #         self.ui.pb_test.installEventFilter(self.eventFilter)
-#         self.ui.pb_addAnno.installEventFilter(self.eventFilter)
-#         self.ui.pb_eraseAnno.installEventFilter(self.eventFilter)
-#         self.ui.sldr_paths.installEventFilter(self.eventFilter)
-#         self.ui.lv_frames.installEventFilter(self.eventFilter)
-# #         self.ui.lv_jmp.installEventFilter(self.eventFilter)
-#         self.ui.lv_paths.installEventFilter(self.eventFilter)
-#         self.ui.cb_trajectory.installEventFilter(self.eventFilter)
-#         self.ui.pb_check4requests.installEventFilter(self.eventFilter)
-        
+
         
     def transferElementsInCollapseContainer(self):
         self.createVideoDisplayWidget()
@@ -1039,6 +1028,7 @@ class videoPlayer(QtGui.QMainWindow):
             self.fullVideoDialog = FVD(self)
             self.fullVideoDialog.setScene(self.videoScene)
             self.fullVideoDialog.show()
+            self.dialogShortCutFilter = EF.shortcutHandler(self.fullVideoDialog, self, **self.filterObjArgs)
         else:
             self.fullVideoDialog.show()
 
