@@ -1,7 +1,7 @@
 import sys
 from PySide import QtCore, QtGui
 import pyTools.gui.collapseWidget_auto as collapse
-import pyTools.gui.FrameViewWidget as FVW
+# import pyTools.gui.FrameViewWidget as FVW
 
 
 
@@ -240,8 +240,8 @@ class TestClass(QtGui.QMainWindow):
         self.centralwidget = collapseContainer(self, 1200)
         self.setCentralWidget(self.centralwidget)
         
-        fvw0 = FVW.FrameViewWidget(self)
-        fvw1 = FVW.FrameViewWidget(self)
+        # fvw0 = FVW.FrameViewWidget(self)
+        # fvw1 = FVW.FrameViewWidget(self)
           
         self.col = collapseContainer(self)
          
