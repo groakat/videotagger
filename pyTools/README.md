@@ -18,9 +18,19 @@ Anaconda
 
 - http://www.cs.ucl.ac.uk/scipython/help.html
 
+conda install PySide
+
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
 - ffvideo
 
-pip install https://bitbucket.org/groakat/ffvideo/get/3c69ae476e29.zip
+pip install https://bitbucket.org/groakat/ffvideo/get/xxx.zip
+
+- qimagearray
+
+zmq (already satisfied with anaconda linux/mac)
+
+- install pkg-config
+- `brew install automake`
+./configure --enable-shared
