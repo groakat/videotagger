@@ -18,8 +18,50 @@ class Test(QtGui.QMainWindow):
     def __init__(self):
         super(Test, self).__init__()
         # Usual setup stuff. Set up the user interface from Designer
-        self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
+        self.setupUi()
+        self.connectElements()
+        self.debugCnt = 0
+        self.show()
+
+    def setupUi(self):
+        self.resize(800, 600)
+        self.centralwidget = QtGui.QWidget(self)
+        self.centralwidget.setObjectName("centralwidget")
+        self.layout = QtGui.QVBoxLayout(self)
+
+        self.gvFDV = GraphicsViewFDV(self)#.centralwidget)
+
+        self.layout.addWidget(self.gvFDV)
+
+        self.pb_debug = QtGui.QPushButton(self)
+        self.pb_debug.setGeometry(QtCore.QRect(540, 500, 94, 24))
+        self.pb_debug.setObjectName("pb_debug")
+        self.pb_debug.setText("push me")
+        self.layout.addWidget(self.pb_debug)
+
+        self.centralwidget.setLayout(self.layout)
+
+        self.setCentralWidget(self.centralwidget)
+
+    def connectElements(self):
+        self.pb_debug.clicked.connect(self.buttonClick)
+
+    def buttonClick(self):
+        t = time.time()
+        a = ['00', '01', '02', '03', '04']
+        self.gvFDV.plotData('2013-02-19', '00', '02', self.debugCnt)
+        # self.plotData('2013-02-19', a[self.debugCnt], '00', 0)
+
+        print time.time() - t
+        self.debugCnt += 1
+        print "button click"
+
+class GraphicsViewFDV(QtGui.QWidget):
+
+    def __init__(self, *args, **kwargs):
+        super(GraphicsViewFDV, self).__init__(*args, **kwargs)
+
+        self.setupUi()
 
         self.frameResolution = 5
         self.debugCnt = 0
@@ -46,43 +88,112 @@ class Test(QtGui.QMainWindow):
                       'minutes': None,
                       'frames': None}
 
+        self.axes = {'days': None,
+                      'hours': None,
+                      'minutes': None,
+                      'frames': None}
+
+        self.axisSpacing = {'days': 1,
+                          'hours': 1,
+                          'minutes': 5,
+                          'frames': 100}
+
+        self.axisY = {'days': 4.5,
+                          'hours': 3,
+                          'minutes': 1.5,
+                          'frames': 0}
+
         self.subPlotScales = dict()
 
+        self.mouseReleaseCallbacks = {'days':[],
+                                      'hours':[],
+                                      'minutes':[],
+                                      'frames':[]}
+
+        self.rangeTemplate =  {'days': None,
+                               'hours':['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23'],
+                               'minutes':['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58', '59'],
+                               'frames': list(np.arange(np.floor(1800 / self.frameResolution), dtype=float))}
+
+        self.missingValueBrush = QtGui.QBrush(QtGui.QColor(150, 150, 150))
 
         self.polys = dict()
         self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
         self.fdvt.load('/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v0.npy')
         # self.fdvt.load('/media/peter/8e632f24-2998-4bd2-8881-232779708cd0/xav/data/clfrFDVT-burgos_rf_200k_weight-v3.npy')
 
-        self.brushes = [QtGui.QBrush(QtGui.QColor(0, 255, 0)),
-                        QtGui.QBrush(QtGui.QColor(0,  0, 255)),
-                        QtGui.QBrush(QtGui.QColor(255, 0, 0)),
-                        QtGui.QBrush(QtGui.QColor(0, 0, 0))]
 
+
+        self.brushes = None
+        self.setColors()
         self.clickBrush = QtGui.QBrush(QtGui.QColor(0, 255, 0, 0))
-
-
-        self.connectElements()
         self.setupGV()
 
         self.show()
+        self.gv_center.fitInView(-0.1, -0.1, 1.1, 7,QtCore.Qt.IgnoreAspectRatio)
 
-    def connectElements(self):
-        self.ui.pb_debug.clicked.connect(self.buttonClick)
+    def registerButtonPressCallback(self, figKey, callbackFunction):
+        """
+        figKey (String):
+                    'days', 'hours', 'minutes' or 'frames'
 
+        callbackFunction (function pointer):
+            function to be called by the callback
+            function should take four arguments which are
+                callbackFunction(day, hour, minute, frame)
+        """
+        self.mouseReleaseCallbacks[figKey] += [callbackFunction]
+
+    def setColors(self, colors=None):
+        """
+
+        :param colors: list of QColors
+        :return:
+        """
+        if colors is None:
+            self.brushes = [QtGui.QBrush(QtGui.QColor(0, 255, 0)),
+                            QtGui.QBrush(QtGui.QColor(0,  0, 255)),
+                            QtGui.QBrush(QtGui.QColor(255, 0, 0)),
+                            QtGui.QBrush(QtGui.QColor(0, 0, 0))]
+            # self.colors  = ['r', 'y', 'b', 'g', 'orange', 'black']
+        else:
+            self.colors = colors
+            self.brushes = []
+            for c in colors:
+                self.brushes += [QtGui.QBrush(c)]
+
+
+    def loadSequence(self, fdvt):
+        self.fdvt = fdvt
+        # self.setDisplayRange()
+
+    def setupUi(self):
+        self.layout = QtGui.QVBoxLayout()
+        self.gv_center = QtGui.QGraphicsView(self)
+        # self.gv_center.setGeometry(QtCore.QRect(100, 60, 561, 150))
+        self.gv_center.setObjectName("gv_center")
+        self.layout.addWidget(self.gv_center)
+        self.gv_center.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.gv_center.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.setLayout(self.layout)
+
+
+    def resizeEvent(self, event):
+        super(GraphicsViewFDV, self).resizeEvent(event)
+        self.gv_center.fitInView(-0.1, -0.1, 1.1, 7,QtCore.Qt.IgnoreAspectRatio)
+        # self.gv_center.fitInView(self.overviewScene.itemsBoundingRect())
 
     def setupGV(self):
         self.overviewScene = QtGui.QGraphicsScene(self)
-        self.overviewScene.setSceneRect(0, -0.5, 1, 7)
+        # self.overviewScene.setSceneRect(0, -0.5, 1, 7)
 
-        self.ui.gv_center.setScene(self.overviewScene)
-        self.ui.gv_center.fitInView(0, -0.5, 1, 7)
-        self.ui.gv_center.setMouseTracking(True)
-        self.ui.gv_center.setRenderHint(QtGui.QPainter.Antialiasing)
+        self.gv_center.setScene(self.overviewScene)
+        # self.gv_center.fitInView(0, -0.5, 1, 7)
+        self.gv_center.setMouseTracking(True)
+        self.gv_center.setRenderHint(QtGui.QPainter.Antialiasing)
 
         self.initPositionPointers()
         self.initSubPlots()
-        self.ui.gv_center.fitInView(0, -0, 0.2, 0.4)
 
     def initSubPlots(self):
         self.subPlot = {'days': self.overviewScene.addRect(0, 0, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
@@ -99,16 +210,21 @@ class Test(QtGui.QMainWindow):
                       'minutes': self.overviewScene.addRect(0, 1.5, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
                       'frames': self.overviewScene.addRect(0, 0, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0)))}
 
-        # self.clickSubPlot['days'].translate(0, 4.5)
-        # self.clickSubPlot['hours'].translate(0, 3)
-        # self.clickSubPlot['minutes'].translate(0, 1.5)
+        self.createAxis('days')#, 4.5)#, range(1, 3))
+        self.createAxis('hours')#, 3)#, range(1, 25))
+        self.createAxis('minutes')#, 1.5)#, range(1, 66, 5))
+        self.createAxis('frames')#, 0)#, range(1, 1800 / self.frameResolution + 1, self.frameResolution))
+
+        self.createTitle(4.5, "days")
+        self.createTitle(3, "hours")
+        self.createTitle(1.5, "minutes")
+        self.createTitle(0, "frames")
 
 
     def createPositionPointer(self, y):
         poly = QtGui.QPolygonF([QtCore.QPointF(0,-0.2 + y),
-                                QtCore.QPointF(0.025,0 + y),
-                                QtCore.QPointF(0.05,-0.2 + y)])
-
+                                QtCore.QPointF(0.01,-0.15 + y),
+                                QtCore.QPointF(0.02,-0.2 + y)])
 
         penCol = QtGui.QColor(0, y * 30, 0)
         brushCol = QtGui.QColor(0, y * 30, 0)
@@ -121,6 +237,77 @@ class Test(QtGui.QMainWindow):
         self.polys['frames'] = self.createPositionPointer(0)
 
 
+    def createAxisTicks(self, i, t, l, spacing, rectKey, pen):
+        x = i * spacing / l + 1 / (2 * l)
+        line = QtGui.QGraphicsLineItem(x, -0.01, x, -0.05,  self.axes[rectKey])
+        line.setPen(pen)
+
+        font = QtGui.QFont()
+        text = QtGui.QGraphicsTextItem(str(t), self.axes[rectKey])
+        text.setFont(font)
+        text.scale(0.002, -0.005)
+        pw = text.boundingRect().width() * 0.002
+
+
+        x = i * spacing / l  - (pw / 2.0) + 1 / (2 *l)
+        text.setPos(x, -0.05)
+
+    def getFdvtLabel(self, level, instance):
+        if level == "frames":
+            return self.fdvt.tree[self.day][self.hour][self.minute]['data'][instance] \
+                                * self.frameResolution
+
+        if level == "minutes":
+            return sorted([x for x in \
+                                self.fdvt.tree[self.day][self.hour].keys()\
+                                    if x != 'meta'])[instance]
+
+        if level == "hours":
+            return sorted([x for x in self.fdvt.tree[self.day].keys()\
+                                    if x != 'meta'])[instance]
+
+        if level == "days":
+            return sorted([x for x in self.fdvt.tree.keys()\
+                                    if x != 'meta'])[instance]
+
+    def getTemplateLabel(self, level, instance):
+        if self.rangeTemplate[level] is None:
+            return self.getFdvtLabel(level, instance)
+        else:
+            return self.rangeTemplate[level][instance]
+
+    def createAxis(self, rectKey):
+        spacing = self.axisSpacing[rectKey]
+
+        if self.axes[rectKey]:
+            self.overviewScene.removeItem(self.axes[rectKey])
+
+        self.axes[rectKey] = QtGui.QGraphicsRectItem()
+
+        line = QtGui.QGraphicsLineItem(0, -0.01, 1, -0.01, self.axes[rectKey])
+        pen = QtGui.QPen(QtGui.QColor(0, 0, 0))
+        line.setPen(pen)
+
+        l = float(len(self.rects[rectKey]))
+        if l:
+            for i, t in enumerate(range(0, int(l), spacing)):
+                lbl = self.getTemplateLabel(rectKey, t)
+                self.createAxisTicks(i, lbl, l, spacing, rectKey, pen)
+
+        self.overviewScene.addItem(self.axes[rectKey])
+        self.axes[rectKey].setPos(0, self.axisY[rectKey])
+
+    def createTitle(self, y, title):
+        font = QtGui.QFont()
+        text = self.overviewScene.addText(str(title), font)
+        text.scale(0.002, -0.005)
+        pw = text.boundingRect().width() * 0.002
+        ph = text.boundingRect().height() * 0.005
+
+        x = 0.5 - (pw / 2.0)
+        text.setPos(x, y + 1 + ph)
+
+
     def createClickBar(self, rectKey, instance):
         sp = self.clickSubPlot[rectKey]
         brush = self.clickBrush
@@ -129,7 +316,7 @@ class Test(QtGui.QMainWindow):
         rect = QtCore.QRectF(0, 0, 1, 1)
         rectItem = FDVBar(rect, sp)
         rectItem.setBarCoordinates(level=rectKey, instance=instance)
-        rectItem.setCallback(self.focusOnBar)
+        rectItem.setCallback(self.mouseClickOnBar)
         rectItem.setBrush(brush)
         rectItem.setPen(pen)
         rectItem.setZValue(1)
@@ -146,7 +333,7 @@ class Test(QtGui.QMainWindow):
             rect = QtCore.QRectF(0, i, 1, np.random.rand(1))
             rectItem = FDVBar(rect, bar)
             rectItem.setBarCoordinates(level=rectKey, instance=instance)
-            rectItem.setCallback(self.focusOnBar)
+            rectItem.setCallback(self.mouseClickOnBar)
             # rectItem = QtGui.QGraphicsRectItem(rect, bar)
             rectItem.setBrush(brush)
             rectItem.setPen(pen)
@@ -174,6 +361,7 @@ class Test(QtGui.QMainWindow):
             r.setWidth(1.0 / len(clickRects))
             bar.setRect(r)
             # bar.setPos(x, y)
+
 
 
 
@@ -222,18 +410,35 @@ class Test(QtGui.QMainWindow):
                         trans.m31(), -height * y + y, 1)
         subplotItem.setTransform(trans)
 
+    def getKeyIndexInFDVT(self, level, idx):
+        if level != 'frames':
+            return self.rangeTemplate[level].index(
+                                    self.getFdvtLabel(level, idx))
+        else:
+            return idx #self.rangeTemplate[level].index(
+            #                         self.getFdvtLabel(level, idx)) \
+            #         / self.frameResolution
+
 
     def changeElements(self, data, rectKey, y):
+        for clickRect in self.clickRects[rectKey]:
+            clickRect.setBrush(self.clickBrush)
+
         rects = self.rects[rectKey]
         maxHeight = 0
 
         maxCum = np.max(np.sum(data, axis=1))
         minBarHeight =  maxCum * 0.05
         for i, d in enumerate(data):
-            if i >= len(rects):
+            if self.rangeTemplate[rectKey] is not None:
+                idx = self.getKeyIndexInFDVT(rectKey, i)
+            else:
+                idx = i
+
+            while idx >= len(rects):
                 self.addElement(rectKey, y)
 
-            r = rects[i]
+            r = rects[idx]
 
             accH = 0
             for k, barLet in enumerate(r.childItems()):
@@ -253,10 +458,32 @@ class Test(QtGui.QMainWindow):
 
             self.normalizeBar(r, accH, len(rects))
 
+
+        if self.rangeTemplate[rectKey] is not None\
+        and rectKey != 'frames':
+            missingValues = set(self.rangeTemplate[rectKey]).difference(self.getFdvtLabel(rectKey, slice(None, None)))
+            for val in missingValues:
+                idx = self.rangeTemplate[rectKey].index(val)
+
+                while idx >= len(rects):
+                    self.addElement(rectKey, y)
+                self.clickRects[rectKey][idx].setBrush(self.missingValueBrush)
+                r = rects[idx]
+
+                accH = 0
+                for k, barLet in enumerate(r.childItems()):
+                    h = 0
+
+                    geo = barLet.rect()
+                    geo.setY(accH)
+                    geo.setHeight(h)
+                    barLet.setRect(geo)
+
+
         self.normalizeSubplot(self.subPlot[rectKey], maxHeight, y)
 
         self.overviewScene.update()
-        self.ui.gv_center.update()
+        self.gv_center.update()
 
 
     def setPolyPosition(self, key, idx):
@@ -275,24 +502,28 @@ class Test(QtGui.QMainWindow):
         # print data
         self.changeElements(data, 'days', 4.5)
         self.setPolyPosition('days', dayIdx)
+        self.createAxis('days')
 
     def plotHours(self,  fdvt, hourIdx):
         data = fdvt.plotData['hours']['data']
         # data = np.random.rand(24,4)
         self.changeElements(data, 'hours', 3)
         self.setPolyPosition('hours', hourIdx)
+        self.createAxis('hours')
 
     def plotMinutes(self,  fdvt, minuteIdx):
         data = fdvt.plotData['minutes']['data']
         # data = np.random.rand(60,4)
         self.changeElements(data, 'minutes', 1.5)
         self.setPolyPosition('minutes', minuteIdx)
+        self.createAxis('minutes')
 
     def plotFrames(self, fdvt, frameIdx):
         data = fdvt.plotData['frames']['data']
         # data = np.random.rand(1764/self.frameResolution,4)
         self.changeElements(data,'frames', 0)
         self.setPolyPosition('frames', frameIdx)
+        self.createAxis('frames')
 
 
     def plotData(self, day, hour, minute, frame):
@@ -315,44 +546,45 @@ class Test(QtGui.QMainWindow):
         self.plotFrames(self.fdvt, frame)
 
         if self.debugCnt < 1:
-            self.ui.gv_center.scale(1, -1)
+            self.gv_center.scale(1, -1)
             pass
         else:
 
-            # self.ui.gv_center.scale(10, 10)
+            # self.gv_center.scale(10, 10)
             pass
 
+        self.debugCnt += 1
         self.overviewScene.update()
 
 
-    def focusOnBar(self, level, instance):
+    def mouseClickOnBar(self, level, instance):
         if level == "frames":
             self.frame = instance * self.frameResolution
         else:
             self.frame = 0
 
         if level == "minutes":
-            self.minute = sorted(self.fdvt.tree[self.day][self.hour].keys())[instance]
+            self.minute = sorted([x for x in self.fdvt.tree[self.day][self.hour].keys()\
+                                    if x != 'meta'])[instance]
 
         if level == "hours":
-            self.hour = sorted(self.fdvt.tree[self.day].keys())[instance]
+            self.hour = sorted([x for x in self.fdvt.tree[self.day].keys()\
+                                    if x != 'meta'])[instance]
 
         if level == "days":
-            self.day = sorted(self.fdvt.tree.keys())[instance]
+            self.day = sorted([x for x in self.fdvt.tree.keys()\
+                                    if x != 'meta'])[instance]
 
         t1 = time.time()
         self.plotData(self.day, self.hour, self.minute, self.frame)
+
+        for func in self.mouseReleaseCallbacks[level]:
+            func(self.day, self.hour, self.minute, self.frame)
+
         print time.time() - t1
 
-    def buttonClick(self):
-        t = time.time()
-        a = ['00', '01', '02', '03', '04']
-        self.plotData('2013-02-19', '00', '02', self.debugCnt)
-        # self.plotData('2013-02-19', a[self.debugCnt], '00', 0)
+        print self.day, self.hour, self.minute, self.frame
 
-        print time.time() - t
-        self.debugCnt += 1
-        print "button click"
 
 
 class FDVBar(QtGui.QGraphicsRectItem):
