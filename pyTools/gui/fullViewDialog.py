@@ -20,3 +20,8 @@ class FullViewDialog(QtGui.QDialog):
         super(FullViewDialog, self).resizeEvent(event)
         if self.scene:
             self.ui.graphicsView.fitInView(self.scene.sceneRect())
+
+    def showEvent(self, event):
+        super(FullViewDialog, self).showEvent(event)
+        if self.scene:
+            self.ui.graphicsView.fitInView(self.scene.sceneRect())
