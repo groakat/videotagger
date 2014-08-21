@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Wed Jul 30 23:26:52 2014
+# Created: Thu Aug 21 11:06:41 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -29,6 +29,7 @@ class Ui_Form(object):
         self.pb_stopVideo.setGeometry(QtCore.QRect(1120, 590, 151, 23))
         self.pb_stopVideo.setObjectName("pb_stopVideo")
         self.pb_connect2server = QtGui.QPushButton(Form)
+        self.pb_connect2server.setEnabled(False)
         self.pb_connect2server.setGeometry(QtCore.QRect(1120, 610, 151, 23))
         self.pb_connect2server.setObjectName("pb_connect2server")
         self.pb_check4requests = QtGui.QPushButton(Form)
@@ -172,15 +173,18 @@ class Ui_Form(object):
         self.pb_check4requests.setPalette(palette)
         self.pb_check4requests.setObjectName("pb_check4requests")
         self.pb_test = QtGui.QPushButton(Form)
+        self.pb_test.setEnabled(True)
         self.pb_test.setGeometry(QtCore.QRect(1120, 650, 151, 23))
         self.pb_test.setObjectName("pb_test")
         self.cb_trajectory = QtGui.QCheckBox(Form)
         self.cb_trajectory.setGeometry(QtCore.QRect(1130, 550, 161, 21))
         self.cb_trajectory.setObjectName("cb_trajectory")
         self.pb_eraseAnno = QtGui.QPushButton(Form)
+        self.pb_eraseAnno.setEnabled(False)
         self.pb_eraseAnno.setGeometry(QtCore.QRect(1120, 690, 151, 23))
         self.pb_eraseAnno.setObjectName("pb_eraseAnno")
         self.pb_addAnno = QtGui.QPushButton(Form)
+        self.pb_addAnno.setEnabled(False)
         self.pb_addAnno.setGeometry(QtCore.QRect(1120, 670, 151, 23))
         self.pb_addAnno.setObjectName("pb_addAnno")
         self.speed_lbl = QtGui.QLabel(Form)

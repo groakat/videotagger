@@ -75,6 +75,9 @@
    </property>
   </widget>
   <widget class="QPushButton" name="pb_connect2server">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="geometry">
     <rect>
      <x>1120</x>
@@ -516,6 +519,9 @@
    </property>
   </widget>
   <widget class="QPushButton" name="pb_test">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="geometry">
     <rect>
      <x>1120</x>
@@ -542,6 +548,9 @@
    </property>
   </widget>
   <widget class="QPushButton" name="pb_eraseAnno">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="geometry">
     <rect>
      <x>1120</x>
@@ -555,6 +564,9 @@
    </property>
   </widget>
   <widget class="QPushButton" name="pb_addAnno">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="geometry">
     <rect>
      <x>1120</x>
