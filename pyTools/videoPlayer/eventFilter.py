@@ -486,7 +486,7 @@ class shortcutHandler(QtCore.QObject):
         # stop playback
         self.cbTarget.showTrajectTemp = True
 
-        if self.stepSize["allow-steps"] == "true":
+        if self.stepSize["allow-steps"]:
             self.cbTarget.play = False
         else:
             self.cbTarget.play = True

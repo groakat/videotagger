@@ -1402,6 +1402,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.vh.loadProgressive = True
         
         self.stop = False
+        self.increment = 0
         skipCnt = 0 # counts how often process events were skipped
         
         
