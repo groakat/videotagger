@@ -24,6 +24,7 @@ import pyTools.misc.config as cfg
 import pyTools.videoPlayer.eventFilter as EF
 import pyTools.videoPlayer.RPCController as RPC
 import pyTools.misc.FrameDataVisualization as FDV
+import pyTools.videoPlayer.graphicsViewFDV as GFDV
 import pyTools.gui.collapseContainer as CC
 
 import numpy as np
@@ -239,7 +240,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.connectedToServer = False
         self.rpcIH = None
         self.fdvt = None
-        # self.setupFrameView()
+        self.setupFrameView()
         self.bookmark = None
         
         
@@ -503,16 +504,19 @@ class videoPlayer(QtGui.QMainWindow):
     
         
     def setupFrameView(self):
-        frameView = self.ui.frameView
-        frameView.registerButtonPressCallback('frames', self.selectVideoTime)
+        self.frameView = GFDV.GraphicsViewFDV(self.ui.tab_2)
+        self.frameView.setGeometry(QtCore.QRect(10, 10, 891, 221))
+        self.frameView.setObjectName("frameView")
+
+        self.frameView.registerButtonPressCallback('frames', self.selectVideoTime)
         
         colors = [a['color'] for a in self.annotations]
-        frameView.setColors(colors)       
+        self.frameView.setColors(colors)
         
         if self.fdvtPath is not None:
-            frameView.loadSequence(self.fdvtPath)
+            self.frameView.loadSequence(self.fdvtPath)
             
-        self.fdvt = frameView.fdvTree
+        self.fdvt = self.frameView.fdvt
             
             
     def createPrevFrames(self, xPos, yPos):
