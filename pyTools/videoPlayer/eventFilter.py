@@ -445,6 +445,8 @@ class shortcutHandler(QtCore.QObject):
                         self.parent, self.info)
         QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Space),
                         self.parent, self.parent.displayFullResolutionFrame)
+        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Return),
+                        self.parent, self.parent.toggleEditModeCheckbox)
 
     def swapToConstantSpeed(self, speed):
 

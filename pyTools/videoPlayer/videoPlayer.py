@@ -1283,6 +1283,9 @@ class videoPlayer(QtGui.QMainWindow):
         if not self.play:
             self.startVideo()
 
+    def toggleEditModeCheckbox(self):
+        self.ui.cb_edit.setChecked(not self.ui.cb_edit.isChecked())
+
     def editToggle(self, state):
         if state:
             self.activateEditMode()
