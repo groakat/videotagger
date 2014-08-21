@@ -21,6 +21,14 @@ class Test(QtGui.QMainWindow):
         self.setupUi()
         self.connectElements()
         self.debugCnt = 0
+
+        self.gvFDV.registerButtonPressCallback('days', self.exampleCallbackFunction)
+        self.gvFDV.registerButtonPressCallback('hours', self.exampleCallbackFunction)
+        self.gvFDV.registerButtonPressCallback('minutes', self.exampleCallbackFunction)
+        self.gvFDV.registerButtonPressCallback('frames', self.exampleCallbackFunction)
+
+        self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v0.npy')
+
         self.show()
 
     def setupUi(self):
@@ -47,14 +55,13 @@ class Test(QtGui.QMainWindow):
         self.pb_debug.clicked.connect(self.buttonClick)
 
     def buttonClick(self):
-        t = time.time()
-        a = ['00', '01', '02', '03', '04']
-        self.gvFDV.plotData('2013-02-19', '00', '02', self.debugCnt)
-        # self.plotData('2013-02-19', a[self.debugCnt], '00', 0)
+        # self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v0.npy')
+        c = [QtGui.QColor(0, 255, 0), QtGui.QColor(0, 0, 0), QtGui.QColor(255, 0, 0), QtGui.QColor(255, 255, 0)]
+        self.gvFDV.setColors(c)
 
-        print time.time() - t
-        self.debugCnt += 1
-        print "button click"
+
+    def exampleCallbackFunction(self, day, hour, minute, frame):
+        print(day, hour, minute, frame)
 
 class GraphicsViewFDV(QtGui.QWidget):
 
@@ -68,6 +75,14 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         self.overviewScene = None
         self.sceneRect = None
+
+        self.fdvt = None
+
+        self.day = None
+        self.hour = None
+        self.minute = None
+        self.frame = None
+
         self.rects = {'days':[],
                       'hours':[],
                       'minutes':[],
@@ -118,19 +133,17 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.missingValueBrush = QtGui.QBrush(QtGui.QColor(150, 150, 150))
 
         self.polys = dict()
-        self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
-        self.fdvt.load('/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v0.npy')
         # self.fdvt.load('/media/peter/8e632f24-2998-4bd2-8881-232779708cd0/xav/data/clfrFDVT-burgos_rf_200k_weight-v3.npy')
 
 
 
         self.brushes = None
-        self.setColors()
         self.clickBrush = QtGui.QBrush(QtGui.QColor(0, 255, 0, 0))
         self.setupGV()
 
         self.show()
         self.gv_center.fitInView(-0.1, -0.1, 1.1, 7,QtCore.Qt.IgnoreAspectRatio)
+        # self.initFirstView()
 
     def registerButtonPressCallback(self, figKey, callbackFunction):
         """
@@ -144,7 +157,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         """
         self.mouseReleaseCallbacks[figKey] += [callbackFunction]
 
-    def setColors(self, colors=None):
+    def setColors(self, colors=None, reload=True):
         """
 
         :param colors: list of QColors
@@ -157,15 +170,27 @@ class GraphicsViewFDV(QtGui.QWidget):
                             QtGui.QBrush(QtGui.QColor(0, 0, 0))]
             # self.colors  = ['r', 'y', 'b', 'g', 'orange', 'black']
         else:
-            self.colors = colors
+            # self.colors = colors
             self.brushes = []
             for c in colors:
-                self.brushes += [QtGui.QBrush(c)]
+                print c, '-------------------------------------------'
+                clr = QtGui.QColor(c)
+                self.brushes += [QtGui.QBrush(clr)]
+
+        for k, i in self.rects.items():
+            for r in i:
+                self.overviewScene.removeItem(r)
+
+            self.rects[k] = []
+
+        if reload:
+            self.updateDisplay(useCurrentPos=True)
 
 
-    def loadSequence(self, fdvt):
-        self.fdvt = fdvt
-        # self.setDisplayRange()
+    def loadSequence(self, fdvtPath):
+        self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+        self.fdvt.load(fdvtPath)
+        self.updateDisplay()
 
     def setupUi(self):
         self.layout = QtGui.QVBoxLayout()
@@ -181,7 +206,11 @@ class GraphicsViewFDV(QtGui.QWidget):
     def resizeEvent(self, event):
         super(GraphicsViewFDV, self).resizeEvent(event)
         self.gv_center.fitInView(-0.1, -0.1, 1.1, 7,QtCore.Qt.IgnoreAspectRatio)
-        # self.gv_center.fitInView(self.overviewScene.itemsBoundingRect())
+
+    def showEvent(self, event):
+        super(GraphicsViewFDV, self).showEvent(event)
+        self.gv_center.fitInView(-0.1, -0.1, 1.1, 7,QtCore.Qt.IgnoreAspectRatio)
+
 
     def setupGV(self):
         self.overviewScene = QtGui.QGraphicsScene(self)
@@ -194,6 +223,8 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         self.initPositionPointers()
         self.initSubPlots()
+
+        self.setColors(reload=False)
 
     def initSubPlots(self):
         self.subPlot = {'days': self.overviewScene.addRect(0, 0, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
@@ -219,6 +250,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.createTitle(3, "hours")
         self.createTitle(1.5, "minutes")
         self.createTitle(0, "frames")
+
 
 
     def createPositionPointer(self, y):
@@ -343,24 +375,27 @@ class GraphicsViewFDV(QtGui.QWidget):
 
     def addElement(self, rectKey, y):
         rects = self.rects[rectKey]
-        clickRects = self.clickRects[rectKey]
 
         rects += [self.createStackedBar(rectKey, len(rects))]
-        clickRects += [self.createClickBar(rectKey, len(clickRects))]
 
         for i, bar in enumerate(rects):
             x = float(i) / len(rects)
             bar.setPos(x, y)
 
-        for i, bar in enumerate(clickRects):
-            x = float(i) / len(clickRects)
-            r = bar.rect()
-            r.setX(x)
-            r.setY(y)
-            r.setHeight(1)
-            r.setWidth(1.0 / len(clickRects))
-            bar.setRect(r)
-            # bar.setPos(x, y)
+        clickRects = self.clickRects[rectKey]
+        if len(clickRects) < len(rects):
+
+            clickRects += [self.createClickBar(rectKey, len(clickRects))]
+
+            for i, bar in enumerate(clickRects):
+                x = float(i) / len(clickRects)
+                r = bar.rect()
+                r.setX(x)
+                r.setY(y)
+                r.setHeight(1)
+                r.setWidth(1.0 / len(clickRects))
+                bar.setRect(r)
+                # bar.setPos(x, y)
 
 
 
@@ -583,7 +618,17 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         print time.time() - t1
 
-        print self.day, self.hour, self.minute, self.frame
+    def updateDisplay(self, useCurrentPos=False):
+        if self.fdvt is None:
+            return
+
+        if not useCurrentPos:
+            self.day = self.getFdvtLabel('days', 0)
+            self.hour = self.getFdvtLabel('hours', 0)
+            self.minute = self.getFdvtLabel('minutes', 0)
+            self.frame = self.getFdvtLabel('frames', 0)
+        self.plotData(self.day, self.hour, self.minute, self.frame)
+        self.plotData(self.day, self.hour, self.minute, self.frame)
 
 
 
