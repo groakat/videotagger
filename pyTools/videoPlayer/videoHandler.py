@@ -982,17 +982,6 @@ class VideoHandler(QtCore.QObject):
 
     @cfg.logClassFunction
     def addAnnotation(self, vials, annotator, behaviour, metadata):
-        for aV in self.annoViewList:
-            if (aV.behaviourName == None) \
-            or (behaviour == aV.behaviourName) \
-            or (behaviour in aV.behaviourName):
-                if (aV.annotator == None) \
-                or (annotator == aV.annotator) \
-                or (annotator in aV.annotator):
-                    if vials == aV.vialNo:
-                        cfg.log.debug("calling aV.addAnno()")
-                        aV.addAnno(self.posPath, self.idx, metadata)
-
 
         if vials == None:
             vials = [None]
@@ -1000,7 +989,7 @@ class VideoHandler(QtCore.QObject):
         rng = None
         curFilter = None
             
-        if self.annoAltStart == None:
+        if self.annoAltStart is None:
             self.annoAltStart = bsc.FramePosition(self.annoDict, self.posPath, 
                                                                     self.idx)
             
@@ -1022,7 +1011,8 @@ class VideoHandler(QtCore.QObject):
                     all((sorted(curFilter[i]) == sorted(self.annoAltFilter[i]) \
                                         for i in range(len(curFilter))))
             if not sameAnnotationFilter:
-                self.escapeAnnotationAlteration()
+                return
+                # self.escapeAnnotationAlteration()
             else:
                 annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)    
                 
@@ -1072,6 +1062,20 @@ class VideoHandler(QtCore.QObject):
                                        "metadata":self.tempValue[key]}))
                 
                 self.annoAltStart = None
+
+        if vials == [None]:
+            vials = None
+            
+        for aV in self.annoViewList:
+            if (aV.behaviourName == None) \
+            or (behaviour == aV.behaviourName) \
+            or (behaviour in aV.behaviourName):
+                if (aV.annotator == None) \
+                or (annotator == aV.annotator) \
+                or (annotator in aV.annotator):
+                    if vials == aV.vialNo:
+                        cfg.log.debug("calling aV.addAnno()")
+                        aV.addAnno(self.posPath, self.idx, metadata)
                 
         return rng, curFilter
 

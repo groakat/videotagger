@@ -1793,7 +1793,7 @@ class videoPlayer(QtGui.QMainWindow):
             labelledFrames = self.vh.addAnnotation(self.selectedVial, annotator, 
                               behaviour, metadata=self.getMetadata())
                 
-        self.annoIsOpen = not self.annoIsOpen
+        self.annoIsOpen = self.vh.annoAltStart is not None #not self.annoIsOpen
         
         if labelledFrames != (None, None):
             self.convertLabelListAndReply(labelledFrames)
