@@ -96,18 +96,73 @@ class Test(QtGui.QMainWindow):
 
         # self.normalizeSubplot(self.rect, newHeight, self.rectY)
 
+class CustomQCompleter(QtGui.QCompleter):
+    """
+    copied from: http://stackoverflow.com/a/7767999/2156909
+    """
+    def __init__(self, *args):#parent=None):
+        super(CustomQCompleter, self).__init__(*args)
+        self.local_completion_prefix = ""
+        self.source_model = None
+
+    def setModel(self, model):
+        self.source_model = model
+        super(CustomQCompleter, self).setModel(self.source_model)
+
+    def updateModel(self):
+        local_completion_prefix = self.local_completion_prefix
+        class InnerProxyModel(QtGui.QSortFilterProxyModel):
+            def filterAcceptsRow(self, sourceRow, sourceParent):
+                index0 = self.sourceModel().index(sourceRow, 0, sourceParent)
+                return local_completion_prefix.lower() in self.sourceModel().data(index0).lower()
+        proxy_model = InnerProxyModel()
+        proxy_model.setSourceModel(self.source_model)
+        super(CustomQCompleter, self).setModel(proxy_model)
+
+    def splitPath(self, path):
+        self.local_completion_prefix = path
+        self.updateModel()
+        return ""
+
 
 
 class AutoCompleteLineEdit(QtGui.QLineEdit):
     def __init__(self, *args, **kwargs):
         super(AutoCompleteLineEdit, self).__init__(*args, **kwargs)
-        self.comp = QtGui.QCompleter([""], self)
+        # self.comp = QtGui.QCompleter([""], self)
+        self.comp = CustomQCompleter([""], self)
+        self.comp.setCompletionMode(QtGui.QCompleter.PopupCompletion)
         self.comp.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
         self.setCompleter(self.comp)#
-        self.setModel(["hallo", "world", "we", "are"])
+        self.setModel(["hallo babe", "world", "we", "are babe"])
 
     def setModel(self, strList):
-        self.comp.model().setStringList(strList)
+        # self.comp.model().setStringList(strList)
+        self.comp.setModel(QtGui.QStringListModel(strList))
+
+class AutoCompleteComboBox(QtGui.QComboBox):
+    def __init__(self, *args, **kwargs):
+        super(AutoCompleteComboBox, self).__init__(*args, **kwargs)
+
+        self.setEditable(True)
+        self.setInsertPolicy(self.NoInsert)
+
+        # self.comp = QtGui.QCompleter([""], self)
+        self.comp = CustomQCompleter([""], self)
+        self.comp.setCompletionMode(QtGui.QCompleter.PopupCompletion)
+        self.comp.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        self.setCompleter(self.comp)#
+        self.setModel(["hallo babe", "world", "we", "are babe"])
+
+    def setModel(self, strList):
+        # self.comp.model().setStringList(strList)
+        self.clear()
+        self.insertItems(0, strList)
+        self.comp.setModel(self.model())
+
+    def focusInEvent(self, event):
+        self.clearEditText()
+        super(AutoCompleteComboBox, self).focusInEvent(event)
 
 
 
@@ -118,7 +173,7 @@ class ContextLineEdit(QtGui.QWidget):
 
         self.label = QtGui.QLabel(self)
         self.label.setText("change label to ")
-        self.autoCompeleteLineEdit = AutoCompleteLineEdit(self)
+        self.autoCompeleteLineEdit = AutoCompleteComboBox(self)
 
         self.layout = QtGui.QHBoxLayout()
         self.layout.addWidget(self.label)
@@ -126,7 +181,7 @@ class ContextLineEdit(QtGui.QWidget):
 
         self.setLayout(self.layout)
 
-        self.autoCompeleteLineEdit.returnPressed.connect(action.trigger)
+        # self.autoCompeleteLineEdit.returnPressed.connect(action.trigger)
 
     def text(self):
         return self.autoCompeleteLineEdit.text()
@@ -451,7 +506,7 @@ class InfoRectItem(ResizeableGraphicsRectItem):
 
         self.setColor(QtGui.QColor(255,0,0))
 
-    def setupInfoTextItem(self, fontSize):
+    def setupInfoTextItem(self, fontSize=None):
         if self.infoTextItem is None:
             self.infoTextItem = QtGui.QGraphicsSimpleTextItem(self)
 
@@ -459,10 +514,11 @@ class InfoRectItem(ResizeableGraphicsRectItem):
         if fontSize:
             self.infoTextFont = QtGui.QFont('', fontSize)
         else:
-            self.infoTextFont = QtGui.QFont('', 120)
+            self.infoTextFont = QtGui.QFont('', 5)
 
         self.infoTextItem.setFont(self.infoTextFont)
         self.infoTextItem.setPos(self.rect().x() + self.rect().width() + 10, self.rect().y())
+        self.infoTextItem.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
 
     def setColor(self, color):
         self.setPen(QtGui.QPen(color))
