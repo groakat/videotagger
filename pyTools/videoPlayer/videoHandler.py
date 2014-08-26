@@ -1065,7 +1065,7 @@ class VideoHandler(QtCore.QObject):
 
         if vials == [None]:
             vials = None
-            
+
         for aV in self.annoViewList:
             if (aV.behaviourName == None) \
             or (behaviour == aV.behaviourName) \

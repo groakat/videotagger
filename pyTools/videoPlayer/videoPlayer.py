@@ -261,8 +261,8 @@ class videoPlayer(QtGui.QMainWindow):
         self.showTrajectories(self.showTraject)
             
         self.transferElementsInCollapseContainer()
-        
-        self.show()        
+
+        self.show()
         cfg.logGUI.info(json.dumps(
                             {"message":'"--------- opened GUI ------------"'})) 
         
@@ -273,7 +273,11 @@ class videoPlayer(QtGui.QMainWindow):
         # self.startLoop.emit()
         self.stopPlayback()
         
-        
+
+    # def showEvent(self, event):
+    #     super(videoPlayer, self).showEvent(event)
+    #     self.displayFullResolutionFrame()
+
     @cfg.logClassFunction
     def connectSignals(self):
         self.ui.pb_startVideo.clicked.connect(self.startVideo)
@@ -956,7 +960,7 @@ class videoPlayer(QtGui.QMainWindow):
             anRect.setRect(rect)
             # anRect.setColor(penCol)
             anRect.setResizeBoxColor(QtGui.QColor(255,255,255,50))
-            anRect.setupInfoTextItem(fontSize=18)
+            anRect.setupInfoTextItem(fontSize=12)
             self.videoScene.addItem(anRect)
             self.annotationRoiLabels += [anRect]
 
@@ -1033,6 +1037,7 @@ class videoPlayer(QtGui.QMainWindow):
             self.fullVideoDialog.setScene(self.videoScene)
             self.fullVideoDialog.show()
             self.dialogShortCutFilter = EF.shortcutHandler(self.fullVideoDialog, self, **self.filterObjArgs)
+            # self.fullVideoDialog.installEventFilter(self.dialogShortCutFilter)
         else:
             self.fullVideoDialog.show()
 
@@ -1458,6 +1463,7 @@ class videoPlayer(QtGui.QMainWindow):
             if self.firstLoop:
                 self.firstLoop = False
                 self.deactivateEditMode()
+                # self.displayFullResolutionFrame()
 #             else:
 #                 self.thread().msleep(QtCore.QTime.currentTime().msecsTo(dieTime))
                 
