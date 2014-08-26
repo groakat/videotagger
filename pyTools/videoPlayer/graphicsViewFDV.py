@@ -205,11 +205,11 @@ class GraphicsViewFDV(QtGui.QWidget):
 
     def resizeEvent(self, event):
         super(GraphicsViewFDV, self).resizeEvent(event)
-        self.gv_center.fitInView(-0.1, -0.1, 1.1, 7,QtCore.Qt.IgnoreAspectRatio)
+        self.gv_center.fitInView(-0.1, -1, 1.1, 6,QtCore.Qt.IgnoreAspectRatio)
 
     def showEvent(self, event):
         super(GraphicsViewFDV, self).showEvent(event)
-        self.gv_center.fitInView(-0.1, -0.1, 1.1, 7,QtCore.Qt.IgnoreAspectRatio)
+        self.gv_center.fitInView(-0.1, -1, 1.1, 6,QtCore.Qt.IgnoreAspectRatio)
 
 
     def setupGV(self):
@@ -275,9 +275,11 @@ class GraphicsViewFDV(QtGui.QWidget):
         line.setPen(pen)
 
         font = QtGui.QFont()
+        font.setPointSize(5)
         text = QtGui.QGraphicsTextItem(str(t), self.axes[rectKey])
+        text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
         text.setFont(font)
-        text.scale(0.002, -0.005)
+        # text.scale(0.002, -0.005)
         pw = text.boundingRect().width() * 0.002
 
 
@@ -332,9 +334,10 @@ class GraphicsViewFDV(QtGui.QWidget):
     def createTitle(self, y, title):
         font = QtGui.QFont()
         text = self.overviewScene.addText(str(title), font)
-        text.scale(0.002, -0.005)
+        text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
+        # text.scale(0.002, -0.005)
         pw = text.boundingRect().width() * 0.002
-        ph = text.boundingRect().height() * 0.005
+        ph = text.boundingRect().height() * 0.015
 
         x = 0.5 - (pw / 2.0)
         text.setPos(x, y + 1 + ph)
