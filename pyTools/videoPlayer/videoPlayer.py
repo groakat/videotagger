@@ -22,7 +22,9 @@ import pyTools.videoPlayer.modifyableRect as MR
 import pyTools.system.misc as systemMisc
 import pyTools.misc.config as cfg
 import pyTools.videoPlayer.eventFilter as EF
-import pyTools.videoPlayer.RPCController as RPC
+if sys.platform != "win32":
+    import pyTools.videoPlayer.RPCController as RPC
+    
 import pyTools.misc.FrameDataVisualization as FDV
 import pyTools.videoPlayer.graphicsViewFDV as GFDV
 import pyTools.gui.collapseContainer as CC
