@@ -443,6 +443,8 @@ class shortcutHandler(QtCore.QObject):
                         self.parent, self.eraseAnno)
         QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['info']),
                         self.parent, self.info)
+        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_S),
+                        self.parent, self.saveAll)
         QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Space),
                         self.parent, self.cbTarget.displayFullResolutionFrame)
         QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Return),

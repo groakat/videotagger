@@ -24,7 +24,7 @@ import pyTools.misc.config as cfg
 import pyTools.videoPlayer.eventFilter as EF
 if sys.platform != "win32":
     import pyTools.videoPlayer.RPCController as RPC
-    
+
 import pyTools.misc.FrameDataVisualization as FDV
 import pyTools.videoPlayer.graphicsViewFDV as GFDV
 import pyTools.gui.collapseContainer as CC

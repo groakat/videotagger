@@ -10,6 +10,7 @@ import pyTools.misc.Cache as Cache
 import pyTools.videoPlayer.dataLoader as DL
 import numpy as np
 import time
+import os
 
 
 
@@ -120,7 +121,9 @@ class VideoHandler(QtCore.QObject):
         
         self.curMetadata = None
         self.tempValue = dict()
-        
+
+        self.tmpFile = "/tmp/videoTagger.bhvr~"
+
         # always do that at the end
 #         self.checkBuffer()
         
@@ -980,6 +983,61 @@ class VideoHandler(QtCore.QObject):
 
         return behaviour
 
+    def addAnnotationRange(self, rng, vials, annotator, behaviour):
+        for key in rng:
+            for v in vials:
+                self.annoDict[key].annotation.addAnnotation(v, rng[key],
+                                        annotator, behaviour,
+                                        self.tempValue[key])
+
+            cfg.log.info("add annotation vials {v}| range {r}| annotator {a}| behaviour {b}| confidence {c}".format(
+                        v=vials, r=rng[key], a=annotator,
+                          b=behaviour, c=self.tempValue[key]))
+
+            cfg.log.info("check annodict {0}".format(self.annoDict[key].annotation.hasChanged))
+
+            # refresh annotation in anno view
+            for aV in self.annoViewList:
+                if (aV.behaviourName == None) \
+                or (behaviour == aV.behaviourName) \
+                or (behaviour in aV.behaviourName):
+                    if (aV.annotator == None) \
+                    or (annotator == aV.annotator) \
+                    or (annotator in aV.annotator):
+                        if v == None and aV.vialNo == None \
+                        or v in aV.vialNo:
+                            cfg.log.debug("refreshing annotation")
+                            aV.addAnnotation(\
+                                        self.annoDict[key].annotation,
+                                             key)
+
+            cfg.logGUI.info(json.dumps({"vials":vials,
+                                   "key-range":rng,
+                                   "annotator":annotator,
+                                   "behaviour":behaviour,
+                                   "metadata":self.tempValue[key]}))
+
+
+        self.saveTempAnnotationEdit(rng, vials, annotator, behaviour, 'add')
+
+    def saveTempAnnotationEdit(self, rng, vials, annotator, behaviour, mode):
+        if os.path.exists(self.tmpFile):
+            with open(self.tmpFile, "r") as f:
+                annos = json.load(f)
+        else:
+            annos = []
+
+        annos += [{"mode":mode,
+                   "vials":vials,
+                   "key-range":rng,
+                   "annotator":annotator,
+                   "behaviour":behaviour,
+                   "metadata":self.tempValue}]
+
+        with open(tmpFile, 'w') as f:
+            json.dump(annos, f)
+
+
     @cfg.logClassFunction
     def addAnnotation(self, vials, annotator, behaviour, metadata):
 
@@ -1000,7 +1058,6 @@ class VideoHandler(QtCore.QObject):
                                                                     [behaviour])
             
             self.tempValue = dict()
-            
             self.updateAnnotationProperties(metadata)
             
             
@@ -1020,46 +1077,9 @@ class VideoHandler(QtCore.QObject):
                 lenFunc = lambda x: len(x.annotation.frameList)#[0])
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
-
-
                 behaviour = self.disambiguateDoubleBehaviourNames(vials, annotator, behaviour, rng)
 
-                for key in rng:
-                    for v in vials:
-                        self.annoDict[key].annotation.addAnnotation(v, rng[key], 
-                                                annotator, behaviour, 
-                                                self.tempValue[key])
-                                                
-                    cfg.log.info("add annotation vials {v}| range {r}| annotator {a}| behaviour {b}| confidence {c}".format(
-                                v=vials, r=rng[key], a=annotator,
-                                  b=behaviour, c=self.tempValue[key]))
-                    
-                    cfg.log.info("check annodict {0}".format(self.annoDict[key].annotation.hasChanged))
-                    
-                                        
-                    tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
-                    self.annoDict[key].annotation.saveToTmpFile(tmpFilename)
-                    
-                    # refresh annotation in anno view
-                    for aV in self.annoViewList:
-                        if (aV.behaviourName == None) \
-                        or (behaviour == aV.behaviourName) \
-                        or (behaviour in aV.behaviourName):
-                            if (aV.annotator == None) \
-                            or (annotator == aV.annotator) \
-                            or (annotator in aV.annotator):
-                                if v == None and aV.vialNo == None \
-                                or v in aV.vialNo:
-                                    cfg.log.debug("refreshing annotation")
-                                    aV.addAnnotation(\
-                                                self.annoDict[key].annotation,
-                                                     key)
-                
-                cfg.logGUI.info(json.dumps({"vials":vials,
-                                       "key-range":rng, 
-                                       "annotator":annotator,
-                                       "behaviour":behaviour, 
-                                       "metadata":self.tempValue[key]}))
+                self.addAnnotationRange(rng, vials, annotator, behaviour)
                 
                 self.annoAltStart = None
 
@@ -1085,8 +1105,8 @@ class VideoHandler(QtCore.QObject):
                 self.annoDict[key].annotation.removeAnnotation(v,
                                         rng[key],
                                         annotator, behaviour)
-                tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
-                self.annoDict[key].annotation.saveToTmpFile(tmpFilename)
+                # tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
+                # self.annoDict[key].annotation.saveToTmpFile(tmpFilename)
 
             # refresh annotation in anno view
             for aV in self.annoViewList:
@@ -1102,20 +1122,11 @@ class VideoHandler(QtCore.QObject):
                             aV.addAnnotation(\
                                         self.annoDict[key].annotation,
                                              key)
+
+        self.saveTempAnnotationEdit(rng, vials, annotator, behaviour, 'erase')
         
     @cfg.logClassFunction
     def eraseAnnotation(self, vials, annotator, behaviour):
-        for aV in self.annoViewList:
-            if aV.behaviourName == None \
-            or behaviour == aV.behaviourName \
-            or behaviour in aV.behaviourName:
-                if aV.annotator == None \
-                or annotator == aV.annotator \
-                or annotator in aV.annotator:
-                    if vials == aV.vialNo:
-                        cfg.log.debug("eraseAnnotation")
-                        aV.eraseAnno(self.posPath, self.idx)
-                       
         if vials == None:
             vials = [None]
             
@@ -1140,7 +1151,7 @@ class VideoHandler(QtCore.QObject):
             if not sameAnnotationFilter:
                 self.escapeAnnotationAlteration()
             else:
-                annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)    
+                annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)
                 
                 ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  : make that [0] dynamic
                 lenFunc = lambda x: len(x.annotation.frameList)#[0])
@@ -1156,7 +1167,20 @@ class VideoHandler(QtCore.QObject):
                                        "behaviour":behaviour}))
                 
                 self.annoAltStart = None
-        
+
+        if vials == [None]:
+            vials = None
+
+        for aV in self.annoViewList:
+            if aV.behaviourName == None \
+            or behaviour == aV.behaviourName \
+            or behaviour in aV.behaviourName:
+                if aV.annotator == None \
+                or annotator == aV.annotator \
+                or annotator in aV.annotator:
+                    if vials == aV.vialNo:
+                        cfg.log.debug("eraseAnnotation")
+                        aV.eraseAnno(self.posPath, self.idx)
         return rng, curFilter
 
     def findRangeOfAnnotation(self, frameIdx, posKey, filterTuple,
@@ -1270,6 +1294,8 @@ class VideoHandler(QtCore.QObject):
         for key in self.annoDict:
             tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr"
             self.annoDict[key].annotation.saveToFile(tmpFilename)
+
+        os.remove(self.tmpFile)
 
             
             
