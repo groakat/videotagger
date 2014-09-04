@@ -8,6 +8,14 @@ pyTools
 
 # Install
 
+## Using conda (win64 only)
+This is the easiest way. Install anaconda from https://store.continuum.io/cshop/anaconda/ . Then open a command window (Click the start button and type cmd) 
+In the command window type
+
+    conda config --add channels https://conda.binstar.org/groakat
+    conda install videotagger-dependencies
+
+Then clone the git repository and run `python setup.py develop` in the folder that contains the `setup.py` file.
 
 ## Standalone VideoPlayer
 
