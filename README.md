@@ -15,7 +15,7 @@ In the command window type
     conda config --add channels https://conda.binstar.org/groakat
     conda install videotagger-dependencies
 
-Then clone the git repository and run `python setup.py develop` in the folder that contains the `setup.py` file.
+Then clone the git repository (using the github client from https://windows.github.com/) and run `python setup.py develop` in the folder that contains the `setup.py` file.
 
 ## Standalone VideoPlayer
 
