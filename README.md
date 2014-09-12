@@ -9,7 +9,7 @@ pyTools
 # Install
 
 ## Using conda (win64 only)
-This is the easiest way. Install anaconda from https://store.continuum.io/cshop/anaconda/ . Then open a command window (Click the start button and type cmd) 
+This is the easiest way. Install anaconda from http://conda.pydata.org/miniconda.html . Then open a command window (Click the start button and type cmd) 
 In the command window type
 
     conda config --add channels https://conda.binstar.org/groakat
