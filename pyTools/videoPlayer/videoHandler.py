@@ -984,6 +984,9 @@ class VideoHandler(QtCore.QObject):
         return behaviour
 
     def addAnnotationRange(self, rng, vials, annotator, behaviour):
+        if type(vials) is not list:
+            vials = [vials]
+
         for key in rng:
             for v in vials:
                 self.annoDict[key].annotation.addAnnotation(v, rng[key],
@@ -1034,15 +1037,15 @@ class VideoHandler(QtCore.QObject):
                    "behaviour":behaviour,
                    "metadata":self.tempValue}]
 
-        with open(tmpFile, 'w') as f:
+        with open(self.tmpFile, 'w') as f:
             json.dump(annos, f)
 
 
     @cfg.logClassFunction
     def addAnnotation(self, vials, annotator, behaviour, metadata):
 
-        if vials == None:
-            vials = [None]
+        # if vials == None:
+        #     vials = [None]
             
         rng = None
         curFilter = None
@@ -1064,10 +1067,11 @@ class VideoHandler(QtCore.QObject):
         else:
             curFilter = Annotation.AnnotationFilter(vials, [annotator], 
                                                     [behaviour])
-            sameAnnotationFilter = \
-                    all((sorted(curFilter[i]) == sorted(self.annoAltFilter[i]) \
-                                        for i in range(len(curFilter))))
-            if not sameAnnotationFilter:
+            # sameAnnotationFilter = \
+            #         all((sorted(curFilter[i]) == sorted(self.annoAltFilter[i]) \
+            #                             for i in range(len(curFilter))))
+            # if not sameAnnotationFilter:
+            if not curFilter == self.annoAltFilter:
                 return
                 # self.escapeAnnotationAlteration()
             else:
@@ -1083,8 +1087,8 @@ class VideoHandler(QtCore.QObject):
                 
                 self.annoAltStart = None
 
-        if vials == [None]:
-            vials = None
+        # if vials == [None]:
+        #     vials = None
 
         for aV in self.annoViewList:
             if (aV.behaviourName == None) \
@@ -1100,6 +1104,9 @@ class VideoHandler(QtCore.QObject):
         return rng, curFilter
 
     def eraseAnnotationRange(self, rng, vials, annotator, behaviour):
+        if type(vials) is not list:
+            vials = [vials]
+
         for key in rng:
             for v in vials:
                 self.annoDict[key].annotation.removeAnnotation(v,
@@ -1127,8 +1134,8 @@ class VideoHandler(QtCore.QObject):
         
     @cfg.logClassFunction
     def eraseAnnotation(self, vials, annotator, behaviour):
-        if vials == None:
-            vials = [None]
+        # if vials == None:
+        #     vials = [None]
             
         rng = None
         curFilter = None
@@ -1145,11 +1152,13 @@ class VideoHandler(QtCore.QObject):
         else:
             curFilter = Annotation.AnnotationFilter(vials, [annotator], 
                                                     [behaviour])
-            sameAnnotationFilter = \
-                    all((sorted(curFilter[i]) == sorted(self.annoAltFilter[i]) \
-                                        for i in range(len(curFilter))))
-            if not sameAnnotationFilter:
-                self.escapeAnnotationAlteration()
+            # sameAnnotationFilter = \
+            #         all((sorted(curFilter[i]) == sorted(self.annoAltFilter[i]) \
+            #                             for i in range(len(curFilter))))
+
+            if not curFilter == self.annoAltFilter:
+                # self.escapeAnnotationAlteration()
+                return
             else:
                 annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)
                 
@@ -1168,8 +1177,8 @@ class VideoHandler(QtCore.QObject):
                 
                 self.annoAltStart = None
 
-        if vials == [None]:
-            vials = None
+        # if vials == [None]:
+        #     vials = None
 
         for aV in self.annoViewList:
             if aV.behaviourName == None \

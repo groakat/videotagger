@@ -1137,6 +1137,19 @@
     <bool>false</bool>
    </property>
   </widget>
+  <widget class="QCheckBox" name="cb_anyLabel">
+   <property name="geometry">
+    <rect>
+     <x>1130</x>
+     <y>750</y>
+     <width>81</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>any label</string>
+   </property>
+  </widget>
  </widget>
  <resources/>
  <connections/>

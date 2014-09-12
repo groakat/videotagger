@@ -1563,8 +1563,11 @@ class videoPlayer(QtGui.QMainWindow):
         
         print "selectVideoTime: clicked on day {0}, hour {1}, minute {2}, frame {3}, data {4}".format(
                                                     day, hour, minute, frame, data)
-        
-        if self.usingVideoRunningIndeces:
+        if len(self.fileList) == 1:
+            idx = 0
+            minutes = day * (24 * 60) + hour * 60  + minute
+            frame += minutes * 30 * 60
+        elif self.usingVideoRunningIndeces:
             idx = day * (24 * 60) + hour * 60 + minute
             idx -= 1
         else:
@@ -1578,7 +1581,7 @@ class videoPlayer(QtGui.QMainWindow):
                 raise ValueError("dataStr retrieved ambigous result")
             
             idx = idx[0]
-        
+
         self.selectVideo(idx, frame)
                 
         
@@ -1766,18 +1769,20 @@ class videoPlayer(QtGui.QMainWindow):
 
         deltaVector = []
         for key in frames.keys():
-            treeKey = FDV.filename2Time(key)
-            day = treeKey[0]
-            hour = treeKey[1]
-            minute = treeKey[2]
+            # treeKey = FDV.filename2Time(key)
+            # day = treeKey[0]
+            # hour = treeKey[1]
+            # minute = treeKey[2]
             for frame in frames[key]:
-                deltaVector += [[self.fdvt.key2idx(day, hour, minute, frame),
-                                self.fdvt.getAnnotationFilterCode(filt)]]
+                # deltaVector += [[self.fdvt.key2idx(day, hour, minute, frame),
+                #                 self.fdvt.getAnnotationFilterCode(filt)]]
+                deltaVector += [self.fdvt.getDeltaValue(key, frame, filt)]
 
 
-#         if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
-#             self.fdvt.insertDeltaVector(deltaVector)
-#             self.ui.frameView.plotSequence(refreshAll=True)
+        if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
+            self.fdvt.insertDeltaVector(deltaVector)
+            self.frameView.updateDisplay(useCurrentPos=True)
+
 
         if self.rpcIH:
             self.rpcIH.sendReply([deltaVector])
@@ -1805,6 +1810,7 @@ class videoPlayer(QtGui.QMainWindow):
         
         if labelledFrames != (None, None):
             self.convertLabelListAndReply(labelledFrames)
+
         
 
 #     @cfg.logClassFunction

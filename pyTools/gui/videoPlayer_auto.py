@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Thu Aug 21 11:06:41 2014
+# Created: Fri Sep 12 21:40:03 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -366,6 +366,9 @@ class Ui_Form(object):
         self.cb_edit.setGeometry(QtCore.QRect(1130, 720, 91, 21))
         self.cb_edit.setChecked(False)
         self.cb_edit.setObjectName("cb_edit")
+        self.cb_anyLabel = QtGui.QCheckBox(Form)
+        self.cb_anyLabel.setGeometry(QtCore.QRect(1130, 750, 81, 21))
+        self.cb_anyLabel.setObjectName("cb_anyLabel")
 
         self.retranslateUi(Form)
         self.tabWidget.setCurrentIndex(1)
@@ -389,4 +392,5 @@ class Ui_Form(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_1), QtGui.QApplication.translate("Form", "Filenames", None, QtGui.QApplication.UnicodeUTF8))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QtGui.QApplication.translate("Form", "Frame View", None, QtGui.QApplication.UnicodeUTF8))
         self.cb_edit.setText(QtGui.QApplication.translate("Form", "editmode", None, QtGui.QApplication.UnicodeUTF8))
+        self.cb_anyLabel.setText(QtGui.QApplication.translate("Form", "any label", None, QtGui.QApplication.UnicodeUTF8))
 

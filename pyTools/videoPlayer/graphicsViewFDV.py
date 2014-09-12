@@ -27,7 +27,13 @@ class Test(QtGui.QMainWindow):
         self.gvFDV.registerButtonPressCallback('minutes', self.exampleCallbackFunction)
         self.gvFDV.registerButtonPressCallback('frames', self.exampleCallbackFunction)
 
-        self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v0.npy')
+        # self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v0.npy')
+        c = [QtGui.QColor(0, 255, 0),
+            QtGui.QColor(0,  0, 255),
+            QtGui.QColor(255, 0, 0)]#,
+                            # QtGui.QBrush(QtGui.QColor(0, 0, 0))]
+        self.gvFDV.setColors(c)
+        self.gvFDV.loadSequence('/media/peter/Seagate Backup Plus Drive/peter/behaviourTree.npy')
 
         self.show()
 
@@ -56,12 +62,13 @@ class Test(QtGui.QMainWindow):
 
     def buttonClick(self):
         # self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v0.npy')
-        c = [QtGui.QColor(0, 255, 0), QtGui.QColor(0, 0, 0), QtGui.QColor(255, 0, 0), QtGui.QColor(255, 255, 0)]
+        c = [QtGui.QColor(0, 255, 0), QtGui.QColor(0, 0, 0), QtGui.QColor(255, 0, 0)]#, QtGui.QColor(255, 255, 0)]
         self.gvFDV.setColors(c)
 
 
     def exampleCallbackFunction(self, day, hour, minute, frame):
         print(day, hour, minute, frame)
+        print(self.gvFDV.fdvt.tree[day][hour][minute]['data'][frame])
 
 class GraphicsViewFDV(QtGui.QWidget):
 
@@ -186,10 +193,35 @@ class GraphicsViewFDV(QtGui.QWidget):
         if reload:
             self.updateDisplay(useCurrentPos=True)
 
+    def createFDVTTemplate(self):
+        days = set()
+        hours = set()
+        minutes = set()
+        frames = list(np.arange(np.floor(1800 / self.frameResolution), dtype=float))
+
+        days = days.union(self.fdvt.tree.keys()).difference(['meta'])
+        for day in self.fdvt.tree.keys():
+            if day == 'meta':
+                continue
+
+            hours = hours.union(self.fdvt.tree[day].keys()).difference(['meta'])
+            for hour in self.fdvt.tree[day].keys():
+                if hour == 'meta':
+                    continue
+
+                minutes = minutes.union(self.fdvt.tree[day][hour].keys()).difference(['meta'])
+
+        self.rangeTemplate =  {'days': sorted(days),
+                               'hours': sorted(hours),
+                               'minutes': sorted(minutes),
+                               'frames': frames}
+
+
 
     def loadSequence(self, fdvtPath):
         self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
         self.fdvt.load(fdvtPath)
+        self.createFDVTTemplate()
         self.updateDisplay()
 
     def setupUi(self):
@@ -630,6 +662,7 @@ class GraphicsViewFDV(QtGui.QWidget):
             self.hour = self.getFdvtLabel('hours', 0)
             self.minute = self.getFdvtLabel('minutes', 0)
             self.frame = self.getFdvtLabel('frames', 0)
+
         self.plotData(self.day, self.hour, self.minute, self.frame)
         self.plotData(self.day, self.hour, self.minute, self.frame)
 
@@ -652,9 +685,7 @@ class FDVBar(QtGui.QGraphicsRectItem):
 
 
 if __name__ == "__main__":
-
     app = QtGui.QApplication(sys.argv)
 
     w = Test()
-
     sys.exit(app.exec_())

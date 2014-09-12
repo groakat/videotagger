@@ -1,4 +1,3 @@
-import matplotlib as mpl  
 import matplotlib.pyplot as plt
 import numpy as np
 import cPickle as pickle
@@ -27,7 +26,6 @@ def filename2TimeRunningIndeces(f):
     day, hour, minute, second = minutes2Time(int(rawMinutes))
     
     return day, hour, minute, second
-
 
 def minutes2Time(rawMinutes):
     days = rawMinutes // (60 * 24)
@@ -278,6 +276,9 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
     
     def __init__(self):
         super(FrameDataVisualizationTreeArrayBase, self).__init__()
+        ## flags
+        self.singleFileMode = True     # if True, only one file (key) is used
+                                        # to save the entire annotation
         
         
     def resetAllSamples(self):
@@ -430,8 +431,18 @@ class FrameDataVisualizationTreeArrayBase(FrameDataVisualizationTreeBase):
                         return day, hour, minute, idx
                     
                     idx -= rng.stop - rng.start 
-        
-                    
+
+    def getDeltaPositionMultipleFiles(self, key, frame):
+        treeKey = filename2Time(key)
+        day = treeKey[0]
+        hour = treeKey[1]
+        minute = treeKey[2]
+        return self.key2idx(day, hour, minute, frame)
+
+    def getDeltaPositionSingleFile(self, key, frame):
+        return frame
+
+
     def computeInternalRanges(self):        
         if not self.addedNewData:
             return
@@ -727,9 +738,80 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
             self.maxClass = int(np.max(data))
         return bsc.countInt(data.astype(np.int), 
                             minLength=self.maxClass + 1)[1:,1]
-     
 
-    def importAnnotations(self, bhvrList, annotations, vials, runningIndeces=False):
+    def convertFrameListToDate(self, anno, frameSlc, filtList):
+        data = np.zeros((len(anno.frameList[frameSlc])))
+        for l in range(len(filtList)):
+            filteredAnno = anno.filterFrameList(filtList[l])
+
+            for i in range(frameSlc.start, frameSlc.stop):
+                if filteredAnno.frameList[i][0] is not None:
+                    data[i] = l + 1
+
+        return data
+
+    def incrementTime(self, day, hour, minute):
+        minute += 1
+        if minute > 59:
+            minute = 0
+            hour += 1
+            if hour > 23:
+                hour = 0
+                day += 1
+
+        return day, hour, minute
+
+    def importAnnotationsFromSingleFile(self, bhvrList, annotations, vials,
+                                        runningIndeces=False, fps=30):
+        self.singleFileMode = True
+
+        filtList = []
+        self.resetAllSamples()
+
+        for i in range(len(annotations)):
+            annotator = annotations[i]["annot"]
+            behaviour = annotations[i]["behav"]
+            filtList += [Annotation.AnnotationFilter(vials,
+                                                          [annotator],
+                                                          [behaviour])]
+
+#         self.maxClass = len(filtList)
+        self.tree['meta']['filtList'] = filtList
+        self.maxClass = len(filtList)
+
+        anno = Annotation.Annotation()
+        anno.loadFromFile(bhvrList[0])
+
+        day = 0
+        hour = 0
+        minute = 0
+
+        if len(anno.frameList) < fps * 60:
+            frameSlc = slice(0, len(anno.frameList))
+            data = self.convertFrameListToDate(anno, frameSlc, filtList)
+            self.insertFrameArray(day, hour, minute, data)
+            return
+
+        i = 0
+        for k in range(fps * 60, len(anno.frameList), fps * 60):
+            print k, day, hour, minute
+            frameSlc = slice(i, k)
+            data = self.convertFrameListToDate(anno, frameSlc, filtList)
+            self.insertFrameArray(day, hour, minute, data)
+            day, hour, minute = self.incrementTime(day, hour, minute)
+            i = k
+
+
+
+
+    def importAnnotations(self, bhvrList, annotations, vials, runningIndeces=False, fps=30):
+        if len(bhvrList) == 1:
+            self.importAnnotationsFromSingleFile(bhvrList, annotations, vials,
+                                                 runningIndeces=False, fps=30)
+            return
+        else:
+            self.singleFileMode = False
+
         filtList = []
         self.resetAllSamples()
         
@@ -779,6 +861,14 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
                 return i + 1
             
         return None
+
+    def getDeltaValue(self, key, frame, filt):
+        if self.singleFileMode:
+            return [self.getDeltaPositionSingleFile(key, frame),
+                    self.getAnnotationFilterCode(filt)]
+        else:
+            return [self.getDeltaPositionMultipleFiles(key, frame),
+                    self.getAnnotationFilterCode(filt)]
     
     
             
