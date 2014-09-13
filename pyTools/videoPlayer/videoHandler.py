@@ -983,45 +983,68 @@ class VideoHandler(QtCore.QObject):
 
         return behaviour
 
-    def addAnnotationRange(self, rng, vials, annotator, behaviour):
+    def addAnnotationToAnnoViews(self, vial, annotator, behaviour, key):
+        v = vial
+        # refresh annotation in anno view
+        for aV in self.annoViewList:
+            if (aV.behaviourName == None) \
+            or (behaviour == aV.behaviourName) \
+            or (behaviour in aV.behaviourName):
+                if (aV.annotator == None) \
+                or (annotator == aV.annotator) \
+                or (annotator in aV.annotator):
+                    if v == None and aV.vialNo == None \
+                    or v in aV.vialNo:
+                        cfg.log.debug("refreshing annotation")
+                        aV.addAnnotation(\
+                                    self.annoDict[key].annotation,
+                                         key)
+
+    def eraseAnnotationFromAnnoViews(self, vial, annotator, behaviour, key):
+        v = vial
+        for aV in self.annoViewList:
+            if (aV.behaviourName == None) \
+            or (behaviour == aV.behaviourName) \
+            or (behaviour in aV.behaviourName):
+                if (aV.annotator == None) \
+                or (annotator == aV.annotator) \
+                or (annotator in aV.annotator):
+                    if v == None and aV.vialNo == None \
+                    or v in aV.vialNo:
+                        cfg.log.debug("refreshing annotation")
+                        aV.addAnnotation(\
+                                    self.annoDict[key].annotation,
+                                         key)
+
+
+    def addAnnotationRange(self, rngs, vials, annotator, behaviour):
         if type(vials) is not list:
             vials = [vials]
 
-        for key in rng:
+        for key in rngs:
             for v in vials:
-                self.annoDict[key].annotation.addAnnotation(v, rng[key],
+                self.annoDict[key].annotation.addAnnotation(v, rngs[key],
                                         annotator, behaviour,
                                         self.tempValue[key])
 
             cfg.log.info("add annotation vials {v}| range {r}| annotator {a}| behaviour {b}| confidence {c}".format(
-                        v=vials, r=rng[key], a=annotator,
+                        v=vials, r=rngs[key], a=annotator,
                           b=behaviour, c=self.tempValue[key]))
 
             cfg.log.info("check annodict {0}".format(self.annoDict[key].annotation.hasChanged))
 
-            # refresh annotation in anno view
-            for aV in self.annoViewList:
-                if (aV.behaviourName == None) \
-                or (behaviour == aV.behaviourName) \
-                or (behaviour in aV.behaviourName):
-                    if (aV.annotator == None) \
-                    or (annotator == aV.annotator) \
-                    or (annotator in aV.annotator):
-                        if v == None and aV.vialNo == None \
-                        or v in aV.vialNo:
-                            cfg.log.debug("refreshing annotation")
-                            aV.addAnnotation(\
-                                        self.annoDict[key].annotation,
-                                             key)
 
+            # refresh annotation in anno view
+            self.addAnnotationToAnnoViews(v, annotator, behaviour, key)
+            
             cfg.logGUI.info(json.dumps({"vials":vials,
-                                   "key-range":rng,
+                                   "key-range":rngs,
                                    "annotator":annotator,
                                    "behaviour":behaviour,
                                    "metadata":self.tempValue[key]}))
 
 
-        self.saveTempAnnotationEdit(rng, vials, annotator, behaviour, 'add')
+        self.saveTempAnnotationEdit(rngs, vials, annotator, behaviour, 'add')
 
     def saveTempAnnotationEdit(self, rng, vials, annotator, behaviour, mode):
         if os.path.exists(self.tmpFile):
@@ -1103,34 +1126,22 @@ class VideoHandler(QtCore.QObject):
                 
         return rng, curFilter
 
-    def eraseAnnotationRange(self, rng, vials, annotator, behaviour):
+    def eraseAnnotationRange(self, rngs, vials, annotator, behaviour):
         if type(vials) is not list:
             vials = [vials]
 
-        for key in rng:
+        for key in rngs:
             for v in vials:
                 self.annoDict[key].annotation.removeAnnotation(v,
-                                        rng[key],
+                                        rngs[key],
                                         annotator, behaviour)
                 # tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
                 # self.annoDict[key].annotation.saveToTmpFile(tmpFilename)
 
             # refresh annotation in anno view
-            for aV in self.annoViewList:
-                if (aV.behaviourName == None) \
-                or (behaviour == aV.behaviourName) \
-                or (behaviour in aV.behaviourName):
-                    if (aV.annotator == None) \
-                    or (annotator == aV.annotator) \
-                    or (annotator in aV.annotator):
-                        if v == None and aV.vialNo == None \
-                        or v in aV.vialNo:
-                            cfg.log.debug("refreshing annotation")
-                            aV.addAnnotation(\
-                                        self.annoDict[key].annotation,
-                                             key)
+            self.eraseAnnotationFromAnnoViews(v, annotator, behaviour, key)
 
-        self.saveTempAnnotationEdit(rng, vials, annotator, behaviour, 'erase')
+        self.saveTempAnnotationEdit(rngs, vials, annotator, behaviour, 'erase')
         
     @cfg.logClassFunction
     def eraseAnnotation(self, vials, annotator, behaviour):
@@ -1266,6 +1277,10 @@ class VideoHandler(QtCore.QObject):
                                                 vial, rng,
                                                 annotatorOld, behaviourOld,
                                                 annotatorNew, behaviourNew)
+            self.eraseAnnotationFromAnnoViews(vial, annotatorOld, behaviourOld, k)
+            self.addAnnotationToAnnoViews(vial, annotatorNew, behaviourNew, k)
+        # self.eraseAnnotationRange(rngs, vial, annotatorOld, behaviourOld)
+        # self.addAnnotationRange(rngs, vial, annotatorNew, behaviourNew)
 
     def eraseAnnotationSequence(self, vials, annotator, behaviour,
                                 direction='both'):

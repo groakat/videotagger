@@ -138,6 +138,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.cropIncrement = 0
         self.isCropRectOpen = False
         self.inEditMode = True
+        self.postLabelQuery = False
 
         if croppedVideo:
             videoEnding = ".v{0}{1}".format(selectedVial, videoEnding)
@@ -290,6 +291,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.pb_connect2server.clicked.connect(self.connectToServer)
         self.ui.pb_check4requests.clicked.connect(self.check4Requests)
         self.ui.cb_edit.toggled.connect(self.editToggle)
+        self.ui.cb_anyLabel.toggled.connect(self.anyLabelToggle)
         
         self.ui.sldr_paths.valueChanged.connect(self.selectVideo)
         self.ui.lv_frames.activated.connect(self.selectFrame)
@@ -335,6 +337,7 @@ class videoPlayer(QtGui.QMainWindow):
         layout.addWidget(self.pb_playback)
         layout.addWidget(self.pb_stopPlayback)
         layout.addWidget(self.ui.cb_trajectory)
+        layout.addWidget(self.ui.cb_anyLabel)
         
         w.setLayout(layout)
         w.show()
@@ -1290,6 +1293,12 @@ class videoPlayer(QtGui.QMainWindow):
         if not self.play:
             self.startVideo()
 
+    def activatePostLabelQuery(self):
+        self.postLabelQuery = True
+
+    def deactivatePostLabelQuery(self):
+        self.postLabelQuery = False
+
     def toggleEditModeCheckbox(self):
         self.ui.cb_edit.setChecked(not self.ui.cb_edit.isChecked())
 
@@ -1298,6 +1307,12 @@ class videoPlayer(QtGui.QMainWindow):
             self.activateEditMode()
         else:
             self.deactivateEditMode()
+
+    def anyLabelToggle(self, state):
+        if state:
+            self.activatePostLabelQuery()
+        else:
+            self.deactivatePosLabelQuery()
 
     def addCropRect(self):
         geo = QtCore.QRectF(0, 0, 64, 64)
@@ -1788,9 +1803,9 @@ class videoPlayer(QtGui.QMainWindow):
             self.rpcIH.sendReply([deltaVector])
             self.isLabelingSingleFrame = False
             self.jumpToBookmark()
-        
+
 #     @cfg.logClassFunction
-    def addAnno(self, annotator="peter", behaviour="just testing", 
+    def addAnno(self, annotator="peter", behaviour="just testing",
                 confidence=1, oneClickAnnotation=False):        
         cfg.logGUI.info(json.dumps({"annotator": annotator,
                                 "behaviour": behaviour,
@@ -1809,9 +1824,15 @@ class videoPlayer(QtGui.QMainWindow):
         self.annoIsOpen = self.vh.annoAltStart is not None #not self.annoIsOpen
         
         if labelledFrames != (None, None):
+            if self.postLabelQuery:
+                self.queryForLabel()
+
             self.convertLabelListAndReply(labelledFrames)
 
-        
+
+    def addTempAnno(self):
+        self.postLabelQuery = True
+        self.addAnno("tmpAnno", "tmpBhrv")
 
 #     @cfg.logClassFunction
     def eraseAnno(self, annotator="peter", behaviour="just testing"):      
@@ -1820,6 +1841,8 @@ class videoPlayer(QtGui.QMainWindow):
         self.vh.eraseAnnotation(self.selectedVial, annotator, behaviour)
 
     def editAnnoLabel(self, annotatorOld, behaviourOld, annotatorNew, behaviourNew):
+
+        cfg.log.info("--------- edit label ------------")
         self.vh.editAnnotationLabel(self.selectedVial, annotatorOld,
                                 behaviourOld, annotatorNew, behaviourNew)
 

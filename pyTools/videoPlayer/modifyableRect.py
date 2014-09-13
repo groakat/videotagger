@@ -184,7 +184,7 @@ class ContextLineEdit(QtGui.QWidget):
         # self.autoCompeleteLineEdit.returnPressed.connect(action.trigger)
 
     def text(self):
-        return self.autoCompeleteLineEdit.text()
+        return self.autoCompeleteLineEdit.currentText()
 
     def setModel(self, strList):
         self.autoCompeleteLineEdit.setModel(strList)
