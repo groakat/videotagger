@@ -22,6 +22,7 @@ import pyTools.videoPlayer.modifyableRect as MR
 import pyTools.system.misc as systemMisc
 import pyTools.misc.config as cfg
 import pyTools.videoPlayer.eventFilter as EF
+import pyTools.videoPlayer.hud as HUD
 if sys.platform != "win32":
     import pyTools.videoPlayer.RPCController as RPC
 
@@ -245,8 +246,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.fdvt = None
         self.setupFrameView()
         self.bookmark = None
-        
-        
+
         
         self.configureUI()
 
@@ -254,7 +254,10 @@ class videoPlayer(QtGui.QMainWindow):
             self.setBackground(backgroundPath)
         else:
             self.setBackground()
-        
+
+        self.hud = None
+        # self.setupHUD()
+
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.showNextFrame)
         self.timerID = None
@@ -1040,6 +1043,7 @@ class videoPlayer(QtGui.QMainWindow):
         if self.fullVideoDialog is None:
             self.fullVideoDialog = FVD(self)
             self.fullVideoDialog.setScene(self.videoScene)
+            self.setupHUD()
             self.fullVideoDialog.show()
             self.dialogShortCutFilter = EF.shortcutHandler(self.fullVideoDialog, self, **self.filterObjArgs)
             # self.fullVideoDialog.installEventFilter(self.dialogShortCutFilter)
@@ -1129,10 +1133,10 @@ class videoPlayer(QtGui.QMainWindow):
 
         self.displayingFullResolution = False
 
-        if self.annoIsOpen:
-            if np.abs(increment) > 1:
-                # set increment to either 1 or -1
-                increment /= int(np.abs(increment))
+        # if self.annoIsOpen:
+        #     if np.abs(increment) > 1:
+        #         # set increment to either 1 or -1
+        #         increment /= int(np.abs(increment))
         
         if increment is None:
             increment = self.increment
@@ -1171,6 +1175,11 @@ class videoPlayer(QtGui.QMainWindow):
         # showing previews #
         self.updatePreviewLabels()
         self.vh.updateAnnotationProperties(self.getMetadata())
+
+        frameNo = self.vh.getCurrentFrameNo()
+        self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
+
+        self.updateHUD()
              
 
 
@@ -1267,6 +1276,32 @@ class videoPlayer(QtGui.QMainWindow):
         delAllAction.triggered.connect(self.deleteAllLabels)
         delRightAction.triggered.connect(self.deleteRightLabels)
         delLeftAction.triggered.connect(self.deleteLeftLabels)
+
+    def setupLabelRequestMenu(self):
+        wa = QtGui.QWidgetAction(self)
+        self.clre = MR.ContextLineEdit(wa, self)
+
+        labels = []
+
+        for i in range(len(self.annotations)):
+            labels += ["{b}".format(b=self.annotations[i]['behav'])]
+
+        self.clre.setModel(labels)
+
+        wa.setDefaultWidget(self.clre)
+
+        self.requestLabelMenu = QtGui.QMenu(self)
+        self.requestLabelMenu.addAction(wa)
+        # delAction = self.requestLabelMenu.addAction("delete (this frame)")
+        # delAllAction = self.requestLabelMenu.addAction("delete (all)")
+        # delRightAction = self.requestLabelMenu.addAction("delete (this and all to right)")
+        # delLeftAction = self.requestLabelMenu.addAction("delete (this and all to left)")
+
+        wa.triggered.connect(self.lineEditChanged)
+        # delAction.triggered.connect(self.deleteLabel)
+        # delAllAction.triggered.connect(self.deleteAllLabels)
+        # delRightAction.triggered.connect(self.deleteRightLabels)
+        # delLeftAction.triggered.connect(self.deleteLeftLabels)
 
     def deactivateAllLabelRects(self):
         for lr in self.annotationRoiLabels:
@@ -1412,8 +1447,19 @@ class videoPlayer(QtGui.QMainWindow):
         self.videoHeight = h + 50
         self.addCropRect()
         self.videoView.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
-        
-        
+
+    def setupHUD(self):
+        if self.fullVideoDialog:
+            self.fullVideoDialog.setAnnotator("Annotator")
+            self.fullVideoDialog.setBehaviour("Behaviour")
+
+    def updateHUD(self):
+        if self.fullVideoDialog:
+            frameNo = self.vh.getCurrentFrameNo()
+            self.fullVideoDialog.setFrame(str(frameNo))
+            filename = self.vh.posPath
+            self.fullVideoDialog.setFile(filename)
+
     @QtCore.Slot()
     def startVideo(self):
         self.play = True
@@ -1443,7 +1489,8 @@ class videoPlayer(QtGui.QMainWindow):
                 self.updateProgress()
 #                 if self.increment == 0:
 #                     self.play = False
-                    
+
+
             if not(QtCore.QTime.currentTime() < dieTime):
                 cfg.log.warning("no realtime display!!! " + 
                                 cfg.Back.BLUE + 
@@ -1451,8 +1498,8 @@ class videoPlayer(QtGui.QMainWindow):
                                         dieTime.msecsTo(QtCore.QTime.currentTime())))
                 
             elif(QtCore.QTime.currentTime() < dieTime.addMSecs(15)):
-                frameNo = self.vh.getCurrentFrameNo()
-                self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
+                # frameNo = self.vh.getCurrentFrameNo()
+                # self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
                 
                 if self.rpcIH is not None:
                     self.rpcIH.checkForNewJob()
@@ -1804,6 +1851,12 @@ class videoPlayer(QtGui.QMainWindow):
             self.isLabelingSingleFrame = False
             self.jumpToBookmark()
 
+    def queryForLabel(self):
+        self.setupLabelRequestMenu()
+        cfg.log.info("---------- {0}".format( self.mapFromGlobal(QtGui.QCursor.pos())))
+        self.requestLabelMenu.exec_(self.mapFromGlobal(QtGui.QCursor.pos()))
+
+
 #     @cfg.logClassFunction
     def addAnno(self, annotator="peter", behaviour="just testing",
                 confidence=1, oneClickAnnotation=False):        
@@ -1827,7 +1880,7 @@ class videoPlayer(QtGui.QMainWindow):
             if self.postLabelQuery:
                 self.queryForLabel()
 
-            self.convertLabelListAndReply(labelledFrames)
+            # self.convertLabelListAndReply(labelledFrames)
 
 
     def addTempAnno(self):
