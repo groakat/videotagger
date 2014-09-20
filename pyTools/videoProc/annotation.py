@@ -304,7 +304,7 @@ class Annotation():
 
     def renameAnnotation(self, vial, frames, annotatorOld, behaviourOld,
                          annotatorNew, behaviourNew):
-        if vial == None:
+        if vial is None:
             # just use first index
             vial = 0
 
@@ -324,6 +324,8 @@ class Annotation():
                 a = dict()
                 self.frameList[frame][vial]["behaviour"][behaviourNew] = a
 
+            print frame
+            print self.frameList[frame][vial]
             self.frameList[frame][vial]["behaviour"][behaviourNew][annotatorNew] = \
                 copy.copy(self.frameList[frame][vial]["behaviour"][behaviourOld][annotatorOld])
 
@@ -357,9 +359,10 @@ class Annotation():
                 match = self.filterFrameList(filterTuple,
                                              [startFrame],
                                              exactMatch).frameList
-                startFrame -= 1
                 if match == [[None]]:
                     break
+
+                startFrame -= 1
 
         startFrame += 1
 

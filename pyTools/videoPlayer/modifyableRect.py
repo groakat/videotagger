@@ -1,6 +1,5 @@
 import sys
 import copy
-import numpy as np
 from PySide import QtCore, QtGui
 
 class Test(QtGui.QMainWindow):
@@ -97,12 +96,16 @@ class Test(QtGui.QMainWindow):
         # self.normalizeSubplot(self.rect, newHeight, self.rectY)
 
 
-        acid = AutoCompleteInputDialog(self)
-        acid.setWindowTitle("test title")
-        acid.setLabelText("test label")
-        acid.setComboBoxItems(["albatross 12", "tiger 12", "item 2", "item 3"])
-        acid.setComboBoxEditable(True)
-        print acid.exec_()
+        # acid = AutoCompleteInputDialog(self)
+        # acid.setWindowTitle("test title")
+        # acid.setLabelText("test label")
+        # acid.setComboBoxItems(["albatross 12", "tiger 12", "item 2", "item 3"])
+        # acid.setComboBoxEditable(True)
+        # print acid.exec_()
+
+        import pyTools.videoPlayer.overlayDialog as OD
+        print OD.OverlayDialog.getChoice(self.centralWidget())
+        pass
 
 class CustomQCompleter(QtGui.QCompleter):
     """
@@ -600,36 +603,10 @@ class AutoCompleteInputDialog(QtGui.QInputDialog):
         super(AutoCompleteInputDialog, self).__init__(*args, **kwargs)
         self.ensureComboBox()
 
-
-    # @staticmethod
-    # def getItem(*args, **kwargs):
-    #     dialog = QtGui.QInputDialog()
-    #     dialog.comboBox = AutoCompleteComboBox(dialog)
-    #     return dialog.getItem(*args, **kwargs)
-
-
     def ensureComboBox(self):
         print "ensureComboBox"
         self.comboBox = AutoCompleteComboBox(self)
         self.comboBox.hide()
-
-        # self.comboBox.editTextChanged.connect(super(AutoCompleteInputDialog, self).textChanged)
-        # self.comboBox.currentIndexChanged.connect(super(AutoCompleteInputDialog, self).textChanged)
-
-
-#
-# 263	    Q_Q(QInputDialog);
-# 264	    if (!comboBox) {
-# 265	        comboBox = new QComboBox(q);
-# 266	#ifndef QT_NO_IM
-# 267	        qt_widget_private(comboBox)->inheritsInputMethodHints = 1;
-# 268	#endif
-# 269	        comboBox->hide();
-# 270	        QObject::connect(comboBox, SIGNAL(editTextChanged(QString)),
-# 271	                         q, SLOT(_q_textChanged(QString)));
-# 272	        QObject::connect(comboBox, SIGNAL(currentIndexChanged(QString)),
-# 273	                         q, SLOT(_q_textChanged(QString)));
-
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@ import pyTools.videoPlayer.videoHandler as VH
 import pyTools.videoPlayer.dataLoader as DL
 import pyTools.videoPlayer.annoView as AV
 import pyTools.videoProc.annotation as Annotation
+import pyTools.videoPlayer.overlayDialog as OD
 import pyTools.videoPlayer.modifyableRect as MR
 import pyTools.system.misc as systemMisc
 import pyTools.misc.config as cfg
@@ -1318,6 +1319,9 @@ class videoPlayer(QtGui.QMainWindow):
         self.inEditMode = True
         self.isCropRectOpen = False
         self.cropRect.setVisible(False)
+        if self.fullVideoDialog is not None:
+            self.fullVideoDialog.setMode('edit-mode',
+                                         QtGui.QColor(255, 50, 50))
         self.stopVideo()
 
     def deactivateEditMode(self):
@@ -1325,6 +1329,11 @@ class videoPlayer(QtGui.QMainWindow):
         self.inEditMode = False
         self.cropRect.setVisible(True)
         self.increment = 0
+
+        if self.fullVideoDialog is not None:
+            self.fullVideoDialog.setMode('additive mode',
+                                         QtGui.QColor(0, 0, 0))
+
         if not self.play:
             self.startVideo()
 
@@ -1450,15 +1459,39 @@ class videoPlayer(QtGui.QMainWindow):
 
     def setupHUD(self):
         if self.fullVideoDialog:
-            self.fullVideoDialog.setAnnotator("Annotator")
-            self.fullVideoDialog.setBehaviour("Behaviour")
+            self.fullVideoDialog.setAnnotator("")
+            self.fullVideoDialog.setBehaviour("")
 
-    def updateHUD(self):
+    def updateHUD(self, annotator=None, behaviour=None):
         if self.fullVideoDialog:
             frameNo = self.vh.getCurrentFrameNo()
             self.fullVideoDialog.setFrame(str(frameNo))
             filename = self.vh.posPath
             self.fullVideoDialog.setFile(filename)
+
+            self.fullVideoDialog.setSpeed(self.increment)
+
+            if annotator is not None:
+                if annotator == "":
+                    self.fullVideoDialog.setAnnotator("")
+                else:
+                    self.fullVideoDialog.setAnnotator("Annotator: " + annotator)
+
+            if behaviour is not None:
+                if behaviour == "":
+                    self.fullVideoDialog.setBehaviour("")
+                else:
+                    color = None
+                    for i in range(len(self.annotations)):
+                        if self.annotations[i]["annot"] == annotator\
+                        and self.annotations[i]['behav'] == behaviour:
+                            color = self.annotations[i]["color"]
+
+                    self.fullVideoDialog.setBehaviour("Behaviour: "+behaviour,
+                                                      color=color)
+
+
+
 
     @QtCore.Slot()
     def startVideo(self):
@@ -1492,7 +1525,7 @@ class videoPlayer(QtGui.QMainWindow):
 
 
             if not(QtCore.QTime.currentTime() < dieTime):
-                cfg.log.warning("no realtime display!!! " + 
+                cfg.log.debug("no realtime display!!! " +
                                 cfg.Back.BLUE + 
                                 "mainloop overflow before processEvents(): {0}ms".format(
                                         dieTime.msecsTo(QtCore.QTime.currentTime())))
@@ -1519,7 +1552,7 @@ class videoPlayer(QtGui.QMainWindow):
 
                  
             if not(QtCore.QTime.currentTime() < (dieTime.addMSecs(1))):
-                cfg.log.warning("no realtime display!!! " + 
+                cfg.log.debug("no realtime display!!! " +
                                 cfg.Back.YELLOW + 
                                 "mainloop overflow after processEvents(): {0}ms".format(
                                         dieTime.msecsTo(QtCore.QTime.currentTime())))
@@ -1852,9 +1885,25 @@ class videoPlayer(QtGui.QMainWindow):
             self.jumpToBookmark()
 
     def queryForLabel(self):
-        self.setupLabelRequestMenu()
-        cfg.log.info("---------- {0}".format( self.mapFromGlobal(QtGui.QCursor.pos())))
-        self.requestLabelMenu.exec_(self.mapFromGlobal(QtGui.QCursor.pos()))
+        # self.setupLabelRequestMenu()
+        # cfg.log.info("---------- {0}".format( self.mapFromGlobal(QtGui.QCursor.pos())))
+        # self.requestLabelMenu.exec_(self.mapFromGlobal(QtGui.QCursor.pos()))
+
+        strList = [x['behav'] for x in self.annotations]
+        res = OD.ClassSelectDialog.getLabel(self.fullVideoDialog.centralWidget(),
+                                            strList)
+
+        if res is None:
+            ## delete label
+            pass
+        else:
+            for i , elem in enumerate(self.annotations):
+                if elem['behav'] == res:
+                    newAnnotator = elem['annot']
+                    newBehaviour = elem['behav']
+                    self.editAnnoLabel(self.annotations[0]['annot'], "unknown",
+                                       newAnnotator, newBehaviour)
+
 
 
 #     @cfg.logClassFunction
@@ -1875,6 +1924,11 @@ class videoPlayer(QtGui.QMainWindow):
                               behaviour, metadata=self.getMetadata())
                 
         self.annoIsOpen = self.vh.annoAltStart is not None #not self.annoIsOpen
+
+        if self.annoIsOpen:
+            self.updateHUD(annotator=annotator, behaviour=behaviour)
+        else:
+            self.updateHUD(annotator="", behaviour="")
         
         if labelledFrames != (None, None):
             if self.postLabelQuery:
@@ -1885,7 +1939,7 @@ class videoPlayer(QtGui.QMainWindow):
 
     def addTempAnno(self):
         self.postLabelQuery = True
-        self.addAnno("tmpAnno", "tmpBhrv")
+        self.addAnno(self.annotations[0]['annot'], "unknown")
 
 #     @cfg.logClassFunction
     def eraseAnno(self, annotator="peter", behaviour="just testing"):      
