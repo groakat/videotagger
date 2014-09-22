@@ -534,6 +534,7 @@ class videoPlayer(QtGui.QMainWindow):
             
     def createPrevFrames(self, xPos, yPos):
         w = QtGui.QWidget(self)
+        layout = QtGui.QHBoxLayout(w)
         
 #         xPos = 0
         yPos = 0
@@ -545,8 +546,10 @@ class videoPlayer(QtGui.QMainWindow):
 #         self.prevConnectHooks = []
         
         for i in range(self.noPrevFrames):
-            self.prevFrameLbls += [QtGui.QLabel(w)]
-            self.prevFrameLbls[-1].setGeometry(QtCore.QRect(xPos, yPos, size, size))
+            lbl = QtGui.QLabel(w)
+            layout.addWidget(lbl)
+            self.prevFrameLbls += [lbl]
+            # self.prevFrameLbls[-1].setGeometry(QtCore.QRect(xPos, yPos, size, size))
 #             
 #             self.prevConnectHooks += [[QtCore.QPoint(xPos + size / 2, yPos + size), 
 #                                       QtCore.QPoint(xPos + size / 2, yPos + size + 2)]]
@@ -555,8 +558,9 @@ class videoPlayer(QtGui.QMainWindow):
                 self.prevFrameLbls[-1].setLineWidth(3)
                 self.prevFrameLbls[-1].setFrameShape(QtGui.QFrame.Box)
             xPos += size + 5
-        
-        w.setFixedHeight(self.prevSize + 10)
+
+        layout.insertStretch(0)
+        layout.insertStretch(-1)
         return w
     
     
@@ -875,30 +879,31 @@ class videoPlayer(QtGui.QMainWindow):
         lbl.setPos(newX,newY)
         
     @cfg.logClassFunction
-    def updatePreviewLabel(self, lbl, img, multiplicator=1):
+    def updatePreviewLabel(self, lbl, img, multiplier=1,
+                           addToQueryPreviews=False):
 #         img = data[0]
         if self.croppedVideo:
             img = np.rot90(img)
 
         if not self.croppedVideo:
-            if multiplicator != 1:
+            if multiplier != 1:
                 if self.prevYCrop.start:
-                    ystart = self.prevYCrop.start * multiplicator
+                    ystart = self.prevYCrop.start * multiplier
                 else:
                     ystart = None
 
                 if self.prevYCrop.stop:
-                    ystop = self.prevYCrop.stop * multiplicator
+                    ystop = self.prevYCrop.stop * multiplier
                 else:
                     ystop = None
 
                 if self.prevXCrop.start:
-                    xstart = self.prevXCrop.start * multiplicator
+                    xstart = self.prevXCrop.start * multiplier
                 else:
                     xstart = None
 
                 if self.prevXCrop.stop:
-                    xstop = self.prevXCrop.stop * multiplicator
+                    xstop = self.prevXCrop.stop * multiplier
                 else:
                     xstop = None
 
@@ -928,6 +933,9 @@ class videoPlayer(QtGui.QMainWindow):
                 
         cfg.log.debug("update label")
         lbl.update()
+
+        if addToQueryPreviews:
+            self.queryPreviews += [copy.copy(img)]
         
         
     @cfg.logClassFunction
@@ -1042,7 +1050,8 @@ class videoPlayer(QtGui.QMainWindow):
         self.displayFrame(self.fullResFrame, sv)
 
         if self.fullVideoDialog is None:
-            self.fullVideoDialog = FVD(self)
+            # self.fullVideoDialog = FVD(self, self.prevFramesWidget)
+            self.fullVideoDialog = FVD(self, self.createPrevFrames(0, 0))
             self.fullVideoDialog.setScene(self.videoScene)
             self.setupHUD()
             self.fullVideoDialog.show()
@@ -1111,7 +1120,7 @@ class videoPlayer(QtGui.QMainWindow):
             self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
 
 
-    def updatePreviewLabels(self):
+    def updatePreviewLabels(self, frameSwitch=False):
         offset = (len(self.prevFrameLbls) - 1) / 2
         self.prevFrames = []
         multipliers = []
@@ -1125,7 +1134,18 @@ class videoPlayer(QtGui.QMainWindow):
             multipliers[offset] = 1
 
         for i in range(len(self.prevFrameLbls)):
-            self.updatePreviewLabel(self.prevFrameLbls[i], self.prevFrames[i][1][0][0], multipliers[i])
+            if frameSwitch\
+            and self.postLabelQuery and self.annoIsOpen\
+            and i == (len(self.prevFrameLbls) - 1) / 2:
+                addToQueryPreviews = True
+            else:
+                addToQueryPreviews = False
+
+            self.updatePreviewLabel(self.prevFrameLbls[i],
+                                    self.prevFrames[i][1][0][0],
+                                    multipliers[i],
+                                    addToQueryPreviews)
+
     
     @cfg.logClassFunction
     def showNextFrame(self, increment=None, checkBuffer=True):
@@ -1174,7 +1194,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.displayTrajectory(increment, sv, offset)
 
         # showing previews #
-        self.updatePreviewLabels()
+        self.updatePreviewLabels(frameSwitch=(increment != 0))
         self.vh.updateAnnotationProperties(self.getMetadata())
 
         frameNo = self.vh.getCurrentFrameNo()
@@ -1898,20 +1918,25 @@ class videoPlayer(QtGui.QMainWindow):
         # self.requestLabelMenu.exec_(self.mapFromGlobal(QtGui.QCursor.pos()))
 
         strList = [x['behav'] for x in self.annotations]
-        res = OD.ClassSelectDialog.getLabel(self.fullVideoDialog.centralWidget(),
-                                            strList)
+        selectedBehaviour = OD.ClassSelectDialog.getLabel(
+                                        self.fullVideoDialog.centralWidget(),
+                                        strList,
+                                        self.queryPreviews)
+                                        # [np.random.rand(120, 120, 3) for x in range(5)])
 
-        if res is None:
+        print selectedBehaviour
+        if selectedBehaviour is None:
             ## delete label
             pass
         else:
             for i , elem in enumerate(self.annotations):
-                if elem['behav'] == res:
+                if elem['behav'] == selectedBehaviour:
                     newAnnotator = elem['annot']
                     newBehaviour = elem['behav']
                     self.editAnnoLabel(self.annotations[0]['annot'], "unknown",
                                        newAnnotator, newBehaviour)
 
+        return selectedBehaviour
 
 
 #     @cfg.logClassFunction
@@ -1920,9 +1945,10 @@ class videoPlayer(QtGui.QMainWindow):
         cfg.logGUI.info(json.dumps({"annotator": annotator,
                                 "behaviour": behaviour,
                                 "confidence": confidence}))
-        
+
         if not self.annoIsOpen:
             self.confidence = confidence
+            self.queryPreviews = []
 
         labelledFrames = self.vh.addAnnotation(self.selectedVial, annotator, 
                               behaviour, metadata=self.getMetadata())
@@ -1940,9 +1966,14 @@ class videoPlayer(QtGui.QMainWindow):
         
         if labelledFrames != (None, None):
             if self.postLabelQuery:
-                self.queryForLabel()
+                newBehaviour = self.queryForLabel()
+                newFilt = Annotation.AnnotationFilter(
+                                labelledFrames[1].vials,
+                                labelledFrames[1].annotators,
+                                [newBehaviour])
+                labelledFrames = (labelledFrames[0], newFilt)
 
-            # self.convertLabelListAndReply(labelledFrames)
+            self.convertLabelListAndReply(labelledFrames)
 
 
     def addTempAnno(self):

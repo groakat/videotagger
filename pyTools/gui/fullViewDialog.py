@@ -4,14 +4,26 @@ from pyTools.gui.fullViewDialog_auto import Ui_Dialog
 import pyTools.videoPlayer.hud as HUD
 
 class FullViewDialog(QtGui.QMainWindow):
-    def __init__(self, parent):
+    def __init__(self, parent, previewWidget=None):
         super(FullViewDialog, self).__init__(parent)
         # Usual setup stuff. Set up the user interface from Designer
         # self.ui = Ui_Dialog()
+        self.previewWidget = previewWidget
         self.cw = QtGui.QWidget(self)
+        self.setCentralWidget(self.cw)
+        l = QtGui.QHBoxLayout(self.cw)
+        self.splitter = QtGui.QSplitter(QtCore.Qt.Vertical, self.cw)
+        self.splitter.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
+                                   QtGui.QSizePolicy.MinimumExpanding)
+        l.addWidget(self.splitter)
+        self.cw.setLayout(l)
+        # self.cw = QtGui.QWidget(self)
+        self.horizontalLayout = None
+        self.verticalLayout = None
+        self.graphicsView = None
         self.setupUI()
         self.scene = None
-        self.hud = HUD.HUD(self.cw)
+        self.hud = HUD.HUD(self.graphicsView)
         self.setupHUD()
         self.mouseFilter = MouseFilterObj(self)
         self.setMouseTracking(True)
@@ -19,15 +31,16 @@ class FullViewDialog(QtGui.QMainWindow):
         # self.hud.installEventFilter(self.mouseFilter)
 
     def setupUI(self):
-        self.horizontalLayout = QtGui.QHBoxLayout(self.cw)
-        self.horizontalLayout.setObjectName("horizontalLayout")
-        self.verticalLayout = QtGui.QVBoxLayout()
-        self.verticalLayout.setObjectName("verticalLayout")
-        self.graphicsView = QtGui.QGraphicsView(self.cw)
+        if self.previewWidget is not None:
+            prevDummyWidget = QtGui.QWidget()
+            prevLayout = QtGui.QHBoxLayout(prevDummyWidget)
+            prevLayout.addWidget(self.previewWidget)
+
+        self.graphicsView = QtGui.QGraphicsView()
         self.graphicsView.setObjectName("graphicsView")
-        self.verticalLayout.addWidget(self.graphicsView)
-        self.horizontalLayout.addLayout(self.verticalLayout)
-        self.setCentralWidget(self.cw)
+
+        self.splitter.addWidget(prevDummyWidget)
+        self.splitter.addWidget(self.graphicsView)
 
         self.setGeometry(QtCore.QRect(0,0,800, 600))
 

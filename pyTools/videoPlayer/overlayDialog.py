@@ -1,6 +1,7 @@
 from PySide import QtGui, QtCore
 import pyTools.videoPlayer.modifyableRect as MR
 import warnings
+import qimage2ndarray as qim2np
 
 class OverlayDialogBase(QtGui.QWidget):
 
@@ -16,6 +17,7 @@ class OverlayDialogBase(QtGui.QWidget):
         self.content = None
         self.outerLayout = None
         self.contentLayout = None
+        self.returnValueSet = False
         self.eventLoop = QtCore.QEventLoop()
 
         self.closeHint = QtGui.QLabel(self)
@@ -56,6 +58,7 @@ class OverlayDialogBase(QtGui.QWidget):
     def setReturnValue(self):
         self._setReturnValue()
         self.eventLoop.exit()
+        self.returnValueSet = True
 
     def connectSignals(self):
         self.button.clicked.connect(self.setReturnValue)
@@ -92,8 +95,18 @@ class OverlayDialogBase(QtGui.QWidget):
         self.outerLayout.insertStretch(-1)
         self.setLayout(self.outerLayout)
 
+    def close(self):
+        if not self.returnValueSet:
+            self.ret = None
+
+        if self.eventLoop is not None:
+            self.eventLoop.exit()
+
+        self.parent.removeEventFilter(self.parentEventHandler)
+        super(OverlayDialogBase, self).close()
 
     def keyPressEvent(self, event):
+        print "keyPressEvent"
         if event.key() == QtCore.Qt.Key_Escape:
             self.ret = None
             if self.eventLoop is not None:
@@ -102,20 +115,28 @@ class OverlayDialogBase(QtGui.QWidget):
                 self.close()
 
     class ParentEventHandler(QtCore.QObject):
-        def __init__(self, parent):
-            super(OverlayDialogBase.ParentEventHandler, self).__init__(parent)
-            self.parent = parent
+        def __init__(self, overlayDialog):
+            super(OverlayDialogBase.ParentEventHandler, self).__init__(
+                                                            overlayDialog)
+            self.overlayDialog = overlayDialog
 
         def eventFilter(self, obj, event):
             if event.type() == QtCore.QEvent.Type.Resize:
-                self.parent.setGeometry(obj.geometry())
+                self.overlayDialog.setGeometry(obj.geometry())
+
+            if event.type() == QtCore.QEvent.KeyPress\
+            or event.type() == QtCore.QEvent.KeyRelease:
+                if event.key() == QtCore.Qt.Key_Escape:
+                    self.overlayDialog.close()
 
             return False
 
 
 class ClassSelectDialog(OverlayDialogBase):
-    def __init__(self, parent, stringList=None, *args, **kwargs):
+    def __init__(self, parent, stringList=None, previews=None, *args, **kwargs):
         super(ClassSelectDialog, self).__init__(parent=parent, *args, **kwargs)
+        self.previews = previews
+
         self.setupContent()
         self.setupLayout()
         self.connectSignals()
@@ -123,17 +144,73 @@ class ClassSelectDialog(OverlayDialogBase):
         if stringList is not None:
             self.setComboBoxModel(stringList)
 
+
     def _setReturnValue(self):
         self.ret = self.autoCompleteBox.currentText()
 
     def setComboBoxModel(self, stringList):
         self.autoCompleteBox.setModel(stringList)
 
+    def loadImgInPreviewLabel(self, lbl, img):
+        qi = qim2np.array2qimage(img)
+
+        pixmap = QtGui.QPixmap()
+
+        px = QtGui.QPixmap.fromImage(qi)
+
+        lbl.setScaledContents(False)
+        lbl.setPixmap(px)
+
+        lbl.update()
+
+    def generatePreviewLabels(self):
+        w = QtGui.QWidget(self)
+        layout = QtGui.QHBoxLayout(w)
+
+#         xPos = 0
+        yPos = 0
+
+        size = 128
+
+        if self.previews is not None:
+            self.noPrevFrames = len(self.previews)
+            self.prevFrameLbls = []
+    #         self.prevConnectHooks = []
+
+            for img in self.previews:
+                lbl = QtGui.QLabel(w)
+                layout.addWidget(lbl)
+                self.prevFrameLbls += [lbl]
+                self.loadImgInPreviewLabel(lbl,
+                                           img)
+
+        return w
+
+    def setupContent(self):
+        self.content = QtGui.QWidget(self)
+        self.contentLayout  = QtGui.QVBoxLayout()
+
+        self.button = QtGui.QPushButton(self.content)
+        self.button.setText("Alright'o")
+        self.messageLabel = QtGui.QLabel(self.content)
+        self.messageLabel.setText("What's you want?")
+        self.autoCompleteBox = MR.AutoCompleteComboBox(self.content)
+
+        self.previewWidget = self.generatePreviewLabels()
+
+        self.contentLayout.addWidget(self.messageLabel)
+        self.contentLayout.addWidget(self.previewWidget)
+        self.contentLayout.addWidget(self.autoCompleteBox)
+        self.contentLayout.addWidget(self.button)
+
+        self.content.setLayout(self.contentLayout)
+
     @staticmethod
-    def getLabel(parent, stringList):
-        od = ClassSelectDialog(parent, stringList)
+    def getLabel(parent, stringList, previewImgs=None):
+        od = ClassSelectDialog(parent, stringList, previewImgs)
         od.exec_()
         return od.ret
+
 
 
 class FDVShowDialog(OverlayDialogBase):
