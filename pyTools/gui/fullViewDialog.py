@@ -27,8 +27,9 @@ class FullViewDialog(QtGui.QMainWindow):
         self.graphicsView.setObjectName("graphicsView")
         self.verticalLayout.addWidget(self.graphicsView)
         self.horizontalLayout.addLayout(self.verticalLayout)
-
         self.setCentralWidget(self.cw)
+
+        self.setGeometry(QtCore.QRect(0,0,800, 600))
 
 
     def setupHUD(self):

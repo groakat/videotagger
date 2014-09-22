@@ -1383,7 +1383,8 @@ class videoPlayer(QtGui.QMainWindow):
             a[:,:,1] = b
             a[:,:,2] = b
             
-            im = np2qimage(a).convertToFormat(QtGui.QImage.Format_RGB32, QtCore.Qt.MonoOnly)
+            im = np2qimage(a).convertToFormat(QtGui.QImage.Format_RGB32,
+                                              QtCore.Qt.MonoOnly)
             
             pixmap = QtGui.QPixmap()
             px = QtGui.QPixmap.fromImage(im)
@@ -1445,7 +1446,8 @@ class videoPlayer(QtGui.QMainWindow):
         self.videoView.setGeometry(QtCore.QRect(0, 0, w + 200, h+ 50))#1920/2, 1080/2))
         self.videoView.show()
 #         self.videoView.fitInView(self.bgImg, QtCore.Qt.KeepAspectRatio)
-        self.videoView.fitInView(QtCore.QRect(0, 0, w, h + 50), QtCore.Qt.KeepAspectRatio)
+        self.videoView.fitInView(QtCore.QRect(0, 0, w, h + 50),
+                                 QtCore.Qt.KeepAspectRatio)
         
 #         self.videoView.installEventFilter(self.mouseEventFilter)
         self.videoView.setMouseTracking(True)
@@ -1491,7 +1493,13 @@ class videoPlayer(QtGui.QMainWindow):
                                                       color=color)
 
 
+    def openFDV(self):
+        OD.FDVShowDialog.getSelection(self.fullVideoDialog.centralWidget(),
+                                      self.frameView)
 
+    def openKeySettings(self):
+        OD.ControlsSettingDialog.getSelection(self.fullVideoDialog.centralWidget(),
+                                              self.mainShortCutFilter.keyMap)
 
     @QtCore.Slot()
     def startVideo(self):

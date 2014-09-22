@@ -104,7 +104,7 @@ class Test(QtGui.QMainWindow):
         # print acid.exec_()
 
         import pyTools.videoPlayer.overlayDialog as OD
-        print OD.OverlayDialog.getChoice(self.centralWidget())
+        print OD.ControlsSettingDialog.getSelection(self.centralWidget(), None)
         pass
 
 class CustomQCompleter(QtGui.QCompleter):
