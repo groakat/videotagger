@@ -783,14 +783,61 @@ class videoPlayer(QtGui.QMainWindow):
         self.cropHeight = 0
 
     def resizeCropRectangle(self, x, y):
-        self.cropWidth = x - self.cropX
-        self.cropHeight = y - self.cropY
-        self.setCropCenter(x - self.cropWidth/2.0, y - self.cropHeight/2.0,
-                           self.cropWidth, self.cropHeight)
+        self.cropWidth = np.abs(x - self.cropX)
+        self.cropHeight = np.abs(y - self.cropY)
+
+        if self.cropHeight < 1:
+            self.cropHeight = 1
+
+        if self.cropWidth < 1:
+            self.cropWidth = 1
+
+        if x >= self.cropX:
+            if y >= self.cropY:
+                self.setCropCenter(x - self.cropWidth/2.0,
+                                   y - self.cropHeight/2.0,
+                                   self.cropWidth,
+                                   self.cropHeight)
+            else:
+                self.setCropCenter(x - self.cropWidth/2.0,
+                                   self.cropY - self.cropHeight/2.0,
+                                   self.cropWidth,
+                                   self.cropHeight)
+        else:
+            if y >= self.cropY:
+                self.setCropCenter(self.cropX - self.cropWidth/2.0,
+                                   y - self.cropHeight/2.0,
+                                   self.cropWidth,
+                                   self.cropHeight)
+            else:
+                self.setCropCenter(self.cropX - self.cropWidth/2.0,
+                                   self.cropY - self.cropHeight/2.0,
+                                   self.cropWidth,
+                                   self.cropHeight)
+
+
 
     def closeNewCropRectangle(self, x, y):
         self.resizeCropRectangle(x, y)
         self.cropIncrement = 0
+        if x >= self.cropX:
+            if y >= self.cropY:
+                center = QtCore.QPoint(x - self.cropWidth/2.0,
+                                       y - self.cropHeight/2.0)
+            else:
+                center = QtCore.QPoint(x - self.cropWidth/2.0,
+                                       self.cropY - self.cropHeight/2.0)
+        else:
+            if y >= self.cropY:
+                center = QtCore.QPoint(self.cropX - self.cropWidth/2.0,
+                                       y - self.cropHeight/2.0)
+            else:
+                center = QtCore.QPoint(self.cropX - self.cropWidth/2.0,
+                                       self.cropY - self.cropHeight/2.0)
+
+        QtGui.QCursor.setPos(self.fullVideoDialog.graphicsView.mapToGlobal(
+                                self.fullVideoDialog.graphicsView.mapFromScene(
+                                    center)))
 
     def clickInScene(self, x, y):
         if self.inEditMode:
