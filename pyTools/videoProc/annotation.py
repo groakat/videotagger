@@ -1,5 +1,5 @@
 import json
-import os
+import copy
 from collections import namedtuple
 
 
@@ -102,8 +102,24 @@ class Annotation():
                 frames += [frameNo]
         
         return frames
-    
-    def filterFrameList(self, filterTuple): #vialNo=None, behaviourName=None, annotator=None):
+
+    def behaviourMatch(self, bhvrName, bhvrList, exactMatch=True):
+        if exactMatch:
+            if bhvrName in bhvrList:
+                return [bhvrName]
+            else:
+                return []
+        else:
+            res = []
+            for bhvr in bhvrList:
+                if bhvrName in bhvr:
+                    res += [bhvr]
+
+            return res
+
+
+
+    def filterFrameList(self, filterTuple, frameRange=None, exactMatch=True): #vialNo=None, behaviourName=None, annotator=None):
         """
         Returns a new annotation object that contains only annotations that 
         satisfy all filter criteria.
@@ -135,6 +151,9 @@ class Annotation():
                                     do not filter any specific annotator
                                 list of strings:
                                     annotators to be filtered for
+
+            frameRange (list of int):
+                                frames in which the filterTuple is searched for
                                     
         Returns:
             new annotator object satisfying the filter criteria
@@ -144,16 +163,20 @@ class Annotation():
         behaviourName = filterTuple.behaviours
         annotator = filterTuple.annotators
         
-        if vialNo is None:
+        if vialNo is None\
+        or vialNo == [None]:
             vials = range(len(self.frameList[0]))
         elif type(vialNo) == int:
             vials = [vialNo]
         else:
             # asuming vialNo to be a list
             vials = vialNo
+
+        if frameRange is None:
+            frameRange = range(len(self.frameList))
             
         filteredList = []
-        for frameNo in range(len(self.frameList)):
+        for frameNo in frameRange:
             behaviourPresent = False
             newVials = []
             
@@ -170,9 +193,13 @@ class Annotation():
                     else:
                         bhvrList = behaviourName
                     
-                    for bhvrName in bhvrList:                        
-                        if bhvrName in v["behaviour"]:
-                            bhvr = v["behaviour"][bhvrName]   
+                    for bhvrName in bhvrList:
+                        matchList = self.behaviourMatch(bhvrName, v["behaviour"].keys(),
+                                               exactMatch=exactMatch)
+
+                        for bhvrMatch in matchList:
+                        # if bhvrName in v["behaviour"]:
+                            bhvr = v["behaviour"][bhvrMatch]
                             an = dict()
                             
                             if annotator is None:
@@ -185,7 +212,7 @@ class Annotation():
                                     an[anName] = bhvr[anName]
                             
                             if an:
-                                bNew[bhvrName] = an
+                                bNew[bhvrMatch] = an
                                 
                     if bNew:
                         if "name" in v:
@@ -274,6 +301,86 @@ class Annotation():
         
         #~ for child in self.children:
             #~ child.removeAnnotation(v, frames, b, a)
+
+    def renameAnnotation(self, vial, frames, annotatorOld, behaviourOld,
+                         annotatorNew, behaviourNew):
+        if vial is None:
+            # just use first index
+            vial = 0
+
+        self.hasChanged = True
+        if len(self.frameList) < max(frames):
+            raise ValueError("Trying to add annotation to frame that" +
+                             " exceeds length of existing annotation")
+
+        for frame in frames:
+            if self.frameList[frame][vial] is None:
+                self.frameList[frame][vial] = dict()
+
+            if not ("behaviour" in self.frameList[frame][vial]):
+                self.frameList[frame][vial]["behaviour"] = dict()
+
+            if not (behaviourNew in self.frameList[frame][vial]["behaviour"]):
+                a = dict()
+                self.frameList[frame][vial]["behaviour"][behaviourNew] = a
+
+            print frame
+            print self.frameList[frame][vial]
+            self.frameList[frame][vial]["behaviour"][behaviourNew][annotatorNew] = \
+                copy.copy(self.frameList[frame][vial]["behaviour"][behaviourOld][annotatorOld])
+
+        self.removeAnnotation(vial, frames, annotatorOld, behaviourOld)
+
+    def findConsequtiveAnnotationFrames(self, filterTuple, frameIdx,
+                                        exactMatch=True, direction='both'):
+        """
+        direction (string):
+                direction in which the annotation is traced.
+                Possible values:
+                                'both'
+                                'right'
+                                'left'
+
+        """
+        endFrame = frameIdx + 1
+        if direction == "both" or direction == "right":
+            while endFrame < len(self.frameList):
+                match = self.filterFrameList(filterTuple,
+                                             [endFrame],
+                                             exactMatch).frameList
+                if match == [[None]]:
+                    break
+
+                endFrame += 1
+
+        startFrame = frameIdx - 1
+        if direction == "both" or direction == "left":
+            while startFrame >= 0:
+                match = self.filterFrameList(filterTuple,
+                                             [startFrame],
+                                             exactMatch).frameList
+                if match == [[None]]:
+                    break
+
+                startFrame -= 1
+
+        startFrame += 1
+
+        return range(startFrame, endFrame)
+
+    def editMetadata(self, vial, frame, annotator, behaviour,
+                     metaKey, newMetaValue):
+        if vial is None:
+            # just use first index
+            vial = 0
+
+        self.frameList[frame][vial]["behaviour"][behaviour]\
+                        [annotator][metaKey] = newMetaValue
+
+
+def getExactBehavioursFromFrameAnno(a):
+    return sorted(a['behaviour'].keys())
+
             
 def getPropertyFromFrameAnno(a, prop):
     """
@@ -291,10 +398,10 @@ def getPropertyFromFrameAnno(a, prop):
         List containing values of the properties
     """
     out = []
-    for bk in a:
+    for bk in sorted(a):
         if bk != 'name':
-            for bnk in a[bk]:
-                for ak in a[bk][bnk]:
+            for bnk in sorted(a[bk]):
+                for ak in sorted(a[bk][bnk]):
                     if type(a[bk][bnk][ak]) == int:
                         if prop == "confidence":
                             out += [a[bk][bnk][ak]]

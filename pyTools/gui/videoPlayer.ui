@@ -75,6 +75,9 @@
    </property>
   </widget>
   <widget class="QPushButton" name="pb_connect2server">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="geometry">
     <rect>
      <x>1120</x>
@@ -516,6 +519,9 @@
    </property>
   </widget>
   <widget class="QPushButton" name="pb_test">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="geometry">
     <rect>
      <x>1120</x>
@@ -542,6 +548,9 @@
    </property>
   </widget>
   <widget class="QPushButton" name="pb_eraseAnno">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="geometry">
     <rect>
      <x>1120</x>
@@ -555,6 +564,9 @@
    </property>
   </widget>
   <widget class="QPushButton" name="pb_addAnno">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="geometry">
     <rect>
      <x>1120</x>
@@ -1053,7 +1065,7 @@
     </rect>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>1</number>
    </property>
    <widget class="QWidget" name="tab_1">
     <attribute name="title">
@@ -1107,27 +1119,38 @@
     <attribute name="title">
      <string>Frame View</string>
     </attribute>
-    <widget class="FrameViewWidget" name="frameView" native="true">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>-10</y>
-       <width>941</width>
-       <height>221</height>
-      </rect>
-     </property>
-    </widget>
    </widget>
   </widget>
+  <widget class="QCheckBox" name="cb_edit">
+   <property name="geometry">
+    <rect>
+     <x>1130</x>
+     <y>720</y>
+     <width>91</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>editmode</string>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="cb_anyLabel">
+   <property name="geometry">
+    <rect>
+     <x>1130</x>
+     <y>750</y>
+     <width>81</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>any label</string>
+   </property>
+  </widget>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>FrameViewWidget</class>
-   <extends>QWidget</extends>
-   <header>FrameViewWidget.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

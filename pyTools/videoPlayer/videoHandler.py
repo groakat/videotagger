@@ -10,6 +10,7 @@ import pyTools.misc.Cache as Cache
 import pyTools.videoPlayer.dataLoader as DL
 import numpy as np
 import time
+import os
 
 
 
@@ -22,6 +23,8 @@ import json
 class VideoHandler(QtCore.QObject):       
     newVideoLoader = QtCore.Signal(list)
     deleteVideoLoader = QtCore.Signal(list)
+
+    newFullResVideoLoader = QtCore.Signal(list)
     
     newAnnotationLoader = QtCore.Signal(list)
     deleteAnnotationLoader = QtCore.Signal(list)
@@ -46,11 +49,11 @@ class VideoHandler(QtCore.QObject):
         self.dictLength = 3         # should be odd, otherwise fix checkBuffers()!
         self.delBuffer = 5
         ### old stuff ?
-        
+
         self.bufferWidth  = bufferWidth     # width of each buffer
         self.bufferLength = bufferLength    # number of buffers on EITHER SIDE
         self.bufferJut = 2          # number of buffers outside of the core 
-                                    # buffer area on EITHER SIDEthat are not 
+                                    # buffer area on EITHER SIDE that are not
                                     # deleted immediately
         self.videoLengths = dict()  # lengths of each video chunk
         
@@ -73,6 +76,17 @@ class VideoHandler(QtCore.QObject):
         self.vLL.createdVideoLoader.connect(self.linkToAnnoview)
         self.newVideoLoader.connect(self.vLL.lunchVideoLoader)
         self.deleteVideoLoader.connect(self.vLL.deleteVideoLoader)
+
+
+        ## full resolution video loading
+        # self.fVLL = DL.VideoLoaderLuncher(eofCallback=self.endOfFileNotice)
+        # self.fullResVideoLoaderLuncherThread = DL.MyThread("fullResVideoLuncher")
+        # self.fVLL.moveToThread(self.fullResVideoLoaderLuncherThread)
+        #
+        # self.fullResVideoLoaderLuncherThread.start()
+        # self.fullResVideoLoaderLuncherThread.wrapUp.connect(self.fVLL.aboutToQuit)
+        # self.newFullResVideoLoader.connect(self.fVLL.lunchVideoLoader)
+
         
         ## annotation loading
         self.aLL = DL.AnnotationLoaderLuncher(self.endOfFileNotice, videoEnding)
@@ -107,7 +121,9 @@ class VideoHandler(QtCore.QObject):
         
         self.curMetadata = None
         self.tempValue = dict()
-        
+
+        self.tmpFile = "/tmp/videoTagger.bhvr~"
+
         # always do that at the end
 #         self.checkBuffer()
         
@@ -159,6 +175,86 @@ class VideoHandler(QtCore.QObject):
     @cfg.logClassFunction
     def getCurrentFrameNo(self):
         return self.idx
+
+    def generateFullResolutionVideoPath(self):
+        # split _small.avi / _small.mp4
+        corePath = self.posPath[:-10]
+        # append _full.avi / _full.mp4
+        fullResPath = corePath + '_full.{suf}'.format(suf=self.posPath[-3:])
+        return fullResPath
+
+    def getFullResolutionFrame(self):
+        fullResPath = self.generateFullResolutionVideoPath()
+
+        pos = self.getPosition(self.posPath, self.idx)
+
+        img = self.vE.getFrame(fullResPath, frameNo=self.idx, frameMode='RGB')
+        frame =  [[img]  * (self.maxOfSelectedVials() + 1)]
+
+        annotation = self.getCurrentAnnotation()
+
+        return [pos, frame, annotation]
+
+    def alignFullResVideo(self):
+        pass
+
+    def serveFullResVideo(self):
+        pass
+
+    def alignAndServeFullResVideo(self):
+        self.alignFullResVideo()
+        self.serveFullResVideo()
+
+
+    def getFullResolutionFrames(self, left=10, right=50):
+        path = self.posPath
+        idx  = 0
+        if self.idx - left < 0:
+            start = 0
+        else:
+            start = self.idx - left
+
+        if self.idx + right > self.getVideoLength(self.posPath):
+            stop = self.getVideoLength(self.posPath)
+        else:
+            stop = self.idx + right
+
+        idxSlice = slice(start, stop)
+
+        lst = list()
+        lst[0] = path
+        lst[1] = self
+        lst[2] = self.selectedVials
+        lst[3] = idx
+        lst[4] = idxSlice
+
+        self.newFullResVideoLoader.emit(lst)
+
+        #############################################
+
+        self.fullResVideoLoaderThread = DL.MyThread("fullResVideoLuncher")
+
+        self.fullResVL = DL.VideoLoader(path, idxSlice=idxSlice,
+                         thread=self.fullResVideoLoaderThread,
+                         selectedVials=self.selectedVials)
+
+
+
+        self.fullResVL.moveToThread(self.fullResVideoLoaderThread)
+        self.fullResVideoLoaderThread.start()
+
+        self.fullResVL.startLoading.connect(self.fullResVL.loadVideos)
+        self.fullResVL.eof.connect(self.eofCallback)
+        self.fullResVL.finished.connect(self.alignAndServeFullResVideo)
+
+        cfg.log.debug("finished thread coonecting signal create new VideoLoader {0}".format(path))
+        self.fullResVL.startLoading.emit()
+        # cfg.log.debug("finished thread emit create new VideoLoader {0}".format(path))
+        # self.threads[self.fullResVL] = [self.fullResVideoLoaderThread, self.fullResVL.startLoading]
+
+
+
+
     
     @cfg.logClassFunction
     def getFrame(self, posPath, idx, checkBuffer=False):        
@@ -189,7 +285,21 @@ class VideoHandler(QtCore.QObject):
         self.posPath = path
         
         return frame
-        
+
+
+    def getCurrentAnnotation(self):
+        if self.posPath in self.annoDict.keys():
+            if self.annoDict[self.posPath] is not None:
+                annotation = self.annoDict[self.posPath].annotation.frameList[self.idx]
+            else:
+                annotation = [[{'confidence': 0}]
+                                for i in range(self.maxOfSelectedVials() + 1)]
+        else:
+            annotation = [[{'confidence': 0}]
+                                for i in range(self.maxOfSelectedVials() + 1)]
+
+        return annotation
+
     @cfg.logClassFunction
     def getCurrentFrame(self, doBufferCheck=True, updateAnnotationViews=True,
                         posOnly=False):
@@ -243,24 +353,18 @@ class VideoHandler(QtCore.QObject):
             
             cfg.logGUI.debug(json.dumps({"key":self.posPath, 
                                      "idx":self.idx}))
-                
+
+        annotation = self.getCurrentAnnotation()
+
         frameList += [frame]
-         
-        if self.posPath in self.annoDict.keys():
-            if self.annoDict[self.posPath] is not None:
-                annotation = self.annoDict[self.posPath].annotation.frameList[self.idx]
-            else:
-                annotation = [[{'confidence': 0}] 
-                                for i in range(self.maxOfSelectedVials() + 1)]
-        else:
-            annotation = [[{'confidence': 0}] 
-                                for i in range(self.maxOfSelectedVials() + 1)]
             
         frameList += [annotation]
         
         return [pos, frame, annotation]
     
-    
+
+
+
     @cfg.logClassFunction#Info
     def getCurrentFrameUnbuffered(self, doBufferCheck=False, 
                                   updateAnnotationViews=False,
@@ -830,9 +934,58 @@ class VideoHandler(QtCore.QObject):
                 self.tempValue[key][idx] =  metadata
                 
         self.annoEnd = curAnnoEnd
-        
+
+    def getHighestBehaviourNumber(self, bhvrs):
+        maxN = 0
+
+        for bhvr in bhvrs:
+            n = bhvr.split("_")[-1]
+            try:
+                n = int(n)
+            except:
+                continue
+
+            if maxN < n:
+                maxN = n
+
+        return maxN
+
     @cfg.logClassFunction
-    def addAnnotation(self, vials, annotator, behaviour, metadata):
+    def disambiguateDoubleBehaviourNames(self, vials, annotator, behaviour,
+                                         rng):
+
+        filt = Annotation.AnnotationFilter(vials, [annotator], [behaviour])
+
+        annos = []
+        for key in rng:
+            annos += [self.annoDict[key].annotation.filterFrameList(
+                                                            filt,
+                                                            rng[key],
+                                                            exactMatch=False)]
+
+        maxCounter = -1
+        for anno in annos:
+            for frame in anno.frameList:
+                if frame is None:
+                    continue
+
+                for lbl in frame:
+                    if lbl is None:
+                        continue
+
+                    nMaxBehaviour = self.getHighestBehaviourNumber(
+                                            lbl['behaviour'].keys())
+                    if maxCounter < nMaxBehaviour:
+                        maxCounter = nMaxBehaviour
+
+        if maxCounter > -1:
+            return "{bvhr}_{no}".format(bvhr=behaviour, no=maxCounter + 1)
+
+        return behaviour
+
+    def addAnnotationToAnnoViews(self, vial, annotator, behaviour, key):
+        v = vial
+        # refresh annotation in anno view
         for aV in self.annoViewList:
             if (aV.behaviourName == None) \
             or (behaviour == aV.behaviourName) \
@@ -840,17 +993,87 @@ class VideoHandler(QtCore.QObject):
                 if (aV.annotator == None) \
                 or (annotator == aV.annotator) \
                 or (annotator in aV.annotator):
-                    if vials == aV.vialNo:
-                        cfg.log.debug("calling aV.addAnno()")
-                        aV.addAnno(self.posPath, self.idx, metadata)
-                        
-        if vials == None:
-            vials = [None]
+                    if v == None and aV.vialNo == None \
+                    or v in aV.vialNo:
+                        cfg.log.debug("refreshing annotation")
+                        aV.addAnnotation(\
+                                    self.annoDict[key].annotation,
+                                         key)
+
+    def eraseAnnotationFromAnnoViews(self, vial, annotator, behaviour, key):
+        v = vial
+        for aV in self.annoViewList:
+            if (aV.behaviourName == None) \
+            or (behaviour == aV.behaviourName) \
+            or (behaviour in aV.behaviourName):
+                if (aV.annotator == None) \
+                or (annotator == aV.annotator) \
+                or (annotator in aV.annotator):
+                    if v == None and aV.vialNo == None \
+                    or v in aV.vialNo:
+                        cfg.log.debug("refreshing annotation")
+                        aV.addAnnotation(\
+                                    self.annoDict[key].annotation,
+                                         key)
+
+
+    def addAnnotationRange(self, rngs, vials, annotator, behaviour):
+        if type(vials) is not list:
+            vials = [vials]
+
+        for key in rngs:
+            for v in vials:
+                self.annoDict[key].annotation.addAnnotation(v, rngs[key],
+                                        annotator, behaviour,
+                                        self.tempValue[key])
+
+            cfg.log.info("add annotation vials {v}| range {r}| annotator {a}| behaviour {b}| confidence {c}".format(
+                        v=vials, r=rngs[key], a=annotator,
+                          b=behaviour, c=self.tempValue[key]))
+
+            cfg.log.info("check annodict {0}".format(self.annoDict[key].annotation.hasChanged))
+
+
+            # refresh annotation in anno view
+            self.addAnnotationToAnnoViews(v, annotator, behaviour, key)
+            
+            cfg.logGUI.info(json.dumps({"vials":vials,
+                                   "key-range":rngs,
+                                   "annotator":annotator,
+                                   "behaviour":behaviour,
+                                   "metadata":self.tempValue[key]}))
+
+
+        self.saveTempAnnotationEdit(rngs, vials, annotator, behaviour, 'add')
+
+    def saveTempAnnotationEdit(self, rng, vials, annotator, behaviour, mode):
+        if os.path.exists(self.tmpFile):
+            with open(self.tmpFile, "r") as f:
+                annos = json.load(f)
+        else:
+            annos = []
+
+        annos += [{"mode":mode,
+                   "vials":vials,
+                   "key-range":rng,
+                   "annotator":annotator,
+                   "behaviour":behaviour,
+                   "metadata":self.tempValue}]
+
+        with open(self.tmpFile, 'w') as f:
+            json.dump(annos, f)
+
+
+    @cfg.logClassFunction
+    def addAnnotation(self, vials, annotator, behaviour, metadata):
+
+        # if vials == None:
+        #     vials = [None]
             
         rng = None
         curFilter = None
             
-        if self.annoAltStart == None:
+        if self.annoAltStart is None:
             self.annoAltStart = bsc.FramePosition(self.annoDict, self.posPath, 
                                                                     self.idx)
             
@@ -861,18 +1084,19 @@ class VideoHandler(QtCore.QObject):
                                                                     [behaviour])
             
             self.tempValue = dict()
-            
             self.updateAnnotationProperties(metadata)
             
             
         else:
             curFilter = Annotation.AnnotationFilter(vials, [annotator], 
                                                     [behaviour])
-            sameAnnotationFilter = \
-                    all((sorted(curFilter[i]) == sorted(self.annoAltFilter[i]) \
-                                        for i in range(len(curFilter))))
-            if not sameAnnotationFilter:
-                self.escapeAnnotationAlteration()
+            # sameAnnotationFilter = \
+            #         all((sorted(curFilter[i]) == sorted(self.annoAltFilter[i]) \
+            #                             for i in range(len(curFilter))))
+            # if not sameAnnotationFilter:
+            if not curFilter == self.annoAltFilter:
+                return
+                # self.escapeAnnotationAlteration()
             else:
                 annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)    
                 
@@ -880,63 +1104,49 @@ class VideoHandler(QtCore.QObject):
                 lenFunc = lambda x: len(x.annotation.frameList)#[0])
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
-                            
-                for key in rng:
-                    for v in vials:
-                        self.annoDict[key].annotation.addAnnotation(v, rng[key], 
-                                                annotator, behaviour, 
-                                                self.tempValue[key])
-                                                
-                    cfg.log.info("add annotation vials {v}| range {r}| annotator {a}| behaviour {b}| confidence {c}".format(
-                                v=vials, r=rng[key], a=annotator,
-                                  b=behaviour, c=self.tempValue[key]))
-                    
-                    cfg.log.info("check annodict {0}".format(self.annoDict[key].annotation.hasChanged))
-                    
-                                        
-                    tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
-                    self.annoDict[key].annotation.saveToTmpFile(tmpFilename)
-                    
-                    # refresh annotation in anno view
-                    for aV in self.annoViewList:
-                        if (aV.behaviourName == None) \
-                        or (behaviour == aV.behaviourName) \
-                        or (behaviour in aV.behaviourName):
-                            if (aV.annotator == None) \
-                            or (annotator == aV.annotator) \
-                            or (annotator in aV.annotator):
-                                if v == None and aV.vialNo == None \
-                                or v in aV.vialNo:
-                                    cfg.log.debug("refreshing annotation")
-                                    aV.addAnnotation(\
-                                                self.annoDict[key].annotation,
-                                                     key)
-                
-                cfg.logGUI.info(json.dumps({"vials":vials,
-                                       "key-range":rng, 
-                                       "annotator":annotator,
-                                       "behaviour":behaviour, 
-                                       "metadata":self.tempValue[key]}))
+                behaviour = self.disambiguateDoubleBehaviourNames(vials, annotator, behaviour, rng)
+
+                self.addAnnotationRange(rng, vials, annotator, behaviour)
                 
                 self.annoAltStart = None
+
+        # if vials == [None]:
+        #     vials = None
+
+        for aV in self.annoViewList:
+            if (aV.behaviourName == None) \
+            or (behaviour == aV.behaviourName) \
+            or (behaviour in aV.behaviourName):
+                if (aV.annotator == None) \
+                or (annotator == aV.annotator) \
+                or (annotator in aV.annotator):
+                    if vials == aV.vialNo:
+                        cfg.log.debug("calling aV.addAnno()")
+                        aV.addAnno(self.posPath, self.idx, metadata)
                 
         return rng, curFilter
+
+    def eraseAnnotationRange(self, rngs, vials, annotator, behaviour):
+        if type(vials) is not list:
+            vials = [vials]
+
+        for key in rngs:
+            for v in vials:
+                self.annoDict[key].annotation.removeAnnotation(v,
+                                        rngs[key],
+                                        annotator, behaviour)
+                # tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
+                # self.annoDict[key].annotation.saveToTmpFile(tmpFilename)
+
+            # refresh annotation in anno view
+            self.eraseAnnotationFromAnnoViews(v, annotator, behaviour, key)
+
+        self.saveTempAnnotationEdit(rngs, vials, annotator, behaviour, 'erase')
         
     @cfg.logClassFunction
     def eraseAnnotation(self, vials, annotator, behaviour):
-        for aV in self.annoViewList:
-            if aV.behaviourName == None \
-            or behaviour == aV.behaviourName \
-            or behaviour in aV.behaviourName:
-                if aV.annotator == None \
-                or annotator == aV.annotator \
-                or annotator in aV.annotator:
-                    if vials == aV.vialNo:
-                        cfg.log.debug("eraseAnnotation")
-                        aV.eraseAnno(self.posPath, self.idx)
-                       
-        if vials == None:
-            vials = [None]
+        # if vials == None:
+        #     vials = [None]
             
         rng = None
         curFilter = None
@@ -953,13 +1163,15 @@ class VideoHandler(QtCore.QObject):
         else:
             curFilter = Annotation.AnnotationFilter(vials, [annotator], 
                                                     [behaviour])
-            sameAnnotationFilter = \
-                    all((sorted(curFilter[i]) == sorted(self.annoAltFilter[i]) \
-                                        for i in range(len(curFilter))))
-            if not sameAnnotationFilter:
-                self.escapeAnnotationAlteration()
+            # sameAnnotationFilter = \
+            #         all((sorted(curFilter[i]) == sorted(self.annoAltFilter[i]) \
+            #                             for i in range(len(curFilter))))
+
+            if not curFilter == self.annoAltFilter:
+                # self.escapeAnnotationAlteration()
+                return
             else:
-                annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)    
+                annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)
                 
                 ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  : make that [0] dynamic
                 lenFunc = lambda x: len(x.annotation.frameList)#[0])
@@ -967,28 +1179,7 @@ class VideoHandler(QtCore.QObject):
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                 self.annoAltStart = None
                 
-                for key in rng:
-                    for v in vials:
-                        self.annoDict[key].annotation.removeAnnotation(v,
-                                                rng[key], 
-                                                annotator, behaviour)
-                        tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr~"
-                        self.annoDict[key].annotation.saveToTmpFile(tmpFilename)
-                
-                    # refresh annotation in anno view
-                    for aV in self.annoViewList:
-                        if (aV.behaviourName == None) \
-                        or (behaviour == aV.behaviourName) \
-                        or (behaviour in aV.behaviourName):
-                            if (aV.annotator == None) \
-                            or (annotator == aV.annotator) \
-                            or (annotator in aV.annotator):
-                                if v == None and aV.vialNo == None \
-                                or v in aV.vialNo:
-                                    cfg.log.debug("refreshing annotation")
-                                    aV.addAnnotation(\
-                                                self.annoDict[key].annotation,
-                                                     key)
+                self.eraseAnnotationRange(rng, vials, annotator, behaviour)
                                     
                 cfg.logGUI.info(json.dumps({"vials":vials,
                                        "key-range":rng, 
@@ -996,24 +1187,146 @@ class VideoHandler(QtCore.QObject):
                                        "behaviour":behaviour}))
                 
                 self.annoAltStart = None
-        
+
+        # if vials == [None]:
+        #     vials = None
+
+        for aV in self.annoViewList:
+            if aV.behaviourName == None \
+            or behaviour == aV.behaviourName \
+            or behaviour in aV.behaviourName:
+                if aV.annotator == None \
+                or annotator == aV.annotator \
+                or annotator in aV.annotator:
+                    if vials == aV.vialNo:
+                        cfg.log.debug("eraseAnnotation")
+                        aV.eraseAnno(self.posPath, self.idx)
         return rng, curFilter
-                        
+
+    def findRangeOfAnnotation(self, frameIdx, posKey, filterTuple,
+                              direction='both'):
+        """
+        direction (string):
+                direction in which the annotation is traced.
+                Possible values:
+                                'both'
+                                'right'
+                                'left'
+
+        """
+        rngs = dict()
+        rngs[posKey] = self.annoDict[posKey].annotation.\
+                     findConsequtiveAnnotationFrames(filterTuple,
+                                                     frameIdx,
+                                                     direction=direction)
+
+        # check whether the range extends over the right edge of the current
+        # annotation file
+        curKey = posKey
+        if direction == 'both' or direction == 'right':
+            while rngs[curKey][-1] == \
+                    len(self.annoDict[curKey].annotation.frameList):
+                curKey = sorted(self.annoDict.keys()).index(curKey) + 1
+                if curKey >= len(self.annoDict.keys()):
+                    break
+
+                a = self.annoDict[curKey].annotation.filterFrameList(
+                                                            filterTuple,
+                                                            [0],
+                                                            exactMatch=True)
+                if a.frameList:
+                    rngs[curKey] = self.annoDict[curKey].annotation.\
+                         findConsequtiveAnnotationFrames(filterTuple,
+                                                         0,
+                                                         direction=direction)
+                else:
+                    break
+
+        # check whether the range extends over the left edge of the current
+        # annotation file
+        curKey = posKey
+        if direction == 'both' or direction == 'left':
+            while rngs[curKey][0] == 0:
+                curKey = sorted(self.annoDict.keys()).index(curKey) - 1
+                if curKey < 0:
+                    break
+
+                l = len(self.annoDict[curKey].annotation.frameList)
+                a = self.annoDict[curKey].annotation.filterFrameList(
+                                                            filterTuple,
+                                                            [l],
+                                                            exactMatch=True)
+                if a.frameList:
+                    rngs[curKey] = self.annoDict[curKey].annotation.\
+                         findConsequtiveAnnotationFrames(filterTuple, 0)
+                else:
+                    break
+
+        return rngs
+
+    def editAnnotationMetaCurrentFrame(self, selectedVial, annotator,
+                                    behaviour, metaKey, newMetaValue):
+        self.annoDict[self.posPath].annotation.editMetadata(
+                                                    selectedVial, self.idx,
+                                                    annotator, behaviour,
+                                                    metaKey, newMetaValue)
+
+    def editAnnotationLabel(self, vial, annotatorOld,
+                                behaviourOld, annotatorNew, behaviourNew):
+        filtOld = Annotation.AnnotationFilter(vial, [annotatorOld],
+                                              [behaviourOld])
+
+        rngs = self.findRangeOfAnnotation(self.idx, self.posPath, filtOld)
+        for k, rng in rngs.items():
+            self.annoDict[k].annotation.renameAnnotation(
+                                                vial, rng,
+                                                annotatorOld, behaviourOld,
+                                                annotatorNew, behaviourNew)
+            self.eraseAnnotationFromAnnoViews(vial, annotatorOld, behaviourOld, k)
+            self.addAnnotationToAnnoViews(vial, annotatorNew, behaviourNew, k)
+        # self.eraseAnnotationRange(rngs, vial, annotatorOld, behaviourOld)
+        # self.addAnnotationRange(rngs, vial, annotatorNew, behaviourNew)
+
+    def eraseAnnotationSequence(self, vials, annotator, behaviour,
+                                direction='both'):
+        filt = Annotation.AnnotationFilter(vials, [annotator],
+                                              [behaviour])
+
+        rngs = self.findRangeOfAnnotation(self.idx, self.posPath,
+                                          filt, direction)
+
+        if vials is None:
+            vials = [None]
+
+        self.eraseAnnotationRange(rngs, vials, annotator, behaviour)
+
+    def eraseAnnotationCurrentFrame(self, vials, annotator, behaviour):
+        rngs = {self.posPath: [self.idx]}
+
+        if vials is None:
+            vials = [None]
+
+        self.eraseAnnotationRange(rngs, vials, annotator, behaviour)
+
+
     @cfg.logClassFunction
     def escapeAnnotationAlteration(self):
         self.annoAltStart = None
         self.annoAltFilter = None
-        
+
         for aV in self.annoViewList:
             aV.escapeAnno()
             aV.setPosition()
-            
+
     @cfg.logClassFunction
     def saveAll(self):
         for key in self.annoDict:
-            tmpFilename = '.'.join(key.split(".")[:2]) + ".bhvr"
+            tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr"
             self.annoDict[key].annotation.saveToFile(tmpFilename)
-            
+
+        if os.path.exists(self.tmpFile):
+            os.remove(self.tmpFile)
+
             
             
             

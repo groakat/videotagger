@@ -1,5 +1,6 @@
 import sys
 import os
+import itertools as iter
 
 
 sys.path.append(os.path.abspath('../../'))
@@ -12,15 +13,23 @@ from PySide import QtOpenGL
 
 from pyTools.gui.videoPlayer_auto import Ui_Form
 
+from pyTools.gui.fullViewDialog import FullViewDialog as FVD
+
 import pyTools.videoPlayer.videoHandler as VH
 import pyTools.videoPlayer.dataLoader as DL
 import pyTools.videoPlayer.annoView as AV
 import pyTools.videoProc.annotation as Annotation
+import pyTools.videoPlayer.overlayDialog as OD
+import pyTools.videoPlayer.modifyableRect as MR
 import pyTools.system.misc as systemMisc
 import pyTools.misc.config as cfg
 import pyTools.videoPlayer.eventFilter as EF
-import pyTools.videoPlayer.RPCController as RPC
+import pyTools.videoPlayer.hud as HUD
+if sys.platform != "win32":
+    import pyTools.videoPlayer.RPCController as RPC
+
 import pyTools.misc.FrameDataVisualization as FDV
+import pyTools.videoPlayer.graphicsViewFDV as GFDV
 import pyTools.gui.collapseContainer as CC
 
 import numpy as np
@@ -107,6 +116,7 @@ class videoPlayer(QtGui.QMainWindow):
         # Set up the user interface from Designer.
         self.ui = Ui_Form()
         self.ui.setupUi(self)
+
         self.ui.cb_trajectory.setChecked(True)
         
         
@@ -114,15 +124,25 @@ class videoPlayer(QtGui.QMainWindow):
             filterObjArgs = {"keyMap":None, "stepSize":None,
                              "oneClickAnnotation":None}
         
-        self.eventFilter = EF.filterObj(self, **filterObjArgs)
-        self.installEventFilter(self.eventFilter)
+        # self.eventFilter = EF.filterObj(self, **filterObjArgs)
+        # self.installEventFilter(self.eventFilter)
+        self.filterObjArgs = filterObjArgs
+
+        self.mainShortCutFilter = EF.shortcutHandler(self, self, **self.filterObjArgs)
+        self.dialogShortCutFilter = None
         self.connectSignals()       
         
         self.mouseEventFilter = EF.MouseFilterObj(self)
         
         
         self.croppedVideo = croppedVideo
-        
+        self.cropWidth = 64
+        self.cropHeight = 32
+        self.cropIncrement = 0
+        self.isCropRectOpen = False
+        self.inEditMode = True
+        self.postLabelQuery = False
+
         if croppedVideo:
             videoEnding = ".v{0}{1}".format(selectedVial, videoEnding)
         
@@ -150,6 +170,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.trajNo = 0
         self.trajLabels = []
         self.frames = []
+        self.prevFrames = []
         self.increment = 0
         self.tempIncrement = 0
         self.stop = False
@@ -159,7 +180,11 @@ class videoPlayer(QtGui.QMainWindow):
         self.fdvtPath = fdvtPath
         self.isLabelingSingleFrame = False
         self.templateFrame = None
-        
+
+        self.fullVideoDialog = None
+        self.displayingFullResolution = False
+        self.fullResFrame = None
+        self.videoSizeSmallToFullMult = 5
         
         self.rewindOnClick = rewindOnClick
         self.rewindStepSize = 500
@@ -223,16 +248,18 @@ class videoPlayer(QtGui.QMainWindow):
         self.fdvt = None
         self.setupFrameView()
         self.bookmark = None
-        
-        
+
         
         self.configureUI()
-        
+
         if self.croppedVideo:
             self.setBackground(backgroundPath)
         else:
             self.setBackground()
-        
+
+        self.hud = None
+        # self.setupHUD()
+
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.showNextFrame)
         self.timerID = None
@@ -242,18 +269,23 @@ class videoPlayer(QtGui.QMainWindow):
         self.showTrajectories(self.showTraject)
             
         self.transferElementsInCollapseContainer()
-        
-        self.show()        
+
+        self.show()
         cfg.logGUI.info(json.dumps(
                             {"message":'"--------- opened GUI ------------"'})) 
         
         self.setCropCenter(None, None)
-        
+
+        self.firstLoop = True
         self.selectVideo(startIdx)
-        self.startLoop.emit()
+        # self.startLoop.emit()
         self.stopPlayback()
         
-        
+
+    # def showEvent(self, event):
+    #     super(videoPlayer, self).showEvent(event)
+    #     self.displayFullResolutionFrame()
+
     @cfg.logClassFunction
     def connectSignals(self):
         self.ui.pb_startVideo.clicked.connect(self.startVideo)
@@ -263,6 +295,8 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.pb_eraseAnno.clicked.connect(self.eraseAnno)
         self.ui.pb_connect2server.clicked.connect(self.connectToServer)
         self.ui.pb_check4requests.clicked.connect(self.check4Requests)
+        self.ui.cb_edit.toggled.connect(self.editToggle)
+        self.ui.cb_anyLabel.toggled.connect(self.anyLabelToggle)
         
         self.ui.sldr_paths.valueChanged.connect(self.selectVideo)
         self.ui.lv_frames.activated.connect(self.selectFrame)
@@ -272,22 +306,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.cb_trajectory.stateChanged.connect(self.showTrajectories)
         
         self.startLoop.connect(self.startVideo)
-        
-        
-        
-#         
-#         #~ self.ui.pb_startVideo.installEventFilter(self.eventFilter)
-#         self.ui.pb_stopVideo.installEventFilter(self.eventFilter)
-# #         self.ui.pb_test.installEventFilter(self.eventFilter)
-#         self.ui.pb_addAnno.installEventFilter(self.eventFilter)
-#         self.ui.pb_eraseAnno.installEventFilter(self.eventFilter)
-#         self.ui.sldr_paths.installEventFilter(self.eventFilter)
-#         self.ui.lv_frames.installEventFilter(self.eventFilter)
-# #         self.ui.lv_jmp.installEventFilter(self.eventFilter)
-#         self.ui.lv_paths.installEventFilter(self.eventFilter)
-#         self.ui.cb_trajectory.installEventFilter(self.eventFilter)
-#         self.ui.pb_check4requests.installEventFilter(self.eventFilter)
-        
+
         
     def transferElementsInCollapseContainer(self):
         self.createVideoDisplayWidget()
@@ -298,7 +317,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.colCont = CC.collapseContainer(width= 1200)        
         self.setCentralWidget(self.colCont)
         
-        self.colCont.addWidget(self.glw, "Video View", height=self.videoHeight+ 30)
+        self.colCont.addWidget(self.glw, "Video View", height=self.videoHeight)# + 30)
         self.colCont.addWidget(self.prevFramesWidget, "frame preview")
         self.colCont.addWidget(self.annoViewCol, "annotation views")
         self.colCont.addWidget(self.controlWidget, "control elements")
@@ -323,6 +342,7 @@ class videoPlayer(QtGui.QMainWindow):
         layout.addWidget(self.pb_playback)
         layout.addWidget(self.pb_stopPlayback)
         layout.addWidget(self.ui.cb_trajectory)
+        layout.addWidget(self.ui.cb_anyLabel)
         
         w.setLayout(layout)
         w.show()
@@ -340,6 +360,7 @@ class videoPlayer(QtGui.QMainWindow):
         layout.addWidget(self.ui.pb_test)
         layout.addWidget(self.ui.pb_addAnno)
         layout.addWidget(self.ui.pb_eraseAnno)
+        layout.addWidget(self.ui.cb_edit)
         
         w.setLayout(layout)
         w.show()
@@ -367,8 +388,8 @@ class videoPlayer(QtGui.QMainWindow):
     def createVideoDisplayWidget(self):
         w = QtGui.QWidget(self)
         
-        height = self.vialRoi[self.selectedVial[0]][1] - \
-                    self.vialRoi[self.selectedVial[0]][0]
+        # height = self.vialRoi[self.selectedVial[0]][1] - \
+        #             self.vialRoi[self.selectedVial[0]][0]
                     
         layout = QtGui.QHBoxLayout()
         layout.addWidget(self.glw)
@@ -414,12 +435,13 @@ class videoPlayer(QtGui.QMainWindow):
         self.ui.lv_paths.setCurrentIndex(self.lm.index(0,0))
         
         self.createAnnoViews()
+        self.setupLabelMenu()
         
         
         self.ui.pb_check4requests.setVisible(False)
         
         
-    def createAnnoView(self, xPos, yPos, width, height, idx):                
+    def createAnnoView(self, width, height, idx):
         w = QtGui.QWidget(self)
         
         # AnnoView
@@ -479,7 +501,7 @@ class videoPlayer(QtGui.QMainWindow):
             self.annotations[i]["color"].setAlphaF(0.8)
             
             
-            w = self.createAnnoView(xPos, yPos, width, height, i)
+            w = self.createAnnoView(width, height, i)
             title = "Annotation View: {a}: {b}".format(\
                                                 a=self.annotations[i]['annot'],
                                                 b=self.annotations[i]['behav'])
@@ -496,20 +518,24 @@ class videoPlayer(QtGui.QMainWindow):
     
         
     def setupFrameView(self):
-        frameView = self.ui.frameView
-        frameView.registerButtonPressCallback('frames', self.selectVideoTime)
+        self.frameView = GFDV.GraphicsViewFDV(self.ui.tab_2)
+        self.frameView.setGeometry(QtCore.QRect(10, 10, 891, 221))
+        self.frameView.setObjectName("frameView")
+
+        self.frameView.registerButtonPressCallback('frames', self.selectVideoTime)
         
         colors = [a['color'] for a in self.annotations]
-        frameView.setColors(colors)       
+        self.frameView.setColors(colors)
         
         if self.fdvtPath is not None:
-            frameView.loadSequence(self.fdvtPath)
+            self.frameView.loadSequence(self.fdvtPath)
             
-        self.fdvt = frameView.fdvTree
+        self.fdvt = self.frameView.fdvt
             
             
     def createPrevFrames(self, xPos, yPos):
         w = QtGui.QWidget(self)
+        layout = QtGui.QHBoxLayout(w)
         
 #         xPos = 0
         yPos = 0
@@ -521,8 +547,10 @@ class videoPlayer(QtGui.QMainWindow):
 #         self.prevConnectHooks = []
         
         for i in range(self.noPrevFrames):
-            self.prevFrameLbls += [QtGui.QLabel(w)]
-            self.prevFrameLbls[-1].setGeometry(QtCore.QRect(xPos, yPos, size, size))
+            lbl = QtGui.QLabel(w)
+            layout.addWidget(lbl)
+            self.prevFrameLbls += [lbl]
+            # self.prevFrameLbls[-1].setGeometry(QtCore.QRect(xPos, yPos, size, size))
 #             
 #             self.prevConnectHooks += [[QtCore.QPoint(xPos + size / 2, yPos + size), 
 #                                       QtCore.QPoint(xPos + size / 2, yPos + size + 2)]]
@@ -531,8 +559,9 @@ class videoPlayer(QtGui.QMainWindow):
                 self.prevFrameLbls[-1].setLineWidth(3)
                 self.prevFrameLbls[-1].setFrameShape(QtGui.QFrame.Box)
             xPos += size + 5
-        
-        w.setFixedHeight(self.prevSize + 10)
+
+        layout.insertStretch(0)
+        layout.insertStretch(-1)
         return w
     
     
@@ -647,7 +676,7 @@ class videoPlayer(QtGui.QMainWindow):
     @QtCore.Slot(list)
     def setFrameView(self, lst):
         fdvt = lst[0]
-        self.ui.frameView.setSerializedSequence(fdvt)        
+        # self.ui.frameView.setSerializedSequence(fdvt)
         
         
     @QtCore.Slot()
@@ -664,19 +693,34 @@ class videoPlayer(QtGui.QMainWindow):
         
         
     @cfg.logClassFunction#Info
-    def setCropCenter(self, x, y, width=None, increment=None):        
+    def setCropCenter(self, x, y, width=None, height=None, increment=None):
         if width != None and increment != None:
             raise ValueError("width and increment cannot be both specified")
         cfg.log.debug("width: {0}, increment {1}".format(width, increment))
-        if width == None: 
-            width = 64
-            
-        if increment != None:
-            width += (increment / 10) 
+        if width is None:
+            width = self.cropWidth
+        else:
+            self.cropWidth = width
+
+        if height is None:
+            height = self.cropHeight
+        else:
+            self.cropHeight = height
+
+
+        # self.cropWidth = 64
+        # self.cropHeight = 32
+
+        if increment is not None:
+            width += (self.cropWidth / float(self.cropWidth + self.cropHeight) * increment / 5)
             if width < 0:
                 width = 2
+
+            height += (self.cropHeight / float(self.cropWidth + self.cropHeight) * increment / 5)
+            if height < 0:
+                height = 2
                 
-        if x == None:        
+        if x is None:
             self.prevXCrop = slice(None, None)
         else:
             if x-width/2 < 0:
@@ -684,9 +728,11 @@ class videoPlayer(QtGui.QMainWindow):
             else:
                 start = x-width/2
                 
-            if self.templateFrame != None:
-                if x+width/2 > self.templateFrame.shape[1]:
-                    stop = self.templateFrame.shape[1]
+            if self.templateFrame is not None:
+                if x+width/2 > self.templateFrame.shape[1] * \
+                               self.videoSizeSmallToFullMult:
+                    stop = self.templateFrame.shape[1] * \
+                           self.videoSizeSmallToFullMult
                 else:
                     stop = x+width/2
             else:
@@ -694,42 +740,128 @@ class videoPlayer(QtGui.QMainWindow):
             
             self.prevXCrop = slice(start, stop)
             
-        if y == None:
+        if y is None:
             self.prevYCrop = slice(None, None)
         else:
-            if y-width/2 < 0:
+            if y-height/2 < 0:
                 start = 0
             else:
-                start = y-width/2
+                start = y-height/2
                 
-            if self.templateFrame != None:
-                if y+width/2 > self.templateFrame.shape[0]:
-                    stop = self.templateFrame.shape[0]
+            if self.templateFrame is not None:
+                if y+height/2 > self.templateFrame.shape[0] * \
+                           self.videoSizeSmallToFullMult:
+                    stop = self.templateFrame.shape[0] * \
+                           self.videoSizeSmallToFullMult
                 else:
-                    stop = y+width/2
+                    stop = y+height/2
             else:
-                stop = y+width/2
+                stop = y+height/2
             
             self.prevYCrop = slice(start, stop)
             
-        if x == None or y == None:
+        if x is None or y is None:
             self.cropRect.setPos(-1000, -1000)            
             return
             
         x -= width / 2 
-        y -= width / 2
+        y -= height / 2
 #         
         
             
-        self.cropRect.setRect(0,0, width, width)
+        self.cropRect.setRect(0,0, width, height)
         self.cropRect.setPos(x, y)
         r = self.cropRect.rect()
             
-        cfg.log.debug("after width: {0}, increment {1}, rect {2}".format(width, increment, r))
+        cfg.log.debug("after width: {0}, height: {3}, increment {1}, rect {2}".format(width, increment, r, height))
         
-        
-            
-        
+
+    def openNewCropRectangle(self, x, y):
+        self.cropX = x
+        self.cropY = y
+        self.cropWidth = 0
+        self.cropHeight = 0
+        self.fullVideoDialog.graphicsView.setCursor(QtCore.Qt.ArrowCursor)
+
+    def resizeCropRectangle(self, x, y):
+        self.cropWidth = np.abs(x - self.cropX)
+        self.cropHeight = np.abs(y - self.cropY)
+
+        if self.cropHeight < 1:
+            self.cropHeight = 1
+
+        if self.cropWidth < 1:
+            self.cropWidth = 1
+
+        if x >= self.cropX:
+            if y >= self.cropY:
+                self.setCropCenter(x - self.cropWidth/2.0,
+                                   y - self.cropHeight/2.0,
+                                   self.cropWidth,
+                                   self.cropHeight)
+            else:
+                self.setCropCenter(x - self.cropWidth/2.0,
+                                   self.cropY - self.cropHeight/2.0,
+                                   self.cropWidth,
+                                   self.cropHeight)
+        else:
+            if y >= self.cropY:
+                self.setCropCenter(self.cropX - self.cropWidth/2.0,
+                                   y - self.cropHeight/2.0,
+                                   self.cropWidth,
+                                   self.cropHeight)
+            else:
+                self.setCropCenter(self.cropX - self.cropWidth/2.0,
+                                   self.cropY - self.cropHeight/2.0,
+                                   self.cropWidth,
+                                   self.cropHeight)
+
+
+
+    def closeNewCropRectangle(self, x, y):
+        self.resizeCropRectangle(x, y)
+        self.cropIncrement = 0
+        if x >= self.cropX:
+            if y >= self.cropY:
+                center = QtCore.QPoint(x - self.cropWidth/2.0,
+                                       y - self.cropHeight/2.0)
+            else:
+                center = QtCore.QPoint(x - self.cropWidth/2.0,
+                                       self.cropY - self.cropHeight/2.0)
+        else:
+            if y >= self.cropY:
+                center = QtCore.QPoint(self.cropX - self.cropWidth/2.0,
+                                       y - self.cropHeight/2.0)
+            else:
+                center = QtCore.QPoint(self.cropX - self.cropWidth/2.0,
+                                       self.cropY - self.cropHeight/2.0)
+
+        QtGui.QCursor.setPos(self.fullVideoDialog.graphicsView.mapToGlobal(
+                                self.fullVideoDialog.graphicsView.mapFromScene(
+                                    center)))
+
+        self.fullVideoDialog.graphicsView.setCursor(QtCore.Qt.CrossCursor)
+
+    def clickInScene(self, x, y):
+        if self.inEditMode:
+            return
+
+        if not self.isCropRectOpen:
+            self.openNewCropRectangle(x,y)
+            self.isCropRectOpen = True
+        else:
+            self.closeNewCropRectangle(x,y)
+            self.isCropRectOpen = False
+
+    def moveInScene(self, x, y):
+        if self.isCropRectOpen:
+            self.resizeCropRectangle(x, y)
+        else:
+            self.setCropCenter(x, y, increment = self.cropIncrement)
+            self.updatePreviewLabels()
+
+    def mouseWheelInScene(self, delta):
+        self.cropIncrement -= delta
         
     @cfg.logClassFunction
     def updateFrameList(self, intList):
@@ -772,6 +904,11 @@ class videoPlayer(QtGui.QMainWindow):
     def loadImageIntoLabel(self, lbl, img):
         if img is not None:
             qi = qim2np.array2qimage(img)
+            if self.fullResFrame:
+                h = self.fullResFrame[1][0][0].shape[0]
+                w = self.fullResFrame[1][0][0].shape[1]
+                qi = qi.scaled(w, h)
+
             cfg.log.debug("copy image to pixmap")
             px = QtGui.QPixmap().fromImage(qi)     
             cfg.log.debug("set pixmap")
@@ -793,14 +930,45 @@ class videoPlayer(QtGui.QMainWindow):
         lbl.setPos(newX,newY)
         
     @cfg.logClassFunction
-    def updatePreviewLabel(self, lbl, img):
+    def updatePreviewLabel(self, lbl, img, multiplier=1,
+                           addToQueryPreviews=False):
 #         img = data[0]
         if self.croppedVideo:
             img = np.rot90(img)
 
         if not self.croppedVideo:
-            img = scim.imresize(img[self.prevYCrop, self.prevXCrop], 
-                                        (self.prevSize,self.prevSize))
+            if multiplier != 1:
+                if self.prevYCrop.start:
+                    ystart = int(self.prevYCrop.start * multiplier)
+                else:
+                    ystart = None
+
+                if self.prevYCrop.stop:
+                    ystop = int(self.prevYCrop.stop * multiplier)
+                else:
+                    ystop = None
+
+                if self.prevXCrop.start:
+                    xstart = int(self.prevXCrop.start * multiplier)
+                else:
+                    xstart = None
+
+                if self.prevXCrop.stop:
+                    xstop = int(self.prevXCrop.stop * multiplier)
+                else:
+                    xstop = None
+
+                prevYCrop = slice(ystart, ystop)
+                prevXCrop = slice(xstart, xstop)
+            else:
+                prevYCrop = self.prevYCrop
+                prevXCrop = self.prevXCrop
+
+            crop = img[prevYCrop, prevXCrop]
+            if np.prod(crop.shape) != 0:
+                img = scim.imresize(crop, (self.prevSize,self.prevSize))
+            else:
+                img = scim.imresize(img, (self.prevSize,self.prevSize))
         else:
             img = scim.imresize(img, (self.prevSize,self.prevSize))
             
@@ -819,17 +987,28 @@ class videoPlayer(QtGui.QMainWindow):
                 
         cfg.log.debug("update label")
         lbl.update()
+
+        if addToQueryPreviews:
+            self.queryPreviews += [copy.copy(img)]
         
         
     @cfg.logClassFunction
     def updateMainLabel(self, lbl, img):
         self.templateFrame = img
-            
-        h = img.shape[0]
-        w = img.shape[1]
+
+
+        if self.fullResFrame:
+            h = self.fullResFrame[1][0][0].shape[0]
+            w = self.fullResFrame[1][0][0].shape[1]
+        else:
+            h = img.shape[0]
+            w = img.shape[1]
+
         if self.sceneRect != QtCore.QRectF(0, 0, w,h):
             cfg.log.debug("changing background")
-            self.videoView.setGeometry(QtCore.QRect(380, 10, w, h))#1920/2, 1080/2))
+            # self.videoView.setGeometry(QtCore.QRect(380, 10, w, h))#1920/2, 1080/2))
+            self.videoView.setGeometry(QtCore.QRect(380, 10, 360, 203))#1920/2, 1080/2))
+            self.videoView.fitInView(QtCore.QRect(380, 10, w, h))#1920/2, 1080/2))
             self.videoScene.setSceneRect(QtCore.QRectF(0, 0, w,h))            
             self.videoScene.setBackgroundBrush(QtGui.QBrush(QtCore.Qt.black))
             lbl.setPos(0,0)
@@ -842,14 +1021,30 @@ class videoPlayer(QtGui.QMainWindow):
     def positionAnnotationRoi(self, rois):
         while len(self.annotationRoiLabels) < len(rois):
             rect = QtCore.QRectF(0, 0, 64, 64)
-            self.annotationRoiLabels += [self.videoScene.addRect(rect)]
+
+            # anRect
+
+            anRect = BehaviourRectItem(self.menu,
+                                              self.registerLastLabelRectContext,
+                                              '',
+                                              rectChangedCallback=self.labelRectChangedSlot)
+            anRect.setRect(rect)
+            # anRect.setColor(penCol)
+            anRect.setResizeBoxColor(QtGui.QColor(255,255,255,50))
+            anRect.setupInfoTextItem(fontSize=12)
+            self.videoScene.addItem(anRect)
+            self.annotationRoiLabels += [anRect]
+
+            if not self.inEditMode:
+                anRect.deactivate()
             
         usedRoi = 0
         
         cfg.log.debug("Rois: {0}".format(rois))
         for i in range(len(rois)):        
             x1, y1, x2, y2 = rois[i][0]
-            color = rois[i][1]
+            color = rois[i][1]['color']
+            lbl = rois[i][2]
             
             width = x2 - x1
             height = y2 - y1
@@ -858,9 +1053,17 @@ class videoPlayer(QtGui.QMainWindow):
                                                                    y1/2,
                                                                    width /2,
                                                                    height / 2))
+            self.annotationRoiLabels[i].rectChangedCallback = None
             self.annotationRoiLabels[i].setRect(0,0, width / 2, height / 2)
             self.annotationRoiLabels[i].setPos(x1/2, y1/2)
-            self.annotationRoiLabels[i].setPen(QtGui.QPen(color))
+            self.annotationRoiLabels[i].setColor(color)
+            self.annotationRoiLabels[i].setInfoString("{a}:\n{b}".format(
+                                                    a=rois[i][1]['annot'],
+                                                    b=lbl))
+            self.annotationRoiLabels[i].setAnnotationLabel(rois[i][1]['annot'],
+                                                           lbl)
+            self.annotationRoiLabels[i].rectChangedCallback = \
+                                                    self.labelRectChangedSlot
              
             cfg.log.debug("set rect to: {0}".format(self.annotationRoiLabels[i].rect()))
             usedRoi = i + 1
@@ -868,6 +1071,7 @@ class videoPlayer(QtGui.QMainWindow):
             
         # move unused rects out of sight
         for k in range(usedRoi, len(self.annotationRoiLabels)):
+            self.annotationRoiLabels[k].rectChangedCallback = None
             self.annotationRoiLabels[k].setRect(0,0, 0, 0)
             self.annotationRoiLabels[k].setPos(-10, -10)
             
@@ -888,12 +1092,129 @@ class videoPlayer(QtGui.QMainWindow):
         self.showNextFrame(-self.tempIncrement, checkBuffer=False)
         self.tempIncrement = 0
         self.update()
+
+
+    def displayFullResolutionFrame(self):
+        self.displayingFullResolution = True
+        self.fullResFrame = self.vh.getFullResolutionFrame()
+        self.videoSizeSmallToFullMult = self.fullResFrame[1][0][0].shape[0] / \
+                                        float(self.frames[0][1][0][0].shape[0])
+
+        if self.selectedVial is None:
+            sv = 0
+        else:
+            sv = self.selectedVial[0]
+
+        self.displayFrame(self.fullResFrame, sv)
+
+        if self.fullVideoDialog is None:
+            # self.fullVideoDialog = FVD(self, self.prevFramesWidget)
+            self.fullVideoDialog = FVD(self, self.createPrevFrames(0, 0))
+            self.fullVideoDialog.setScene(self.videoScene)
+            self.setupHUD()
+            self.fullVideoDialog.show()
+            self.dialogShortCutFilter = EF.shortcutHandler(self.fullVideoDialog, self, **self.filterObjArgs)
+            # self.fullVideoDialog.installEventFilter(self.dialogShortCutFilter)
+            self.deactivateEditMode()
+        else:
+            self.fullVideoDialog.show()
+
+
+
+    def displayFrame(self, frame, selectedVial):
+        sv = selectedVial
+        if not self.croppedVideo:
+            self.updateMainLabel(self.lbl_v0, frame[1][sv][0])
+        else:
+            self.updateLabel(self.lbl_v0, frame[0][sv], frame[1][0][0])
+
+
+    def displayAnnotationROIs(self, anno, selectedVial):
+        # place annotation roi
+        sv = selectedVial
+        self.tmpAnnotation.setFrameList([anno])
+
+        rois = []
+        for i in range(len(self.annotations)):
+            filt = Annotation.AnnotationFilter(None,
+                                            [self.annotations[i]["annot"]],
+                                            [self.annotations[i]["behav"]])
+            tmpAnno  = self.tmpAnnotation.filterFrameList(
+                                    filt,
+                                    exactMatch=False)
+
+            if tmpAnno.frameList[0][sv] == None:
+                continue
+
+            # print tmpAnno.frameList[0][sv]
+
+            bb = Annotation.getPropertyFromFrameAnno(tmpAnno.frameList[0][sv],
+                                                     "boundingBox")
+            lbls = Annotation.getExactBehavioursFromFrameAnno(
+                                                    tmpAnno.frameList[0][sv])
+
+            for b, l in zip(bb, lbls):
+                # ensure that annotations without boundingbox do not mess up
+                # anything
+                if None in b:
+                    continue
+                rois += [[b, self.annotations[i], l]]
+
+        self.positionAnnotationRoi(rois)
+
+
+    def displayTrajectory(self, increment, selectedVial, offset=5):
+        sv = selectedVial
+        # showing trajectory #
+        if increment == 0:
+            prevIncrement = 2
+        else:
+            prevIncrement = increment
+
+        self.prevFrames = []
+        for i in range(self.trajNo):
+            self.prevFrames += [self.vh.getTempFrame(prevIncrement * (i - offset),
+                                                 posOnly=True)]
+
+        for i in range(len(self.prevFrames)-1, -1, -1):
+            frame = self.prevFrames[i]
+            self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
+
+
+    def updatePreviewLabels(self, frameSwitch=False):
+        offset = (len(self.prevFrameLbls) - 1) / 2
+        self.prevFrames = []
+        multipliers = []
+
+        for i in range(len(self.prevFrameLbls)):
+            self.prevFrames += [self.vh.getTempFrame(i - offset)]
+            multipliers += [1.0 / self.videoSizeSmallToFullMult]
+
+        if self.displayingFullResolution:
+            self.prevFrames[offset] = self.fullResFrame
+            multipliers[offset] = 1
+
+        for i in range(len(self.prevFrameLbls)):
+            if frameSwitch\
+            and self.postLabelQuery and self.annoIsOpen\
+            and i == (len(self.prevFrameLbls) - 1) / 2:
+                addToQueryPreviews = True
+            else:
+                addToQueryPreviews = False
+
+            self.updatePreviewLabel(self.prevFrameLbls[i],
+                                    self.prevFrames[i][1][0][0],
+                                    multipliers[i],
+                                    addToQueryPreviews)
+
     
     @cfg.logClassFunction
     def showNextFrame(self, increment=None, checkBuffer=True):
         #~ logGUI.debug(json.dumps({"increment":increment, 
                                  #~ "checkBuffer":checkBuffer}))
-                
+
+        self.displayingFullResolution = False
+
         if self.annoIsOpen:
             if np.abs(increment) > 1:
                 # set increment to either 1 or -1
@@ -927,68 +1248,22 @@ class videoPlayer(QtGui.QMainWindow):
             offset = (self.trajNo / 2) 
         
         frame = self.frames[0]
-        if not self.croppedVideo:
-            self.updateMainLabel(self.lbl_v0, frame[1][sv][0])
-        else:
-            self.updateLabel(self.lbl_v0, frame[0][sv], frame[1][0][0])
-        
-        
-        
-        # place annotation roi
-        
         anno = frame[2]
-        self.tmpAnnotation.setFrameList([anno])
-        
-        rois = []
-        for i in range(len(self.annotations)):
-            filt = Annotation.AnnotationFilter(None, 
-                                            [self.annotations[i]["annot"]],
-                                            [self.annotations[i]["behav"]])
-            tmpAnno  = self.tmpAnnotation.filterFrameList(filt)      
-            
-            if tmpAnno.frameList[0][sv] == None:
-                continue
-                         
-            bb = Annotation.getPropertyFromFrameAnno(tmpAnno.frameList[0][sv], 
-                                                     "boundingBox")
-            
-            for b in bb:
-                # ensure that annotations without boundingbox do not mess up
-                # anything
-                if None in b:
-                    continue
-                rois += [[b, self.annotations[i]["color"]]]
-                
-        self.positionAnnotationRoi(rois)
-        
-        
-        
-        # showing trajectory #
-        if increment == 0:
-            prevIncrement = 2
-        else:
-            prevIncrement = increment            
-            
-        self.frames = []
-        for i in range(self.trajNo):
-            self.frames += [self.vh.getTempFrame(prevIncrement * (i - offset), 
-                                                 posOnly=True)] 
-         
-        for i in range(len(self.frames)-1, -1, -1):
-            frame = self.frames[i]
-            self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
 
+        self.displayFrame(frame, sv)
+        self.displayAnnotationROIs(anno, sv)
+        self.displayTrajectory(increment, sv, offset)
 
         # showing previews #
-        offset = (len(self.prevFrameLbls) - 1) / 2
-        self.prevFrames = []
-                 
-        for i in range(len(self.prevFrameLbls)):
-            self.prevFrames += [self.vh.getTempFrame(i - offset)]
-            self.updatePreviewLabel(self.prevFrameLbls[i], self.prevFrames[i][1][0][0])
-             
-        
+        self.updatePreviewLabels(frameSwitch=(increment != 0))
         self.vh.updateAnnotationProperties(self.getMetadata())
+
+        frameNo = self.vh.getCurrentFrameNo()
+        self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
+
+        self.updateHUD()
+             
+
 
         
     @cfg.logClassFunction
@@ -1015,7 +1290,175 @@ class videoPlayer(QtGui.QMainWindow):
         lbl.update()
         
         return img
-        
+
+
+    ##### MOVEABLE RECT
+    def deleteLeftLabels(self):
+        annotator = self.lastLabelRectContext.annotator
+        behaviour = self.lastLabelRectContext.behaviour
+        self.vh.eraseAnnotationSequence(self.selectedVial, annotator,
+                                        behaviour, direction='left')
+
+    def deleteRightLabels(self):
+        annotator = self.lastLabelRectContext.annotator
+        behaviour = self.lastLabelRectContext.behaviour
+        self.vh.eraseAnnotationSequence(self.selectedVial, annotator,
+                                        behaviour, direction='right')
+
+    def deleteAllLabels(self):
+        annotator = self.lastLabelRectContext.annotator
+        behaviour = self.lastLabelRectContext.behaviour
+        self.vh.eraseAnnotationSequence(self.selectedVial, annotator,
+                                        behaviour, direction='both')
+
+    def deleteLabel(self):
+        annotator = self.lastLabelRectContext.annotator
+        behaviour = self.lastLabelRectContext.behaviour
+        self.vh.eraseAnnotationCurrentFrame(self.selectedVial, annotator,
+                                            behaviour)
+
+    def lineEditChanged(self):
+        self.menu.hide()
+        behaviourNew = self.cle.text()
+
+        behaviourOld = self.lastLabelRectContext.behaviour
+        annotatorOld = self.lastLabelRectContext.annotator
+
+        self.editAnnoLabel(annotatorOld, behaviourOld,
+                           annotatorOld, behaviourNew)
+
+    def registerLastLabelRectContext(self, labelRect):
+        self.lastLabelRectContext = labelRect
+
+    def labelRectChangedSlot(self, activeRect):
+        self.contentChanged = True
+        if self.inEditMode \
+        and activeRect.annotator is not None\
+        and activeRect.behaviour is not None:
+            roi = [activeRect.pos().x() * 2,
+                   activeRect.pos().y() * 2]
+            roi += [roi[0] + activeRect.boundingRect().width() * 2]
+            roi += [roi[1] + activeRect.boundingRect().height() * 2]
+
+            self.editAnnoROI(activeRect.annotator,
+                             activeRect.behaviour,
+                             roi)
+
+    def setupLabelMenu(self):
+        wa = QtGui.QWidgetAction(self)
+        self.cle = MR.ContextLineEdit(wa, self)
+
+        labels = []
+
+        for i in range(len(self.annotations)):
+            labels += ["{b}".format(b=self.annotations[i]['behav'])]
+
+        self.cle.setModel(labels)
+
+        wa.setDefaultWidget(self.cle)
+
+        self.menu = QtGui.QMenu(self)
+        self.menu.addAction(wa)
+        delAction = self.menu.addAction("delete (this frame)")
+        delAllAction = self.menu.addAction("delete (all)")
+        delRightAction = self.menu.addAction("delete (this and all to right)")
+        delLeftAction = self.menu.addAction("delete (this and all to left)")
+
+        wa.triggered.connect(self.lineEditChanged)
+        delAction.triggered.connect(self.deleteLabel)
+        delAllAction.triggered.connect(self.deleteAllLabels)
+        delRightAction.triggered.connect(self.deleteRightLabels)
+        delLeftAction.triggered.connect(self.deleteLeftLabels)
+
+    def setupLabelRequestMenu(self):
+        wa = QtGui.QWidgetAction(self)
+        self.clre = MR.ContextLineEdit(wa, self)
+
+        labels = []
+
+        for i in range(len(self.annotations)):
+            labels += ["{b}".format(b=self.annotations[i]['behav'])]
+
+        self.clre.setModel(labels)
+
+        wa.setDefaultWidget(self.clre)
+
+        self.requestLabelMenu = QtGui.QMenu(self)
+        self.requestLabelMenu.addAction(wa)
+        # delAction = self.requestLabelMenu.addAction("delete (this frame)")
+        # delAllAction = self.requestLabelMenu.addAction("delete (all)")
+        # delRightAction = self.requestLabelMenu.addAction("delete (this and all to right)")
+        # delLeftAction = self.requestLabelMenu.addAction("delete (this and all to left)")
+
+        wa.triggered.connect(self.lineEditChanged)
+        # delAction.triggered.connect(self.deleteLabel)
+        # delAllAction.triggered.connect(self.deleteAllLabels)
+        # delRightAction.triggered.connect(self.deleteRightLabels)
+        # delLeftAction.triggered.connect(self.deleteLeftLabels)
+
+    def deactivateAllLabelRects(self):
+        for lr in self.annotationRoiLabels:
+            if lr:
+                lr.deactivate()
+
+    def activateAllLabelRects(self):
+        for lr in self.annotationRoiLabels:
+            if lr:
+                lr.activate()
+
+    def activateEditMode(self):
+        self.activateAllLabelRects()
+        self.inEditMode = True
+        self.isCropRectOpen = False
+        self.cropRect.setVisible(False)
+        if self.fullVideoDialog is not None:
+            self.fullVideoDialog.setMode('edit-mode',
+                                         QtGui.QColor(255, 50, 50))
+            self.fullVideoDialog.graphicsView.setCursor(QtCore.Qt.ArrowCursor)
+
+        self.stopVideo()
+
+    def deactivateEditMode(self):
+        self.deactivateAllLabelRects()
+        self.inEditMode = False
+        self.cropRect.setVisible(True)
+        self.increment = 0
+
+        if self.fullVideoDialog is not None:
+            self.fullVideoDialog.setMode('additive mode',
+                                         QtGui.QColor(0, 0, 0))
+            self.fullVideoDialog.graphicsView.setCursor(QtCore.Qt.CrossCursor)
+
+        if not self.play:
+            self.startVideo()
+
+    def activatePostLabelQuery(self):
+        self.postLabelQuery = True
+
+    def deactivatePostLabelQuery(self):
+        self.postLabelQuery = False
+
+    def toggleEditModeCheckbox(self):
+        self.ui.cb_edit.setChecked(not self.ui.cb_edit.isChecked())
+
+    def editToggle(self, state):
+        if state:
+            self.activateEditMode()
+        else:
+            self.deactivateEditMode()
+
+    def anyLabelToggle(self, state):
+        if state:
+            self.activatePostLabelQuery()
+        else:
+            self.deactivatePosLabelQuery()
+
+    def addCropRect(self):
+        geo = QtCore.QRectF(0, 0, 64, 64)
+        penCol = QtGui.QColor()
+        penCol.setHsv(50, 255, 255, 255)
+        self.cropRect = self.videoScene.addRect(geo, QtGui.QPen(penCol))
+
     @cfg.logClassFunction
     def setBackground(self, path=None):
         
@@ -1035,13 +1478,14 @@ class videoPlayer(QtGui.QMainWindow):
             a[:,:,1] = b
             a[:,:,2] = b
             
-            im = np2qimage(a).convertToFormat(QtGui.QImage.Format_RGB32, QtCore.Qt.MonoOnly)
+            im = np2qimage(a).convertToFormat(QtGui.QImage.Format_RGB32,
+                                              QtCore.Qt.MonoOnly)
             
             pixmap = QtGui.QPixmap()
             px = QtGui.QPixmap.fromImage(im)
             
         else:
-            h = 0
+            h = 250
             w = 0            
             
         
@@ -1087,7 +1531,7 @@ class videoPlayer(QtGui.QMainWindow):
         
         
         self.glw = QtOpenGL.QGLWidget(fmt)
-        self.glw.setFixedHeight(h + 50)
+        # self.glw.setFixedHeight(h + 50)
         
         
 #         glw.setMouseTracking(True)
@@ -1097,24 +1541,61 @@ class videoPlayer(QtGui.QMainWindow):
         self.videoView.setGeometry(QtCore.QRect(0, 0, w + 200, h+ 50))#1920/2, 1080/2))
         self.videoView.show()
 #         self.videoView.fitInView(self.bgImg, QtCore.Qt.KeepAspectRatio)
-        self.videoView.fitInView(QtCore.QRect(0, 0, w, h + 50), QtCore.Qt.KeepAspectRatio)
+        self.videoView.fitInView(QtCore.QRect(0, 0, w, h + 50),
+                                 QtCore.Qt.KeepAspectRatio)
         
 #         self.videoView.installEventFilter(self.mouseEventFilter)
         self.videoView.setMouseTracking(True)
 #         self.lbl_v0.setAcceptHoverEvents(True)
 #         self.videoScene.setAcceptHoverEvents(True)
         self.videoScene.installEventFilter(self.mouseEventFilter)
-        
+
         self.videoHeight = h + 50
-        
-        
-        geo = QtCore.QRectF(0, 0, 64, 64)
-        penCol = QtGui.QColor()
-        penCol.setHsv(50, 255, 255, 255)
-        self.cropRect = self.videoScene.addRect(geo, QtGui.QPen(penCol))
-#         self.videoView.setCursor(QCursor(Qt.CrossCursor))
-        
-        
+        self.addCropRect()
+        self.videoView.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
+
+    def setupHUD(self):
+        if self.fullVideoDialog:
+            self.fullVideoDialog.setAnnotator("")
+            self.fullVideoDialog.setBehaviour("")
+
+    def updateHUD(self, annotator=None, behaviour=None):
+        if self.fullVideoDialog:
+            frameNo = self.vh.getCurrentFrameNo()
+            self.fullVideoDialog.setFrame(str(frameNo))
+            filename = self.vh.posPath
+            self.fullVideoDialog.setFile(filename)
+
+            self.fullVideoDialog.setSpeed(self.increment)
+
+            if annotator is not None:
+                if annotator == "":
+                    self.fullVideoDialog.setAnnotator("")
+                else:
+                    self.fullVideoDialog.setAnnotator("Annotator: " + annotator)
+
+            if behaviour is not None:
+                if behaviour == "":
+                    self.fullVideoDialog.setBehaviour("")
+                else:
+                    color = None
+                    for i in range(len(self.annotations)):
+                        if self.annotations[i]["annot"] == annotator\
+                        and self.annotations[i]['behav'] == behaviour:
+                            color = self.annotations[i]["color"]
+
+                    self.fullVideoDialog.setBehaviour("Behaviour: "+behaviour,
+                                                      color=color)
+
+
+    def openFDV(self):
+        OD.FDVShowDialog.getSelection(self.fullVideoDialog.centralWidget(),
+                                      self.frameView)
+
+    def openKeySettings(self):
+        OD.ControlsSettingDialog.getSelection(self.fullVideoDialog.centralWidget(),
+                                              self.mainShortCutFilter.keyMap)
+
     @QtCore.Slot()
     def startVideo(self):
         self.play = True
@@ -1125,6 +1606,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.vh.loadProgressive = True
         
         self.stop = False
+        self.increment = 0
         skipCnt = 0 # counts how often process events were skipped
         
         
@@ -1143,16 +1625,17 @@ class videoPlayer(QtGui.QMainWindow):
                 self.updateProgress()
 #                 if self.increment == 0:
 #                     self.play = False
-                    
+
+
             if not(QtCore.QTime.currentTime() < dieTime):
-                cfg.log.warning("no realtime display!!! " + 
+                cfg.log.debug("no realtime display!!! " +
                                 cfg.Back.BLUE + 
                                 "mainloop overflow before processEvents(): {0}ms".format(
                                         dieTime.msecsTo(QtCore.QTime.currentTime())))
                 
             elif(QtCore.QTime.currentTime() < dieTime.addMSecs(15)):
-                frameNo = self.vh.getCurrentFrameNo()
-                self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
+                # frameNo = self.vh.getCurrentFrameNo()
+                # self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
                 
                 if self.rpcIH is not None:
                     self.rpcIH.checkForNewJob()
@@ -1172,11 +1655,16 @@ class videoPlayer(QtGui.QMainWindow):
 
                  
             if not(QtCore.QTime.currentTime() < (dieTime.addMSecs(1))):
-                cfg.log.warning("no realtime display!!! " + 
+                cfg.log.debug("no realtime display!!! " +
                                 cfg.Back.YELLOW + 
                                 "mainloop overflow after processEvents(): {0}ms".format(
                                         dieTime.msecsTo(QtCore.QTime.currentTime())))
-#             else:                
+
+            # if self.firstLoop:
+            #     self.firstLoop = False
+            #     self.deactivateEditMode()
+                # self.displayFullResolutionFrame()
+#             else:
 #                 self.thread().msleep(QtCore.QTime.currentTime().msecsTo(dieTime))
                 
         self.vh.loadProgressive = False
@@ -1223,6 +1711,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.timer.stop()
         self.timerID = None
         self.stop = True
+        self.play = False
         self.vh.loadProgressive = False
         
     @cfg.logClassFunction
@@ -1272,8 +1761,11 @@ class videoPlayer(QtGui.QMainWindow):
         
         print "selectVideoTime: clicked on day {0}, hour {1}, minute {2}, frame {3}, data {4}".format(
                                                     day, hour, minute, frame, data)
-        
-        if self.usingVideoRunningIndeces:
+        if len(self.fileList) == 1:
+            idx = 0
+            minutes = day * (24 * 60) + hour * 60  + minute
+            frame += minutes * 30 * 60
+        elif self.usingVideoRunningIndeces:
             idx = day * (24 * 60) + hour * 60 + minute
             idx -= 1
         else:
@@ -1287,7 +1779,7 @@ class videoPlayer(QtGui.QMainWindow):
                 raise ValueError("dataStr retrieved ambigous result")
             
             idx = idx[0]
-        
+
         self.selectVideo(idx, frame)
                 
         
@@ -1364,10 +1856,36 @@ class videoPlayer(QtGui.QMainWindow):
         if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
             self.fdvt.save(self.fdvtPath) 
 
+
         
     def testFunction(self):
         cfg.log.debug("testFunction")
-        1/0
+        #
+        # self.addNewAnnotation(Annotation.AnnotationFilter([0],
+        #                                     ["Peter"],
+        #                                     ["shit"]),
+        #                      QtGui.QColor(0,0,0))
+        self.displayFullResolutionFrame()
+
+
+    ### new stuff
+
+    def addNewAnnotation(self, af, color):
+        self.annotations += [{'annot': af.annotators,
+                              'behav': af.behaviours,
+                              'color': color}]
+
+        height = 10
+        width = 1000
+        i = len(self.annotations) - 1
+
+        w = self.createAnnoView(width, height, i)
+        title = "Annotation View: {a}: {b}".format(\
+                                            a=self.annotations[i]['annot'],
+                                            b=self.annotations[i]['behav'])
+        self.annoViewCol.addWidget(w, title)
+
+
 #         self.increment = 40
 #         self.rpcIH.getNextJob()
         
@@ -1434,36 +1952,83 @@ class videoPlayer(QtGui.QMainWindow):
                                              yStop]}
         
         return metadata
-        
+
+    def convertLabelListAndReply(self, labelledFrames):
+        """
+        Args
+            labelledFrames (output from vh.addAnnotation or vh.eraseAnnotation
+
+        """
+        if not self.fdvt:
+            return
+
+        frames = labelledFrames[0]
+        filt = labelledFrames[1]
+
+        deltaVector = []
+        for key in frames.keys():
+            # treeKey = FDV.filename2Time(key)
+            # day = treeKey[0]
+            # hour = treeKey[1]
+            # minute = treeKey[2]
+            for frame in frames[key]:
+                # deltaVector += [[self.fdvt.key2idx(day, hour, minute, frame),
+                #                 self.fdvt.getAnnotationFilterCode(filt)]]
+                deltaVector += [self.fdvt.getDeltaValue(key, frame, filt)]
+
+
+        if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
+            self.fdvt.insertDeltaVector(deltaVector)
+            self.frameView.updateDisplay(useCurrentPos=True)
+
+
+        if self.rpcIH:
+            self.rpcIH.sendReply([deltaVector])
+            self.isLabelingSingleFrame = False
+            self.jumpToBookmark()
+
+    def queryForLabel(self):
+        # self.setupLabelRequestMenu()
+        # cfg.log.info("---------- {0}".format( self.mapFromGlobal(QtGui.QCursor.pos())))
+        # self.requestLabelMenu.exec_(self.mapFromGlobal(QtGui.QCursor.pos()))
+
+        strList = [x['behav'] for x in self.annotations]
+
+        # previewChoice = [self.queryPreviews[i] \
+        #                  for i in range(0, len(self.queryPreviews),
+        #                                 len(self.queryPreviews)/ 5)]
+        selectedBehaviour = OD.ClassSelectDialog.getLabel(
+                                        self.fullVideoDialog.centralWidget(),
+                                        strList,
+                                        self.queryPreviews)
+                                        # [np.random.rand(120, 120, 3) for x in range(5)])
+
+        print selectedBehaviour
+        if selectedBehaviour is None:
+            ## delete label
+            pass
+        else:
+            for i , elem in enumerate(self.annotations):
+                if elem['behav'] == selectedBehaviour:
+                    newAnnotator = elem['annot']
+                    newBehaviour = elem['behav']
+                    self.editAnnoLabel(self.annotations[0]['annot'], "unknown",
+                                       newAnnotator, newBehaviour)
+
+        return selectedBehaviour
+
+
 #     @cfg.logClassFunction
-    def addAnno(self, annotator="peter", behaviour="just testing", 
+    def addAnno(self, annotator="peter", behaviour="just testing",
                 confidence=1, oneClickAnnotation=False):        
         cfg.logGUI.info(json.dumps({"annotator": annotator,
                                 "behaviour": behaviour,
                                 "confidence": confidence}))
-        
+
         if not self.annoIsOpen:
-            self.confidence = confidence     
-#                                 
-#         if self.rewindOnClick:
-#             if not self.rewinding:
-#                 self.initRewind()
-#                 
-#                 ##
-#             else:
-#                 labelledFrames = self.vh.addAnnotation(self.selectedVial, 
-#                                                        annotator, 
-#                                       behaviour, metadata=self.getMetadata())
-#                 
-#                 if oneClickAnnotation:                
-#                     labelledFrames = self.vh.addAnnotation(self.selectedVial, 
-#                                                            annotator, 
-#                                       behaviour, metadata=self.getMetadata())
-#                 
-#                 self.stopRewind()
-#                     
-#         
-#         else:    
+            self.confidence = confidence
+            self.queryPreviews = []
+
         labelledFrames = self.vh.addAnnotation(self.selectedVial, annotator, 
                               behaviour, metadata=self.getMetadata())
             
@@ -1471,50 +2036,55 @@ class videoPlayer(QtGui.QMainWindow):
             labelledFrames = self.vh.addAnnotation(self.selectedVial, annotator, 
                               behaviour, metadata=self.getMetadata())
                 
-        self.annoIsOpen = not self.annoIsOpen
+        self.annoIsOpen = self.vh.annoAltStart is not None #not self.annoIsOpen
+
+        if self.annoIsOpen:
+            self.updateHUD(annotator=annotator, behaviour=behaviour)
+        else:
+            self.updateHUD(annotator="", behaviour="")
         
         if labelledFrames != (None, None):
-#             if self.isLabelingSingleFrame:
+            if self.postLabelQuery:
+                newBehaviour = self.queryForLabel()
+                newFilt = Annotation.AnnotationFilter(
+                                labelledFrames[1].vials,
+                                labelledFrames[1].annotators,
+                                [newBehaviour])
+                labelledFrames = (labelledFrames[0], newFilt)
+
             self.convertLabelListAndReply(labelledFrames)
-        
-    def convertLabelListAndReply(self, labelledFrames):
-        """
-        Args
-            labelledFrames (output from vh.addAnnotation or vh.eraseAnnotation
-        
-        """
-        if not self.fdvt:
-            return 
-        
-        frames = labelledFrames[0]
-        filt = labelledFrames[1]
-        
-        deltaVector = []
-        for key in frames.keys():
-            treeKey = FDV.filename2Time(key)
-            day = treeKey[0]
-            hour = treeKey[1]
-            minute = treeKey[2]
-            for frame in frames[key]:
-                deltaVector += [[self.fdvt.key2idx(day, hour, minute, frame),                                
-                                self.fdvt.getAnnotationFilterCode(filt)]]
-                                
-                
-#         if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
-#             self.fdvt.insertDeltaVector(deltaVector)
-#             self.ui.frameView.plotSequence(refreshAll=True)
-                                        
-        if self.rpcIH:
-            self.rpcIH.sendReply([deltaVector])
-            self.isLabelingSingleFrame = False
-            self.jumpToBookmark()
-        
-        
+
+
+    def addTempAnno(self):
+        self.postLabelQuery = True
+        self.addAnno(self.annotations[0]['annot'], "unknown")
+
 #     @cfg.logClassFunction
     def eraseAnno(self, annotator="peter", behaviour="just testing"):      
         cfg.logGUI.info(json.dumps({"annotator": annotator,
                                 "behaviour": behaviour}))
         self.vh.eraseAnnotation(self.selectedVial, annotator, behaviour)
+
+    def editAnnoROI(self, annotator, behaviour, newROI):
+        self.editAnnoMeta(annotator, behaviour, "boundingBox", newROI)
+
+    def editAnnoMeta(self, annotator, behaviour, newMetaKey, newMetaValue):
+        self.vh.editAnnotationMetaCurrentFrame(self.selectedVial, annotator,
+                                    behaviour, newMetaKey, newMetaValue)
+
+    def editAnnoLabel(self, annotatorOld, behaviourOld, annotatorNew, behaviourNew):
+
+        cfg.log.info("--------- edit label ------------")
+        self.vh.editAnnotationLabel(self.selectedVial, annotatorOld,
+                                behaviourOld, annotatorNew, behaviourNew)
+
+        if self.selectedVial is None:
+            sv = 0
+        else:
+            sv = self.selectedVial[0]
+
+        anno = self.frames[0][2]
+        self.displayAnnotationROIs(anno, sv)
         
 #     @cfg.logClassFunction
     def escapeAnnotationAlteration(self):
@@ -1528,7 +2098,30 @@ class videoPlayer(QtGui.QMainWindow):
     
     def aboutToQuit(self):
         self.exit()
-        
+
+
+class ContextLineEdit(QtGui.QLineEdit):
+
+    def __init__(self, *args, **kwargs):
+        super(ContextLineEdit, self).__init__(*args, **kwargs)
+        self.comp = QtGui.QCompleter([""], self)
+        self.comp.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        self.setCompleter(self.comp)#
+        self.setModel(["hallo", "world", "we", "are"])
+
+    def setModel(self, strList):
+        self.comp.model().setStringList(strList)
+
+class BehaviourRectItem(MR.LabelRectItem):
+    def __init__(self, *args, **kwargs):
+        super(BehaviourRectItem, self).__init__(*args, **kwargs)
+        self.annotator = None
+        self.behaviour = None
+
+    def setAnnotationLabel(self, annotator, behaviour):
+        self.annotator = annotator
+        self.behaviour = behaviour
+
         
 if __name__ == "__main__":
     

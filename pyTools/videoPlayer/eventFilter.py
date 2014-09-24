@@ -1,4 +1,4 @@
-import PySide.QtCore as QtCore
+from PySide import QtCore, QtGui
 import pyTools.misc.config as cfg
 import json
     
@@ -7,21 +7,39 @@ class MouseFilterObj(QtCore.QObject):
         QtCore.QObject.__init__(self)
         self.parent = parent
         self.increment = 0
+        self.isRectangleOpen = False
         
     @cfg.logClassFunction
     def eventFilter(self, obj, event):
         cfg.log.debug("mouse event!!!!!!!!!!!!!! {0}".format(event.type()))
-        if (event.type() == QtCore.QEvent.GraphicsSceneMouseMove):
-            self.parent.setCropCenter(int(event.scenePos().x()), 
-                                      int( event.scenePos().y()),
-                                      increment = self.increment)
+        if event.type() == QtCore.QEvent.Type.GraphicsSceneMousePress:
+            if event.button() == QtCore.Qt.RightButton:
+                self.parent.addTempAnno()
+            elif event.button() == QtCore.Qt.LeftButton:
+                self.parent.clickInScene(int(event.scenePos().x()),
+                                          int( event.scenePos().y()))
+
+
+        if event.type() == QtCore.QEvent.Type.GraphicsSceneMouseRelease:
+            if event.button() == QtCore.Qt.LeftButton:
+                self.parent.clickInScene(int(event.scenePos().x()),
+                                          int( event.scenePos().y()))
+
+        if event.type() == QtCore.QEvent.GraphicsSceneMouseMove:
+            self.parent.moveInScene(int(event.scenePos().x()),
+                                      int( event.scenePos().y()))
+            #
+            # self.parent.setCropCenter(int(event.scenePos().x()),
+            #                           int( event.scenePos().y()),
+            #                           increment = self.increment)
 
             
-        if (event.type() == QtCore.QEvent.Leave):
+        if event.type() == QtCore.QEvent.Leave:
             self.parent.setCropCenter(None, None, increment=self.increment)
             
-        if (event.type() == QtCore.QEvent.GraphicsSceneWheel):
-            self.increment -= event.delta()
+        if event.type() == QtCore.QEvent.GraphicsSceneWheel:
+            self.parent.mouseWheelInScene(event.delta())
+
             
         return False
     
@@ -323,3 +341,362 @@ class filterObj(QtCore.QObject):
             
         
         return False
+
+
+
+
+
+class shortcutHandler(QtCore.QObject):
+    def __init__(self, parent, cbTarget, keyMap=None, stepSize=None, oneClickAnnotation=None):
+        QtCore.QObject.__init__(self)
+        self.parent = parent
+        self.cbTarget = cbTarget
+
+        if keyMap is None:
+            self.keyMap = { "stop": QtCore.Qt.Key_F,
+                            "step-f": QtCore.Qt.Key_G,
+                            "step-b": QtCore.Qt.Key_D,
+                            "fwd-1": QtCore.Qt.Key_T,
+                            "fwd-2": QtCore.Qt.Key_V,
+                            "fwd-3": QtCore.Qt.Key_B,
+                            "fwd-4": QtCore.Qt.Key_N,
+                            "fwd-5": QtCore.Qt.Key_H,
+                            "fwd-6": QtCore.Qt.Key_J,
+                            "bwd-1": QtCore.Qt.Key_E,
+                            "bwd-2": QtCore.Qt.Key_X,
+                            "bwd-3": QtCore.Qt.Key_Z,
+                            "bwd-4": QtCore.Qt.Key_Backslash,
+                            "bwd-5": QtCore.Qt.Key_S,
+                            "bwd-6": QtCore.Qt.Key_A,
+                            "escape": QtCore.Qt.Key_Escape,
+                            "anno-1": QtCore.Qt.Key_1,
+                            "anno-2": QtCore.Qt.Key_2,
+                            "anno-3": QtCore.Qt.Key_3,
+                            "anno-4": QtCore.Qt.Key_3,
+                            "erase-anno": QtCore.Qt.Key_Q,
+                            "info": QtCore.Qt.Key_I}
+        else:
+            self.keyMap = keyMap
+
+        if stepSize is None:
+            self.stepSize = { "stop": 0,
+                            "step-f": 1,
+                            "step-b": -1,
+                            "allow-steps": True,
+                            "fwd-1": 1,
+                            "fwd-2": 3,
+                            "fwd-3": 10,
+                            "fwd-4": 20,
+                            "fwd-5": 40,
+                            "fwd-6": 60,
+                            "bwd-1": -1,
+                            "bwd-2": -3,
+                            "bwd-3": -10,
+                            "bwd-4": -20,
+                            "bwd-5": -40,
+                            "bwd-6": -60}
+        else:
+            self.stepSize = stepSize
+
+        if oneClickAnnotation is None:
+            self.oneClickAnnotation = [False] * 4
+        else:
+            self.oneClickAnnotation = [oneClickAnnotation] * 4
+
+        self.inConstantSpeed = False
+        self.orignalStepSize = self.stepSize
+
+        self.applyShortcuts()
+
+    def applyShortcuts(self):
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['stop']),
+                        self.parent, self.stop)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['step-f']),
+                        self.parent, self.stepF)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['step-b']),
+                        self.parent, self.stepB)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-1']),
+                        self.parent, self.fwd1)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-2']),
+                        self.parent, self.fwd2)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-3']),
+                        self.parent, self.fwd3)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-4']),
+                        self.parent, self.fwd4)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-5']),
+                        self.parent, self.fwd5)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-6']),
+                        self.parent, self.fwd6)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-1']),
+                        self.parent, self.bwd1)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-2']),
+                        self.parent, self.bwd2)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-3']),
+                        self.parent, self.bwd3)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-4']),
+                        self.parent, self.bwd4)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-5']),
+                        self.parent, self.bwd5)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-6']),
+                        self.parent, self.bwd6)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['escape']),
+                        self.parent, self.escape)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['anno-1']),
+                        self.parent, self.anno1)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['anno-2']),
+                        self.parent, self.anno2)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['anno-3']),
+                        self.parent, self.anno3)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['anno-4']),
+                        self.parent, self.anno4)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['erase-anno']),
+                        self.parent, self.eraseAnno)
+        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['info']),
+                        self.parent, self.info)
+        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_S),
+                        self.parent, self.saveAll)
+        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Space),
+                        self.parent, self.cbTarget.displayFullResolutionFrame)
+        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Return),
+                        self.parent, self.cbTarget.toggleEditModeCheckbox)
+        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Space),
+                        self.parent, self.cbTarget.addTempAnno)
+        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Delete),
+                        self.parent, self.cbTarget.openFDV)
+        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_End),
+                        self.parent, self.cbTarget.openKeySettings)
+
+
+    def swapToConstantSpeed(self, speed):
+
+        if self.inConstantSpeed:
+            return
+
+        self.orignalStepSize = self.stepSize
+
+        self.stepSize = { "stop": speed,
+                        "step-f": speed,
+                        "step-b": speed,
+                        "allow-steps": False,
+                        "fwd-1": speed,
+                        "fwd-2": speed,
+                        "fwd-3": speed,
+                        "fwd-4": speed,
+                        "fwd-5": speed,
+                        "fwd-6": speed,
+                        "bwd-1": speed,
+                        "bwd-2": speed,
+                        "bwd-3": speed,
+                        "bwd-4": speed,
+                        "bwd-5": speed,
+                        "bwd-6": speed}
+
+    def swapFromConstantSpeed(self):
+        if not self.inConstantSpeed:
+            self.stepSize = self.orignalStepSize
+
+
+#     @cfg.logClassFunction
+    def saveAll(self):
+        cfg.log.info('saving all annotations')
+        self.cbTarget.saveAll()
+
+    def stop(self):
+        # stop playback
+        self.cbTarget.showTrajectTemp = True
+
+        if self.stepSize["allow-steps"]:
+            self.cbTarget.play = False
+        else:
+            self.cbTarget.play = True
+
+        self.cbTarget.increment = self.stepSize["stop"]
+
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+
+    def stepF(self):
+        self.cbTarget.showTrajectTemp = True
+
+        # step-wise forward
+        if self.stepSize["allow-steps"]:
+            self.cbTarget.play = False
+            self.cbTarget.showNextFrame(self.stepSize["step-f"])
+        else:
+            self.cbTarget.play = True
+
+        self.cbTarget.increment = self.stepSize["step-f"]
+#                 self.cbTarget.showNextFrame(self.increment)
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+
+    def stepB(self):
+        self.cbTarget.showTrajectTemp = True
+
+        # step-wise backward
+        if self.stepSize["allow-steps"]:
+            self.cbTarget.play = False
+            self.cbTarget.showNextFrame(self.stepSize["step-b"])
+        else:
+            self.cbTarget.play = True
+
+        self.increment = self.stepSize["step-b"]
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+
+
+    def fwd1(self):
+        self.cbTarget.showTrajectTemp = True
+        # real-time playback
+        self.cbTarget.increment = self.stepSize["fwd-1"]
+        self.cbTarget.play = True
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+
+    def bwd1(self):
+        self.cbTarget.showTrajectTemp = True
+        # real-time playback
+        self.cbTarget.increment = self.stepSize["bwd-1"]
+        self.cbTarget.play = True
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+
+    def fwd2(self):
+        self.cbTarget.showTrajectTemp = True
+        #
+        self.cbTarget.increment = self.stepSize["fwd-2"]
+        self.cbTarget.play = True
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+
+    def fwd3(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.increment = self.stepSize["fwd-3"]
+        self.cbTarget.play = True
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+
+    def fwd4(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.increment = self.stepSize["fwd-4"]
+        self.cbTarget.play = True
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+
+    def fwd5(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.increment = self.stepSize["fwd-5"]
+        self.cbTarget.play = True
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+
+    def fwd6(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.increment = self.stepSize["fwd-6"]
+        self.cbTarget.play = True
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+#                     self.tempTrajSwap = True
+#                     self.showTrajectories(False)
+
+    def bwd2(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.increment = self.stepSize["bwd-2"]
+        self.cbTarget.play = True
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+
+    def bwd3(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.increment = self.stepSize["bwd-3"]
+        self.cbTarget.play = True
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+
+    def bwd4(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.increment = self.stepSize["bwd-4"]
+        self.cbTarget.play = True
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+
+    def bwd5(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.increment = self.stepSize["bwd-5"]
+        self.cbTarget.play = True
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+
+    def bwd6(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.increment = self.stepSize["bwd-6"]
+        self.cbTarget.play = True
+        if self.cbTarget.tempTrajSwap:
+            self.cbTarget.tempTrajSwap = False
+            self.cbTarget.showTrajectories(True)
+
+    def info(self):
+        self.cbTarget.showTrajectTemp = True
+        cfg.log.debug("position length: {0}".format(self.cbTarget.vh.getCurrentPositionLength()))
+        cfg.log.debug("video length: {0}".format(self.cbTarget.vh.getCurrentVideoLength()))
+
+    def escape(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.escapeAnnotationAlteration()
+
+    def anno1(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.alterAnnotation(self.cbTarget.annotations[0]["annot"],
+                            self.cbTarget.annotations[0]["behav"],
+                            confidence=1,
+                            oneClickAnnotation=self.oneClickAnnotation[0])
+    def anno2(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.alterAnnotation(self.cbTarget.annotations[1]["annot"],
+                            self.cbTarget.annotations[1]["behav"],
+                            confidence=1,
+                            oneClickAnnotation=self.oneClickAnnotation[1])
+
+    def anno3(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.alterAnnotation(self.cbTarget.annotations[2]["annot"],
+                            self.cbTarget.annotations[2]["behav"],
+                            confidence=1,
+                            oneClickAnnotation=self.oneClickAnnotation[2])
+
+    def anno4(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.alterAnnotation(self.cbTarget.annotations[3]["annot"],
+                            self.cbTarget.annotations[3]["behav"],
+                            confidence=1,
+                            oneClickAnnotation=self.oneClickAnnotation[3])
+
+    def eraseAnno(self):
+        self.cbTarget.showTrajectTemp = True
+        self.cbTarget.testFunction()
+        # self.cbTarget.addingAnnotations = not self.cbTarget.addingAnnotations
+        # if not self.cbTarget.addingAnnotations:
+        #     cfg.log.info("changed to erasing mode")
+        #     self.cbTarget.ui.lbl_eraser.setVisible(True)
+        #
+        # else:
+        #     cfg.log.info("changed to adding mode")
+        #     self.cbTarget.ui.lbl_eraser.setVisible(False)
+        #
+        # cfg.logGUI.info(json.dumps({"addingAnnotations":
+        #                         self.cbTarget.addingAnnotations}))
+

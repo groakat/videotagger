@@ -279,7 +279,7 @@ class AnnoView(QtGui.QWidget):
             filt = Annotation.AnnotationFilter(self.vialNo, self.annotator, 
                                                         self.behaviourName)
 
-        self.annotationDict[key] = annotation.filterFrameList(filt)
+        self.annotationDict[key] = annotation.filterFrameList(filt, exactMatch=False)
         
         
         return

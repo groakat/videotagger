@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'videoPlayer.ui'
 #
-# Created: Thu Mar  6 20:14:59 2014
-#      by: pyside-uic 0.2.14 running on PySide 1.1.2
+# Created: Fri Sep 12 21:40:03 2014
+#      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -29,6 +29,7 @@ class Ui_Form(object):
         self.pb_stopVideo.setGeometry(QtCore.QRect(1120, 590, 151, 23))
         self.pb_stopVideo.setObjectName("pb_stopVideo")
         self.pb_connect2server = QtGui.QPushButton(Form)
+        self.pb_connect2server.setEnabled(False)
         self.pb_connect2server.setGeometry(QtCore.QRect(1120, 610, 151, 23))
         self.pb_connect2server.setObjectName("pb_connect2server")
         self.pb_check4requests = QtGui.QPushButton(Form)
@@ -172,15 +173,18 @@ class Ui_Form(object):
         self.pb_check4requests.setPalette(palette)
         self.pb_check4requests.setObjectName("pb_check4requests")
         self.pb_test = QtGui.QPushButton(Form)
+        self.pb_test.setEnabled(True)
         self.pb_test.setGeometry(QtCore.QRect(1120, 650, 151, 23))
         self.pb_test.setObjectName("pb_test")
         self.cb_trajectory = QtGui.QCheckBox(Form)
         self.cb_trajectory.setGeometry(QtCore.QRect(1130, 550, 161, 21))
         self.cb_trajectory.setObjectName("cb_trajectory")
         self.pb_eraseAnno = QtGui.QPushButton(Form)
+        self.pb_eraseAnno.setEnabled(False)
         self.pb_eraseAnno.setGeometry(QtCore.QRect(1120, 690, 151, 23))
         self.pb_eraseAnno.setObjectName("pb_eraseAnno")
         self.pb_addAnno = QtGui.QPushButton(Form)
+        self.pb_addAnno.setEnabled(False)
         self.pb_addAnno.setGeometry(QtCore.QRect(1120, 670, 151, 23))
         self.pb_addAnno.setObjectName("pb_addAnno")
         self.speed_lbl = QtGui.QLabel(Form)
@@ -357,13 +361,17 @@ class Ui_Form(object):
         self.tabWidget.addTab(self.tab_1, "")
         self.tab_2 = QtGui.QWidget()
         self.tab_2.setObjectName("tab_2")
-        self.frameView = FrameViewWidget(self.tab_2)
-        self.frameView.setGeometry(QtCore.QRect(10, -10, 941, 221))
-        self.frameView.setObjectName("frameView")
         self.tabWidget.addTab(self.tab_2, "")
+        self.cb_edit = QtGui.QCheckBox(Form)
+        self.cb_edit.setGeometry(QtCore.QRect(1130, 720, 91, 21))
+        self.cb_edit.setChecked(False)
+        self.cb_edit.setObjectName("cb_edit")
+        self.cb_anyLabel = QtGui.QCheckBox(Form)
+        self.cb_anyLabel.setGeometry(QtCore.QRect(1130, 750, 81, 21))
+        self.cb_anyLabel.setObjectName("cb_anyLabel")
 
         self.retranslateUi(Form)
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(Form)
 
     def retranslateUi(self, Form):
@@ -383,5 +391,6 @@ class Ui_Form(object):
         self.progBar.setFormat(QtGui.QApplication.translate("Form", "%p%", None, QtGui.QApplication.UnicodeUTF8))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_1), QtGui.QApplication.translate("Form", "Filenames", None, QtGui.QApplication.UnicodeUTF8))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QtGui.QApplication.translate("Form", "Frame View", None, QtGui.QApplication.UnicodeUTF8))
+        self.cb_edit.setText(QtGui.QApplication.translate("Form", "editmode", None, QtGui.QApplication.UnicodeUTF8))
+        self.cb_anyLabel.setText(QtGui.QApplication.translate("Form", "any label", None, QtGui.QApplication.UnicodeUTF8))
 
-from FrameViewWidget import FrameViewWidget

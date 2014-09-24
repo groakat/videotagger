@@ -4,6 +4,7 @@ import json
 import sys
 import argparse
 import textwrap
+import os
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(\
@@ -83,9 +84,14 @@ if __name__ == "__main__":
     videoPath = configSectionMap('Video')['videopath']
     bhvrCachePath = configSectionMap('Video')['bhvr-cache']    
     fdvtPath = configSectionMap('Video')['frame-data-visualization-path']
+    runningIndeces = configSectionMap('Video')['files-running-indices']
     
     print "start parsing"
+    if videoPath.endswith('avi'):
+        videoPath = os.path.dirname(videoPath)
+
     bhvrList = systemMisc.providePosList(videoPath, ending='.bhvr')
+    print videoPath
     
     with open(bhvrCachePath, "w") as f:
         json.dump(bhvrList, f)
@@ -100,7 +106,7 @@ if __name__ == "__main__":
         selectedVial = None
         
     fdtv = FDV.FrameDataVisualizationTreeBehaviour()
-    fdtv.importAnnotations(bhvrList, annotations, selectedVial)
+    fdtv.importAnnotations(bhvrList, annotations, selectedVial, runningIndeces=runningIndeces)
     fdtv.save(fdvtPath)
     
     
