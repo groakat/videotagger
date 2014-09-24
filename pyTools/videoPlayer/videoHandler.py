@@ -49,11 +49,11 @@ class VideoHandler(QtCore.QObject):
         self.dictLength = 3         # should be odd, otherwise fix checkBuffers()!
         self.delBuffer = 5
         ### old stuff ?
-        
+
         self.bufferWidth  = bufferWidth     # width of each buffer
         self.bufferLength = bufferLength    # number of buffers on EITHER SIDE
         self.bufferJut = 2          # number of buffers outside of the core 
-                                    # buffer area on EITHER SIDEthat are not 
+                                    # buffer area on EITHER SIDE that are not
                                     # deleted immediately
         self.videoLengths = dict()  # lengths of each video chunk
         
