@@ -12,8 +12,17 @@ class MouseFilterObj(QtCore.QObject):
     @cfg.logClassFunction
     def eventFilter(self, obj, event):
         cfg.log.debug("mouse event!!!!!!!!!!!!!! {0}".format(event.type()))
+        if event.type() == QtCore.QEvent.Type.GraphicsSceneMousePress:
+            if event.button() == QtCore.Qt.RightButton:
+                self.parent.addTempAnno()
+            elif event.button() == QtCore.Qt.LeftButton:
+                self.parent.clickInScene(int(event.scenePos().x()),
+                                          int( event.scenePos().y()))
+
+
         if event.type() == QtCore.QEvent.Type.GraphicsSceneMouseRelease:
-            self.parent.clickInScene(int(event.scenePos().x()),
+            if event.button() == QtCore.Qt.LeftButton:
+                self.parent.clickInScene(int(event.scenePos().x()),
                                           int( event.scenePos().y()))
 
         if event.type() == QtCore.QEvent.GraphicsSceneMouseMove:
@@ -30,6 +39,7 @@ class MouseFilterObj(QtCore.QObject):
             
         if event.type() == QtCore.QEvent.GraphicsSceneWheel:
             self.parent.mouseWheelInScene(event.delta())
+
             
         return False
     
