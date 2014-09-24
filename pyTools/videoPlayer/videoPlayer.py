@@ -781,6 +781,7 @@ class videoPlayer(QtGui.QMainWindow):
         self.cropY = y
         self.cropWidth = 0
         self.cropHeight = 0
+        self.fullVideoDialog.graphicsView.setCursor(QtCore.Qt.ArrowCursor)
 
     def resizeCropRectangle(self, x, y):
         self.cropWidth = np.abs(x - self.cropX)
@@ -838,6 +839,8 @@ class videoPlayer(QtGui.QMainWindow):
         QtGui.QCursor.setPos(self.fullVideoDialog.graphicsView.mapToGlobal(
                                 self.fullVideoDialog.graphicsView.mapFromScene(
                                     center)))
+
+        self.fullVideoDialog.graphicsView.setCursor(QtCore.Qt.CrossCursor)
 
     def clickInScene(self, x, y):
         if self.inEditMode:
@@ -936,22 +939,22 @@ class videoPlayer(QtGui.QMainWindow):
         if not self.croppedVideo:
             if multiplier != 1:
                 if self.prevYCrop.start:
-                    ystart = self.prevYCrop.start * multiplier
+                    ystart = int(self.prevYCrop.start * multiplier)
                 else:
                     ystart = None
 
                 if self.prevYCrop.stop:
-                    ystop = self.prevYCrop.stop * multiplier
+                    ystop = int(self.prevYCrop.stop * multiplier)
                 else:
                     ystop = None
 
                 if self.prevXCrop.start:
-                    xstart = self.prevXCrop.start * multiplier
+                    xstart = int(self.prevXCrop.start * multiplier)
                 else:
                     xstart = None
 
                 if self.prevXCrop.stop:
-                    xstop = self.prevXCrop.stop * multiplier
+                    xstop = int(self.prevXCrop.stop * multiplier)
                 else:
                     xstop = None
 
@@ -961,8 +964,11 @@ class videoPlayer(QtGui.QMainWindow):
                 prevYCrop = self.prevYCrop
                 prevXCrop = self.prevXCrop
 
-            img = scim.imresize(img[prevYCrop, prevXCrop],
-                                        (self.prevSize,self.prevSize))
+            crop = img[prevYCrop, prevXCrop]
+            if np.prod(crop.shape) != 0:
+                img = scim.imresize(crop, (self.prevSize,self.prevSize))
+            else:
+                img = scim.imresize(img, (self.prevSize,self.prevSize))
         else:
             img = scim.imresize(img, (self.prevSize,self.prevSize))
             
@@ -1111,6 +1117,9 @@ class videoPlayer(QtGui.QMainWindow):
             # self.fullVideoDialog.installEventFilter(self.dialogShortCutFilter)
         else:
             self.fullVideoDialog.show()
+
+        self.deactivateEditMode()
+
 
     def displayFrame(self, frame, selectedVial):
         sv = selectedVial
@@ -1323,16 +1332,14 @@ class videoPlayer(QtGui.QMainWindow):
 
     def labelRectChangedSlot(self, activeRect):
         self.contentChanged = True
-        if self.inEditMode:
-            print "yeeah", activeRect.annotator, activeRect.behaviour
-            print activeRect.boundingRect()
-            print activeRect.pos()
+        if self.inEditMode \
+        and activeRect.annotator is not None\
+        and activeRect.behaviour is not None:
             roi = [activeRect.pos().x() * 2,
                    activeRect.pos().y() * 2]
             roi += [roi[0] + activeRect.boundingRect().width() * 2]
             roi += [roi[1] + activeRect.boundingRect().height() * 2]
 
-            print roi
             self.editAnnoROI(activeRect.annotator,
                              activeRect.behaviour,
                              roi)
@@ -1407,6 +1414,8 @@ class videoPlayer(QtGui.QMainWindow):
         if self.fullVideoDialog is not None:
             self.fullVideoDialog.setMode('edit-mode',
                                          QtGui.QColor(255, 50, 50))
+            self.fullVideoDialog.graphicsView.setCursor(QtCore.Qt.ArrowCursor)
+
         self.stopVideo()
 
     def deactivateEditMode(self):
@@ -1418,6 +1427,7 @@ class videoPlayer(QtGui.QMainWindow):
         if self.fullVideoDialog is not None:
             self.fullVideoDialog.setMode('additive mode',
                                          QtGui.QColor(0, 0, 0))
+            self.fullVideoDialog.graphicsView.setCursor(QtCore.Qt.CrossCursor)
 
         if not self.play:
             self.startVideo()
@@ -1650,9 +1660,9 @@ class videoPlayer(QtGui.QMainWindow):
                                 "mainloop overflow after processEvents(): {0}ms".format(
                                         dieTime.msecsTo(QtCore.QTime.currentTime())))
 
-            if self.firstLoop:
-                self.firstLoop = False
-                self.deactivateEditMode()
+            # if self.firstLoop:
+            #     self.firstLoop = False
+            #     self.deactivateEditMode()
                 # self.displayFullResolutionFrame()
 #             else:
 #                 self.thread().msleep(QtCore.QTime.currentTime().msecsTo(dieTime))
