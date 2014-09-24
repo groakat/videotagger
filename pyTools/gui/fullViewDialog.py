@@ -26,7 +26,6 @@ class FullViewDialog(QtGui.QMainWindow):
         self.hud = HUD.HUD(self.graphicsView)
         self.setupHUD()
         self.mouseFilter = MouseFilterObj(self)
-        self.setMouseTracking(True)
         self.installEventFilter(self.mouseFilter)
         # self.hud.installEventFilter(self.mouseFilter)
 
@@ -38,6 +37,7 @@ class FullViewDialog(QtGui.QMainWindow):
 
         self.graphicsView = QtGui.QGraphicsView()
         self.graphicsView.setObjectName("graphicsView")
+        self.graphicsView.setMouseTracking(True)
 
         self.splitter.addWidget(prevDummyWidget)
         self.splitter.addWidget(self.graphicsView)

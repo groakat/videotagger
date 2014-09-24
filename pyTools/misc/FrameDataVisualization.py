@@ -746,7 +746,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
 
             for i in range(frameSlc.start, frameSlc.stop):
                 if filteredAnno.frameList[i][0] is not None:
-                    data[i] = l + 1
+                    data[i - frameSlc.start] = l + 1
 
         return data
 

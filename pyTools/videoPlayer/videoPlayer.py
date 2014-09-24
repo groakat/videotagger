@@ -1049,13 +1049,13 @@ class videoPlayer(QtGui.QMainWindow):
             width = x2 - x1
             height = y2 - y1
             
-            cfg.log.debug("setting rect to: {0} {1} {2} {3}".format(x1/2, 
-                                                                   y1/2,
-                                                                   width /2,
-                                                                   height / 2))
+            cfg.log.debug("setting rect to: {0} {1} {2} {3}".format(x1,
+                                                                   y1,
+                                                                   width ,
+                                                                   height))
             self.annotationRoiLabels[i].rectChangedCallback = None
-            self.annotationRoiLabels[i].setRect(0,0, width / 2, height / 2)
-            self.annotationRoiLabels[i].setPos(x1/2, y1/2)
+            self.annotationRoiLabels[i].setRect(0,0, width, height)
+            self.annotationRoiLabels[i].setPos(x1, y1)
             self.annotationRoiLabels[i].setColor(color)
             self.annotationRoiLabels[i].setInfoString("{a}:\n{b}".format(
                                                     a=rois[i][1]['annot'],
@@ -1335,10 +1335,10 @@ class videoPlayer(QtGui.QMainWindow):
         if self.inEditMode \
         and activeRect.annotator is not None\
         and activeRect.behaviour is not None:
-            roi = [activeRect.pos().x() * 2,
-                   activeRect.pos().y() * 2]
-            roi += [roi[0] + activeRect.boundingRect().width() * 2]
-            roi += [roi[1] + activeRect.boundingRect().height() * 2]
+            roi = [activeRect.pos().x(),
+                   activeRect.pos().y()]
+            roi += [roi[0] + activeRect.boundingRect().width()]
+            roi += [roi[1] + activeRect.boundingRect().height()]
 
             self.editAnnoROI(activeRect.annotator,
                              activeRect.behaviour,
@@ -1926,22 +1926,22 @@ class videoPlayer(QtGui.QMainWindow):
             
     def getMetadata(self):        
         if self.prevXCrop.start is not None:
-            xStart = self.prevXCrop.start * 2
+            xStart = self.prevXCrop.start
         else:
             xStart= None
             
         if self.prevYCrop.start is not None:
-            yStart = self.prevYCrop.start * 2
+            yStart = self.prevYCrop.start
         else:
             yStart = None
             
         if self.prevXCrop.stop is not None:
-            xStop = self.prevXCrop.stop * 2
+            xStop = self.prevXCrop.stop
         else:
             xStop = None
         
         if self.prevYCrop.stop is not None:
-            yStop = self.prevYCrop.stop * 2
+            yStop = self.prevYCrop.stop
         else:
             yStop = None
             
