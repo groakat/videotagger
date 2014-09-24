@@ -236,6 +236,9 @@ class ResizeableGraphicsRectItem(QtGui.QGraphicsRectItem):
         if change == QtGui.QGraphicsItem.ItemPositionChange and self.callback:
             self.callback(value)
 
+        if change == QtGui.QGraphicsItem.ItemPositionChange and self.rectChangedCallback:
+            self.rectChangedCallback(self)
+
         return super(ResizeableGraphicsRectItem, self).itemChange(change, value)
 
     def activate(self):
@@ -498,10 +501,19 @@ class ResizeableGraphicsRectItem(QtGui.QGraphicsRectItem):
 
         self.resizeFunction(dx, dy)
 
+        if self.rectChangedCallback:
+            self.rectChangedCallback(self)
+
     def setRect(self, *args, **kwargs):
         super(ResizeableGraphicsRectItem, self).setRect(*args, **kwargs)
         if self.rectChangedCallback:
-            self.rectChangedCallback()
+            self.rectChangedCallback(self)
+
+    def setPos (self, *args, **kwargs):
+        super(ResizeableGraphicsRectItem, self).setPos(*args, **kwargs)
+        if self.rectChangedCallback:
+            self.rectChangedCallback(self)
+
 
 
 class InfoRectItem(ResizeableGraphicsRectItem):

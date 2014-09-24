@@ -1264,7 +1264,12 @@ class VideoHandler(QtCore.QObject):
 
         return rngs
 
-
+    def editAnnotationMetaCurrentFrame(self, selectedVial, annotator,
+                                    behaviour, metaKey, newMetaValue):
+        self.annoDict[self.posPath].annotation.editMetadata(
+                                                    selectedVial, self.idx,
+                                                    annotator, behaviour,
+                                                    metaKey, newMetaValue)
 
     def editAnnotationLabel(self, vial, annotatorOld,
                                 behaviourOld, annotatorNew, behaviourNew):
@@ -1319,7 +1324,8 @@ class VideoHandler(QtCore.QObject):
             tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr"
             self.annoDict[key].annotation.saveToFile(tmpFilename)
 
-        os.remove(self.tmpFile)
+        if os.path.exists(self.tmpFile):
+            os.remove(self.tmpFile)
 
             
             

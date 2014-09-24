@@ -368,6 +368,14 @@ class Annotation():
 
         return range(startFrame, endFrame)
 
+    def editMetadata(self, vial, frame, annotator, behaviour,
+                     metaKey, newMetaValue):
+        if vial is None:
+            # just use first index
+            vial = 0
+
+        self.frameList[frame][vial]["behaviour"][behaviour]\
+                        [annotator][metaKey] = newMetaValue
 
 
 def getExactBehavioursFromFrameAnno(a):

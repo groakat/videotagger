@@ -1,5 +1,6 @@
 import sys
 import os
+import itertools as iter
 
 
 sys.path.append(os.path.abspath('../../'))
@@ -999,6 +1000,7 @@ class videoPlayer(QtGui.QMainWindow):
                                                                    y1/2,
                                                                    width /2,
                                                                    height / 2))
+            self.annotationRoiLabels[i].rectChangedCallback = None
             self.annotationRoiLabels[i].setRect(0,0, width / 2, height / 2)
             self.annotationRoiLabels[i].setPos(x1/2, y1/2)
             self.annotationRoiLabels[i].setColor(color)
@@ -1007,6 +1009,8 @@ class videoPlayer(QtGui.QMainWindow):
                                                     b=lbl))
             self.annotationRoiLabels[i].setAnnotationLabel(rois[i][1]['annot'],
                                                            lbl)
+            self.annotationRoiLabels[i].rectChangedCallback = \
+                                                    self.labelRectChangedSlot
              
             cfg.log.debug("set rect to: {0}".format(self.annotationRoiLabels[i].rect()))
             usedRoi = i + 1
@@ -1014,6 +1018,7 @@ class videoPlayer(QtGui.QMainWindow):
             
         # move unused rects out of sight
         for k in range(usedRoi, len(self.annotationRoiLabels)):
+            self.annotationRoiLabels[k].rectChangedCallback = None
             self.annotationRoiLabels[k].setRect(0,0, 0, 0)
             self.annotationRoiLabels[k].setPos(-10, -10)
             
@@ -1154,10 +1159,10 @@ class videoPlayer(QtGui.QMainWindow):
 
         self.displayingFullResolution = False
 
-        # if self.annoIsOpen:
-        #     if np.abs(increment) > 1:
-        #         # set increment to either 1 or -1
-        #         increment /= int(np.abs(increment))
+        if self.annoIsOpen:
+            if np.abs(increment) > 1:
+                # set increment to either 1 or -1
+                increment /= int(np.abs(increment))
         
         if increment is None:
             increment = self.increment
@@ -1269,8 +1274,21 @@ class videoPlayer(QtGui.QMainWindow):
     def registerLastLabelRectContext(self, labelRect):
         self.lastLabelRectContext = labelRect
 
-    def labelRectChangedSlot(self):
+    def labelRectChangedSlot(self, activeRect):
         self.contentChanged = True
+        if self.inEditMode:
+            print "yeeah", activeRect.annotator, activeRect.behaviour
+            print activeRect.boundingRect()
+            print activeRect.pos()
+            roi = [activeRect.pos().x() * 2,
+                   activeRect.pos().y() * 2]
+            roi += [roi[0] + activeRect.boundingRect().width() * 2]
+            roi += [roi[1] + activeRect.boundingRect().height() * 2]
+
+            print roi
+            self.editAnnoROI(activeRect.annotator,
+                             activeRect.behaviour,
+                             roi)
 
     def setupLabelMenu(self):
         wa = QtGui.QWidgetAction(self)
@@ -1918,6 +1936,10 @@ class videoPlayer(QtGui.QMainWindow):
         # self.requestLabelMenu.exec_(self.mapFromGlobal(QtGui.QCursor.pos()))
 
         strList = [x['behav'] for x in self.annotations]
+
+        # previewChoice = [self.queryPreviews[i] \
+        #                  for i in range(0, len(self.queryPreviews),
+        #                                 len(self.queryPreviews)/ 5)]
         selectedBehaviour = OD.ClassSelectDialog.getLabel(
                                         self.fullVideoDialog.centralWidget(),
                                         strList,
@@ -1985,6 +2007,13 @@ class videoPlayer(QtGui.QMainWindow):
         cfg.logGUI.info(json.dumps({"annotator": annotator,
                                 "behaviour": behaviour}))
         self.vh.eraseAnnotation(self.selectedVial, annotator, behaviour)
+
+    def editAnnoROI(self, annotator, behaviour, newROI):
+        self.editAnnoMeta(annotator, behaviour, "boundingBox", newROI)
+
+    def editAnnoMeta(self, annotator, behaviour, newMetaKey, newMetaValue):
+        self.vh.editAnnotationMetaCurrentFrame(self.selectedVial, annotator,
+                                    behaviour, newMetaKey, newMetaValue)
 
     def editAnnoLabel(self, annotatorOld, behaviourOld, annotatorNew, behaviourNew):
 

@@ -184,7 +184,10 @@ class ClassSelectDialog(OverlayDialogBase):
                 self.loadImgInPreviewLabel(lbl,
                                            img)
 
-        return w
+        scrollArea = QtGui.QScrollArea(self)
+        scrollArea.setWidget(w)
+        scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        return scrollArea
 
     def setupContent(self):
         self.content = QtGui.QWidget(self)
