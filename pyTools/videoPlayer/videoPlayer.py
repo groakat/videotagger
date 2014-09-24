@@ -1115,10 +1115,10 @@ class videoPlayer(QtGui.QMainWindow):
             self.fullVideoDialog.show()
             self.dialogShortCutFilter = EF.shortcutHandler(self.fullVideoDialog, self, **self.filterObjArgs)
             # self.fullVideoDialog.installEventFilter(self.dialogShortCutFilter)
+            self.deactivateEditMode()
         else:
             self.fullVideoDialog.show()
 
-        self.deactivateEditMode()
 
 
     def displayFrame(self, frame, selectedVial):
