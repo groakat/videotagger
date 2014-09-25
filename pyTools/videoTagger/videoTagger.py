@@ -15,21 +15,21 @@ from pyTools.gui.videoPlayer_auto import Ui_Form
 
 from pyTools.gui.fullViewDialog import FullViewDialog as FVD
 
-import pyTools.videoPlayer.videoHandler as VH
-import pyTools.videoPlayer.dataLoader as DL
-import pyTools.videoPlayer.annoView as AV
+import pyTools.videoTagger.videoHandler as VH
+import pyTools.videoTagger.dataLoader as DL
+import pyTools.videoTagger.annoView as AV
 import pyTools.videoProc.annotation as Annotation
-import pyTools.videoPlayer.overlayDialog as OD
-import pyTools.videoPlayer.modifyableRect as MR
+import pyTools.videoTagger.overlayDialog as OD
+import pyTools.videoTagger.modifyableRect as MR
 import pyTools.system.misc as systemMisc
 import pyTools.misc.config as cfg
-import pyTools.videoPlayer.eventFilter as EF
-import pyTools.videoPlayer.hud as HUD
+import pyTools.videoTagger.eventFilter as EF
+import pyTools.videoTagger.hud as HUD
 if sys.platform != "win32":
-    import pyTools.videoPlayer.RPCController as RPC
+    import pyTools.videoTagger.RPCController as RPC
 
 import pyTools.misc.FrameDataVisualization as FDV
-import pyTools.videoPlayer.graphicsViewFDV as GFDV
+import pyTools.videoTagger.graphicsViewFDV as GFDV
 import pyTools.gui.collapseContainer as CC
 
 import numpy as np
@@ -81,7 +81,7 @@ class MyListModel(QtCore.QAbstractListModel):
                   
 #########################################################################
 
-class videoPlayer(QtGui.QMainWindow):      
+class videoTagger(QtGui.QMainWindow):
     quit = QtCore.Signal()
     startLoop = QtCore.Signal()
      
@@ -283,7 +283,7 @@ class videoPlayer(QtGui.QMainWindow):
         
 
     # def showEvent(self, event):
-    #     super(videoPlayer, self).showEvent(event)
+    #     super(videoTagger, self).showEvent(event)
     #     self.displayFullResolutionFrame()
 
     @cfg.logClassFunction
@@ -2355,7 +2355,7 @@ if __name__ == "__main__":
     else:
         vp = videoPath
     hGUI = logging.FileHandler(os.path.join(vp, 
-                    "videoPlayer." + \
+                    "videoTagger." + \
                     time.strftime("%Y-%m-%d.%H-%M-%S", time.localtime()) +\
                     ".log"))
     fGUI = logging.Formatter('{"time": "%(asctime)s", "func":"%(funcName)s", "args":%(message)s}')
@@ -2368,7 +2368,7 @@ if __name__ == "__main__":
     
     app = QtGui.QApplication(sys.argv)
     
-    w = videoPlayer(videoPath, annotations, backgroundPath, selectedVial, vialROI,
+    w = videoTagger(videoPath, annotations, backgroundPath, selectedVial, vialROI,
                      videoFormat='avi', filterObjArgs=filterObjArgs,
                      startVideoName=startVideo, rewindOnClick=rewindOnClick,
                      croppedVideo=croppedVideo, runningIndeces=runningIndeces,

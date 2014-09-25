@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'videoPlayer.ui'
+# Form implementation generated from reading ui file 'videoTagger.ui'
 #
 # Created: Thu May  9 19:29:35 2013
 #      by: PyQt4 UI code generator 4.10

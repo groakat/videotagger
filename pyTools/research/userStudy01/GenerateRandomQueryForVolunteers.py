@@ -3,8 +3,8 @@
 
 # <codecell>
 
-fdvtBehaviourBasePath='/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v{v}_exp{exp}.npy'
-requestsBasePath = '/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/requests_v{v}_exp{exp}.req'
+fdvtBehaviourBasePath='/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v{v}_exp{exp}.npy'
+requestsBasePath = '/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/requests_v{v}_exp{exp}.req'
 exps = ["00", "01", "02", "03"]
 vial = 3
 
@@ -22,7 +22,7 @@ import cPickle as pickle
 # <codecell>
 
 class Test(object):
-    def __init__(self, fdvtBehaviourPath='/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v2.npy',
+    def __init__(self, fdvtBehaviourPath='/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v2.npy',
                  vial=2,
                  address="tcp://127.0.0.1:4242", comServer=None):
         

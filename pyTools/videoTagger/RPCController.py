@@ -1,5 +1,5 @@
 import pyTools.system.videoPlayerComClient as comClient
-import pyTools.videoPlayer.dataLoader as DL
+import pyTools.videoTagger.dataLoader as DL
 import pyTools.misc.config as cfg
 
 from PySide import QtCore

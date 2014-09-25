@@ -7,7 +7,7 @@ import pyTools.videoProc.annotation as Annotation
 import pyTools.misc.basic as bsc 
 import pyTools.misc.config as cfg
 import pyTools.misc.Cache as Cache
-import pyTools.videoPlayer.dataLoader as DL
+import pyTools.videoTagger.dataLoader as DL
 import numpy as np
 import time
 import os

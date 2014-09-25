@@ -11,7 +11,7 @@ if __name__ == "__main__":
     formatter_class=argparse.RawDescriptionHelpFormatter,\
     description=textwrap.dedent(\
     """
-    Parses configuration file of videoPlayer and creates a cache file that
+    Parses configuration file of videoTagger and creates a cache file that
     speeds up the start up significantly.
     
     This program has to be configured with a configuration file that is specified
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     
     {
     "videoPath": "/run/media/peter/Elements/peter/data/tmp-20130506",
-    "bhvr-cache": "/home/peter/phd/code/pyTools/videoPlayer/bhvrList.json"
+    "bhvr-cache": "/home/peter/phd/code/pyTools/videoTagger/bhvrList.json"
     }
     
     If you do not have the example file, you can simply copy and paste the 

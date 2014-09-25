@@ -12,7 +12,7 @@ import textwrap
 
 # <codecell>
 
-with open("/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrList_v3.json", "r") as f:
+with open("/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrList_v3.json", "r") as f:
     bhvrList = json.load(f)
 
 # <codecell>
@@ -41,7 +41,7 @@ exp00[-1]
 
 # <codecell>
 
-with open("/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrList_v3_exp00.json", "w") as f:
+with open("/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrList_v3_exp00.json", "w") as f:
     json.dump(exp00, f)
 
 # <codecell>
@@ -56,7 +56,7 @@ exp01[-1]
 
 # <codecell>
 
-with open("/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrList_v3_exp01.json", "w") as f:
+with open("/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrList_v3_exp01.json", "w") as f:
     json.dump(exp01, f)
 
 # <codecell>
@@ -71,7 +71,7 @@ exp02[-1]
 
 # <codecell>
 
-with open("/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrList_v3_exp02.json", "w") as f:
+with open("/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrList_v3_exp02.json", "w") as f:
     json.dump(exp02, f)
 
 # <codecell>
@@ -82,7 +82,7 @@ exp03 = bhvrList[start:end]
 
 # <codecell>
 
-with open("/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrList_v3_exp03.json", "w") as f:
+with open("/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrList_v3_exp03.json", "w") as f:
     json.dump(exp03, f)
 
 # <codecell>
@@ -115,25 +115,25 @@ vial = 3
 
 fdtv00 = FDV.FrameDataVisualizationTreeBehaviour()
 fdtv00.importAnnotations(exp00, annotations, [vial])
-fdtv00.save("/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v3_exp00.npy")
+fdtv00.save("/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v3_exp00.npy")
 
 # <codecell>
 
 fdtv01 = FDV.FrameDataVisualizationTreeBehaviour()
 fdtv01.importAnnotations(exp01, annotations, [vial])
-fdtv01.save("/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v3_exp01.npy")
+fdtv01.save("/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v3_exp01.npy")
 
 # <codecell>
 
 fdtv02 = FDV.FrameDataVisualizationTreeBehaviour()
 fdtv02.importAnnotations(exp02, annotations, [vial])
-fdtv02.save("/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v3_exp02.npy")
+fdtv02.save("/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v3_exp02.npy")
 
 # <codecell>
 
 fdtv03 = FDV.FrameDataVisualizationTreeBehaviour()
 fdtv03.importAnnotations(exp03, annotations, [vial])
-fdtv03.save("/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v3_exp03.npy")
+fdtv03.save("/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v3_exp03.npy")
 
 # <codecell>
 

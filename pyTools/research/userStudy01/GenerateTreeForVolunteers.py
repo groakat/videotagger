@@ -15,9 +15,9 @@ import textwrap
 vols = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10"]
 exps = ["00", "01", "02", "03"]
 vial = 3
-bhvrPathOrg = "/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrList_v{v}_exp{exp}.json"
-treePathOrg = "/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v{v}_exp{exp}_vol{vol}.npy"
-cfgPath = "/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/fly_exp{exp}_vol{vol}.cfg"
+bhvrPathOrg = "/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrList_v{v}_exp{exp}.json"
+treePathOrg = "/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v{v}_exp{exp}_vol{vol}.npy"
+cfgPath = "/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/fly_exp{exp}_vol{vol}.cfg"
 
 # <codecell>
 
@@ -54,10 +54,10 @@ background: /media/peter/Elements/peter/data/tmp-20130506/20130219/00/2013-02-19
 videoPath: /media/peter/Elements/peter/data/tmp-20130506/
 
 # path to behaviour visualization tree (can be selected in frameVisualizationView as well)
-frame-data-visualization-path: /home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v{v}_exp{exp}_vol{vol}.npy
+frame-data-visualization-path: /home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v{v}_exp{exp}_vol{vol}.npy
 
 # file to cache of file structure (can be generated with python cacheFilelist.py -c <this file>)
-bhvr-cache: /home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrList_v{v}_exp{exp}.json
+bhvr-cache: /home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrList_v{v}_exp{exp}.json
 
 # (part of) name of first video to be shown after start-up
 #startVideo: 2013-02-19.10-05-00

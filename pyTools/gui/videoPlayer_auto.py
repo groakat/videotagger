@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'videoPlayer.ui'
+# Form implementation generated from reading ui file 'videoTagger.ui'
 #
 # Created: Fri Sep 12 21:40:03 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1

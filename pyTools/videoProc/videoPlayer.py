@@ -2368,7 +2368,7 @@ if __name__ == "__main__":
     logGUI = logging.getLogger("GUI")
     logGUI.setLevel(logging.DEBUG)
     hGUI = logging.FileHandler(os.path.join(path, 
-                    "videoPlayer." + \
+                    "videoTagger." + \
                     time.strftime("%Y-%m-%d.%H-%M-%S", time.localtime()) +\
                     ".log"))
     fGUI = logging.Formatter('{"time": "%(asctime)s", "func":"%(funcName)s", "args":%(message)s}')

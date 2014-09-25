@@ -27,7 +27,7 @@ class Test(QtGui.QMainWindow):
         self.gvFDV.registerButtonPressCallback('minutes', self.exampleCallbackFunction)
         self.gvFDV.registerButtonPressCallback('frames', self.exampleCallbackFunction)
 
-        # self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v0.npy')
+        # self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v0.npy')
         c = [QtGui.QColor(0, 255, 0),
             QtGui.QColor(0,  0, 255),
             QtGui.QColor(255, 0, 0)]#,
@@ -61,7 +61,7 @@ class Test(QtGui.QMainWindow):
         self.pb_debug.clicked.connect(self.buttonClick)
 
     def buttonClick(self):
-        # self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v0.npy')
+        # self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v0.npy')
         c = [QtGui.QColor(0, 255, 0), QtGui.QColor(0, 0, 0), QtGui.QColor(255, 0, 0)]#, QtGui.QColor(255, 255, 0)]
         self.gvFDV.setColors(c)
 

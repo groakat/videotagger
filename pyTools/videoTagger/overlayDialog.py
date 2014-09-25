@@ -1,5 +1,5 @@
 from PySide import QtGui, QtCore
-import pyTools.videoPlayer.modifyableRect as MR
+import pyTools.videoTagger.modifyableRect as MR
 import warnings
 import qimage2ndarray as qim2np
 

@@ -1,7 +1,7 @@
 from PySide import QtCore, QtGui
 from pyTools.gui import fullViewDialog_auto
 from pyTools.gui.fullViewDialog_auto import Ui_Dialog
-import pyTools.videoPlayer.hud as HUD
+import pyTools.videoTagger.hud as HUD
 
 class FullViewDialog(QtGui.QMainWindow):
     def __init__(self, parent, previewWidget=None):

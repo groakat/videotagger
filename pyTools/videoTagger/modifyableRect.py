@@ -103,7 +103,7 @@ class Test(QtGui.QMainWindow):
         # acid.setComboBoxEditable(True)
         # print acid.exec_()
 
-        import pyTools.videoPlayer.overlayDialog as OD
+        import pyTools.videoTagger.overlayDialog as OD
         print OD.ControlsSettingDialog.getSelection(self.centralWidget(), None)
         pass
 

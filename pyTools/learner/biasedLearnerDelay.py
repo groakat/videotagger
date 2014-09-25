@@ -8,9 +8,9 @@ import copy
 import cPickle as pickle
 
 class biasedClassLearnerRandom(ComClient.ALComBase):
-    def __init__(self, requestPath='/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/requests_v{v}_exp{exp}.req',
-                 fdvtPath='/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/bhvrTree_v{v}_exp{exp}.npy',
-                 answerPath='/home/peter/phd/code/pyTools/pyTools/pyTools/videoPlayer/requests_v{v}_exp{exp}_vol{vol}.awr',
+    def __init__(self, requestPath='/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/requests_v{v}_exp{exp}.req',
+                 fdvtPath='/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v{v}_exp{exp}.npy',
+                 answerPath='/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/requests_v{v}_exp{exp}_vol{vol}.awr',
                  exp="00",
                  vol="00",
                  vial=3,
