@@ -203,7 +203,8 @@ class VideoLoader(QtCore.QObject):
     def getVideoLength(self):        
         while self.loading:
             cfg.log.warning("(getVideoLength)------------------- waiting for frame because its not buffered yet")
-            time.sleep(0.5)
+            # time.sleep(0.5)
+            QtCore.QThread.currentThread().msleep(200)
             
         if not self.loading:
             return self.videoLength

@@ -1628,7 +1628,7 @@ class videoPlayer(QtGui.QMainWindow):
 
 
             if not(QtCore.QTime.currentTime() < dieTime):
-                cfg.log.debug("no realtime display!!! " +
+                cfg.log.info("no realtime display!!! " +
                                 cfg.Back.BLUE + 
                                 "mainloop overflow before processEvents(): {0}ms".format(
                                         dieTime.msecsTo(QtCore.QTime.currentTime())))
@@ -2098,6 +2098,9 @@ class videoPlayer(QtGui.QMainWindow):
     
     def aboutToQuit(self):
         self.exit()
+
+    def debug(self):
+        1/0
 
 
 class ContextLineEdit(QtGui.QLineEdit):

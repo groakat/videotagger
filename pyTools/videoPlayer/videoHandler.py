@@ -339,9 +339,9 @@ class VideoHandler(QtCore.QObject):
                     
         except AttributeError:
             cfg.log.warning("accessing video out of scope, fetching...")
-#             frame = [np.zeros((64,64,3))] * (self.maxOfSelectedVials() + 1)
-            frame = self.getCurrentFrameUnbuffered(doBufferCheck, 
-                                                   updateAnnotationViews)
+            frame = [np.zeros((64,64,3))] * (self.maxOfSelectedVials() + 1)
+#             frame = self.getCurrentFrameUnbuffered(doBufferCheck,
+#                                                    updateAnnotationViews)
 #             print pos, posOnly
 #             print frameList
             

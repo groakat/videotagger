@@ -465,6 +465,8 @@ class shortcutHandler(QtCore.QObject):
                         self.parent, self.cbTarget.openFDV)
         QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_End),
                         self.parent, self.cbTarget.openKeySettings)
+        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Pause),
+                        self.parent, self.cbTarget.debug)
 
 
     def swapToConstantSpeed(self, speed):
