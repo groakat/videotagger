@@ -78,3 +78,10 @@ With `<configuration file>` being the filename of a configuration file. This wil
 
 The configuration files `fly_example.cfg` and `fly_videos.cfg` are commented and should be easy to change. Please let me know if anything is still unclear.
 
+### Running the videoTagger on a configuration file
+
+- Open terminal
+- navigate to folder containing the `videoTagger.py` file (`cd C:\Users\<YOU>\Documents\GitHub\pyTools\pyTools\videoTagger`)
+- start ipython by typing `ipython`
+- type `run videoTagger.py -c <configuration file>`. With `<configuration file>` being the filename of a configuration file.
+
