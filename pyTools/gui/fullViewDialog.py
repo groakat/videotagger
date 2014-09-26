@@ -4,6 +4,9 @@ from pyTools.gui.fullViewDialog_auto import Ui_Dialog
 import pyTools.videoTagger.hud as HUD
 import pyTools.videoTagger.overlayDialog as OD
 
+import json
+import os
+
 class FullViewDialog(QtGui.QMainWindow):
     def __init__(self, parent, previewWidget=None):
         super(FullViewDialog, self).__init__(parent)
@@ -84,7 +87,7 @@ class FullViewDialog(QtGui.QMainWindow):
 
         self.bookmarkButton = SVGButton(self.controlWidget)
         self.bookmarkButton.load('../icon/Bookmark_font_awesome.svg')
-        self.bookmarkButton.setToolTip("Open bookmark panel (caution, not saved beyond a single session yet))")
+        self.bookmarkButton.setToolTip("Open bookmark panel")
         self.bookmarkButton.setFixedSize(20, 20)
         self.bookmarkButton.clicked.connect(self.toogleBookmarks)
         layout.addWidget(self.bookmarkButton)
@@ -93,7 +96,7 @@ class FullViewDialog(QtGui.QMainWindow):
         self.fullFrameLabelButton.load('../icon/Picture_font_awesome.svg')
         self.fullFrameLabelButton.setToolTip("Open panel showing labels covering the entire frame (not implemented yet))")
         self.fullFrameLabelButton.setFixedSize(20, 20)
-        self.fullFrameLabelButton.clicked.connect(self.toogleBookmarks)
+        # self.fullFrameLabelButton.clicked.connect(self.toogleBookmarks)
         layout.addWidget(self.fullFrameLabelButton)
 
         layout.addStretch()
@@ -271,7 +274,8 @@ class SVGButton(QtGui.QPushButton):
 
 
 class BookmarkListModel(QtGui.QStandardItemModel):
-    def __init__(self, strList=None, keyList=None, idxList=None, parent=None, *args):
+    def __init__(self, strList=None, keyList=None, idxList=None, parent=None,
+                 filenameFunc=None, *args):
         """ datain: a list where each item is a row
         """
         super(BookmarkListModel, self).__init__(parent)
@@ -292,6 +296,12 @@ class BookmarkListModel(QtGui.QStandardItemModel):
             self.keyList = []
             self.idxList = []
 
+        if filenameFunc is not None:
+            self.setFilenameFunction(filenameFunc)
+            self.load()
+        else:
+            self.filenameFunction = None
+
 
     def rowCount(self, parent=QtCore.QModelIndex()):
         return len(self.strList)
@@ -303,6 +313,11 @@ class BookmarkListModel(QtGui.QStandardItemModel):
             return None
 
     def addItem(self, str, key, idx):
+        if self.strList == []\
+        and self.keyList == []\
+        and self.idxList == []:
+            self.removeItem(0)
+
         self.strList += [str]
         self.keyList += [key]
         self.idxList += [idx]
@@ -324,6 +339,44 @@ class BookmarkListModel(QtGui.QStandardItemModel):
     def flags(self, *args, **kwargs):
         flags = super(BookmarkListModel, self).flags(*args, **kwargs)
         return flags | QtCore.Qt.ItemIsEditable
+
+    def setFilenameFunction(self, func):
+        self.filenameFunction = func
+
+    def save(self, filename=None):
+        if filename is not None:
+            fn = filename
+
+        elif self.filenameFunction is not None:
+            fn = self.filenameFunction()
+
+        else:
+            raise ValueError("Neither filename given, nor self.filenameFunction set. Cannot save bookmarks")
+
+        with open(fn, 'w') as f:
+            json.dump([self.strList,
+                       self.keyList,
+                       self.idxList], f)
+
+    def load(self, filename=None):
+        if filename is not None:
+            fn = filename
+
+        elif self.filenameFunction is not None:
+            fn = self.filenameFunction()
+
+        else:
+            raise ValueError("Neither filename given, nor self.filenameFunction set. Cannot load bookmarks")
+
+        if os.path.exists(fn):
+            with open(fn, 'r') as f:
+                raw = json.load(f)
+
+            while self.strList:
+                self.removeItem(0)
+
+            for str, key, idx in zip(*raw):
+                self.addItem(str, key, idx)
 
 
 class bookmarkView(QtGui.QWidget):
@@ -370,7 +423,8 @@ class bookmarkView(QtGui.QWidget):
         self.baseLayout.addWidget(self.listView)
         self.baseLayout.addWidget(self.buttonWidget)
 
-        self.lm = BookmarkListModel([], self)
+        self.lm = BookmarkListModel(parent=self,
+                            filenameFunc=self.videoTagger.getBookmarksFilename)
         self.listView.setModel(self.lm)
 
         self.listView.activated.connect(self.jumpToBookmark)
@@ -383,10 +437,12 @@ class bookmarkView(QtGui.QWidget):
         description = OD.StringRequestDialog.getLabel(self.fullViewDialog,
                                                       "Set bookmark name")
         self.lm.addItem(description, key, idx)
+        self.lm.save()
 
     def removeBookmark(self):
         idx = self.listView.selectionModel().currentIndex().row()
         self.lm.removeItem(idx)
+        self.lm.save()
 
     def undoJump(self):
         pass

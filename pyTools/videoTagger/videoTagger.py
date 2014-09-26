@@ -1599,7 +1599,7 @@ class videoTagger(QtGui.QMainWindow):
     @QtCore.Slot()
     def startVideo(self):
         self.play = True
-        
+
         
         cfg.log.debug("start Video")
         self.showNextFrame(0)
@@ -2102,6 +2102,14 @@ class videoTagger(QtGui.QMainWindow):
         
     def getCurrentKey_idx(self):
         return self.idx, self.vh.getCurrentKey_idx()[1]
+
+    def getBookmarksFilename(self):
+        folder = os.path.dirname(self.fileList[0])
+        annotator = self.annotations[0]['annot']
+        filename = os.path.join(folder,
+                                "{anno}.bookmarks.json".format(anno=annotator))
+
+        return filename
     
     def aboutToQuit(self):
         self.exit()
