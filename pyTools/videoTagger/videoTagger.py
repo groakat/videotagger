@@ -1781,6 +1781,12 @@ class videoTagger(QtGui.QMainWindow):
             idx = idx[0]
 
         self.selectVideo(idx, frame)
+
+    def selectVideoKeyIdx(self, key, idx):
+        keyidx = self.lm.listdata.index(key)
+        frame = idx
+
+        self.selectVideo(idx, frame)
                 
         
     @cfg.logClassFunctionInfo
@@ -2094,7 +2100,8 @@ class videoTagger(QtGui.QMainWindow):
         self.annoIsOpen = False
         
         
-        
+    def getCurrentKey_idx(self):
+        return self.idx, self.vh.getCurrentKey_idx()[1]
     
     def aboutToQuit(self):
         self.exit()

@@ -379,6 +379,61 @@ class ControlsSettingDialog(OverlayDialogBase):
         od.exec_()
         return od.ret
 
+class StringRequestDialog(OverlayDialogBase):
+    def __init__(self, parent, message=None, *args, **kwargs):
+        super(StringRequestDialog, self).__init__(parent=parent, *args, **kwargs)
+
+        if message is not None:
+            self.setMessage(message)
+        else:
+            self.message = None
+
+        self.setupContent()
+        self.setupLayout()
+        self.connectSignals()
+
+    def _setReturnValue(self):
+        self.ret = self.lineEdit.text()
+
+    def setMessage(self, str):
+        self.message = str
+
+    def setupContent(self):
+        self.content = QtGui.QWidget(self)
+        self.contentLayout  = QtGui.QVBoxLayout()
+
+        self.button = QtGui.QPushButton(self.content)
+        self.button.setText("Alright'o")
+        self.messageLabel = QtGui.QLabel(self.content)
+        if self.message is not None:
+            self.messageLabel.setText(self.message)
+        self.lineEdit = QtGui.QLineEdit(self.content)
+
+
+        self.contentLayout.addWidget(self.messageLabel)
+        self.contentLayout.addWidget(self.lineEdit)
+        self.contentLayout.addWidget(self.button)
+
+        self.content.setLayout(self.contentLayout)
+
+    def setupLayout(self):
+        self.layout = QtGui.QVBoxLayout()
+
+        self.layout.insertStretch(0)
+        self.layout.addWidget(self.content)
+        self.layout.insertStretch(-1)
+
+        self.outerLayout = QtGui.QHBoxLayout(self)
+        self.outerLayout.insertStretch(0)
+        self.outerLayout.addLayout(self.layout)
+        self.outerLayout.insertStretch(-1)
+        self.setLayout(self.outerLayout)
+
+    @staticmethod
+    def getLabel(parent, message):
+        od = StringRequestDialog(parent, message)
+        od.exec_()
+        return od.ret
 
 class KeySequenceEdit(QtGui.QLineEdit):
     """

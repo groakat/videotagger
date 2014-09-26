@@ -2,6 +2,7 @@ from PySide import QtCore, QtGui, QtSvg
 from pyTools.gui import fullViewDialog_auto
 from pyTools.gui.fullViewDialog_auto import Ui_Dialog
 import pyTools.videoTagger.hud as HUD
+import pyTools.videoTagger.overlayDialog as OD
 
 class FullViewDialog(QtGui.QMainWindow):
     def __init__(self, parent, previewWidget=None):
@@ -12,10 +13,20 @@ class FullViewDialog(QtGui.QMainWindow):
         self.cw = QtGui.QWidget(self)
         self.setCentralWidget(self.cw)
         l = QtGui.QHBoxLayout(self.cw)
+        self.hSplitter = QtGui.QSplitter(QtCore.Qt.Horizontal, self.cw)
+        self.hSplitter.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
+                                   QtGui.QSizePolicy.MinimumExpanding)
+
         self.splitter = QtGui.QSplitter(QtCore.Qt.Vertical, self.cw)
         self.splitter.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
                                    QtGui.QSizePolicy.MinimumExpanding)
-        l.addWidget(self.splitter)
+        l.addWidget(self.hSplitter)
+
+        self.hSplitter.addWidget(self.splitter)
+        self.bmView = bookmarkView(self, self.parent())
+        self.hSplitter.addWidget(self.bmView)
+        self.bmView.hide()
+
         self.cw.setLayout(l)
         # self.cw = QtGui.QWidget(self)
         self.horizontalLayout = None
@@ -28,6 +39,7 @@ class FullViewDialog(QtGui.QMainWindow):
         self.setupControlWidget()
         self.playing = False
         self.editing = True
+        self.bookmarksOpen = False
         self.mouseFilter = MouseFilterObj(self)
         self.installEventFilter(self.mouseFilter)
         # self.hud.installEventFilter(self.mouseFilter)
@@ -38,7 +50,8 @@ class FullViewDialog(QtGui.QMainWindow):
             prevLayout = QtGui.QHBoxLayout(prevDummyWidget)
             prevLayout.addWidget(self.previewWidget)
 
-        self.graphicsView = QtGui.QGraphicsView()
+        # self.graphicsView = QtGui.QGraphicsView()
+        self.graphicsView = FullViewGraphicsView()
         self.graphicsView.setObjectName("graphicsView")
         self.graphicsView.setMouseTracking(True)
 
@@ -69,7 +82,14 @@ class FullViewDialog(QtGui.QMainWindow):
         self.timelineButton.setFixedSize(20, 20)
         layout.addWidget(self.timelineButton)
 
-        layout.addSpacing(40)
+        self.bookmarkButton = SVGButton(self.controlWidget)
+        self.bookmarkButton.load('../icon/Bookmark_font_awesome.svg')
+        self.bookmarkButton.setToolTip("Open bookmark panel (caution)")
+        self.bookmarkButton.setFixedSize(20, 20)
+        self.bookmarkButton.clicked.connect(self.toogleBookmarks)
+        layout.addWidget(self.bookmarkButton)
+
+        layout.addSpacing(20)
         layout.addStretch()
 
         self.fullResButton = SVGButton(self.controlWidget)
@@ -130,13 +150,13 @@ class FullViewDialog(QtGui.QMainWindow):
         self.graphicsView.fitInView(self.scene.sceneRect())
         self.scene.installEventFilter(self.mouseFilter)
 
-    def resizeEvent(self, event):
-        super(FullViewDialog, self).resizeEvent(event)
-        self.wasResized = True
-
-        bounds = self.graphicsView.scene().sceneRect()
-        self.graphicsView.fitInView(bounds, QtCore.Qt.KeepAspectRatio)
-        self.graphicsView.centerOn(0, 0)
+    # def resizeEvent(self, event):
+    #     super(FullViewDialog, self).resizeEvent(event)
+    #     self.wasResized = True
+    #
+    #     bounds = self.graphicsView.scene().sceneRect()
+    #     self.graphicsView.fitInView(bounds, QtCore.Qt.KeepAspectRatio)
+    #     self.graphicsView.centerOn(0, 0)
 
     def showEvent(self, event):
         super(FullViewDialog, self).showEvent(event)
@@ -186,7 +206,28 @@ class FullViewDialog(QtGui.QMainWindow):
 
         self.parent().toggleEditModeCheckbox()
 
+    def toogleBookmarks(self):
+        self.bookmarksOpen = not self.bookmarksOpen
+        if self.bookmarksOpen:
+            self.bmView.show()
+            self.bookmarkButton.load('../icon/Bookmark_empty_font_awesome.svg')
+        else:
+            self.bmView.hide()
+            self.bookmarkButton.load('../icon/Bookmark_font_awesome.svg')
 
+class FullViewGraphicsView(QtGui.QGraphicsView):
+
+    def __init__(self, *args, **kwargs):
+        super(FullViewGraphicsView, self).__init__(*args, **kwargs)
+
+
+    def resizeEvent(self, event):
+        super(FullViewGraphicsView, self).resizeEvent(event)
+
+        if self.scene():
+            bounds = self.scene().sceneRect()
+            self.fitInView(bounds, QtCore.Qt.KeepAspectRatio)
+            self.centerOn(0, 0)
 
 
 
@@ -222,6 +263,132 @@ class SVGButton(QtGui.QPushButton):
             self.icon.setFixedSize(self.size())
 
 
+class BookmarkListModel(QtGui.QStandardItemModel):
+    def __init__(self, strList=None, keyList=None, idxList=None, parent=None, *args):
+        """ datain: a list where each item is a row
+        """
+        super(BookmarkListModel, self).__init__(parent)
+
+        if strList is not None\
+        and keyList is not None\
+        and idxList is not None:
+            if len(strList) == len(keyList) == len(idxList):
+                self.strList = strList
+                self.keyList = keyList
+                self.idxList = idxList
+            else:
+                self.strList = []
+                self.keyList = []
+                self.idxList = []
+        else:
+            self.strList = []
+            self.keyList = []
+            self.idxList = []
+
+
+    def rowCount(self, parent=QtCore.QModelIndex()):
+        return len(self.strList)
+
+    def data(self, index, role):
+        if index.isValid() and role == QtCore.Qt.DisplayRole:
+            return self.strList[index.row()]
+        else:
+            return None
+
+    def addItem(self, str, key, idx):
+        self.strList += [str]
+        self.keyList += [key]
+        self.idxList += [idx]
+        self.appendRow(QtGui.QStandardItem(str))
+        # self.dataChanged.emit()
+
+    def removeItem(self, listIdx):
+        del self.strList[listIdx]
+        del self.keyList[listIdx]
+        del self.idxList[listIdx]
+        self.takeRow(listIdx)
+
+
+    def getItem(self, listIdx):
+        return self.strList[listIdx], \
+               self.keyList[listIdx], \
+               self.idxList[listIdx]
+
+    def flags(self, *args, **kwargs):
+        flags = super(BookmarkListModel, self).flags(*args, **kwargs)
+        return flags | QtCore.Qt.ItemIsEditable
+
+
+class bookmarkView(QtGui.QWidget):
+    def __init__(self, fullViewDialog, videoTagger, *args, **kwargs):
+        super(bookmarkView, self).__init__(*args, **kwargs)
+
+        self.videoTagger = videoTagger
+        self.fullViewDialog = fullViewDialog
+
+        self.baseLayout = QtGui.QVBoxLayout(self)
+        self.baseLayout.setContentsMargins(0,0,0,0)
+        self.headerLabel = QtGui.QLabel(self)
+        self.headerLabel.setText("Bookmarks")
+        self.buttonWidget = QtGui.QWidget(self)
+        self.buttonLayout = QtGui.QHBoxLayout(self.buttonWidget)
+
+        self.addButton = SVGButton(self.buttonWidget)
+        self.addButton.load('../icon/Reply_font_awesome.svg')
+        self.addButton.setToolTip("undo jumping to bookmark")
+        self.addButton.clicked.connect(self.undoJump)
+        self.addButton.setFixedSize(20, 20)
+
+        self.addButton = SVGButton(self.buttonWidget)
+        self.addButton.load('../icon/Plus_font_awesome.svg')
+        self.addButton.setToolTip("add bookmark")
+        self.addButton.clicked.connect(self.addBookmark)
+        self.addButton.setFixedSize(20, 20)
+
+        self.removeButton = SVGButton(self.buttonWidget)
+        self.removeButton.load('../icon/Minus_font_awesome.svg')
+        self.removeButton.setToolTip("remove bookmark")
+        self.removeButton.clicked.connect(self.removeBookmark)
+        self.removeButton.setFixedSize(20, 20)
+
+
+        self.buttonLayout.addStretch()
+        self.buttonLayout.addWidget(self.addButton)
+        self.buttonLayout.addWidget(self.removeButton)
+        self.buttonWidget.setLayout(self.buttonLayout)
+
+        self.listView = QtGui.QListView(self)
+        self.baseLayout.addWidget(self.headerLabel)
+        self.baseLayout.addWidget(self.listView)
+        self.baseLayout.addWidget(self.buttonWidget)
+
+        self.lm = BookmarkListModel([], self)
+        self.listView.setModel(self.lm)
+
+        self.lm.addItem("test", "ser", "daw")
+
+        self.listView.activated.connect(self.jumpToBookmark)
+
+    def addItem(self, item):
+        self.lm.addItem(item)
+
+    def addBookmark(self):
+        key, idx = self.videoTagger.getCurrentKey_idx()
+        description = OD.StringRequestDialog.getLabel(self.fullViewDialog,
+                                                      "Set bookmark name")
+        self.lm.addItem(description, key, idx)
+
+    def removeBookmark(self):
+        idx = self.listView.selectionModel().currentIndex().row()
+        self.lm.removeItem(idx)
+
+    def undoJump(self):
+        pass
+
+    def jumpToBookmark(self, mdl):
+        bookmarkIdx = mdl.row()
+        str, key, idx = self.lm.getItem(bookmarkIdx)
+        self.videoTagger.selectVideo(key, idx)
 
 
 class MouseFilterObj(QtCore.QObject):
