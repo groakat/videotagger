@@ -84,7 +84,7 @@ class FullViewDialog(QtGui.QMainWindow):
 
         self.bookmarkButton = SVGButton(self.controlWidget)
         self.bookmarkButton.load('../icon/Bookmark_font_awesome.svg')
-        self.bookmarkButton.setToolTip("Open bookmark panel (caution)")
+        self.bookmarkButton.setToolTip("Open bookmark panel (caution, not saved beyond a single session yet))")
         self.bookmarkButton.setFixedSize(20, 20)
         self.bookmarkButton.clicked.connect(self.toogleBookmarks)
         layout.addWidget(self.bookmarkButton)
@@ -364,8 +364,6 @@ class bookmarkView(QtGui.QWidget):
 
         self.lm = BookmarkListModel([], self)
         self.listView.setModel(self.lm)
-
-        self.lm.addItem("test", "ser", "daw")
 
         self.listView.activated.connect(self.jumpToBookmark)
 
