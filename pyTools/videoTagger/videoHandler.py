@@ -1277,6 +1277,8 @@ class VideoHandler(QtCore.QObject):
                                               [behaviourOld])
 
         rngs = self.findRangeOfAnnotation(self.idx, self.posPath, filtOld)
+        behaviourNew = self.disambiguateDoubleBehaviourNames([vial], annotatorNew,
+                                                             behaviourNew, rngs)
         for k, rng in rngs.items():
             self.annoDict[k].annotation.renameAnnotation(
                                                 vial, rng,
@@ -1284,8 +1286,7 @@ class VideoHandler(QtCore.QObject):
                                                 annotatorNew, behaviourNew)
             self.eraseAnnotationFromAnnoViews(vial, annotatorOld, behaviourOld, k)
             self.addAnnotationToAnnoViews(vial, annotatorNew, behaviourNew, k)
-        # self.eraseAnnotationRange(rngs, vial, annotatorOld, behaviourOld)
-        # self.addAnnotationRange(rngs, vial, annotatorNew, behaviourNew)
+
 
     def eraseAnnotationSequence(self, vials, annotator, behaviour,
                                 direction='both'):

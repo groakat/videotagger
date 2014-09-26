@@ -313,11 +313,6 @@ class BookmarkListModel(QtGui.QStandardItemModel):
             return None
 
     def addItem(self, str, key, idx):
-        if self.strList == []\
-        and self.keyList == []\
-        and self.idxList == []:
-            self.removeItem(0)
-
         self.strList += [str]
         self.keyList += [key]
         self.idxList += [idx]
