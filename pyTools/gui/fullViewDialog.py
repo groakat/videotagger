@@ -89,7 +89,13 @@ class FullViewDialog(QtGui.QMainWindow):
         self.bookmarkButton.clicked.connect(self.toogleBookmarks)
         layout.addWidget(self.bookmarkButton)
 
-        layout.addSpacing(20)
+        self.fullFrameLabelButton = SVGButton(self.controlWidget)
+        self.fullFrameLabelButton.load('../icon/Picture_font_awesome.svg')
+        self.fullFrameLabelButton.setToolTip("Open panel showing labels covering the entire frame (not implemented yet))")
+        self.fullFrameLabelButton.setFixedSize(20, 20)
+        self.fullFrameLabelButton.clicked.connect(self.toogleBookmarks)
+        layout.addWidget(self.fullFrameLabelButton)
+
         layout.addStretch()
 
         self.fullResButton = SVGButton(self.controlWidget)
@@ -118,6 +124,7 @@ class FullViewDialog(QtGui.QMainWindow):
         layout.addWidget(self.modeButton)
 
         layout.addStretch()
+        layout.addSpacing(20)
 
         self.saveButton = SVGButton(self.controlWidget)
         self.saveButton.load('../icon/Save_font_awesome.svg')
@@ -201,7 +208,7 @@ class FullViewDialog(QtGui.QMainWindow):
             self.modeButton.load('../icon/Edit_font_awesome.svg')
             self.modeButton.setToolTip("Switch to 'Edit-mode' [CTRL + RETURN]")
         else:
-            self.modeButton.load('../icon/Plus_font_awesome.svg')
+            self.modeButton.load('../icon/F0fe_font_awesome.svg')
             self.modeButton.setToolTip("Switch to 'Additive-mode' [CTRL + RETURN]")
 
         self.parent().toggleEditModeCheckbox()
@@ -333,11 +340,11 @@ class bookmarkView(QtGui.QWidget):
         self.buttonWidget = QtGui.QWidget(self)
         self.buttonLayout = QtGui.QHBoxLayout(self.buttonWidget)
 
-        self.addButton = SVGButton(self.buttonWidget)
-        self.addButton.load('../icon/Reply_font_awesome.svg')
-        self.addButton.setToolTip("undo jumping to bookmark")
-        self.addButton.clicked.connect(self.undoJump)
-        self.addButton.setFixedSize(20, 20)
+        self.undoButton = SVGButton(self.buttonWidget)
+        self.undoButton.load('../icon/Reply_font_awesome.svg')
+        self.undoButton.setToolTip("undo jumping to bookmark")
+        self.undoButton.clicked.connect(self.undoJump)
+        self.undoButton.setFixedSize(20, 20)
 
         self.addButton = SVGButton(self.buttonWidget)
         self.addButton.load('../icon/Plus_font_awesome.svg')
@@ -352,6 +359,7 @@ class bookmarkView(QtGui.QWidget):
         self.removeButton.setFixedSize(20, 20)
 
 
+        self.buttonLayout.addWidget(self.undoButton)
         self.buttonLayout.addStretch()
         self.buttonLayout.addWidget(self.addButton)
         self.buttonLayout.addWidget(self.removeButton)
