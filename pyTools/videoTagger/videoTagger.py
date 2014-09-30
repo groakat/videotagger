@@ -41,6 +41,7 @@ import copy
 import qimage2ndarray as qim2np
 import json
 import logging, logging.handlers
+import yaml
 
 
 def np2qimage(a):
@@ -123,10 +124,21 @@ class videoTagger(QtGui.QMainWindow):
         if filterObjArgs is None:
             filterObjArgs = {"keyMap":None, "stepSize":None,
                              "oneClickAnnotation":None}
+
         
         # self.eventFilter = EF.filterObj(self, **filterObjArgs)
         # self.installEventFilter(self.eventFilter)
         self.filterObjArgs = filterObjArgs
+
+        self.path = path
+        self.backgroundPath = backgroundPath
+        self.vialROI = vialROI
+        self.startVideoName = startVideoName
+        self.videoEnding = videoEnding
+        self.runningIndeces = runningIndeces
+        self.bhvrListPath = bhvrListPath
+        self.bufferWidth = bufferWidth
+        self.bufferLength = bufferLength
 
         # self.mainShortCutFilter = EF.shortcutHandler(self, self, **self.filterObjArgs)
         self.dialogShortCutFilter = None
@@ -2139,13 +2151,188 @@ class videoTagger(QtGui.QMainWindow):
         return filename
 
     def exportSettings(self):
-        pass
+        cfgDict = dict()
+        cfgDict['Video'] = dict()
+        cfgDict['Video']['background'] = self.backgroundPath
+        cfgDict['Video']['bhvr-cache'] = self.bhvrListPath
+        cfgDict['Video']['bufferLength'] = self.bufferLength
+        cfgDict['Video']['bufferWidth'] = self.bufferWidth
+        cfgDict['Video']['cropped-video'] = self.croppedVideo
+        cfgDict['Video']['files-running-indices'] = self.runningIndeces
+        cfgDict['Video']['frame-data-visualization-path'] = self.fdvtPath
+        cfgDict['Video']['rewind-on-click'] = self.rewindOnClick
+        cfgDict['Video']['vial'] = self.selectedVial
+        cfgDict['Video']['vialROI'] = self.vialROI
+        cfgDict['Video']['videoPath'] = self.path
+
+        cfgDict['StepSize'] = self.filterObjArgs['stepSize']
+        cfgDict['KeyMap'] = dict()
+
+        for k in self.filterObjArgs['keyMap']:
+            cfgDict['KeyMap'][k] = self.filterObjArgs['keyMap'][k].name
+
+        cfgDict['Annotation'] = {'annotations': []}
+        for anno in self.annotations:
+            cfgDict['Annotation']['annotations'] += \
+                            [{'annot': anno['annot'],
+                              'behav': anno['behav'],
+                              'color': anno['color'].name()}]
+
+
+        cfgDict['ActiveLearning'] = dict()
+        cfgDict['ActiveLearning']['remote-request-server'] = self.serverAddress
+
+        yamlStr = yaml.dump(cfgDict, default_flow_style=False,
+                            encoding=('utf-8'))
+
+        with open(os.path.join(os.path.dirname(self.path),
+                               'config.yaml'), 'w') as f:
+            f.writelines(yamlStr)
 
     def aboutToQuit(self):
         self.exit()
 
     def debug(self):
         1/0
+
+    @staticmethod
+    def parseConfig(path):
+        stream = file(path, 'r')
+        cfgFile = yaml.load(stream)
+
+        # Video
+        if 'vial' in cfgFile['Video'].keys():
+            selectedVial = cfgFile['Video']['vial']
+        else:
+            selectedVial = None
+
+        if 'vialroi' in cfgFile['Video'].keys():
+            vialROI = cfgFile['Video']['vialroi']
+        else:
+            vialROI = None
+
+        if 'background' in cfgFile['Video'].keys():
+            backgroundPath = cfgFile['Video']['background']
+        else:
+            backgroundPath = None
+
+        if 'videoPath' in cfgFile['Video'].keys():
+            videoPath = cfgFile['Video']['videoPath']
+        else:
+            raise ValueError('no videopath in config file')
+
+        if 'frame-data-visualization-path' in cfgFile['Video'].keys():
+            fdvtPath = cfgFile['Video']['frame-data-visualization-path']
+        else:
+            fdvtPath = None
+
+        if 'bhvr-cache' in cfgFile['Video'].keys():
+            bhvrListPath = cfgFile['Video']['bhvr-cache']
+        else:
+            bhvrListPath = None
+
+        if 'startvideo' in cfgFile['Video'].keys():
+            startVideo = cfgFile['Video']['startvideo']
+        else:
+            startVideo = None
+
+        if 'bufferwidth' in cfgFile['Video'].keys():
+            bufferWidth = cfgFile['Video']['bufferwidth']
+        else:
+            bufferWidth = 300
+
+        if 'bufferlength' in cfgFile['Video'].keys():
+            bufferLength = cfgFile['Video']['bufferlength']
+        else:
+            bufferLength = 4
+
+        if 'cropped-video' in cfgFile['Video'].keys():
+            croppedVideo = cfgFile['Video']['cropped-video']
+        else:
+            croppedVideo = False
+
+        if 'files-running-indices' in cfgFile['Video'].keys():
+            runningIndeces = cfgFile['Video']['files-running-indices']
+        else:
+            runningIndeces = True
+
+        if 'rewind-on-click' in cfgFile['Video'].keys():
+            rewindOnClick = cfgFile['Video']['rewind-on-click']
+        else:
+            rewindOnClick = False
+
+        #Active Learning
+        if 'ActiveLearning' in cfgFile.keys():
+            if 'remote-request-server' in cfgFile['ActiveLearning'].keys():
+                serverAddress = \
+                    cfgFile['ActiveLearning']['remote-request-server']
+            else:
+                serverAddress = None
+        else:
+            serverAddress = None
+
+        # KeyMap
+        keyMap = { "stop": cfgFile['KeyMap']['stop'],
+                    "step-f": cfgFile['KeyMap']['step-f'],
+                    "step-b": cfgFile['KeyMap']['step-b'],
+                    "fwd-1": cfgFile['KeyMap']['fwd-1'],
+                    "fwd-2": cfgFile['KeyMap']['fwd-2'],
+                    "fwd-3": cfgFile['KeyMap']['fwd-3'],
+                    "fwd-4": cfgFile['KeyMap']['fwd-4'],
+                    "fwd-5": cfgFile['KeyMap']['fwd-5'],
+                    "fwd-6": cfgFile['KeyMap']['fwd-6'],
+                    "bwd-1": cfgFile['KeyMap']['bwd-1'],
+                    "bwd-2": cfgFile['KeyMap']['bwd-2'],
+                    "bwd-3": cfgFile['KeyMap']['bwd-3'],
+                    "bwd-4": cfgFile['KeyMap']['bwd-4'],
+                    "bwd-5": cfgFile['KeyMap']['bwd-5'],
+                    "bwd-6": cfgFile['KeyMap']['bwd-6'],
+                    "escape": cfgFile['KeyMap']['escape'],
+                    "anno-1": cfgFile['KeyMap']['anno-1'],
+                    "anno-2": cfgFile['KeyMap']['anno-2'],
+                    "anno-3": cfgFile['KeyMap']['anno-3'],
+                    "anno-4": cfgFile['KeyMap']['anno-4'],
+                    "erase-anno": cfgFile['KeyMap']['erase-anno'],
+                    "info": cfgFile['KeyMap']['info']}
+
+        try:
+            for key in keyMap:
+                keyMap[key] = eval("Qt." + keyMap[key], {"Qt":QtCore.Qt})
+        except KeyError:
+            keyMap = None
+
+
+        # Step size
+        stepSize = {"stop": cfgFile['StepSize']['stop'],
+                    "step-f": cfgFile['StepSize']['step-f'],
+                    "step-b": cfgFile['StepSize']['step-b'],
+                    "fwd-1": cfgFile['StepSize']['fwd-1'],
+                    "fwd-2": cfgFile['StepSize']['fwd-2'],
+                    "fwd-3": cfgFile['StepSize']['fwd-3'],
+                    "fwd-4": cfgFile['StepSize']['fwd-4'],
+                    "fwd-5": cfgFile['StepSize']['fwd-5'],
+                    "fwd-6": cfgFile['StepSize']['fwd-6'],
+                    "bwd-1": cfgFile['StepSize']['bwd-1'],
+                    "bwd-2": cfgFile['StepSize']['bwd-2'],
+                    "bwd-3": cfgFile['StepSize']['bwd-3'],
+                    "bwd-4": cfgFile['StepSize']['bwd-4'],
+                    "bwd-5": cfgFile['StepSize']['bwd-5'],
+                    "bwd-6": cfgFile['StepSize']['bwd-6'],
+                    "allow-steps": cfgFile['StepSize']['allow-steps']}
+
+        filterObjArgs = dict()
+        filterObjArgs['keyMap'] = keyMap
+        filterObjArgs['stepSize'] = stepSize
+
+
+        # Annotations
+        annotations = cfgFile['Annotation']['annotations']
+
+        return videoPath, annotations, backgroundPath, selectedVial, vialROI, \
+                filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
+                runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
+                bufferLength
+
 
 
 class ContextLineEdit(QtGui.QLineEdit):
@@ -2262,136 +2449,15 @@ if __name__ == "__main__":
 #         config = json.load(f)
         
         
-    import ConfigParser    
-    config = ConfigParser.ConfigParser()
-    config.read(args.config_file)
-    
-    def configSectionMap(section):
-        " https://wiki.python.org/moin/ConfigParserExamples"
-        dict1 = {}
-        options = config.options(section)
-        for option in options:
-            try:
-                dict1[option] = config.get(section, option)
-                if dict1[option] == -1:
-                    print("skip: %s" % option)
-            except:
-                print("exception on %s!" % option)
-                dict1[option] = None
-        return dict1
-        
-    #### parsing config file
-    
-    # Video
-    try:
-        selectedVial = config.getint('Video','vial')
-    except:
-        selectedVial = None
-        
-    vialROI = json.loads(configSectionMap('Video')['vialroi'])
-    backgroundPath = configSectionMap('Video')['background']
-    videoPath = configSectionMap('Video')['videopath']
-    
-    try:
-        fdvtPath = configSectionMap('Video')['frame-data-visualization-path']
-    except KeyError:
-        fdvtPath = None
-                    
-    try:
-        bhvrListPath = configSectionMap('Video')['bhvr-cache']
-    except KeyError:
-        bhvrListPath = None
-                
-    try:
-        startVideo = configSectionMap('Video')['startvideo']
-    except KeyError:
-        startVideo = None
-                
-    try:
-        bufferWidth = config.getint('Video','bufferwidth')
-    except KeyError:
-        bufferWidth = 300
-                
-    try:
-        bufferLength = config.getint('Video','bufferlength')
-    except KeyError:
-        bufferLength = 4
-        
-    try:
-        croppedVideo = config.getboolean('Video','cropped-video')
-    except KeyError:
-        croppedVideo = False
-        
-    try:
-        runningIndeces = config.getboolean('Video','files-running-indices')
-    except KeyError:
-        runningIndeces = True
-                    
-    try:
-        rewindOnClick = config.getboolean('Video','rewind-on-click')
-    except KeyError:
-        rewindOnClick = False
-    
-    #Active Learning
-    serverAddress = configSectionMap('ActiveLearning')['remote-request-server']
-    
-    # KeyMap
-    keyMap = { "stop": configSectionMap('KeyMap')['stop'],
-                "step-f": configSectionMap('KeyMap')['step-f'],
-                "step-b": configSectionMap('KeyMap')['step-b'],
-                "fwd-1": configSectionMap('KeyMap')['fwd-1'],
-                "fwd-2": configSectionMap('KeyMap')['fwd-2'],
-                "fwd-3": configSectionMap('KeyMap')['fwd-3'],
-                "fwd-4": configSectionMap('KeyMap')['fwd-4'],
-                "fwd-5": configSectionMap('KeyMap')['fwd-5'],
-                "fwd-6": configSectionMap('KeyMap')['fwd-6'],
-                "bwd-1": configSectionMap('KeyMap')['bwd-1'],
-                "bwd-2": configSectionMap('KeyMap')['bwd-2'],
-                "bwd-3": configSectionMap('KeyMap')['bwd-3'],
-                "bwd-4": configSectionMap('KeyMap')['bwd-4'],
-                "bwd-5": configSectionMap('KeyMap')['bwd-5'],
-                "bwd-6": configSectionMap('KeyMap')['bwd-6'],
-                "escape": configSectionMap('KeyMap')['escape'],
-                "anno-1": configSectionMap('KeyMap')['anno-1'],
-                "anno-2": configSectionMap('KeyMap')['anno-2'],
-                "anno-3": configSectionMap('KeyMap')['anno-3'],
-                "anno-4": configSectionMap('KeyMap')['anno-4'],
-                "erase-anno": configSectionMap('KeyMap')['erase-anno'],
-                "info": configSectionMap('KeyMap')['info']}
-    
-      
-    try:
-        for key in keyMap:
-            keyMap[key] = eval("Qt." + keyMap[key], {"Qt":QtCore.Qt})
-    except KeyError:
-        keyMap = None
+    # import ConfigParser
+    # config = ConfigParser.ConfigParser()
+    # config.read(args.config_file)
 
 
-    # Step size
-    stepSize = {"stop": config.getint('StepSize','stop'),
-                "step-f": config.getint('StepSize','step-f'),
-                "step-b": config.getint('StepSize','step-b'),
-                "fwd-1": config.getint('StepSize','fwd-1'),
-                "fwd-2": config.getint('StepSize','fwd-2'),
-                "fwd-3": config.getint('StepSize','fwd-3'),
-                "fwd-4": config.getint('StepSize','fwd-4'),
-                "fwd-5": config.getint('StepSize','fwd-5'),
-                "fwd-6": config.getint('StepSize','fwd-6'),
-                "bwd-1": config.getint('StepSize','bwd-1'),
-                "bwd-2": config.getint('StepSize','bwd-2'),
-                "bwd-3": config.getint('StepSize','bwd-3'),
-                "bwd-4": config.getint('StepSize','bwd-4'),
-                "bwd-5": config.getint('StepSize','bwd-5'),
-                "bwd-6": config.getint('StepSize','bwd-6'), 
-                "allow-steps": config.getboolean('StepSize','allow-steps')}
-    
-    filterObjArgs = dict()  
-    filterObjArgs['keyMap'] = keyMap
-    filterObjArgs['stepSize'] = stepSize
-    
-    
-    # Annotations
-    annotations = json.loads(configSectionMap('Annotation')['annotations'])
+    videoPath, annotations, backgroundPath, selectedVial, vialROI, \
+    filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
+    runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
+    bufferLength = videoTagger.parseConfig(args.config_file)
         
     #### finish parsing config file
     
@@ -2399,6 +2465,7 @@ if __name__ == "__main__":
         vp = os.path.split(videoPath)[0]
     else:
         vp = videoPath
+
     hGUI = logging.FileHandler(os.path.join(vp, 
                     "videoTagger." + \
                     time.strftime("%Y-%m-%d.%H-%M-%S", time.localtime()) +\
@@ -2409,8 +2476,7 @@ if __name__ == "__main__":
         cfg.logGUI.removeHandler(handler)
         
     cfg.logGUI.addHandler(hGUI)
-    
-    
+
     app = QtGui.QApplication(sys.argv)
     
     w = videoTagger(videoPath, annotations, backgroundPath, selectedVial, vialROI,
