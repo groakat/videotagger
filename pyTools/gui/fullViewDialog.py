@@ -61,7 +61,7 @@ class FullViewDialog(QtGui.QMainWindow):
         self.splitter.addWidget(prevDummyWidget)
         self.splitter.addWidget(self.graphicsView)
 
-        self.setGeometry(QtCore.QRect(0,0,800, 600))
+        self.setGeometry(QtCore.QRect(100,100,800, 600))
 
 
     def setupHUD(self):

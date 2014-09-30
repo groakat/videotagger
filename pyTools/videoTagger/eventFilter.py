@@ -406,67 +406,77 @@ class shortcutHandler(QtCore.QObject):
         self.inConstantSpeed = False
         self.orignalStepSize = self.stepSize
 
+        self.keySC = []
         self.applyShortcuts()
 
+    def deactivateShortcuts(self):
+        for shortcut in self.keySC:
+            shortcut.setEnabled(False)
+
+    def activateShortcuts(self):
+        for shortcut in self.keySC:
+            shortcut.setEnabled(True)
+
     def applyShortcuts(self):
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['stop']),
-                        self.parent, self.stop)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['step-f']),
-                        self.parent, self.stepF)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['step-b']),
-                        self.parent, self.stepB)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-1']),
-                        self.parent, self.fwd1)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-2']),
-                        self.parent, self.fwd2)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-3']),
-                        self.parent, self.fwd3)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-4']),
-                        self.parent, self.fwd4)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-5']),
-                        self.parent, self.fwd5)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-6']),
-                        self.parent, self.fwd6)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-1']),
-                        self.parent, self.bwd1)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-2']),
-                        self.parent, self.bwd2)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-3']),
-                        self.parent, self.bwd3)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-4']),
-                        self.parent, self.bwd4)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-5']),
-                        self.parent, self.bwd5)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-6']),
-                        self.parent, self.bwd6)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['escape']),
-                        self.parent, self.escape)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['anno-1']),
-                        self.parent, self.anno1)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['anno-2']),
-                        self.parent, self.anno2)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['anno-3']),
-                        self.parent, self.anno3)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['anno-4']),
-                        self.parent, self.anno4)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['erase-anno']),
-                        self.parent, self.eraseAnno)
-        QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['info']),
-                        self.parent, self.info)
-        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_S),
-                        self.parent, self.saveAll)
-        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Space),
-                        self.parent, self.cbTarget.displayFullResolutionFrame)
-        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Return),
-                        self.parent, self.cbTarget.toggleEditModeCheckbox)
-        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Space),
-                        self.parent, self.cbTarget.addTempAnno)
-        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Delete),
-                        self.parent, self.cbTarget.openFDV)
-        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_End),
-                        self.parent, self.cbTarget.openKeySettings)
-        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Pause),
-                        self.parent, self.cbTarget.debug)
+        self.keySC = []
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['stop']),
+                        self.parent, self.stop)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['step-f']),
+                        self.parent, self.stepF)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['step-b']),
+                        self.parent, self.stepB)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-1']),
+                        self.parent, self.fwd1)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-2']),
+                        self.parent, self.fwd2)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-3']),
+                        self.parent, self.fwd3)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-4']),
+                        self.parent, self.fwd4)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-5']),
+                        self.parent, self.fwd5)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['fwd-6']),
+                        self.parent, self.fwd6)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-1']),
+                        self.parent, self.bwd1)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-2']),
+                        self.parent, self.bwd2)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-3']),
+                        self.parent, self.bwd3)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-4']),
+                        self.parent, self.bwd4)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-5']),
+                        self.parent, self.bwd5)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['bwd-6']),
+                        self.parent, self.bwd6)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['escape']),
+                        self.parent, self.escape)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['anno-1']),
+                        self.parent, self.anno1)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['anno-2']),
+                        self.parent, self.anno2)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['anno-3']),
+                        self.parent, self.anno3)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['anno-4']),
+                        self.parent, self.anno4)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['erase-anno']),
+                        self.parent, self.eraseAnno)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(self.keyMap['info']),
+                        self.parent, self.info)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_S),
+                        self.parent, self.saveAll)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Space),
+                        self.parent, self.cbTarget.displayFullResolutionFrame)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Return),
+                        self.parent, self.cbTarget.toggleEditModeCheckbox)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Space),
+                        self.parent, self.cbTarget.addTempAnno)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Delete),
+                        self.parent, self.cbTarget.openFDV)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_End),
+                        self.parent, self.cbTarget.openKeySettings)]
+        self.keySC += [QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Pause),
+                        self.parent, self.cbTarget.debug)]
 
 
     def swapToConstantSpeed(self, speed):

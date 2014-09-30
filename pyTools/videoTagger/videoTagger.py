@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath('../../'))
 # from OpenGL import GLU
 from PySide import QtGui
 from PySide import QtCore
-from PySide import QtOpenGL
+# from PySide import QtOpenGL
 
 
 from pyTools.gui.videoPlayer_auto import Ui_Form
@@ -128,7 +128,7 @@ class videoTagger(QtGui.QMainWindow):
         # self.installEventFilter(self.eventFilter)
         self.filterObjArgs = filterObjArgs
 
-        self.mainShortCutFilter = EF.shortcutHandler(self, self, **self.filterObjArgs)
+        # self.mainShortCutFilter = EF.shortcutHandler(self, self, **self.filterObjArgs)
         self.dialogShortCutFilter = None
         self.connectSignals()       
         
@@ -1523,14 +1523,14 @@ class videoTagger(QtGui.QMainWindow):
         self.videoScene.addItem(self.lbl_v2)   
         self.videoScene.addItem(self.lbl_v3)   
         
-        fmt = QtOpenGL.QGLFormat()
-        fmt.setAlpha(True)
-        fmt.setOverlay(True)
-        fmt.setDoubleBuffer(True);                 
-        fmt.setDirectRendering(True);
-        
-        
-        self.glw = QtOpenGL.QGLWidget(fmt)
+        # fmt = QtOpenGL.QGLFormat()
+        # fmt.setAlpha(True)
+        # fmt.setOverlay(True)
+        # fmt.setDoubleBuffer(True);
+        # fmt.setDirectRendering(True);
+        #
+        #
+        self.glw = QtGui.QWidget(self)#QtOpenGL.QGLWidget(fmt)
         # self.glw.setFixedHeight(h + 50)
         
         
@@ -1993,6 +1993,14 @@ class videoTagger(QtGui.QMainWindow):
             self.isLabelingSingleFrame = False
             self.jumpToBookmark()
 
+    def addNewBehaviourClass(self, selectedBehaviour, color):
+        self.annotations += [{'behav': selectedBehaviour,
+                              'annot': self.annotations[0]['annot'],
+                              'color': color}]
+
+        self.exportSettings()
+
+
     def queryForLabel(self):
         # self.setupLabelRequestMenu()
         # cfg.log.info("---------- {0}".format( self.mapFromGlobal(QtGui.QCursor.pos())))
@@ -2000,14 +2008,14 @@ class videoTagger(QtGui.QMainWindow):
 
         strList = [x['behav'] for x in self.annotations]
 
-        # previewChoice = [self.queryPreviews[i] \
-        #                  for i in range(0, len(self.queryPreviews),
-        #                                 len(self.queryPreviews)/ 5)]
+
+        self.dialogShortCutFilter.deactivateShortcuts()
         selectedBehaviour = OD.ClassSelectDialog.getLabel(
                                         self.fullVideoDialog.centralWidget(),
                                         strList,
                                         self.queryPreviews)
-                                        # [np.random.rand(120, 120, 3) for x in range(5)])
+
+        self.dialogShortCutFilter.activateShortcuts()
 
         print selectedBehaviour
         if selectedBehaviour is None:
@@ -2020,6 +2028,25 @@ class videoTagger(QtGui.QMainWindow):
                     newBehaviour = elem['behav']
                     self.editAnnoLabel(self.annotations[0]['annot'], "unknown",
                                        newAnnotator, newBehaviour)
+
+                    return selectedBehaviour
+
+            color = OD.ColorRequestDialog.getColor(
+                                self.fullVideoDialog.centralWidget(),
+                                ("Are you sure you want to create a " +
+                                "new class called <b>{0}</b>? If yes, " +
+                                "please select a color. Otherwise " +
+                                "press ESC.").format(selectedBehaviour))
+            if color is None:
+                self.vh.eraseAnnotationSequence(self.selectedVial,
+                                                self.annotations[0]['annot'],
+                                                "unknown", direction='both')
+                return None
+            else:
+                self.addNewBehaviourClass(selectedBehaviour, color)
+                self.editAnnoLabel(self.annotations[0]['annot'], "unknown",
+                                   self.annotations[0]['annot'],
+                                   selectedBehaviour)
 
         return selectedBehaviour
 
@@ -2058,7 +2085,7 @@ class videoTagger(QtGui.QMainWindow):
                                 [newBehaviour])
                 labelledFrames = (labelledFrames[0], newFilt)
 
-            self.convertLabelListAndReply(labelledFrames)
+            # self.convertLabelListAndReply(labelledFrames)
 
 
     def addTempAnno(self):
@@ -2110,7 +2137,10 @@ class videoTagger(QtGui.QMainWindow):
                                 "{anno}.bookmarks.json".format(anno=annotator))
 
         return filename
-    
+
+    def exportSettings(self):
+        pass
+
     def aboutToQuit(self):
         self.exit()
 

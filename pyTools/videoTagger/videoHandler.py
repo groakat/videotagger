@@ -1279,6 +1279,9 @@ class VideoHandler(QtCore.QObject):
         rngs = self.findRangeOfAnnotation(self.idx, self.posPath, filtOld)
         behaviourNew = self.disambiguateDoubleBehaviourNames([vial], annotatorNew,
                                                              behaviourNew, rngs)
+
+        print "editAnnotationLabel", rngs, behaviourOld, behaviourNew
+
         for k, rng in rngs.items():
             self.annoDict[k].annotation.renameAnnotation(
                                                 vial, rng,

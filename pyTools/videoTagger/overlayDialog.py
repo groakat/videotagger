@@ -52,6 +52,7 @@ class OverlayDialogBase(QtGui.QWidget):
         p.setColor(self.backgroundRole(), color)
         self.setPalette(p)
 
+
     def _setReturnValue(self):
         raise NotImplementedError()
 
@@ -432,6 +433,93 @@ class StringRequestDialog(OverlayDialogBase):
     @staticmethod
     def getLabel(parent, message):
         od = StringRequestDialog(parent, message)
+        od.exec_()
+        return od.ret
+
+
+class ColorRequestDialog(OverlayDialogBase):
+    def __init__(self, parent, message=None, *args, **kwargs):
+        super(ColorRequestDialog, self).__init__(parent=parent, *args, **kwargs)
+
+        if message is not None:
+            self.setMessage(message)
+        else:
+            self.message = None
+
+        self.labelColor = QtGui.QColor(0,0,0)
+
+        self.setupContent()
+        self.setupLayout()
+        self.connectSignals()
+
+    def _setReturnValue(self):
+        self.ret = self.labelColor
+
+    def setMessage(self, str):
+        self.message = str
+
+    def connectSignals(self):
+        super(ColorRequestDialog, self).connectSignals()
+        self.colorButton.clicked.connect(self.selectColor)
+
+    def setupContent(self):
+        self.content = QtGui.QWidget(self)
+        self.contentLayout  = QtGui.QVBoxLayout()
+
+        self.button = QtGui.QPushButton(self.content)
+        self.button.setText("Alright'o")
+        self.messageLabel = QtGui.QLabel(self.content)
+        if self.message is not None:
+            self.messageLabel.setText(self.message)
+
+        self.colorWidget = QtGui.QWidget(self)
+        self.colorLayout = QtGui.QHBoxLayout(self.colorWidget)
+        self.colorLabel = QtGui.QLabel(self.colorWidget)
+        self.colorLabel.setText("")
+        # self.setColor(self.labelColor)
+        self.colorButton = QtGui.QPushButton(self.colorWidget)
+        self.colorButton.setText("Select Colour")
+        self.colorLayout.addWidget(self.colorLabel)
+        self.colorLayout.addWidget(self.colorButton)
+
+
+        self.contentLayout.addWidget(self.messageLabel)
+        self.contentLayout.addWidget(self.colorWidget)
+        self.contentLayout.addWidget(self.button)
+
+        self.content.setLayout(self.contentLayout)
+
+    def setupLayout(self):
+        self.layout = QtGui.QVBoxLayout()
+
+        self.layout.insertStretch(0)
+        self.layout.addWidget(self.content)
+        self.layout.insertStretch(-1)
+
+        self.outerLayout = QtGui.QHBoxLayout(self)
+        self.outerLayout.insertStretch(0)
+        self.outerLayout.addLayout(self.layout)
+        self.outerLayout.insertStretch(-1)
+        self.setLayout(self.outerLayout)
+
+    def selectColor(self):
+        self.labelColor = QtGui.QColorDialog.getColor()
+        self.setColor(self.labelColor)
+
+    def setLabelColor(self, color):
+        self.colorLabel.setAutoFillBackground(True)
+        colourStyle = "#colorLabel {{background-color: {0} }}".format(color.name())
+        self.colorLabel.setStyleSheet(colourStyle)
+
+
+        # palette = self.colorLabel.palette()
+        # palette.setColor(self.colorLabel.backgroundRole(), color)
+        # palette.setColor(self.colorLabel.foregroundRole(), color)
+        # self.colorLabel.setPalette(palette)
+
+    @staticmethod
+    def getColor(parent, message):
+        od = ColorRequestDialog(parent, message)
         od.exec_()
         return od.ret
 
