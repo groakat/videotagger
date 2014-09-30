@@ -279,6 +279,8 @@ class ControlsSettingDialog(OverlayDialogBase):
         super(ControlsSettingDialog, self).__init__(parent=parent, *args, **kwargs)
         self.keyMap = None
         self.stepSize = None
+        self.keyWidgets = dict()
+        self.stepWidgets = dict()
 
         self.setSettings_(keyMap, stepSize)
 
@@ -286,30 +288,43 @@ class ControlsSettingDialog(OverlayDialogBase):
         self.setupLayout()
         self.connectSignals()
 
+
+    def _setReturnValue(self):
+        for k in self.keyMap:
+            self.keyMap[k] = self.keyWidgets[k].keySequence
+
+        for k in self.stepSize:
+            if k != 'allow-steps':
+                self.stepSize[k] = int(self.stepWidgets[k].text())
+
+        self.ret = {'keyMap': self.keyMap,
+                    'stepSize': self.stepSize}
+
+
     def setSettings_(self, keyMap, stepSize):
         if keyMap is None:
-            self.keyMap = { "stop": QtCore.Qt.Key_F,
-                            "step-f": QtCore.Qt.Key_G,
-                            "step-b": QtCore.Qt.Key_D,
-                            "fwd-1": QtCore.Qt.Key_T,
-                            "fwd-2": QtCore.Qt.Key_V,
-                            "fwd-3": QtCore.Qt.Key_B,
-                            "fwd-4": QtCore.Qt.Key_N,
-                            "fwd-5": QtCore.Qt.Key_H,
-                            "fwd-6": QtCore.Qt.Key_J,
-                            "bwd-1": QtCore.Qt.Key_E,
-                            "bwd-2": QtCore.Qt.Key_X,
-                            "bwd-3": QtCore.Qt.Key_Z,
-                            "bwd-4": QtCore.Qt.Key_Backslash,
-                            "bwd-5": QtCore.Qt.Key_S,
-                            "bwd-6": QtCore.Qt.Key_A,
-                            "escape": QtCore.Qt.Key_Escape,
-                            "anno-1": QtCore.Qt.Key_1,
-                            "anno-2": QtCore.Qt.Key_2,
-                            "anno-3": QtCore.Qt.Key_3,
-                            "anno-4": QtCore.Qt.Key_3,
-                            "erase-anno": QtCore.Qt.Key_Q,
-                            "info": QtCore.Qt.Key_I}
+            self.keyMap = { "stop": QtGui.QKeySequence(QtCore.Qt.Key_F),
+                            "step-f": QtGui.QKeySequence(QtCore.Qt.Key_G),
+                            "step-b": QtGui.QKeySequence(QtCore.Qt.Key_D),
+                            "fwd-1": QtGui.QKeySequence(QtCore.Qt.Key_T),
+                            "fwd-2": QtGui.QKeySequence(QtCore.Qt.Key_V),
+                            "fwd-3": QtGui.QKeySequence(QtCore.Qt.Key_B),
+                            "fwd-4": QtGui.QKeySequence(QtCore.Qt.Key_N),
+                            "fwd-5": QtGui.QKeySequence(QtCore.Qt.Key_H),
+                            "fwd-6": QtGui.QKeySequence(QtCore.Qt.Key_J),
+                            "bwd-1": QtGui.QKeySequence(QtCore.Qt.Key_E),
+                            "bwd-2": QtGui.QKeySequence(QtCore.Qt.Key_X),
+                            "bwd-3": QtGui.QKeySequence(QtCore.Qt.Key_Z),
+                            "bwd-4": QtGui.QKeySequence(QtCore.Qt.Key_Backslash),
+                            "bwd-5": QtGui.QKeySequence(QtCore.Qt.Key_S),
+                            "bwd-6": QtGui.QKeySequence(QtCore.Qt.Key_A),
+                            "escape": QtGui.QKeySequence(QtCore.Qt.Key_Escape),
+                            "anno-1": QtGui.QKeySequence(QtCore.Qt.Key_1),
+                            "anno-2": QtGui.QKeySequence(QtCore.Qt.Key_2),
+                            "anno-3": QtGui.QKeySequence(QtCore.Qt.Key_3),
+                            "anno-4": QtGui.QKeySequence(QtCore.Qt.Key_3),
+                            "erase-anno": QtGui.QKeySequence(QtCore.Qt.Key_Q),
+                            "info": QtGui.QKeySequence(QtCore.Qt.Key_I)}
         else:
             self.keyMap = keyMap
 
@@ -354,29 +369,39 @@ class ControlsSettingDialog(OverlayDialogBase):
         self.keySelectWidget = QtGui.QWidget(self.content)
         self.keySelectLayout = QtGui.QGridLayout()
         row = 0
+        self.keyWidgets = dict()
+        self.stepWidgets = dict()
+
         for k, keymap in self.keyMap.items():
             lbl = QtGui.QLabel(self.content)
             lbl.setText(k)
-            if type(keymap) is  QtCore.Qt.Key:
-                keymap = QtGui.QKeySequence(keymap)
+            # if type(keymap) is  QtGui.QKeySequence:
+            #     keymap = QtGui.QKeySequence(keymap)
+            # else:
+            #     print  type(keymap)
+            print keymap, keymap.toString()
 
             keySeqEdit = KeySequenceEdit(keymap, self.content)
 
             self.keySelectLayout.addWidget(lbl, row, 0)
             self.keySelectLayout.addWidget(keySeqEdit, row, 1)
 
+            self.keyWidgets[k] = keySeqEdit
+
             if k in self.stepSize.keys():
                 stepSize = self.stepSize[k]
                 stepEdit = QtGui.QLineEdit(self.content)
                 stepEdit.setText(str(stepSize))
                 self.keySelectLayout.addWidget(stepEdit, row, 2)
+                self.stepWidgets[k] = stepEdit
+
             row += 1
 
         self.keySelectWidget.setLayout(self.keySelectLayout)
 
     @staticmethod
-    def getSelection(parent, settings):
-        od = ControlsSettingDialog(parent, settings)
+    def getSelection(parent, keyMap, stepSize):
+        od = ControlsSettingDialog(parent, keyMap, stepSize)
         od.exec_()
         return od.ret
 

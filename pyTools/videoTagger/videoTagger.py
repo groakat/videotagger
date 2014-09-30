@@ -1605,8 +1605,14 @@ class videoTagger(QtGui.QMainWindow):
                                       self.frameView)
 
     def openKeySettings(self):
-        OD.ControlsSettingDialog.getSelection(self.fullVideoDialog.centralWidget(),
-                                              self.mainShortCutFilter.keyMap)
+        filterObjArgs = OD.ControlsSettingDialog.getSelection(self.fullVideoDialog.centralWidget(),
+                                              self.dialogShortCutFilter.keyMap,
+                                              self.dialogShortCutFilter.stepSize)
+
+        self.dialogShortCutFilter.setKeyMap(filterObjArgs['keyMap'])
+        self.dialogShortCutFilter.setStepSize(filterObjArgs['stepSize'])
+        self.exportSettings()
+
 
     @QtCore.Slot()
     def startVideo(self):
@@ -2169,7 +2175,7 @@ class videoTagger(QtGui.QMainWindow):
         cfgDict['KeyMap'] = dict()
 
         for k in self.filterObjArgs['keyMap']:
-            cfgDict['KeyMap'][k] = self.filterObjArgs['keyMap'][k].name
+            cfgDict['KeyMap'][k] = self.filterObjArgs['keyMap'][k].toString()
 
         cfgDict['Annotation'] = {'annotations': []}
         for anno in self.annotations:
@@ -2297,7 +2303,7 @@ class videoTagger(QtGui.QMainWindow):
 
         try:
             for key in keyMap:
-                keyMap[key] = eval("Qt." + keyMap[key], {"Qt":QtCore.Qt})
+                keyMap[key] = QtGui.QKeySequence(str(keyMap[key]))#eval("Qt." + keyMap[key], {"Qt":QtCore.Qt})
         except KeyError:
             keyMap = None
 
