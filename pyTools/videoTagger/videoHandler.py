@@ -122,7 +122,7 @@ class VideoHandler(QtCore.QObject):
         self.curMetadata = None
         self.tempValue = dict()
 
-        self.tmpFile = "/tmp/videoTagger.bhvr~"
+        self.tmpFile = r"E:\peter\videoTagger.bhvr~"
 
         # always do that at the end
 #         self.checkBuffer()
