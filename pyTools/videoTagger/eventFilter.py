@@ -423,11 +423,11 @@ class shortcutHandler(QtCore.QObject):
             self.stepSize = stepSize
 
     def deactivateShortcuts(self):
-        for shortcut in self.keySC:
+        for k, shortcut in self.keySC.items():
             shortcut.setEnabled(False)
 
     def activateShortcuts(self):
-        for shortcut in self.keySC:
+        for k, shortcut in self.keySC.items():
             shortcut.setEnabled(True)
 
     def applyShortcuts(self):
