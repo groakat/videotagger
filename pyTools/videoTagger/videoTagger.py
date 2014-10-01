@@ -1998,7 +1998,11 @@ class videoTagger(QtGui.QMainWindow):
             for frame in frames[key]:
                 # deltaVector += [[self.fdvt.key2idx(day, hour, minute, frame),
                 #                 self.fdvt.getAnnotationFilterCode(filt)]]
-                deltaVector += [self.fdvt.getDeltaValue(key, frame, filt)]
+                dv = self.fdvt.getDeltaValue(key, frame, filt)
+                if dv[1] is None:
+                    self.fdvt.addNewClass(filt)
+                    dv = self.fdvt.getDeltaValue(key, frame, filt)
+                deltaVector += [dv]
 
 
         if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
@@ -2103,7 +2107,7 @@ class videoTagger(QtGui.QMainWindow):
                                 [newBehaviour])
                 labelledFrames = (labelledFrames[0], newFilt)
 
-            # self.convertLabelListAndReply(labelledFrames)
+            self.convertLabelListAndReply(labelledFrames)
 
 
     def addTempAnno(self):

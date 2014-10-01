@@ -673,6 +673,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
     def resetAllSamples(self):
         super(FrameDataVisualizationTreeBehaviour, self).resetAllSamples()        
         self.tree['meta']['isCategoric'] = True
+        self.tree['meta']['filtList'] = []
         self.maxClass = 0
         
     
@@ -761,6 +762,11 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
 
         return day, hour, minute
 
+    def addNewClass(self, filt):
+        self.tree['meta']['filtList'] += [filt]
+        self.maxClass = len(self.tree['meta']['filtList'])
+
+
     def importAnnotationsFromSingleFile(self, bhvrList, annotations, vials,
                                         runningIndeces=False, fps=30):
         self.singleFileMode = True
@@ -771,13 +777,16 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeArrayBase):
         for i in range(len(annotations)):
             annotator = annotations[i]["annot"]
             behaviour = annotations[i]["behav"]
-            filtList += [Annotation.AnnotationFilter(vials,
-                                                          [annotator],
-                                                          [behaviour])]
+            self.addNewClass(Annotation.AnnotationFilter(vials,
+                                                        [annotator],
+                                                        [behaviour]))
+            # filtList += [Annotation.AnnotationFilter(vials,
+            #                                               [annotator],
+            #                                               [behaviour])]
 
 #         self.maxClass = len(filtList)
-        self.tree['meta']['filtList'] = filtList
-        self.maxClass = len(filtList)
+#         self.tree['meta']['filtList'] = filtList
+#         self.maxClass = len(filtList)
 
         anno = Annotation.Annotation()
         anno.loadFromFile(bhvrList[0])
