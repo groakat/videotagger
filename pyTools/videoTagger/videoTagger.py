@@ -82,7 +82,7 @@ class MyListModel(QtCore.QAbstractListModel):
                   
 #########################################################################
 
-class videoTagger(QtGui.QMainWindow):
+class VideoTagger(QtGui.QMainWindow):
     quit = QtCore.Signal()
     startLoop = QtCore.Signal()
      
@@ -2467,7 +2467,7 @@ if __name__ == "__main__":
     videoPath, annotations, backgroundPath, selectedVial, vialROI, \
     filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
     runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
-    bufferLength = videoTagger.parseConfig(args.config_file)
+    bufferLength = VideoTagger.parseConfig(args.config_file)
         
     #### finish parsing config file
     
@@ -2489,7 +2489,7 @@ if __name__ == "__main__":
 
     app = QtGui.QApplication(sys.argv)
     
-    w = videoTagger(videoPath, annotations, backgroundPath, selectedVial, vialROI,
+    w = VideoTagger(videoPath, annotations, backgroundPath, selectedVial, vialROI,
                      videoFormat='avi', filterObjArgs=filterObjArgs,
                      startVideoName=startVideo, rewindOnClick=rewindOnClick,
                      croppedVideo=croppedVideo, runningIndeces=runningIndeces,

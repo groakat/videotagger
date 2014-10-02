@@ -2,7 +2,7 @@ __author__ = 'peter'
 
 
 from pyTools.gui.graphicsViewTest_auto import Ui_MainWindow
-import pyTools.misc.FrameDataVisualization as FDV
+import pyTools.misc.FrameDataVisualization2 as FDV
 
 import sys
 import numpy as np
@@ -29,11 +29,11 @@ class Test(QtGui.QMainWindow):
 
         # self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v0.npy')
         c = [QtGui.QColor(0, 255, 0),
-            QtGui.QColor(0,  0, 255),
-            QtGui.QColor(255, 0, 0)]#,
+            QtGui.QColor(0,  0, 255)]#,
+            # QtGui.QColor(255, 0, 0)]#,
                             # QtGui.QBrush(QtGui.QColor(0, 0, 0))]
         self.gvFDV.setColors(c)
-        self.gvFDV.loadSequence('/media/peter/Seagate Backup Plus Drive/peter/behaviourTree.npy')
+        self.gvFDV.loadSequence('/media/peter/Seagate Backup Plus Drive/peter/behaviourTreeTest.npy')
 
         self.show()
 
@@ -62,13 +62,13 @@ class Test(QtGui.QMainWindow):
 
     def buttonClick(self):
         # self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v0.npy')
-        c = [QtGui.QColor(0, 255, 0), QtGui.QColor(0, 0, 0), QtGui.QColor(255, 0, 0)]#, QtGui.QColor(255, 255, 0)]
+        c = [QtGui.QColor(0, 255, 0), QtGui.QColor(0, 0, 0)]#, QtGui.QColor(255, 0, 0)]#, QtGui.QColor(255, 255, 0)]
         self.gvFDV.setColors(c)
 
 
     def exampleCallbackFunction(self, day, hour, minute, frame):
         print(day, hour, minute, frame)
-        print(self.gvFDV.fdvt.tree[day][hour][minute]['data'][frame])
+        print(self.gvFDV.fdvt.data[day][hour][minute][frame])
 
 class GraphicsViewFDV(QtGui.QWidget):
 
@@ -199,17 +199,17 @@ class GraphicsViewFDV(QtGui.QWidget):
         minutes = set()
         frames = list(np.arange(np.floor(1800 / self.frameResolution), dtype=float))
 
-        days = days.union(self.fdvt.tree.keys()).difference(['meta'])
-        for day in self.fdvt.tree.keys():
-            if day == 'meta':
-                continue
+        days = days.union(self.fdvt.data.keys())#.difference(['meta'])
+        for day in self.fdvt.data.keys():
+            # if day == 'meta':
+            #     continue
 
-            hours = hours.union(self.fdvt.tree[day].keys()).difference(['meta'])
-            for hour in self.fdvt.tree[day].keys():
-                if hour == 'meta':
-                    continue
+            hours = hours.union(self.fdvt.data[day].keys())#.difference(['meta'])
+            for hour in self.fdvt.data[day].keys():
+                # if hour == 'meta':
+                #     continue
 
-                minutes = minutes.union(self.fdvt.tree[day][hour].keys()).difference(['meta'])
+                minutes = minutes.union(self.fdvt.data[day][hour].keys())#.difference(['meta'])
 
         self.rangeTemplate =  {'days': sorted(days),
                                'hours': sorted(hours),
@@ -320,21 +320,17 @@ class GraphicsViewFDV(QtGui.QWidget):
 
     def getFdvtLabel(self, level, instance):
         if level == "frames":
-            return self.fdvt.tree[self.day][self.hour][self.minute]['data'][instance] \
+            return self.fdvt.data[self.day][self.hour][self.minute][instance] \
                                 * self.frameResolution
 
         if level == "minutes":
-            return sorted([x for x in \
-                                self.fdvt.tree[self.day][self.hour].keys()\
-                                    if x != 'meta'])[instance]
+            return sorted(self.fdvt.data[self.day][self.hour].keys())[instance]
 
         if level == "hours":
-            return sorted([x for x in self.fdvt.tree[self.day].keys()\
-                                    if x != 'meta'])[instance]
+            return sorted(self.fdvt.data[self.day].keys())[instance]
 
         if level == "days":
-            return sorted([x for x in self.fdvt.tree.keys()\
-                                    if x != 'meta'])[instance]
+            return sorted(self.fdvt.data.keys())[instance]
 
     def getTemplateLabel(self, level, instance):
         if self.rangeTemplate[level] is None:
@@ -604,13 +600,13 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         self.fdvt.generateConfidencePlotData(day, hour, minute, frame,
                                                 self.frameResolution)
-        dayIdx = sorted(self.fdvt.tree.keys()).index(day)
+        dayIdx = sorted(self.fdvt.data.keys()).index(day)
         self.plotDays(self.fdvt, dayIdx)
 
-        hourIdx = sorted(self.fdvt.tree[day].keys()).index(hour)
+        hourIdx = sorted(self.fdvt.data[day].keys()).index(hour)
         self.plotHours(self.fdvt, hourIdx)
 
-        minuteIdx = sorted(self.fdvt.tree[day][hour].keys()).index(minute)
+        minuteIdx = sorted(self.fdvt.data[day][hour].keys()).index(minute)
         self.plotMinutes(self.fdvt, minuteIdx)
         #
         self.plotFrames(self.fdvt, frame)
@@ -634,16 +630,13 @@ class GraphicsViewFDV(QtGui.QWidget):
             self.frame = 0
 
         if level == "minutes":
-            self.minute = sorted([x for x in self.fdvt.tree[self.day][self.hour].keys()\
-                                    if x != 'meta'])[instance]
+            self.minute = sorted(self.fdvt.data[self.day][self.hour].keys())[instance]
 
         if level == "hours":
-            self.hour = sorted([x for x in self.fdvt.tree[self.day].keys()\
-                                    if x != 'meta'])[instance]
+            self.hour = sorted(self.fdvt.data[self.day].keys())[instance]
 
         if level == "days":
-            self.day = sorted([x for x in self.fdvt.tree.keys()\
-                                    if x != 'meta'])[instance]
+            self.day = sorted(self.fdvt.data.keys())[instance]
 
         t1 = time.time()
         self.plotData(self.day, self.hour, self.minute, self.frame)
