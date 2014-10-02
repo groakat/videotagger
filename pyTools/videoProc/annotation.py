@@ -233,7 +233,7 @@ class Annotation():
         
         out = Annotation()
         out.setFrameList(filteredList)
-        self.children += [out]
+        # self.children += [out]
         
         return out
 
