@@ -1,5 +1,7 @@
 import pyTools.system.misc as systemMisc
-import pyTools.misc.FrameDataVisualization as FDV
+import pyTools.misc.FrameDataVisualization2 as FDV
+from pyTools.videoTagger.videoTagger import VideoTagger
+
 import json
 import sys
 import argparse
@@ -54,57 +56,75 @@ if __name__ == "__main__":
     
        
     args = parser.parse_args()
-    
-    if args.config_file == None:
-        print textwrap.dedent(\
-            """
-            Expect configuration file (-c option). 
-            Run 'python videoPlayer_pySide.py -h' for more information
-            """)
-        sys.exit()
-        
-    import ConfigParser    
-    config = ConfigParser.ConfigParser()
-    config.read(args.config_file)
-    
-    def configSectionMap(section):
-        " https://wiki.python.org/moin/ConfigParserExamples"
-        dict1 = {}
-        options = config.options(section)
-        for option in options:
-            try:
-                dict1[option] = config.get(section, option)
-                if dict1[option] == -1:
-                    print("skip: %s" % option)
-            except:
-                print("exception on %s!" % option)
-                dict1[option] = None
-        return dict1
-        
-    videoPath = configSectionMap('Video')['videopath']
-    bhvrCachePath = configSectionMap('Video')['bhvr-cache']    
-    fdvtPath = configSectionMap('Video')['frame-data-visualization-path']
-    runningIndeces = configSectionMap('Video')['files-running-indices']
-    
-    print "start parsing"
+    #
+    # if args.config_file == None:
+    #     print textwrap.dedent(\
+    #         """
+    #         Expect configuration file (-c option).
+    #         Run 'python videoPlayer_pySide.py -h' for more information
+    #         """)
+    #     sys.exit()
+    #
+    # import ConfigParser
+    # config = ConfigParser.ConfigParser()
+    # config.read(args.config_file)
+    #
+    # def configSectionMap(section):
+    #     " https://wiki.python.org/moin/ConfigParserExamples"
+    #     dict1 = {}
+    #     options = config.options(section)
+    #     for option in options:
+    #         try:
+    #             dict1[option] = config.get(section, option)
+    #             if dict1[option] == -1:
+    #                 print("skip: %s" % option)
+    #         except:
+    #             print("exception on %s!" % option)
+    #             dict1[option] = None
+    #     return dict1
+    #
+    # videoPath = configSectionMap('Video')['videopath']
+    # bhvrCachePath = configSectionMap('Video')['bhvr-cache']
+    # fdvtPath = configSectionMap('Video')['frame-data-visualization-path']
+    # runningIndeces = configSectionMap('Video')['files-running-indices']
+    #
+    # print "start parsing"
+    # if videoPath.endswith('avi'):
+    #     videoPath = os.path.dirname(videoPath)
+    #
+    # bhvrList = systemMisc.providePosList(videoPath, ending='.bhvr')
+    # print videoPath
+    #
+    # with open(bhvrCachePath, "w") as f:
+    #     json.dump(bhvrList, f)
+    #
+    # print "finished caching"
+    #
+    # print "cache behaviour visualization"
+    # annotations = json.loads(configSectionMap('Annotation')['annotations'])
+    # try:
+    #     selectedVial = [config.getint('Video','vial')]
+    # except:
+    #     selectedVial = None
+
+
+    videoPath, annotations, backgroundPath, selectedVial, vialROI, \
+    filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
+    runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
+    bufferLength = VideoTagger.parseConfig(args.config_file)
+
+    print "start searching bhvr files"
     if videoPath.endswith('avi'):
         videoPath = os.path.dirname(videoPath)
 
     bhvrList = systemMisc.providePosList(videoPath, ending='.bhvr')
-    print videoPath
-    
-    with open(bhvrCachePath, "w") as f:
+    print bhvrList
+
+    with open(bhvrListPath, "w") as f:
         json.dump(bhvrList, f)
-        
-    print "finished caching"
-    
-    print "cache behaviour visualization"    
-    annotations = json.loads(configSectionMap('Annotation')['annotations'])
-    try:
-        selectedVial = [config.getint('Video','vial')]
-    except:
-        selectedVial = None
-        
+
+
+    print "start parsting bhvr files"
     fdtv = FDV.FrameDataVisualizationTreeBehaviour()
     fdtv.importAnnotations(bhvrList, annotations, selectedVial, runningIndeces=runningIndeces)
     fdtv.save(fdvtPath)
