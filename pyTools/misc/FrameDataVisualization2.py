@@ -4,6 +4,7 @@ import warnings
 import pyTools.misc.basic as bsc
 import pyTools.videoProc.annotation as Annotation
 
+from memory_profiler import profile
 
 def filename2Time(f):
     timestamp = f.split('/')[-1]
@@ -394,7 +395,16 @@ class FrameDataVisualizationTreeBase(object):
         return day, hour, minute, frame
 
     def getDeltaPositionSingleFile(self, key, frame):
-        return frame
+        framerate = 30
+
+        day = int(np.ceil(frame / (24 * 60 * 60 * framerate)))
+        frame -= (24 * 60 * 60 * framerate) * day
+        hour = int(np.ceil(frame / (60 * 60 * framerate)))
+        frame -= (60 * 60 * framerate) * hour
+        minute = int(np.ceil(frame / (60 * framerate)))
+        frame -= 60 * framerate * minute
+
+        return day, hour, minute, frame
 
 
     def serializeData(self):
@@ -436,6 +446,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         self.meta['isCategoric'] = True
         self.meta['filtList'] = []
         self.meta['maxClass'] = 0
+        self.meta['singleFileMode'] = True
 
 
     def verifyStructureExists(self, day, hour, minute):
@@ -454,10 +465,36 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             self.hier[day][hour][minute]['meta']['stack'] = np.zeros(self.meta['maxClass'])
 
 
+    def dict2array(self, d):
+        if d:
+            ar = np.zeros((self.meta['maxClass'], max(d.keys()) + 1))
+            for k, frame in d.items():
+                for c, v in frame.items():
+                    ar[c, k] = v
+        else:
+            ar = np.zeros((self.meta['maxClass'], 1))
+
+        return ar
+
+    def insertDeltaValue(self, deltaValue):
+        key = deltaValue[0]
+        data = deltaValue[1]
+
+        self.verifyStructureExists(key[0], key[1], key[2])
+        self.insertSampleIncrement(*key, dataKey=data, dataInc=1)
+        frameArray = self.dict2array({key[3]:{data: 1}})
+        self.addFrameArrayToStack(key[0], key[1], key[2], frameArray)
 
     def insertFrameArray(self, day, hour, minute, frames):
-        super(FrameDataVisualizationTreeBehaviour, self).insertFrameArray(day, hour, minute, frames)
-        self.addFrameArrayToStack(day, hour, minute, frames)
+        # super(FrameDataVisualizationTreeBehaviour, self).insertFrameArray(day, hour, minute, frames)
+        for k, i in frames.items():
+            self.addSample(day, hour, minute, k, i)
+
+        self.verifyStructureExists(day, hour, minute)
+        # frameList = [i for k, i in frames.items()]
+        if frames.items():
+            frameArray = self.dict2array(frames)
+            self.addFrameArrayToStack(day, hour, minute, frameArray)
 
 
     def addFrameArrayToStack(self, day, hour, minute, frames):
@@ -494,20 +531,67 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         self.propagateStack(day, hour, minute, stack)
 
 
+
+
+    def updateMax(self, day, hour, minute, data):
+        m = np.sum(data)
+        super(FrameDataVisualizationTreeBehaviour, self).updateMax(day,
+                                                                   hour,
+                                                                   minute,
+                                                                   m)
+
+    def insertSampleIncrement(self, day, hour, minute, frame, dataKey, dataInc):
+        try:
+            self.data[day][hour][minute][frame][dataKey] += dataInc
+        except KeyError:
+            try:
+                self.data[day][hour][minute][frame][dataKey] = dataInc
+            except KeyError:
+                self.data[day][hour][minute][frame] = {dataKey:dataInc}
+
+        data = self.data[day][hour][minute][frame]
+        self.updateMax(day, hour, minute, data)
+        # self.addSampleToMean(day, hour, minute, data)
+        self.meta['totalNoFrames'] += dataInc
+
+    def insertSample(self, day, hour, minute, frame, data):
+        self.data[day][hour][minute][frame] = data
+        self.updateMax(day, hour, minute, data)
+        # self.addSampleToMean(day, hour, minute, data)
+        self.meta['totalNoFrames'] += 1
+
     def calcStack(self, data):
         if np.max(data) > self.meta['maxClass']:
             self.meta['maxClass'] = int(np.max(data))
-        return bsc.countInt(data.astype(np.int),
-                            minLength=self.meta['maxClass'] + 1)[1:,1]
+        # return bsc.countInt(data.astype(np.int),
+        #                     minLength=self.meta['maxClass'] + 1)[1:,1]
+        return np.sum(data, axis=1)
 
+    # @profile
     def convertFrameListToDatum(self, anno, frameSlc, filtList):
-        data = np.zeros((len(anno.frameList[frameSlc])))
-        for l in range(len(filtList)):
-            filteredAnno = anno.filterFrameList(filtList[l])
+        # data = np.zeros((len(anno.frameList[frameSlc])))
+        data = dict()
+        for l in xrange(len(filtList)):
+            filteredAnno = anno.filterFrameList(filtList[l],
+                                                exactMatch=False)
 
-            for i in range(frameSlc.start, frameSlc.stop):
+            for i in xrange(frameSlc.start, frameSlc.stop):
                 if filteredAnno.frameList[i][0] is not None:
-                    data[i - frameSlc.start] = l + 1
+                    try:
+                        data[i - frameSlc.start][l] = \
+                            len(filteredAnno.frameList[i][0].keys())
+                    except KeyError:
+                        # data[i - frameSlc.start] = \
+                        #     np.zeros((self.meta['maxClass'], 1))
+                        # data[i - frameSlc.start][l] = \
+                        #     len(filteredAnno.frameList[i][0].keys())
+
+                        data[i - frameSlc.start] = \
+                            {l: len(filteredAnno.frameList[i][0].keys())}
+
+                    # if filtList[l].behaviours == ['test']:
+                    #     1/0
+                    # data[i - frameSlc.start] = l + 1
 
         return data
 
@@ -526,10 +610,10 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         self.meta['filtList'] += [filt]
         self.meta['maxClass'] = len(self.meta['filtList'])
 
-
+    # @profile
     def importAnnotationsFromSingleFile(self, bhvrList, annotations, vials,
                                         runningIndeces=False, fps=30):
-        self.singleFileMode = True
+        self.meta['singleFileMode'] = True
 
         # filtList = []
         self.resetAllSamples()
@@ -556,7 +640,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             return
 
         i = 0
-        for k in range(fps * 60, len(anno.frameList), fps * 60):
+        for k in xrange(fps * 60, len(anno.frameList), fps * 60):
             print k, day, hour, minute
             frameSlc = slice(i, k)
             data = self.convertFrameListToDatum(anno, frameSlc,
@@ -572,7 +656,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                                                  runningIndeces=False, fps=30)
             return
         else:
-            self.singleFileMode = False
+            self.meta['singleFileMode'] = False
 
         filtList = []
         self.resetAllSamples()
@@ -588,13 +672,16 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         self.meta['filtList'] = filtList
         self.meta['maxClass'] = len(filtList)
 
+        if len(filtList) == 0:
+            raise ValueError("no annotations specified!")
+
         for f in bhvrList:
             # load annotation and filter it #
             anno = Annotation.Annotation()
 
             anno.loadFromFile(f)
 
-            data = np.zeros((len(anno.frameList)))
+            # data = np.zeros((len(anno.frameList)))
 
             for l in range(len(filtList)):
 
@@ -609,26 +696,26 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
                 for i in range(len(filteredAnno.frameList)):
                     if filteredAnno.frameList[i][0] is not None:
-                        if data[i] != 0:
-                            warnings.warn("Ambigous label of frame {f} in {d}".format(f=i, d=f))
-                        data[i] = l + 1
-
-            if len(filtList) == 0:
-                warnings.warn("no annotations specified!")
-            else:
-                self.insertFrameArray(day, hour, minute, data)
+                        self.addSample(day, hour, minute,
+                                              filteredAnno.frameList[i][0])
+            #             if data[i] != 0:
+            #                 warnings.warn("Ambigous label of frame {f} in {d}".format(f=i, d=f))
+            #             data[i] = l + 1
+            #
+            # else:
+            #     self.insertFrameArray(day, hour, minute, data)
 
 
 
     def getAnnotationFilterCode(self, filt):
         for i in range(len(self.meta['filtList'])):
             if self.meta['filtList'][i] == filt:
-                return i + 1
+                return i
 
         return None
 
     def getDeltaValue(self, key, frame, filt):
-        if self.singleFileMode:
+        if self.meta['singleFileMode']:
             return [self.getDeltaPositionSingleFile(key, frame),
                     self.getAnnotationFilterCode(filt)]
         else:
@@ -685,15 +772,16 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         plotData['tick'] = []
 
 
-        data = np.asarray([int(x) for k, x in inData.items()])
+        data = self.dict2array(inData).T#np.asarray([int(x) for k, x in inData.items()])
         # data = data.astype(np.int) #self.tree[day][hour][minute]['data'].astype(np.int)
+        # 1/0
 
         res = np.zeros((np.ceil(data.shape[0] / np.float(frameResolution)),
                         self.meta['maxClass']))
         rng = slice(0, frameResolution)
 
         for i in range(res.shape[0]):
-            res[i,:] = self.calcStack(data[rng])
+            res[i,:] = np.sum(data[rng], axis=0)#self.calcStack(data[rng])
             rng = slice(rng.stop, rng.stop + frameResolution)
 
 
@@ -701,29 +789,6 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         plotData['weight'] = np.ones((res.shape[1]))
         plotData['tick'] = range(0, data.shape[0], frameResolution)
 
-
-
-
-
-    # def serializeData(self):
-    #     msg = self.flatten()
-    #     msg['data'] = msg['data'].tostring()
-    #     msg['meta']['stack'] = msg['meta']['stack'].tostring()
-    #
-    #     return msg
-    #
-    #
-    # def deserialize(self, msg):
-    #     msg['data'] = np.fromstring(msg['data'])
-    #     msg['meta']['stack'] = np.fromstring(msg['meta']['stack'])
-    #
-    #     self.unflatten(msg)
-
-    #
-    # def load(self, filename):
-    #     super(FrameDataVisualizationTreeBehaviour, self).load(filename)
-    #
-    #     self.meta['maxClass'] = len(self.tree['meta']['filtList'])# + 1
 
     def getClassOccurances(self, classNo):
         occurranceList = []

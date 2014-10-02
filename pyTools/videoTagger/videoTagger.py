@@ -28,7 +28,7 @@ import pyTools.videoTagger.hud as HUD
 if sys.platform != "win32":
     import pyTools.videoTagger.RPCController as RPC
 
-import pyTools.misc.FrameDataVisualization as FDV
+import pyTools.misc.FrameDataVisualization2 as FDV
 import pyTools.videoTagger.graphicsViewFDV as GFDV
 import pyTools.gui.collapseContainer as CC
 

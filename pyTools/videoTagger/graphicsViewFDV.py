@@ -29,11 +29,11 @@ class Test(QtGui.QMainWindow):
 
         # self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v0.npy')
         c = [QtGui.QColor(0, 255, 0),
-            QtGui.QColor(0,  0, 255)]#,
-            # QtGui.QColor(255, 0, 0)]#,
-                            # QtGui.QBrush(QtGui.QColor(0, 0, 0))]
+            QtGui.QColor(0,  0, 255),
+            QtGui.QColor(255, 0, 0),
+            QtGui.QColor(0, 0, 0)]
         self.gvFDV.setColors(c)
-        self.gvFDV.loadSequence('/media/peter/Seagate Backup Plus Drive/peter/behaviourTreeTest.npy')
+        self.gvFDV.loadSequence('/media/peter/Seagate Backup Plus Drive/peter/behaviourTree.npy')
 
         self.show()
 
@@ -68,7 +68,10 @@ class Test(QtGui.QMainWindow):
 
     def exampleCallbackFunction(self, day, hour, minute, frame):
         print(day, hour, minute, frame)
-        print(self.gvFDV.fdvt.data[day][hour][minute][frame])
+        try:
+            print(self.gvFDV.fdvt.data[day][hour][minute][frame])
+        except KeyError:
+            pass
 
 class GraphicsViewFDV(QtGui.QWidget):
 
@@ -199,22 +202,31 @@ class GraphicsViewFDV(QtGui.QWidget):
         minutes = set()
         frames = list(np.arange(np.floor(1800 / self.frameResolution), dtype=float))
 
-        days = days.union(self.fdvt.data.keys())#.difference(['meta'])
-        for day in self.fdvt.data.keys():
-            # if day == 'meta':
-            #     continue
+        days = days.union(self.fdvt.hier.keys()).difference(['meta'])
+        for day in self.fdvt.hier.keys():
+            if day == 'meta':
+                continue
 
-            hours = hours.union(self.fdvt.data[day].keys())#.difference(['meta'])
-            for hour in self.fdvt.data[day].keys():
-                # if hour == 'meta':
-                #     continue
+            hours = hours.union(self.fdvt.hier[day].keys()).difference(['meta'])
+            for hour in self.fdvt.hier[day].keys():
+                if hour == 'meta':
+                    continue
 
-                minutes = minutes.union(self.fdvt.data[day][hour].keys())#.difference(['meta'])
+                minutes = minutes.union(self.fdvt.hier[day][hour].keys()).difference(['meta'])
 
         self.rangeTemplate =  {'days': sorted(days),
                                'hours': sorted(hours),
                                'minutes': sorted(minutes),
                                'frames': frames}
+
+        for frame in frames:
+            self.addElement('frames', 0)
+            rect = self.rects['frames'][-1]
+            for k, barLet in enumerate(rect.childItems()):
+                geo = barLet.rect()
+                geo.setY(0)
+                geo.setHeight(0)
+                barLet.setRect(geo)
 
 
 
@@ -320,8 +332,9 @@ class GraphicsViewFDV(QtGui.QWidget):
 
     def getFdvtLabel(self, level, instance):
         if level == "frames":
-            return self.fdvt.data[self.day][self.hour][self.minute][instance] \
-                                * self.frameResolution
+            return instance * self.frameResolution
+                # self.fdvt.data[self.day][self.hour][self.minute][instance] \
+                #                 * self.frameResolution
 
         if level == "minutes":
             return sorted(self.fdvt.data[self.day][self.hour].keys())[instance]
@@ -427,6 +440,8 @@ class GraphicsViewFDV(QtGui.QWidget):
                 r.setWidth(1.0 / len(clickRects))
                 bar.setRect(r)
                 # bar.setPos(x, y)
+
+
 
 
 
@@ -630,13 +645,13 @@ class GraphicsViewFDV(QtGui.QWidget):
             self.frame = 0
 
         if level == "minutes":
-            self.minute = sorted(self.fdvt.data[self.day][self.hour].keys())[instance]
+            self.minute = sorted(self.fdvt.hier[self.day][self.hour].keys())[instance]
 
         if level == "hours":
-            self.hour = sorted(self.fdvt.data[self.day].keys())[instance]
+            self.hour = sorted(self.fdvt.hier[self.day].keys())[instance]
 
         if level == "days":
-            self.day = sorted(self.fdvt.data.keys())[instance]
+            self.day = sorted(self.fdvt.hier.keys())[instance]
 
         t1 = time.time()
         self.plotData(self.day, self.hour, self.minute, self.frame)
