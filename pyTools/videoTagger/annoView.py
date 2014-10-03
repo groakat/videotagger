@@ -158,6 +158,8 @@ class AnnoView(QtGui.QWidget):
         self.addingAnno = False
         self.tempAnno = dict()
 
+        self.inEditMode = False
+
         
         # setting values
         self.scene = QtGui.QGraphicsScene(self.gV)
@@ -510,6 +512,9 @@ class AnnoView(QtGui.QWidget):
              
     @cfg.logClassFunction
     def addTempAnno(self, key=None, idx=None, metadata=None):
+        if self.inEditMode:
+            return
+
         if key is None:
             key = self.selKey
         if idx is None:

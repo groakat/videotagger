@@ -479,10 +479,12 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
     def insertDeltaValue(self, deltaValue):
         key = deltaValue[0]
         data = deltaValue[1]
+        increment = deltaValue[2]
+
 
         self.verifyStructureExists(key[0], key[1], key[2])
-        self.insertSampleIncrement(*key, dataKey=data, dataInc=1)
-        frameArray = self.dict2array({key[3]:{data: 1}})
+        self.insertSampleIncrement(*key, dataKey=data, dataInc=increment)
+        frameArray = self.dict2array({key[3]:{data: increment}})
         self.addFrameArrayToStack(key[0], key[1], key[2], frameArray)
 
     def insertFrameArray(self, day, hour, minute, frames):
@@ -542,12 +544,22 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
     def insertSampleIncrement(self, day, hour, minute, frame, dataKey, dataInc):
         try:
+            if dataInc < 0:
+                oldData = self.data[day][hour][minute][frame][dataKey]
+                if oldData == self.hier[day][hour][minute]['meta']['max']:
+                    newMax = np.max([np.sum(self.data[day][hour][minute][k]) \
+                                for k in self.data[day][hour][minute].keys()])
+                    self.updateMax(day, hour, minute, newMax)
+
             self.data[day][hour][minute][frame][dataKey] += dataInc
         except KeyError:
             try:
                 self.data[day][hour][minute][frame][dataKey] = dataInc
             except KeyError:
                 self.data[day][hour][minute][frame] = {dataKey:dataInc}
+
+        if self.data[day][hour][minute][frame][dataKey] <= 0:
+            del self.data[day][hour][minute][frame][dataKey]
 
         data = self.data[day][hour][minute][frame]
         self.updateMax(day, hour, minute, data)
@@ -714,13 +726,15 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
         return None
 
-    def getDeltaValue(self, key, frame, filt):
+    def getDeltaValue(self, key, frame, filt, increment=1):
         if self.meta['singleFileMode']:
             return [self.getDeltaPositionSingleFile(key, frame),
-                    self.getAnnotationFilterCode(filt)]
+                    self.getAnnotationFilterCode(filt),
+                    increment]
         else:
             return [self.getDeltaPositionMultipleFiles(key, frame),
-                    self.getAnnotationFilterCode(filt)]
+                    self.getAnnotationFilterCode(filt),
+                    increment]
 
 
 

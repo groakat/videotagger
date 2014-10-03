@@ -1308,26 +1308,46 @@ class VideoTagger(QtGui.QMainWindow):
     def deleteLeftLabels(self):
         annotator = self.lastLabelRectContext.annotator
         behaviour = self.lastLabelRectContext.behaviour
-        self.vh.eraseAnnotationSequence(self.selectedVial, annotator,
-                                        behaviour, direction='left')
+        labelledFrames = self.vh.eraseAnnotationSequence(self.selectedVial,
+                                                         annotator,
+                                                         behaviour,
+                                                         direction='left')
+
+        labelledFrames = (labelledFrames[0], labelledFrames[1], -1)
+        self.convertLabelListAndReply(labelledFrames)
 
     def deleteRightLabels(self):
         annotator = self.lastLabelRectContext.annotator
         behaviour = self.lastLabelRectContext.behaviour
-        self.vh.eraseAnnotationSequence(self.selectedVial, annotator,
-                                        behaviour, direction='right')
+        labelledFrames = self.vh.eraseAnnotationSequence(self.selectedVial,
+                                                         annotator,
+                                                         behaviour,
+                                                         direction='right')
+
+        labelledFrames = (labelledFrames[0], labelledFrames[1], -1)
+        self.convertLabelListAndReply(labelledFrames)
 
     def deleteAllLabels(self):
         annotator = self.lastLabelRectContext.annotator
         behaviour = self.lastLabelRectContext.behaviour
-        self.vh.eraseAnnotationSequence(self.selectedVial, annotator,
-                                        behaviour, direction='both')
+        labelledFrames = self.vh.eraseAnnotationSequence(self.selectedVial,
+                                                         annotator,
+                                                         behaviour,
+                                                         direction='both')
+
+        labelledFrames = (labelledFrames[0], labelledFrames[1], -1)
+        self.convertLabelListAndReply(labelledFrames)
 
     def deleteLabel(self):
         annotator = self.lastLabelRectContext.annotator
         behaviour = self.lastLabelRectContext.behaviour
-        self.vh.eraseAnnotationCurrentFrame(self.selectedVial, annotator,
-                                            behaviour)
+        labelledFrames = self.vh.eraseAnnotationCurrentFrame(self.selectedVial,
+                                                             annotator,
+                                                             behaviour)
+
+        labelledFrames = (labelledFrames[0], labelledFrames[1], -1)
+        self.convertLabelListAndReply(labelledFrames)
+
 
     def lineEditChanged(self):
         self.menu.hide()
@@ -1989,6 +2009,16 @@ class VideoTagger(QtGui.QMainWindow):
         frames = labelledFrames[0]
         filt = labelledFrames[1]
 
+        for i in range(len(filt.behaviours)):
+            if len(filt.behaviours[i].split("_")) > 1:
+                try:
+                    test = int(filt.behaviours[i].split("_")[-1])
+                    filt.behaviours[i] = "_".join(filt.behaviours[i].split("_")[:-1])
+                except ValueError:
+                    pass
+
+        increment = labelledFrames[2]
+
         deltaVector = []
         for key in frames.keys():
             # treeKey = FDV.filename2Time(key)
@@ -1998,10 +2028,10 @@ class VideoTagger(QtGui.QMainWindow):
             for frame in frames[key]:
                 # deltaVector += [[self.fdvt.key2idx(day, hour, minute, frame),
                 #                 self.fdvt.getAnnotationFilterCode(filt)]]
-                dv = self.fdvt.getDeltaValue(key, frame, filt)
+                dv = self.fdvt.getDeltaValue(key, frame, filt, increment)
                 if dv[1] is None:
                     self.fdvt.addNewClass(filt)
-                    dv = self.fdvt.getDeltaValue(key, frame, filt)
+                    dv = self.fdvt.getDeltaValue(key, frame, filt, increment)
                 deltaVector += [dv]
 
 
@@ -2105,7 +2135,9 @@ class VideoTagger(QtGui.QMainWindow):
                                 labelledFrames[1].vials,
                                 labelledFrames[1].annotators,
                                 [newBehaviour])
-                labelledFrames = (labelledFrames[0], newFilt)
+                labelledFrames = (labelledFrames[0], newFilt, 1)
+            else:
+                labelledFrames = (labelledFrames[0], labelledFrames[1], 1)
 
             self.convertLabelListAndReply(labelledFrames)
 

@@ -1304,7 +1304,12 @@ class VideoHandler(QtCore.QObject):
 
         self.eraseAnnotationRange(rngs, vials, annotator, behaviour)
 
+
+        return rngs, filt
+
     def eraseAnnotationCurrentFrame(self, vials, annotator, behaviour):
+        filt = Annotation.AnnotationFilter(vials, [annotator],
+                                              [behaviour])
         rngs = {self.posPath: [self.idx]}
 
         if vials is None:
@@ -1312,6 +1317,7 @@ class VideoHandler(QtCore.QObject):
 
         self.eraseAnnotationRange(rngs, vials, annotator, behaviour)
 
+        return rngs, filt
 
     @cfg.logClassFunction
     def escapeAnnotationAlteration(self):
