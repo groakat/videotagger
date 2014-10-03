@@ -1997,6 +1997,17 @@ class VideoTagger(QtGui.QMainWindow):
         
         return metadata
 
+    def removeIDFromBehaviour(self, filt):
+        for i in range(len(filt.behaviours)):
+            if len(filt.behaviours[i].split("_")) > 1:
+                try:
+                    test = int(filt.behaviours[i].split("_")[-1])
+                    filt.behaviours[i] = "_".join(filt.behaviours[i].split("_")[:-1])
+                except ValueError:
+                    pass
+
+        return filt
+
     def convertLabelListAndReply(self, labelledFrames):
         """
         Args
@@ -2009,13 +2020,7 @@ class VideoTagger(QtGui.QMainWindow):
         frames = labelledFrames[0]
         filt = labelledFrames[1]
 
-        for i in range(len(filt.behaviours)):
-            if len(filt.behaviours[i].split("_")) > 1:
-                try:
-                    test = int(filt.behaviours[i].split("_")[-1])
-                    filt.behaviours[i] = "_".join(filt.behaviours[i].split("_")[:-1])
-                except ValueError:
-                    pass
+        filt = self.removeIDFromBehaviour(filt)
 
         increment = labelledFrames[2]
 
@@ -2143,8 +2148,9 @@ class VideoTagger(QtGui.QMainWindow):
 
 
     def addTempAnno(self):
-        self.postLabelQuery = True
-        self.addAnno(self.annotations[0]['annot'], "unknown")
+        if not self.inEditMode:
+            self.postLabelQuery = True
+            self.addAnno(self.annotations[0]['annot'], "unknown")
 
 #     @cfg.logClassFunction
     def eraseAnno(self, annotator="peter", behaviour="just testing"):      
