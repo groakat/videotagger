@@ -247,7 +247,13 @@ class FrameDataVisualizationTreeBase(object):
         self.plotData['days']['data'] = []
         self.plotData['days']['weight'] = []
         self.plotData['days']['tick'] = []
-        for key in sorted(self.data.keys()):
+        if self.data == dict():
+            self.plotData['days']['data'] += [0]
+            self.plotData['days']['weight'] += [0]
+            self.plotData['days']['tick'] += [0]
+            return
+
+        for key in sorted(self.hier.keys()):
             if key in ['meta']:
                 continue
 
@@ -262,7 +268,16 @@ class FrameDataVisualizationTreeBase(object):
         self.plotData['hours']['data'] = []
         self.plotData['hours']['weight'] = []
         self.plotData['hours']['tick'] = []
-        for key in sorted(self.data[day].keys()):
+        if self.data == dict():
+            self.plotData['hours']['data'] += [0]
+            self.plotData['hours']['weight'] += [0]
+            self.plotData['hours']['tick'] += [0]
+            return
+
+        for key in sorted(self.hier[day].keys()):
+            if key in ['meta']:
+                continue
+
             self.plotData['hours']['data'] += \
                                             [self.hier[day][key]['meta']['max']]
             self.plotData['hours']['weight'] += \
@@ -275,7 +290,16 @@ class FrameDataVisualizationTreeBase(object):
         self.plotData['minutes']['data'] = []
         self.plotData['minutes']['weight'] = []
         self.plotData['minutes']['tick'] = []
-        for key in sorted(self.data[day][hour].keys()):
+        if self.data == dict():
+            self.plotData['minutes']['data'] += [0]
+            self.plotData['minutes']['weight'] += [0]
+            self.plotData['minutes']['tick'] += [0]
+            return
+
+        for key in sorted(self.hier[day][hour].keys()):
+            if key in ['meta']:
+                continue
+
             self.plotData['minutes']['data'] += \
                                     [self.hier[day][hour][key]['meta']['max']]
             self.plotData['minutes']['weight'] += \
@@ -289,10 +313,19 @@ class FrameDataVisualizationTreeBase(object):
         self.plotData['frames']['data'] = []
         self.plotData['frames']['weight'] = []
         self.plotData['frames']['tick'] = []
+        if self.data == dict():
+            self.plotData['frames']['data'] += [0]
+            self.plotData['frames']['weight'] += [0]
+            self.plotData['frames']['tick'] += [0]
+            return
+
         cnt = 0
         tmpVal = []
         tmpKeys = []
-        for key in sorted(self.data[day][hour][minute].keys()):
+        for key in sorted(self.hier[day][hour][minute].keys()):
+            if key in ['meta']:
+                continue
+
             tmpVal += [self.data[day][hour][minute][key]]
             tmpKeys += [key]
             cnt += 1
@@ -447,6 +480,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         self.meta['filtList'] = []
         self.meta['maxClass'] = 0
         self.meta['singleFileMode'] = True
+        self.meta['not-initialized'] = True
 
 
     def verifyStructureExists(self, day, hour, minute):
@@ -622,6 +656,32 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         self.meta['filtList'] += [filt]
         self.meta['maxClass'] = len(self.meta['filtList'])
 
+
+    def importAnnotation(self, annotation, fps=30):
+        day = 0
+        hour = 0
+        minute = 0
+
+        if len(annotation.frameList) < fps * 60:
+            frameSlc = slice(0, len(annotation.frameList))
+            data = self.convertFrameListToDatum(annotation, frameSlc,
+                                                self.meta['filtList'])
+            self.insertFrameArray(day, hour, minute, data)
+            self.meta['not-initialized'] = False
+            return
+
+        i = 0
+        for k in xrange(fps * 60, len(annotation.frameList), fps * 60):
+            print k, day, hour, minute
+            frameSlc = slice(i, k)
+            data = self.convertFrameListToDatum(annotation, frameSlc,
+                                                self.meta['filtList'])
+            self.insertFrameArray(day, hour, minute, data)
+            day, hour, minute = self.incrementTime(day, hour, minute)
+            i = k
+
+            self.meta['not-initialized'] = False
+
     # @profile
     def importAnnotationsFromSingleFile(self, bhvrList, annotations, vials,
                                         runningIndeces=False, fps=30):
@@ -640,29 +700,14 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         anno = Annotation.Annotation()
         anno.loadFromFile(bhvrList[0])
 
-        day = 0
-        hour = 0
-        minute = 0
-
-        if len(anno.frameList) < fps * 60:
-            frameSlc = slice(0, len(anno.frameList))
-            data = self.convertFrameListToDatum(anno, frameSlc,
-                                                self.meta['filtList'])
-            self.insertFrameArray(day, hour, minute, data)
-            return
-
-        i = 0
-        for k in xrange(fps * 60, len(anno.frameList), fps * 60):
-            print k, day, hour, minute
-            frameSlc = slice(i, k)
-            data = self.convertFrameListToDatum(anno, frameSlc,
-                                                self.meta['filtList'])
-            self.insertFrameArray(day, hour, minute, data)
-            day, hour, minute = self.incrementTime(day, hour, minute)
-            i = k
+        self.importAnnotation(anno, fps)
 
 
     def importAnnotations(self, bhvrList, annotations, vials, runningIndeces=False, fps=30):
+        if len(bhvrList) == 0:
+            self.resetAllSamples()
+            return
+
         if len(bhvrList) == 1:
             self.importAnnotationsFromSingleFile(bhvrList, annotations, vials,
                                                  runningIndeces=False, fps=30)
@@ -717,6 +762,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             # else:
             #     self.insertFrameArray(day, hour, minute, data)
 
+            self.meta['not-initialized'] = False
 
 
     def getAnnotationFilterCode(self, filt):
@@ -757,6 +803,28 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
     def generatePlotDataFrames(self, day, hour, minute, frame,
                                frameResolution=1):
 
+        # if self.data == dict():
+        #     self.plotData['days'] = dict()
+        #     self.plotData['days']['data'] = [0]
+        #     self.plotData['days']['weight'] = [0]
+        #     self.plotData['days']['tick'] = [0]
+        #
+        #     self.plotData['hours'] = dict()
+        #     self.plotData['hours']['data'] = [0]
+        #     self.plotData['hours']['weight'] = [0]
+        #     self.plotData['hours']['tick'] = [0]
+        #
+        #     self.plotData['minutes'] = dict()
+        #     self.plotData['minutes']['data'] = [0]
+        #     self.plotData['minutes']['weight'] = [0]
+        #     self.plotData['minutes']['tick'] = [0]
+        #
+        #     self.plotData['frames'] = dict()
+        #     self.plotData['frames']['data'] = [0]
+        #     self.plotData['frames']['weight'] = [0]
+        #     self.plotData['frames']['tick'] = [0]
+        #     return
+
         self.plotData['days'] = dict()
         stack = self.getStackFromStump(self.hier)
         self.plotData['days']['data'] = np.asarray(stack)#.T
@@ -785,6 +853,12 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         plotData['weight'] = []
         plotData['tick'] = []
 
+
+        if self.data == dict():
+            plotData['data'] += [0]
+            plotData['weight'] += [0]
+            plotData['tick'] += [0]
+            return
 
         data = self.dict2array(inData).T#np.asarray([int(x) for k, x in inData.items()])
         # data = data.astype(np.int) #self.tree[day][hour][minute]['data'].astype(np.int)

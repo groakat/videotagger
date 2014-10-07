@@ -429,7 +429,7 @@ class bookmarkView(QtGui.QWidget):
 
     def addBookmark(self):
         key, idx = self.videoTagger.getCurrentKey_idx()
-        description = OD.StringRequestDialog.getLabel(self.fullViewDialog,
+        description = OD.StringRequestDialog.getLabel(self.fullViewDialog.centralWidget(),
                                                       "Set bookmark name")
         self.lm.addItem(description, key, idx)
         self.lm.save()

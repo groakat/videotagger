@@ -33,7 +33,7 @@ class VideoHandler(QtCore.QObject):
     
     @cfg.logClassFunction
     def __init__(self, posList, fileChangeCb, selectedVials=[0], startIdx=0,
-                 videoEnding='.avi', bufferWidth=300, bufferLength=4):
+                 videoExtension='.avi', bufferWidth=300, bufferLength=4):
         super(VideoHandler, self).__init__()        
         
         self.videoDict = dict()
@@ -43,7 +43,7 @@ class VideoHandler(QtCore.QObject):
         self.posPath = ''
         self.idx = 0
         self.pathIdx = 0
-        self.videoEnding = videoEnding
+        self.videoEnding = videoExtension
         
         ### old stuff ?
         self.dictLength = 3         # should be odd, otherwise fix checkBuffers()!
@@ -89,7 +89,7 @@ class VideoHandler(QtCore.QObject):
 
         
         ## annotation loading
-        self.aLL = DL.AnnotationLoaderLuncher(self.endOfFileNotice, videoEnding)
+        self.aLL = DL.AnnotationLoaderLuncher(self.endOfFileNotice, videoExtension)
 
         self.annotationLoaderLuncherThread = DL.MyThread("annotationLuncher")
         self.aLL.moveToThread(self.annotationLoaderLuncherThread)
@@ -879,9 +879,10 @@ class VideoHandler(QtCore.QObject):
 #             path = annotationBundle[1]
             aL = annotationBundle[2]
             annotation = aL.annotation
-            for aV in self.annoViewList:
-                aV.addAnnotation(annotation, key, 
-                                 addAllAtOnce=(not self.loadProgressive))
+            if annotation:
+                for aV in self.annoViewList:
+                    aV.addAnnotation(annotation, key,
+                                     addAllAtOnce=(not self.loadProgressive))
                 
             self.annoDict[key] = aL
             # save pathlength and bufferEnding if requested earlier

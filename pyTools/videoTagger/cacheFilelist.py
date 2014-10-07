@@ -8,6 +8,28 @@ import argparse
 import textwrap
 import os
 
+def cacheFilelist(config_file):
+    videoPath, annotations, backgroundPath, selectedVial, vialROI, \
+    videoExtension, filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
+    runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
+    bufferLength = VideoTagger.parseConfig(config_file)
+
+    print "start searching bhvr files"
+    if videoPath.endswith(('avi', "mpeg", "mp4")):
+        videoPath = os.path.dirname(videoPath)
+
+    bhvrList = systemMisc.providePosList(videoPath, ending='.bhvr')
+    print bhvrList
+
+    with open(bhvrListPath, "w") as f:
+        json.dump(bhvrList, f)
+
+
+    print "start parsting bhvr files"
+    fdtv = FDV.FrameDataVisualizationTreeBehaviour()
+    fdtv.importAnnotations(bhvrList, annotations, selectedVial, runningIndeces=runningIndeces)
+    fdtv.save(fdvtPath)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(\
     formatter_class=argparse.RawDescriptionHelpFormatter,\
@@ -56,27 +78,7 @@ if __name__ == "__main__":
     
        
     args = parser.parse_args()
+    cacheFilelist(args.config_file)
 
-
-    videoPath, annotations, backgroundPath, selectedVial, vialROI, \
-    filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
-    runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
-    bufferLength = VideoTagger.parseConfig(args.config_file)
-
-    print "start searching bhvr files"
-    if videoPath.endswith('avi'):
-        videoPath = os.path.dirname(videoPath)
-
-    bhvrList = systemMisc.providePosList(videoPath, ending='.bhvr')
-    print bhvrList
-
-    with open(bhvrListPath, "w") as f:
-        json.dump(bhvrList, f)
-
-
-    print "start parsting bhvr files"
-    fdtv = FDV.FrameDataVisualizationTreeBehaviour()
-    fdtv.importAnnotations(bhvrList, annotations, selectedVial, runningIndeces=runningIndeces)
-    fdtv.save(fdvtPath)
     
     

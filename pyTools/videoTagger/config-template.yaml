@@ -1,0 +1,72 @@
+ActiveLearning:
+  remote-request-server: tcp://127.0.0.1:4242
+Annotation:
+  annotations:
+  - annot: Dave Trial
+    behav: zebra fish
+    color: !!python/unicode '#0000ff'
+  - annot: Dave Trial
+    behav: coloured fish
+    color: !!python/unicode '#00ffff'
+  - annot: Dave Trial
+    behav: shark
+    color: !!python/unicode '#00ff00'
+  - annot: Dave Trial
+    behav: !!python/unicode 'test'
+    color: !!python/unicode '#774aff'
+  - annot: Dave Trial
+    behav: !!python/unicode ';jkklhl'
+    color: !!python/unicode '#ffff00'
+KeyMap:
+  anno-1: !!python/unicode '1'
+  anno-2: !!python/unicode '2'
+  anno-3: !!python/unicode '3'
+  anno-4: !!python/unicode '4'
+  bwd-1: !!python/unicode 'F5'
+  bwd-2: !!python/unicode 'F4'
+  bwd-3: !!python/unicode 'F3'
+  bwd-4: !!python/unicode 'F2'
+  bwd-5: !!python/unicode 'F1'
+  bwd-6: !!python/unicode 'Left'
+  erase-anno: !!python/unicode 'Q'
+  escape: !!python/unicode 'Esc'
+  fwd-1: !!python/unicode 'F8'
+  fwd-2: !!python/unicode 'F9'
+  fwd-3: !!python/unicode 'F10'
+  fwd-4: !!python/unicode 'F11'
+  fwd-5: !!python/unicode 'F12'
+  fwd-6: !!python/unicode 'Right'
+  info: !!python/unicode 'I'
+  step-b: !!python/unicode 'F6'
+  step-f: !!python/unicode 'F7'
+  stop: !!python/unicode 'Enter'
+StepSize:
+  allow-steps: true
+  bwd-1: -1
+  bwd-2: -2
+  bwd-3: -5
+  bwd-4: -10
+  bwd-5: -15
+  bwd-6: -20
+  fwd-1: 1
+  fwd-2: 2
+  fwd-3: 5
+  fwd-4: 10
+  fwd-5: 15
+  fwd-6: 20
+  step-b: -1
+  step-f: 1
+  stop: 0
+Video:
+  background: {backgroundImg}
+  bhvr-cache: {rootFolder}/bhvrList.json
+  bufferLength: 4
+  bufferWidth: 300
+  cropped-video: false
+  files-running-indices: true
+  frame-data-visualization-path: {rootFolder}/behaviourTree.npy
+  rewind-on-click: false
+  vial: null
+  vialROI: null
+  videoPath: {videoPath}
+  videoExtension: {videoExt}

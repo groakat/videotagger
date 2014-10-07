@@ -91,12 +91,11 @@ class VideoTagger(QtGui.QMainWindow):
                         backgroundPath,
                         selectedVial,
                         vialROI,
-                        videoFormat='avi',
                         filterObjArgs=None,
                         startVideoName=None,
                         rewindOnClick=False,
                         croppedVideo=True,
-                        videoEnding='.avi', #'.v0.avi',
+                        videoExtension='.avi', #'.v0.avi',
                         runningIndeces=True,
                         fdvtPath=None,
                         bhvrListPath=None,
@@ -134,7 +133,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.backgroundPath = backgroundPath
         self.vialROI = vialROI
         self.startVideoName = startVideoName
-        self.videoEnding = videoEnding
+        self.videoEnding = videoExtension
         self.runningIndeces = runningIndeces
         self.bhvrListPath = bhvrListPath
         self.bufferWidth = bufferWidth
@@ -156,14 +155,13 @@ class VideoTagger(QtGui.QMainWindow):
         self.postLabelQuery = False
 
         if croppedVideo:
-            videoEnding = ".v{0}{1}".format(selectedVial, videoEnding)
-        
-        
-        if path.endswith('.avi'):
-            self.fileList = [path.split('.avi')[0] + '.bhvr']
+            videoExtension = ".v{0}{1}".format(selectedVial, videoExtension)
+
+        if path.endswith(videoExtension):
+            self.fileList = [path]#.split(videoExtension)[0] + '.' + videoExtension]
             print self.fileList
         elif bhvrListPath is None:
-            self.fileList = systemMisc.providePosList(path, ending='.bhvr')
+            self.fileList = systemMisc.providePosList(path, ending='.' + videoExtension)#'.bhvr')
         else:
             with open(bhvrListPath, "r") as f:
                 self.fileList = json.load(f)
@@ -173,7 +171,7 @@ class VideoTagger(QtGui.QMainWindow):
         
         self.ui.sldr_paths.setMaximum(len(self.fileList))
         
-        self.videoFormat = videoFormat
+        self.videoExtension = videoExtension
         self.idx = 0       
         self.play = False
         self.frameIdx = -1
@@ -240,12 +238,12 @@ class VideoTagger(QtGui.QMainWindow):
                 raise ValueError("startVideo not unique")
             
             startIdx = startIdx[0]
-        
-        self.fileList = self.convertFileList(self.fileList, videoEnding)
+
+        self.fileList = self.convertFileList(self.fileList, '.' + videoExtension)
         
         self.vh = VH.VideoHandler(self.fileList, self.changeVideo, 
                                self.selectedVial, startIdx=startIdx,
-                               videoEnding=videoEnding,
+                               videoExtension='.' + videoExtension,
                                bufferWidth=bufferWidth, 
                                bufferLength=bufferLength)
         
@@ -1759,7 +1757,7 @@ class VideoTagger(QtGui.QMainWindow):
         format postfixq
         """
         return posPath.split('.pos')[0] + '.v{0}.{1}'.format(vialNo, 
-                                                            self.videoFormat)
+                                                            self.videoExtension)
                                                             
     @cfg.logClassFunction
     def setVideo(self, idx):
@@ -2024,6 +2022,18 @@ class VideoTagger(QtGui.QMainWindow):
 
         increment = labelledFrames[2]
 
+        if self.fdvt.meta['not-initialized']:
+            print "aiwodfjawoigfwghoaifai"
+            curFile = self.fileList[self.idx]
+            self.fdvt.importAnnotation(self.vh.annoDict[curFile].annotation)
+            for a in self.annotations:
+                newFilt = Annotation.AnnotationFilter(self.selectedVial,
+                                                   [a['annot']],
+                                                   [a['behav']])
+                self.fdvt.addNewClass(newFilt)
+
+            self.frameView.loadFDVT(self.fdvt)
+
         deltaVector = []
         for key in frames.keys():
             # treeKey = FDV.filename2Time(key)
@@ -2036,6 +2046,8 @@ class VideoTagger(QtGui.QMainWindow):
                 dv = self.fdvt.getDeltaValue(key, frame, filt, increment)
                 if dv[1] is None:
                     self.fdvt.addNewClass(filt)
+                    colors = [a['color'] for a in self.annotations]
+                    self.frameView.setColors(colors)
                     dv = self.fdvt.getDeltaValue(key, frame, filt, increment)
                 deltaVector += [dv]
 
@@ -2259,6 +2271,11 @@ class VideoTagger(QtGui.QMainWindow):
         else:
             vialROI = None
 
+        if 'videoExtension' in cfgFile['Video'].keys():
+            videoExtension = cfgFile['Video']['videoExtension']
+        else:
+            videoExtension = 'avi'
+
         if 'background' in cfgFile['Video'].keys():
             backgroundPath = cfgFile['Video']['background']
         else:
@@ -2377,9 +2394,9 @@ class VideoTagger(QtGui.QMainWindow):
         annotations = cfgFile['Annotation']['annotations']
 
         return videoPath, annotations, backgroundPath, selectedVial, vialROI, \
-                filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
-                runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
-                bufferLength
+                videoExtension, filterObjArgs, startVideo, rewindOnClick,\
+                croppedVideo, runningIndeces, fdvtPath, bhvrListPath, \
+                bufferWidth, bufferLength
 
 
 
@@ -2503,18 +2520,21 @@ if __name__ == "__main__":
 
 
     videoPath, annotations, backgroundPath, selectedVial, vialROI, \
-    filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
+    videoExtension, filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
     runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
     bufferLength = VideoTagger.parseConfig(args.config_file)
         
     #### finish parsing config file
     
-    if videoPath.endswith('.avi'):
+    if videoPath.endswith(('.' + videoExtension)):
         vp = os.path.split(videoPath)[0]
     else:
         vp = videoPath
 
-    hGUI = logging.FileHandler(os.path.join(vp, 
+    if not os.path.exists(os.path.join(vp, "log")):
+        os.makedirs(os.path.join(vp, "log"))
+
+    hGUI = logging.FileHandler(os.path.join(vp, "log",
                     "videoTagger." + \
                     time.strftime("%Y-%m-%d.%H-%M-%S", time.localtime()) +\
                     ".log"))
@@ -2528,7 +2548,7 @@ if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
     
     w = VideoTagger(videoPath, annotations, backgroundPath, selectedVial, vialROI,
-                     videoFormat='avi', filterObjArgs=filterObjArgs,
+                     videoExtension=videoExtension, filterObjArgs=filterObjArgs,
                      startVideoName=startVideo, rewindOnClick=rewindOnClick,
                      croppedVideo=croppedVideo, runningIndeces=runningIndeces,
                      fdvtPath=fdvtPath, bhvrListPath=bhvrListPath,

@@ -86,12 +86,38 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.overviewScene = None
         self.sceneRect = None
 
+        self.brushes = None
+
+        self.mouseReleaseCallbacks = {'days':[],
+                                      'hours':[],
+                                      'minutes':[],
+                                      'frames':[]}
+
         self.fdvt = None
 
         self.day = None
         self.hour = None
         self.minute = None
         self.frame = None
+
+
+        self.missingValueBrush = QtGui.QBrush(QtGui.QColor(150, 150, 150))
+
+        self.polys = dict()
+        # self.fdvt.load('/media/peter/8e632f24-2998-4bd2-8881-232779708cd0/xav/data/clfrFDVT-burgos_rf_200k_weight-v3.npy')
+
+
+        self.initDataPlots()
+        self.setColors(reload=False)
+
+        self.clickBrush = QtGui.QBrush(QtGui.QColor(0, 255, 0, 0))
+        # self.setupGV()
+
+        self.show()
+        self.gv_center.fitInView(-0.1, -0.1, 1.1, 7,QtCore.Qt.IgnoreAspectRatio)
+
+
+    def initDataPlots(self):
 
         self.rects = {'days':[],
                       'hours':[],
@@ -130,30 +156,12 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         self.subPlotScales = dict()
 
-        self.mouseReleaseCallbacks = {'days':[],
-                                      'hours':[],
-                                      'minutes':[],
-                                      'frames':[]}
-
         self.rangeTemplate =  {'days': None,
                                'hours':['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23'],
                                'minutes':['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58', '59'],
                                'frames': list(np.arange(np.floor(1800 / self.frameResolution), dtype=float))}
-
-        self.missingValueBrush = QtGui.QBrush(QtGui.QColor(150, 150, 150))
-
-        self.polys = dict()
-        # self.fdvt.load('/media/peter/8e632f24-2998-4bd2-8881-232779708cd0/xav/data/clfrFDVT-burgos_rf_200k_weight-v3.npy')
-
-
-
-        self.brushes = None
-        self.clickBrush = QtGui.QBrush(QtGui.QColor(0, 255, 0, 0))
-        self.setupGV()
-
-        self.show()
-        self.gv_center.fitInView(-0.1, -0.1, 1.1, 7,QtCore.Qt.IgnoreAspectRatio)
         # self.initFirstView()
+        self.setupGV()
 
     def registerButtonPressCallback(self, figKey, callbackFunction):
         """
@@ -193,6 +201,9 @@ class GraphicsViewFDV(QtGui.QWidget):
 
             self.rects[k] = []
 
+        if self.fdvt:
+            self.createFDVTTemplate()
+
         if reload:
             self.updateDisplay(useCurrentPos=True)
 
@@ -229,12 +240,18 @@ class GraphicsViewFDV(QtGui.QWidget):
                 barLet.setRect(geo)
 
 
-
-    def loadSequence(self, fdvtPath):
-        self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
-        self.fdvt.load(fdvtPath)
+    def loadFDVT(self, fdvt):
+        self.initDataPlots()
+        self.fdvt = fdvt
         self.createFDVTTemplate()
         self.updateDisplay()
+
+    def loadSequence(self, fdvtPath):
+        fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+        fdvt.load(fdvtPath)
+        self.loadFDVT(fdvt)
+        # self.createFDVTTemplate()
+        # self.updateDisplay()
 
     def setupUi(self):
         self.layout = QtGui.QVBoxLayout()
@@ -268,7 +285,6 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.initPositionPointers()
         self.initSubPlots()
 
-        self.setColors(reload=False)
 
     def initSubPlots(self):
         self.subPlot = {'days': self.overviewScene.addRect(0, 0, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
@@ -337,13 +353,22 @@ class GraphicsViewFDV(QtGui.QWidget):
                 #                 * self.frameResolution
 
         if level == "minutes":
-            return sorted(self.fdvt.data[self.day][self.hour].keys())[instance]
+            try:
+                return sorted(self.fdvt.data[self.day][self.hour].keys())[instance]
+            except:
+                return False
 
         if level == "hours":
-            return sorted(self.fdvt.data[self.day].keys())[instance]
+            try:
+                return sorted(self.fdvt.data[self.day].keys())[instance]
+            except:
+                return False
 
         if level == "days":
-            return sorted(self.fdvt.data.keys())[instance]
+            try:
+                return sorted(self.fdvt.data.keys())[instance]
+            except:
+                return False
 
     def getTemplateLabel(self, level, instance):
         if self.rangeTemplate[level] is None:
@@ -493,8 +518,11 @@ class GraphicsViewFDV(QtGui.QWidget):
 
     def getKeyIndexInFDVT(self, level, idx):
         if level != 'frames':
-            return self.rangeTemplate[level].index(
+            try:
+                return self.rangeTemplate[level].index(
                                     self.getFdvtLabel(level, idx))
+            except ValueError:
+                return 0
         else:
             return idx #self.rangeTemplate[level].index(
             #                         self.getFdvtLabel(level, idx)) \
@@ -615,13 +643,25 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         self.fdvt.generateConfidencePlotData(day, hour, minute, frame,
                                                 self.frameResolution)
-        dayIdx = sorted(self.fdvt.data.keys()).index(day)
+        try:
+            dayIdx = sorted(self.fdvt.data.keys()).index(day)
+        except ValueError:
+            return
+
         self.plotDays(self.fdvt, dayIdx)
 
-        hourIdx = sorted(self.fdvt.data[day].keys()).index(hour)
+        try:
+            hourIdx = sorted(self.fdvt.data[day].keys()).index(hour)
+        except ValueError:
+            return
+
         self.plotHours(self.fdvt, hourIdx)
 
-        minuteIdx = sorted(self.fdvt.data[day][hour].keys()).index(minute)
+        try:
+            minuteIdx = sorted(self.fdvt.data[day][hour].keys()).index(minute)
+        except ValueError:
+            return
+
         self.plotMinutes(self.fdvt, minuteIdx)
         #
         self.plotFrames(self.fdvt, frame)
