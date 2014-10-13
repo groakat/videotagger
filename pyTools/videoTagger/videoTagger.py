@@ -926,6 +926,7 @@ class VideoTagger(QtGui.QMainWindow):
         
     @cfg.logClassFunction
     def updateLabel(self, lbl, p, img):
+        print p
         if img is not None:
             self.loadImageIntoLabel(lbl, np.rot90(img))
             
