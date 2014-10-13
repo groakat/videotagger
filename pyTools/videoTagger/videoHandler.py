@@ -431,7 +431,7 @@ class VideoHandler(QtCore.QObject):
     def getPosition(self, bhvrPath, idx):
         posA = self.getPositionArray(bhvrPath)
         if posA == None:
-            pos = np.ones((2,1)) * -1
+            pos = [np.ones((2,1)) * -1]
         else:
             pos = posA[idx]
             

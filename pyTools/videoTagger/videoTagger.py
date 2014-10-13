@@ -155,7 +155,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.postLabelQuery = False
 
         if croppedVideo:
-            videoExtension = ".v{0}{1}".format(selectedVial, videoExtension)
+            videoExtension = "v{0}.{1}".format(selectedVial, videoExtension)
 
         if path.endswith(videoExtension):
             self.fileList = [path]#.split(videoExtension)[0] + '.' + videoExtension]
@@ -213,7 +213,7 @@ class VideoTagger(QtGui.QMainWindow):
         
         self.usingVideoRunningIndeces = runningIndeces
         
-        self.vialRoi = vialROI
+        self.vialROI = vialROI
         
         if type(selectedVial) == int:
             self.selectedVial = [selectedVial]
@@ -932,9 +932,9 @@ class VideoTagger(QtGui.QMainWindow):
                 
         newX = p[0] - 32
         if self.selectedVial is None:
-            newY = self.vialRoi[0][1] - p[1] - 32
+            newY = self.vialROI[0][1] - p[1] - 32
         else:
-            newY = self.vialRoi[self.selectedVial[0]][1] - p[1] - 32 
+            newY = self.vialROI[self.selectedVial[0]][1] - p[1] - 32
         
         cfg.log.debug("p= [{2}, {3}] --> x {0}, y {1}".format(newX, newY, p[0], p[1]))
         lbl.setPos(newX,newY)
@@ -1105,17 +1105,13 @@ class VideoTagger(QtGui.QMainWindow):
 
 
     def displayFullResolutionFrame(self):
-        self.displayingFullResolution = True
-        self.fullResFrame = self.vh.getFullResolutionFrame()
-        self.videoSizeSmallToFullMult = self.fullResFrame[1][0][0].shape[0] / \
+        if not self.croppedVideo:
+            self.displayingFullResolution = True
+            self.fullResFrame = self.vh.getFullResolutionFrame()
+            self.videoSizeSmallToFullMult = self.fullResFrame[1][0][0].shape[0] / \
                                         float(self.frames[0][1][0][0].shape[0])
 
-        if self.selectedVial is None:
-            sv = 0
-        else:
-            sv = self.selectedVial[0]
-
-        self.displayFrame(self.fullResFrame, sv)
+            self.displayFrame(self.fullResFrame, 0)
 
         if self.fullVideoDialog is None:
             # self.fullVideoDialog = FVD(self, self.prevFramesWidget)
@@ -1496,7 +1492,7 @@ class VideoTagger(QtGui.QMainWindow):
             a = plt.imread(path) * 255
             
             # crop and rotate background image to show only one vial
-            rng = slice(*self.vialRoi[self.selectedVial[0]])
+            rng = slice(*self.vialROI[self.selectedVial[0]])
             a = np.rot90(a[:, rng]).astype(np.uint32)
             
             h = a.shape[0]
@@ -2266,8 +2262,8 @@ class VideoTagger(QtGui.QMainWindow):
         else:
             selectedVial = None
 
-        if 'vialroi' in cfgFile['Video'].keys():
-            vialROI = cfgFile['Video']['vialroi']
+        if 'vialROI' in cfgFile['Video'].keys():
+            vialROI = cfgFile['Video']['vialROI']
         else:
             vialROI = None
 
