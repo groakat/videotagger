@@ -33,7 +33,8 @@ class VideoHandler(QtCore.QObject):
     
     @cfg.logClassFunction
     def __init__(self, posList, fileChangeCb, selectedVials=[0], startIdx=0,
-                 videoExtension='.avi', bufferWidth=300, bufferLength=4):
+                 videoExtension='.avi', bufferWidth=300, bufferLength=4,
+                 patchesFolder='', positionsFolder=''):
         super(VideoHandler, self).__init__()        
         
         self.videoDict = dict()
@@ -44,6 +45,8 @@ class VideoHandler(QtCore.QObject):
         self.idx = 0
         self.pathIdx = 0
         self.videoEnding = videoExtension
+        self.patchesFolder = patchesFolder
+        self.positionsFolder = positionsFolder
         
         ### old stuff ?
         self.dictLength = 3         # should be odd, otherwise fix checkBuffers()!
@@ -418,8 +421,13 @@ class VideoHandler(QtCore.QObject):
             
         return frame
     
-    def getPositionArray(self, bhvrPath):        
-        posKey = "".join(bhvrPath.split(self.videoEnding)[:-1]) + '.pos.npy'
+    def getPositionArray(self, bhvrPath):
+        videoFolder = os.path.dirname(bhvrPath)
+        videoName = os.path.basename(bhvrPath)
+        posFolder = videoFolder[:-len(self.patchesFolder)] + \
+                    self.positionsFolder
+        posKey = posFolder + '/' + ".".join(videoName.split('.')[:-1]) + '.pos.npy'
+
         try:
             pos = self.posCache.getItem(posKey)
         except:
@@ -433,7 +441,7 @@ class VideoHandler(QtCore.QObject):
         if posA == None:
             pos = [np.ones((2,1)) * -1]
         else:
-            pos = posA[idx]
+            pos = posA#[idx]
             
         return pos
         

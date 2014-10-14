@@ -95,6 +95,8 @@ class VideoTagger(QtGui.QMainWindow):
                         startVideoName=None,
                         rewindOnClick=False,
                         croppedVideo=True,
+                        positionsFolder='',
+                        patchesFolder='',
                         videoExtension='.avi', #'.v0.avi',
                         runningIndeces=True,
                         fdvtPath=None,
@@ -147,6 +149,8 @@ class VideoTagger(QtGui.QMainWindow):
         
         
         self.croppedVideo = croppedVideo
+        self.positionsFolder = positionFolder
+        self.patchesFolder = patchesFolder
         self.cropWidth = 64
         self.cropHeight = 32
         self.cropIncrement = 0
@@ -245,7 +249,9 @@ class VideoTagger(QtGui.QMainWindow):
                                self.selectedVial, startIdx=startIdx,
                                videoExtension='.' + videoExtension,
                                bufferWidth=bufferWidth, 
-                               bufferLength=bufferLength)
+                               bufferLength=bufferLength,
+                               positionsFolder=self.positionsFolder,
+                               patchesFolder=self.patchesFolder)
         
         
         self.updateFrameList(range(2000))
@@ -926,7 +932,6 @@ class VideoTagger(QtGui.QMainWindow):
         
     @cfg.logClassFunction
     def updateLabel(self, lbl, p, img):
-        print p
         if img is not None:
             self.loadImageIntoLabel(lbl, np.rot90(img))
             
@@ -2215,6 +2220,8 @@ class VideoTagger(QtGui.QMainWindow):
         cfgDict['Video']['bufferLength'] = self.bufferLength
         cfgDict['Video']['bufferWidth'] = self.bufferWidth
         cfgDict['Video']['cropped-video'] = self.croppedVideo
+        cfgDict['Video']['patches-folder'] = self.patchesFolder
+        cfgDict['Video']['position-folder'] = self.positionsFolder
         cfgDict['Video']['files-running-indices'] = self.runningIndeces
         cfgDict['Video']['frame-data-visualization-path'] = self.fdvtPath
         cfgDict['Video']['rewind-on-click'] = self.rewindOnClick
@@ -2313,6 +2320,16 @@ class VideoTagger(QtGui.QMainWindow):
         else:
             croppedVideo = False
 
+        if 'patches-folder' in cfgFile['Video'].keys():
+            patchesFolder = cfgFile['Video']['patches-folder']
+        else:
+            patchesFolder = ''
+
+        if 'position-folder' in cfgFile['Video'].keys():
+            positionFolder = cfgFile['Video']['position-folder']
+        else:
+            positionFolder = ''
+
         if 'files-running-indices' in cfgFile['Video'].keys():
             runningIndeces = cfgFile['Video']['files-running-indices']
         else:
@@ -2392,8 +2409,8 @@ class VideoTagger(QtGui.QMainWindow):
 
         return videoPath, annotations, backgroundPath, selectedVial, vialROI, \
                 videoExtension, filterObjArgs, startVideo, rewindOnClick,\
-                croppedVideo, runningIndeces, fdvtPath, bhvrListPath, \
-                bufferWidth, bufferLength
+                croppedVideo, patchesFolder, positionFolder, runningIndeces, \
+                fdvtPath, bhvrListPath, bufferWidth, bufferLength
 
 
 
@@ -2518,8 +2535,8 @@ if __name__ == "__main__":
 
     videoPath, annotations, backgroundPath, selectedVial, vialROI, \
     videoExtension, filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
-    runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
-    bufferLength = VideoTagger.parseConfig(args.config_file)
+    patchesFolder, positionFolder, runningIndeces, fdvtPath, bhvrListPath, \
+    bufferWidth, bufferLength = VideoTagger.parseConfig(args.config_file)
         
     #### finish parsing config file
     
@@ -2547,7 +2564,8 @@ if __name__ == "__main__":
     w = VideoTagger(videoPath, annotations, backgroundPath, selectedVial, vialROI,
                      videoExtension=videoExtension, filterObjArgs=filterObjArgs,
                      startVideoName=startVideo, rewindOnClick=rewindOnClick,
-                     croppedVideo=croppedVideo, runningIndeces=runningIndeces,
+                     croppedVideo=croppedVideo, patchesFolder=patchesFolder,
+                     positionsFolder=positionFolder, runningIndeces=runningIndeces,
                      fdvtPath=fdvtPath, bhvrListPath=bhvrListPath,
                      bufferWidth=bufferWidth, bufferLength=bufferLength)
     
