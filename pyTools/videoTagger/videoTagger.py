@@ -96,6 +96,7 @@ class VideoTagger(QtGui.QMainWindow):
                         rewindOnClick=False,
                         croppedVideo=True,
                         positionsFolder='',
+                        behaviourFolder='',
                         patchesFolder='',
                         videoExtension='.avi', #'.v0.avi',
                         runningIndeces=True,
@@ -149,8 +150,9 @@ class VideoTagger(QtGui.QMainWindow):
         
         
         self.croppedVideo = croppedVideo
-        self.positionsFolder = positionFolder
+        self.positionsFolder = positionsFolder
         self.patchesFolder = patchesFolder
+        self.bhvrFolder = behaviourFolder
         self.cropWidth = 64
         self.cropHeight = 32
         self.cropIncrement = 0
@@ -251,7 +253,8 @@ class VideoTagger(QtGui.QMainWindow):
                                bufferWidth=bufferWidth, 
                                bufferLength=bufferLength,
                                positionsFolder=self.positionsFolder,
-                               patchesFolder=self.patchesFolder)
+                               patchesFolder=self.patchesFolder,
+                               behaviourFolder=behaviourFolder)
         
         
         self.updateFrameList(range(2000))
@@ -2222,6 +2225,7 @@ class VideoTagger(QtGui.QMainWindow):
         cfgDict['Video']['cropped-video'] = self.croppedVideo
         cfgDict['Video']['patches-folder'] = self.patchesFolder
         cfgDict['Video']['position-folder'] = self.positionsFolder
+        cfgDict['Video']['behaviour-folder'] = self.bhvrFolder
         cfgDict['Video']['files-running-indices'] = self.runningIndeces
         cfgDict['Video']['frame-data-visualization-path'] = self.fdvtPath
         cfgDict['Video']['rewind-on-click'] = self.rewindOnClick
@@ -2330,6 +2334,11 @@ class VideoTagger(QtGui.QMainWindow):
         else:
             positionFolder = ''
 
+        if 'behaviour-folder' in cfgFile['Video'].keys():
+            behaviourFolder = cfgFile['Video']['behaviour-folder']
+        else:
+            behaviourFolder = ''
+
         if 'files-running-indices' in cfgFile['Video'].keys():
             runningIndeces = cfgFile['Video']['files-running-indices']
         else:
@@ -2409,8 +2418,9 @@ class VideoTagger(QtGui.QMainWindow):
 
         return videoPath, annotations, backgroundPath, selectedVial, vialROI, \
                 videoExtension, filterObjArgs, startVideo, rewindOnClick,\
-                croppedVideo, patchesFolder, positionFolder, runningIndeces, \
-                fdvtPath, bhvrListPath, bufferWidth, bufferLength
+                croppedVideo, patchesFolder, positionFolder, behaviourFolder,\
+                runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
+                bufferLength
 
 
 
@@ -2535,8 +2545,9 @@ if __name__ == "__main__":
 
     videoPath, annotations, backgroundPath, selectedVial, vialROI, \
     videoExtension, filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
-    patchesFolder, positionFolder, runningIndeces, fdvtPath, bhvrListPath, \
-    bufferWidth, bufferLength = VideoTagger.parseConfig(args.config_file)
+    patchesFolder, positionFolder, behaviourFolder, runningIndeces, fdvtPath,\
+    bhvrListPath, bufferWidth, bufferLength = \
+                                VideoTagger.parseConfig(args.config_file)
         
     #### finish parsing config file
     
@@ -2548,7 +2559,7 @@ if __name__ == "__main__":
     if not os.path.exists(os.path.join(vp, "log")):
         os.makedirs(os.path.join(vp, "log"))
 
-    hGUI = logging.FileHandler(os.path.join(vp, "log",
+    hGUI = logging.FileHandler(os.path.join(vp, "videoTaggerLog",
                     "videoTagger." + \
                     time.strftime("%Y-%m-%d.%H-%M-%S", time.localtime()) +\
                     ".log"))
@@ -2565,7 +2576,8 @@ if __name__ == "__main__":
                      videoExtension=videoExtension, filterObjArgs=filterObjArgs,
                      startVideoName=startVideo, rewindOnClick=rewindOnClick,
                      croppedVideo=croppedVideo, patchesFolder=patchesFolder,
-                     positionsFolder=positionFolder, runningIndeces=runningIndeces,
+                     positionsFolder=positionFolder, behaviourFolder=behaviourFolder,
+                     runningIndeces=runningIndeces,
                      fdvtPath=fdvtPath, bhvrListPath=bhvrListPath,
                      bufferWidth=bufferWidth, bufferLength=bufferLength)
     

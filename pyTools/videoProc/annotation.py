@@ -1,5 +1,6 @@
 import json
 import copy
+import os
 from collections import namedtuple
 
 
@@ -59,12 +60,18 @@ class Annotation():
         return self.frameList[frameNo][vialNo]
         
     def saveToFile(self, filename):
+        if not os.path.exists(os.path.dirname(filename)):
+            os.makedirs(os.path.dirname(filename))
+
         f = open(filename, 'w')
         json.dump(self.frameList, f, sort_keys=True,indent=4, separators=(',', ': '))
         f.close()
         self.hasChanged = False
         
     def saveToTmpFile(self, filename):
+        if not os.path.exists(os.path.dirname(filename)):
+            os.makedirs(os.path.dirname(filename))
+
         f = open(filename, 'w')
         json.dump(self.frameList, f, sort_keys=True,indent=4, separators=(',', ': '))
         f.close()

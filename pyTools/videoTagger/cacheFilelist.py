@@ -11,8 +11,9 @@ import os
 def cacheFilelist(config_file):
     videoPath, annotations, backgroundPath, selectedVial, vialROI, \
     videoExtension, filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
-    patchesFolder, positionFolder, runningIndeces, fdvtPath, bhvrListPath, \
-    bufferWidth, bufferLength = VideoTagger.parseConfig(config_file)
+    patchesFolder, positionFolder, behaviourFolder, runningIndeces, fdvtPath,\
+    bhvrListPath, bufferWidth, bufferLength = \
+                                    VideoTagger.parseConfig(config_file)
 
     print "start searching bhvr files"
     if videoPath.endswith(('avi', "mpeg", "mp4")):

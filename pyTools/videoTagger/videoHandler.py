@@ -34,7 +34,7 @@ class VideoHandler(QtCore.QObject):
     @cfg.logClassFunction
     def __init__(self, posList, fileChangeCb, selectedVials=[0], startIdx=0,
                  videoExtension='.avi', bufferWidth=300, bufferLength=4,
-                 patchesFolder='', positionsFolder=''):
+                 patchesFolder='', positionsFolder='', behaviourFolder=''):
         super(VideoHandler, self).__init__()        
         
         self.videoDict = dict()
@@ -47,6 +47,7 @@ class VideoHandler(QtCore.QObject):
         self.videoEnding = videoExtension
         self.patchesFolder = patchesFolder
         self.positionsFolder = positionsFolder
+        self.bhvrFolder = behaviourFolder
         
         ### old stuff ?
         self.dictLength = 3         # should be odd, otherwise fix checkBuffers()!
@@ -92,7 +93,8 @@ class VideoHandler(QtCore.QObject):
 
         
         ## annotation loading
-        self.aLL = DL.AnnotationLoaderLuncher(self.endOfFileNotice, videoExtension)
+        self.aLL = DL.AnnotationLoaderLuncher(self.endOfFileNotice, videoExtension,
+                                              self.patchesFolder, self.bhvrFolder)
 
         self.annotationLoaderLuncherThread = DL.MyThread("annotationLuncher")
         self.aLL.moveToThread(self.annotationLoaderLuncherThread)
@@ -441,8 +443,8 @@ class VideoHandler(QtCore.QObject):
         if posA == None:
             pos = [np.ones((2,1)) * -1]
         else:
-            pos = posA#[idx]
-            
+            pos = [posA[idx]]
+
         return pos
         
         
@@ -1286,9 +1288,13 @@ class VideoHandler(QtCore.QObject):
                                               [behaviourOld])
 
         rngs = self.findRangeOfAnnotation(self.idx, self.posPath, filtOld)
-        behaviourNew = self.disambiguateDoubleBehaviourNames([vial], annotatorNew,
+        if vial is None:
+            vial = [None]
+
+        behaviourNew = self.disambiguateDoubleBehaviourNames(vial, annotatorNew,
                                                              behaviourNew, rngs)
 
+        vial = vial[0]
         print "editAnnotationLabel", rngs, behaviourOld, behaviourNew
 
         for k, rng in rngs.items():

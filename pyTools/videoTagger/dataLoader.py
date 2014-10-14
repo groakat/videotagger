@@ -9,6 +9,7 @@ import pyTools.misc.config as cfg
 import numpy as np
 import time
 import copy
+import os
 
 
 
@@ -363,7 +364,8 @@ class AnnotationLoaderLuncher(QtCore.QObject):
     createdAnnotationLoader = QtCore.Signal(list)  
     loadAnnotations = QtCore.Signal()
     
-    def __init__(self, loadedCallback, videoExtension):
+    def __init__(self, loadedCallback, videoExtension,
+                 patchesFolder, behaviourFolder):
         super(AnnotationLoaderLuncher, self).__init__(None)
             
         self.availableALs = []
@@ -371,46 +373,55 @@ class AnnotationLoaderLuncher(QtCore.QObject):
         self.threads = dict()
         self.loadedCallback = loadedCallback
         self.videoExtension = videoExtension
+        self.patchesFolder = patchesFolder
+        self.bhvrFolder = behaviourFolder
     
     @QtCore.Slot(list)
     def lunchAnnotationLoader(self, lst):
         key = lst[0]
-        path = lst[1]
+        videoPath = lst[1]
         aL = None
-        
-        videoPath = copy.copy(path)
+
         
 #         path = '.'.join(path.split(self.videoEnding)[:1]) + '.bhvr'
-        
+
+
+        videoFolder = os.path.dirname(videoPath)
+        bvhrName = os.path.basename(videoPath)
+        bhvrFolder = videoFolder[:-len(self.patchesFolder)] + \
+                    self.bhvrFolder
+        bhvrPath = bhvrFolder + '/' + bvhrName
+
         if len(self.availableALs) == 0:
-            cfg.log.debug("create new AnnotationLoader {0}".format(path))     
+            cfg.log.debug("create new AnnotationLoader {0}".format(videoPath))
             
 #             vL = VideoLoader(path, vH, selectedVials=selectedVials) 
                                      
             annotationLoaderThread = MyThread("AnnotationLoader {0}".format(len(
                                                         self.threads.keys())))
             
-            aL = AnnotationLoader(path, key, annotationLoaderThread, self.videoExtension)
+            aL = AnnotationLoader(bhvrPath, videoPath, key, annotationLoaderThread,
+                                  self.videoExtension)
             aL.moveToThread(annotationLoaderThread)         
             annotationLoaderThread.start()
 
             aL.startLoading.connect(aL.loadAnnotation)
             aL.loadedAnnotation.connect(self.loadedCallback)
             
-            cfg.log.debug("finished thread coonecting signal create new AnnotationLoader {0}".format(path)) 
+            cfg.log.debug("finished thread coonecting signal create new AnnotationLoader {0}".format(videoPath))
             aL.startLoading.emit()
-            cfg.log.debug("finished thread emit create new AnnotationLoader {0}".format(path)) 
+            cfg.log.debug("finished thread emit create new AnnotationLoader {0}".format(videoPath))
             self.threads[aL] = [annotationLoaderThread, aL.startLoading]
             
-            cfg.log.info("finished create new AnnotationLoader {0}".format(path))  
+            cfg.log.info("finished create new AnnotationLoader {0}".format(videoPath))
         else:
             aL = self.availableALs.pop()
-            cfg.log.info("recycle new AnnotationLoader {0}, was previous: {1}".format(path, aL.path))
+            cfg.log.info("recycle new AnnotationLoader {0}, was previous: {1}".format(videoPath, aL.bhvrPath))
             thread, signal = self.threads[aL]
-            aL.init(path, key, thread, self.videoExtension)
+            aL.init(bhvrPath, videoPath, key, thread, self.videoExtension)
             signal.emit()
 
-        self.createdAnnotationLoader.emit([key, path, aL])
+        self.createdAnnotationLoader.emit([key, videoPath, aL])
         
 #     @cfg.logClassFunction
     @QtCore.Slot(list)
@@ -419,7 +430,7 @@ class AnnotationLoaderLuncher(QtCore.QObject):
             if aL is not None and not aL.loading:  
                 if aL.annotation.hasChanged:
                     cfg.log.info("saving (dumping ground) {0}".format(aL))     
-                    aL.annotation.saveToFile(aL.path)    
+                    aL.annotation.saveToFile(aL.bhvrPath)
                 cfg.log.info("making {0} available again (dumping ground)".format(aL))           
                 self.availableALs += [aL]
                 self.dumpingPlace.remove(aL)
@@ -430,10 +441,10 @@ class AnnotationLoaderLuncher(QtCore.QObject):
         # TODO is this potential memory leak?
         if aL is not None and not aL.loading:  
             if aL.annotation.hasChanged:
-                cfg.log.info("saving {0}".format(aL.path))
-                aL.annotation.saveToFile(aL.path)
+                cfg.log.info("saving {0}".format(aL.bhvrPath))
+                aL.annotation.saveToFile(aL.bhvrPath)
                 
-            cfg.log.info("making {0} available again".format(aL.path))
+            cfg.log.info("making {0} available again".format(aL.bhvrPath))
                 
             self.availableALs += [aL]
         else:
@@ -459,11 +470,14 @@ class AnnotationLoader(QtCore.QObject):
 #             self.annotation.saveToFile('.'.join(self.posPath.split('.')[:-1]) + '.bhvr')
     
     @cfg.logClassFunction
-    def __init__(self, path, key, thread, videoExtension, vialNames=None):
+    def __init__(self, bhvrPath, videoPath,
+                 key, thread, videoExtension, vialNames=None):
         super(AnnotationLoader, self).__init__(None)        
-        self.init(path, key, thread, videoExtension, vialNames=None)
+        self.init(bhvrPath, videoPath,
+                  key, thread, videoExtension, vialNames=None)
         
-    def init(self, path, key, thread, videoExtension, vialNames=None):
+    def init(self, bhvrPath, videoPath,
+             key, thread, videoExtension, vialNames=None):
         if vialNames is None:
             self.vialNames = [None]
         else:
@@ -475,7 +489,8 @@ class AnnotationLoader(QtCore.QObject):
         
 #         self.annotation = None # annotation object
         
-        self.path = path# '.'.join(path.split('.')[:2]) + '.bhvr'      
+        self.bhvrPath = bhvrPath# '.'.join(path.split('.')[:2]) + '.bhvr'
+        self.videoPath = videoPath
         self.key = key
         self.thread = thread
         self.videoExtension = videoExtension
@@ -486,28 +501,28 @@ class AnnotationLoader(QtCore.QObject):
         
         self.loading = True     
                     
-        f = self.path
+        f = self.bhvrPath
         if isfile(f):
             cfg.log.debug("AnnotationLoader: f exists create empty Annotation")
             out = Annotation.Annotation()
             cfg.log.debug("AnnotationLoader: created Annotation. try to load..")
             try:
                 out.loadFromFile(f)
-                cfg.log.info("AnnotationLoader: loaded Annotation {0} {1}".format(self.path, self))                    
+                cfg.log.info("AnnotationLoader: loaded Annotation {0} {1}".format(self.bhvrPath, self))
             except:
                 cfg.log.warning("load annotation of "+f+" failed, reset annotaions")
-                videoLength = self.retrieveVideoLength(self.path)
+                videoLength = self.retrieveVideoLength(self.bhvrPath)
                 out = Annotation.Annotation(frameNo=videoLength, vialNames=self.vialNames)
         else:
             cfg.log.warning("AnnotationLoader: f does NOT exist create empty Annotation")
-            videoLength = self.retrieveVideoLength(self.path)
+            videoLength = self.retrieveVideoLength(self.videoPath)
             out = Annotation.Annotation(frameNo=videoLength, vialNames=self.vialNames)
             cfg.log.info("new annotation with length {0}".format(videoLength))
             
         self.annotation = out
 #         self.loadedAnnotation.emit([self, self.path])
 
-        cfg.log.debug("finished loading annotation {0}".format(self.path))
+        cfg.log.debug("finished loading annotation {0}".format(self.bhvrPath))
         self.loadedAnnotation.emit([self.key, len(self.annotation.frameList)])
         self.loading = False
         
