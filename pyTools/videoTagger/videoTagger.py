@@ -2474,7 +2474,7 @@ class VideoTagger(QtGui.QMainWindow):
             runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
             bufferLength = VideoTagger.parseConfig(configPath)
 
-            self.path = videoPath
+            self.path = path
             self.annotations = annotations
             self.annotator = annotator
             self.backgroundPath = backgroundPath
