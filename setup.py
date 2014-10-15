@@ -80,7 +80,6 @@ setup(
             'videotagger = pyTools.videoTagger.videoTagger:main',
         ]
     },
-    include_package_data = True,
     package_data = {
         '': ['*.svg']
     }
