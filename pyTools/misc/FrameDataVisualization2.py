@@ -4,7 +4,6 @@ import warnings
 import pyTools.misc.basic as bsc
 import pyTools.videoProc.annotation as Annotation
 
-from memory_profiler import profile
 
 def filename2Time(f):
     timestamp = f.split('/')[-1]

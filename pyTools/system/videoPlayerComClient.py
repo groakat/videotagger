@@ -1,5 +1,5 @@
 import zerorpc
-import pyTools.misc.FrameDataVisualization as FDVT
+import pyTools.misc.FrameDataVisualization2 as FDVT
 import pyTools.system.videoPlayerComServer as comServer
 from time import time
 
