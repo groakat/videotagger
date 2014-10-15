@@ -79,6 +79,7 @@ setup(
         'gui_scripts': [
             'videotagger = pyTools.videoTagger.videoTagger:main',
         ]
-    }
+    },
+    include_package_data = True
 )
 #cmdclass = {'install_scripts': my_install_scripts}
