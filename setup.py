@@ -81,5 +81,8 @@ setup(
         ]
     },
     include_package_data = True
+    package_data = {
+        'pyTools.icon': ['*.svg']
+    }
 )
 #cmdclass = {'install_scripts': my_install_scripts}
