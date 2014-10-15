@@ -9,7 +9,7 @@ import textwrap
 import os
 
 def cacheFilelist(config_file):
-    videoPath, annotations, backgroundPath, selectedVial, vialROI, \
+    videoPath, annotations, annotator, backgroundPath, selectedVial, vialROI, \
     videoExtension, filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
     patchesFolder, positionFolder, behaviourFolder, runningIndeces, fdvtPath,\
     bhvrListPath, bufferWidth, bufferLength = \

@@ -86,26 +86,7 @@ class VideoTagger(QtGui.QMainWindow):
     quit = QtCore.Signal()
     startLoop = QtCore.Signal()
      
-    def __init__(self, path, 
-                        annotations,
-                        backgroundPath,
-                        selectedVial,
-                        vialROI,
-                        filterObjArgs=None,
-                        startVideoName=None,
-                        rewindOnClick=False,
-                        croppedVideo=True,
-                        positionsFolder='',
-                        behaviourFolder='',
-                        patchesFolder='',
-                        videoExtension='.avi', #'.v0.avi',
-                        runningIndeces=True,
-                        fdvtPath=None,
-                        bhvrListPath=None,
-                        serverAddress="tcp://127.0.0.1:4242",
-                        bufferWidth=300, 
-                        bufferLength=4
-                        ):
+    def __init__(self, *args, **kwargs):
         """
         
         args:
@@ -116,11 +97,38 @@ class VideoTagger(QtGui.QMainWindow):
         """
         QtGui.QMainWindow.__init__(self)
 
-        # Set up the user interface from Designer.
-        self.ui = Ui_Form()
-        self.ui.setupUi(self)
+        if args == () and kwargs == {}:
+            self.displaySetupForm()
+        else:
+            self.init(*args, **kwargs)
 
-        self.ui.cb_trajectory.setChecked(True)
+
+
+    def init(self,  path,
+                    annotations,
+                    backgroundPath,
+                    selectedVial,
+                    vialROI,
+                    annotator = None,
+                    filterObjArgs=None,
+                    startVideoName=None,
+                    rewindOnClick=False,
+                    croppedVideo=True,
+                    positionsFolder='',
+                    behaviourFolder='',
+                    patchesFolder='',
+                    videoExtension='avi', #'.v0.avi',
+                    runningIndeces=True,
+                    fdvtPath=None,
+                    bhvrListPath=None,
+                    serverAddress="tcp://127.0.0.1:4242",
+                    bufferWidth=300,
+                    bufferLength=4):
+        # Set up the user interface from Designer.
+        # self.ui = Ui_Form()
+        # self.ui.setupUi(self)
+
+        # self.ui.cb_trajectory.setChecked(True)
         
         
         if filterObjArgs is None:
@@ -173,9 +181,9 @@ class VideoTagger(QtGui.QMainWindow):
                 self.fileList = json.load(f)
         
         self.lm = MyListModel(self.fileList, self)        
-        self.ui.lv_paths.setModel(self.lm)
-        
-        self.ui.sldr_paths.setMaximum(len(self.fileList))
+        # self.ui.lv_paths.setModel(self.lm)
+        #
+        # self.ui.sldr_paths.setMaximum(len(self.fileList))
         
         self.videoExtension = videoExtension
         self.idx = 0       
@@ -191,7 +199,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.tempIncrement = 0
         self.stop = False
         self.addingAnnotations = True
-        self.ui.lbl_eraser.setVisible(False)        
+        # self.ui.lbl_eraser.setVisible(False)
         self.prevSize = 100
         self.fdvtPath = fdvtPath
         self.isLabelingSingleFrame = False
@@ -209,7 +217,8 @@ class VideoTagger(QtGui.QMainWindow):
         
 #         if self.rewindOnClick:
 #             self.eventFilter.oneClickAnnotation = [True, True, True, True]
-        
+
+        self.annotator = annotator
         self.annotations = annotations 
         self.tmpAnnotation = Annotation.Annotation(0, [''])
         self.annotationRoiLabels = []
@@ -225,7 +234,7 @@ class VideoTagger(QtGui.QMainWindow):
             self.selectedVial = [selectedVial]
         else:
             self.selectedVial = selectedVial#3
-        self.ui.lbl_vial.setText("<b>vial</b>: {0}".format(self.selectedVial))
+        # self.ui.lbl_vial.setText("<b>vial</b>: {0}".format(self.selectedVial))
                 
         
         
@@ -265,7 +274,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.connectedToServer = False
         self.rpcIH = None
         self.fdvt = None
-        self.setupFrameView()
+        # self.setupFrameView()
         self.bookmark = None
 
         
@@ -283,11 +292,13 @@ class VideoTagger(QtGui.QMainWindow):
         self.timer.timeout.connect(self.showNextFrame)
         self.timerID = None
         
-        
-        self.ui.cb_trajectory.setChecked(self.showTraject)
+        self.populateFormWithInternalSettings()
+
+        # self.ui.cb_trajectory.setChecked(self.showTraject)
         self.showTrajectories(self.showTraject)
             
-        self.transferElementsInCollapseContainer()
+        # self.transferElementsInCollapseContainer()
+        self.displayFullResolutionFrame()
 
         self.show()
         cfg.logGUI.info(json.dumps(
@@ -299,33 +310,186 @@ class VideoTagger(QtGui.QMainWindow):
         self.selectVideo(startIdx)
         # self.startLoop.emit()
         self.stopPlayback()
-        
 
-    # def showEvent(self, event):
-    #     super(videoTagger, self).showEvent(event)
-    #     self.displayFullResolutionFrame()
+
+
+    def showEvent(self, event):
+        super(VideoTagger, self).showEvent(event)
+        # self.displayFullResolutionFrame()
 
     @cfg.logClassFunction
     def connectSignals(self):
-        self.ui.pb_startVideo.clicked.connect(self.startVideo)
-        self.ui.pb_stopVideo.clicked.connect(self.stopVideo)
-        self.ui.pb_test.clicked.connect(self.testFunction)
-        self.ui.pb_addAnno.clicked.connect(self.addAnno)
-        self.ui.pb_eraseAnno.clicked.connect(self.eraseAnno)
-        self.ui.pb_connect2server.clicked.connect(self.connectToServer)
-        self.ui.pb_check4requests.clicked.connect(self.check4Requests)
-        self.ui.cb_edit.toggled.connect(self.editToggle)
-        self.ui.cb_anyLabel.toggled.connect(self.anyLabelToggle)
-        
-        self.ui.sldr_paths.valueChanged.connect(self.selectVideo)
-        self.ui.lv_frames.activated.connect(self.selectFrame)
-        self.ui.lv_jmp.activated.connect(self.selectFrameJump)
-        self.ui.lv_paths.activated.connect(self.selectVideoLV)
-        
-        self.ui.cb_trajectory.stateChanged.connect(self.showTrajectories)
+        # self.ui.pb_startVideo.clicked.connect(self.startVideo)
+        # self.ui.pb_stopVideo.clicked.connect(self.stopVideo)
+        # self.ui.pb_test.clicked.connect(self.testFunction)
+        # self.ui.pb_addAnno.clicked.connect(self.addAnno)
+        # self.ui.pb_eraseAnno.clicked.connect(self.eraseAnno)
+        # self.ui.pb_connect2server.clicked.connect(self.connectToServer)
+        # self.ui.pb_check4requests.clicked.connect(self.check4Requests)
+        # self.ui.cb_edit.toggled.connect(self.editToggle)
+        # self.ui.cb_anyLabel.toggled.connect(self.anyLabelToggle)
+        #
+        # self.ui.sldr_paths.valueChanged.connect(self.selectVideo)
+        # self.ui.lv_frames.activated.connect(self.selectFrame)
+        # self.ui.lv_jmp.activated.connect(self.selectFrameJump)
+        # self.ui.lv_paths.activated.connect(self.selectVideoLV)
+        #
+        # self.ui.cb_trajectory.stateChanged.connect(self.showTrajectories)
         
         self.startLoop.connect(self.startVideo)
 
+
+    def displaySetupForm(self):
+        formWidget = QtGui.QWidget(self)
+        self.setCentralWidget(formWidget)
+
+        layout = QtGui.QFormLayout(formWidget)
+        self.le_videoPath = QtGui.QLineEdit(self)
+        self.le_videoPath.textEdited.connect(self.tryToLoadConfig)
+        self.le_annotatorName = QtGui.QLineEdit(self)
+        self.le_bhvrFolder = QtGui.QLineEdit(self)
+        self.le_bufferWidth = QtGui.QLineEdit(self)
+        self.le_bufferWidth.setInputMask('900')
+        self.le_bufferWidth.setText("200")
+        self.le_bufferLength = QtGui.QLineEdit(self)
+        self.le_bufferLength.setInputMask('90')
+        self.le_bufferLength.setText("5")
+        self.le_bhvrCache = QtGui.QLineEdit(self)
+        self.le_vialROI = QtGui.QLineEdit(self)
+        self.le_vialROI.setText("[ [350,660], [661,960], [971,1260], [1290,1590] ]")
+        self.le_background = QtGui.QLineEdit(self)
+        self.le_vial = QtGui.QLineEdit(self)
+        self.le_croppedVideo = QtGui.QCheckBox(self)
+        self.le_croppedVideo.setChecked(True)
+        self.le_patchesFolder = QtGui.QLineEdit(self)
+        self.le_positionsFolder = QtGui.QLineEdit(self)
+        self.le_filesRunningIdx = QtGui.QCheckBox(self)
+        self.le_filesRunningIdx.setChecked(False)
+        self.le_FDV = QtGui.QLineEdit(self)
+        self.btn_formSubmit = QtGui.QPushButton(self)
+        self.btn_formSubmit.setText("Submit and start")
+
+
+        layout.addRow("Set your name", self.le_annotatorName)
+        layout.addRow("Path to folder containing the video(s)", self.le_videoPath)
+        layout.addRow("Path where behaviour files are saved", self.le_bhvrFolder)
+        layout.addRow("number of frames hold by each buffer \n (larger means faster playback, longer time to jump)", self.le_bufferWidth)
+        layout.addRow("number of buffers to be used \n (larger uses more threads, longer time to jump)", self.le_bufferLength)
+        layout.addRow("file to cache of file structure", self.le_bhvrCache)
+        layout.addRow("Region of interest of vials", self.le_vialROI)
+        layout.addRow("Select vial", self.le_vial)
+        layout.addRow("Background Image", self.le_background)
+        layout.addRow("Is video cropped?", self.le_croppedVideo)
+        layout.addRow("Folder to patches", self.le_patchesFolder)
+        layout.addRow("Fodler to position files", self.le_positionsFolder)
+        layout.addRow("Does video made up of chucks with numbers 000 - 0xx appended to the filename?", self.le_filesRunningIdx)
+        layout.addRow("Path to FrameDataVisualization", self.le_FDV)
+        layout.addRow("", self.btn_formSubmit)
+
+        self.le_annotatorName.setText("P")
+        self.le_videoPath.setText("/media/peter/Seagate Backup Plus Drive/testData/")
+        self.le_bhvrFolder.setText("bhvr")
+        self.le_bhvrCache.setText("")
+        self.le_vial.setText("0")
+        self.le_background.setText("/media/peter/Seagate Backup Plus Drive/testData/20130201/12/bg/2013-02-01.12-04-00-bg-True-True-True-False.png")
+        self.le_patchesFolder.setText("patches")
+        self.le_positionsFolder.setText("feat/pos")
+        self.le_FDV.setText("")
+        self.btn_formSubmit.clicked.connect(self.submitForm)
+
+        self.show()
+
+    def populateFormWithInternalSettings(self):
+        self.le_annotatorName.setText(self.getAnnotator())
+        self.le_videoPath.setText(self.path)
+        self.le_bhvrFolder.setText(self.bhvrFolder)
+        self.le_bhvrCache.setText(self.bhvrListPath)
+        if self.selectedVial is None:
+            self.le_vial.setText(str(self.selectedVial))
+        else:
+            self.le_vial.setText(str(self.selectedVial[0]))
+        self.le_background.setText(self.backgroundPath)
+        self.le_patchesFolder.setText(str(self.patchesFolder))
+        self.le_positionsFolder.setText(str(self.positionsFolder))
+        self.le_FDV.setText(self.fdvtPath)
+        self.le_vialROI.setText(str(self.vialROI))
+        self.le_bufferWidth.setText(str(self.bufferWidth))
+        self.le_bufferLength.setText(str(self.bufferLength))
+
+    def submitForm(self):
+        path = self.le_videoPath.text()
+        annotations = []
+        annotator = self.le_annotatorName.text()
+        backgroundPath = self.le_background.text()
+        selectedVial = int(self.le_vial.text())
+        vialROI = json.loads(self.le_vialROI.text())
+        # filterObjArgs=None,
+        # startVideoName=None,
+        # rewindOnClick=False,
+        croppedVideo = self.le_croppedVideo.isChecked()
+        positionsFolder = self.le_positionsFolder.text()
+        behaviourFolder = self.le_bhvrFolder.text()
+        patchesFolder = self.le_patchesFolder.text()
+        # videoExtension='.avi', #'.v0.avi',
+        runningIndeces = self.le_filesRunningIdx.isChecked()
+        fdvtPath = self.le_FDV.text()
+        bhvrListPath = self.le_bhvrCache.text()
+        # serverAddress="tcp://127.0.0.1:4242",
+        bufferWidth = int(self.le_bufferWidth.text())
+        bufferLength= int(self.le_bufferLength.text())
+
+        if not bhvrListPath:
+            bhvrListPath = None
+
+        if not fdvtPath:
+            fdvtPath = None
+
+        try:
+            filterObjArgs = self.filterObjArgs
+        except AttributeError:
+            filterObjArgs = None
+
+        try:
+            startVideoName = self.startVideoName
+        except AttributeError:
+            startVideoName = None
+
+        try:
+            rewindOnClick = self.rewindOnClick
+        except AttributeError:
+            rewindOnClick = False
+
+        try:
+            videoExtension = self.videoExtension
+        except AttributeError:
+            videoExtension = 'avi'
+
+        try:
+            serverAddress = self.serverAddress
+        except AttributeError:
+            serverAddress = "tcp://127.0.0.1:4242"
+
+
+        self.init(  path=path,
+                    annotations=annotations,
+                    annotator=annotator,
+                    backgroundPath=backgroundPath,
+                    selectedVial=selectedVial,
+                    vialROI=vialROI,
+                    filterObjArgs=filterObjArgs,
+                    startVideoName=startVideoName,
+                    rewindOnClick=rewindOnClick,
+                    croppedVideo=croppedVideo,
+                    positionsFolder=positionsFolder,
+                    behaviourFolder=behaviourFolder,
+                    patchesFolder=patchesFolder,
+                    videoExtension=videoExtension,
+                    runningIndeces=runningIndeces,
+                    fdvtPath=fdvtPath,
+                    bhvrListPath=bhvrListPath,
+                    serverAddress=serverAddress,
+                    bufferWidth=bufferWidth,
+                    bufferLength=bufferLength)
         
     def transferElementsInCollapseContainer(self):
         self.createVideoDisplayWidget()
@@ -341,7 +505,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.colCont.addWidget(self.annoViewCol, "annotation views")
         self.colCont.addWidget(self.controlWidget, "control elements")
         self.colCont.addWidget(self.progressWidget, "progress")
-        self.colCont.addWidget(self.ui.tabWidget, "Navigation and Inspection")
+        # self.colCont.addWidget(self.ui.tabWidget, "Navigation and Inspection")
         self.colCont.addWidget(self.debugWidget, "debugging ")
         
         
@@ -353,15 +517,15 @@ class VideoTagger(QtGui.QMainWindow):
         self.pb_stopPlayback.clicked.connect(self.stopPlayback)
         layout = QtGui.QHBoxLayout()
         
-        layout.addWidget(self.ui.lbl_vial)
-        layout.addWidget(self.ui.lbl_v0)
-        layout.addWidget(self.ui.lbl_v1)
-        layout.addWidget(self.ui.pb_check4requests)
-        layout.addWidget(self.ui.speed_lbl)
-        layout.addWidget(self.pb_playback)
-        layout.addWidget(self.pb_stopPlayback)
-        layout.addWidget(self.ui.cb_trajectory)
-        layout.addWidget(self.ui.cb_anyLabel)
+        # layout.addWidget(self.ui.lbl_vial)
+        # layout.addWidget(self.ui.lbl_v0)
+        # layout.addWidget(self.ui.lbl_v1)
+        # layout.addWidget(self.ui.pb_check4requests)
+        # layout.addWidget(self.ui.speed_lbl)
+        # layout.addWidget(self.pb_playback)
+        # layout.addWidget(self.pb_stopPlayback)
+        # layout.addWidget(self.ui.cb_trajectory)
+        # layout.addWidget(self.ui.cb_anyLabel)
         
         w.setLayout(layout)
         w.show()
@@ -373,13 +537,13 @@ class VideoTagger(QtGui.QMainWindow):
         w = QtGui.QWidget(self)
         
         layout = QtGui.QHBoxLayout()
-        layout.addWidget(self.ui.pb_startVideo)
-        layout.addWidget(self.ui.pb_stopVideo)
-        layout.addWidget(self.ui.pb_connect2server)
-        layout.addWidget(self.ui.pb_test)
-        layout.addWidget(self.ui.pb_addAnno)
-        layout.addWidget(self.ui.pb_eraseAnno)
-        layout.addWidget(self.ui.cb_edit)
+        # layout.addWidget(self.ui.pb_startVideo)
+        # layout.addWidget(self.ui.pb_stopVideo)
+        # layout.addWidget(self.ui.pb_connect2server)
+        # layout.addWidget(self.ui.pb_test)
+        # layout.addWidget(self.ui.pb_addAnno)
+        # layout.addWidget(self.ui.pb_eraseAnno)
+        # layout.addWidget(self.ui.cb_edit)
         
         w.setLayout(layout)
         w.show()
@@ -392,10 +556,10 @@ class VideoTagger(QtGui.QMainWindow):
         
         
         self.progFilter = EF.ProgressFilterObj(self)
-        self.ui.progBar.installEventFilter(self.progFilter)        
+        # self.ui.progBar.installEventFilter(self.progFilter)
         
         layout = QtGui.QHBoxLayout()
-        layout.addWidget(self.ui.progBar)
+        # layout.addWidget(self.ui.progBar)
         
         w.setLayout(layout)
         w.show()
@@ -420,7 +584,7 @@ class VideoTagger(QtGui.QMainWindow):
     def updateProgress(self):
         path, idx = self.vh.getCurrentKey_idx()
         percent = self.fileList.index(path) / float(len(self.fileList))
-        self.ui.progBar.setValue(percent * 100)
+        # self.ui.progBar.setValue(percent * 100)
         
         
     def jumpToPercent(self, pixel):
@@ -449,15 +613,15 @@ class VideoTagger(QtGui.QMainWindow):
         self.yOffset = -32 + (self.yFactor*64) / 2
         
         
-        self.ui.lbl_v0.setStyleSheet("background-color: rgba(255, 255, 255, 10);")
+        # self.ui.lbl_v0.setStyleSheet("background-color: rgba(255, 255, 255, 10);")
         
-        self.ui.lv_paths.setCurrentIndex(self.lm.index(0,0))
+        # self.ui.lv_paths.setCurrentIndex(self.lm.index(0,0))
         
         self.createAnnoViews()
         self.setupLabelMenu()
         
         
-        self.ui.pb_check4requests.setVisible(False)
+        # self.ui.pb_check4requests.setVisible(False)
         
         
     def createAnnoView(self, width, height, idx):
@@ -537,7 +701,7 @@ class VideoTagger(QtGui.QMainWindow):
     
         
     def setupFrameView(self):
-        self.frameView = GFDV.GraphicsViewFDV(self.ui.tab_2)
+        self.frameView = GFDV.GraphicsViewFDV(self)
         self.frameView.setGeometry(QtCore.QRect(10, 10, 891, 221))
         self.frameView.setObjectName("frameView")
 
@@ -885,7 +1049,7 @@ class VideoTagger(QtGui.QMainWindow):
     @cfg.logClassFunction
     def updateFrameList(self, intList):
         self.frameList = MyListModel(intList, self) 
-        self.ui.lv_frames.setModel(self.frameList)
+        # self.ui.lv_frames.setModel(self.frameList)
         
     @cfg.logClassFunction
     def updateJumpList(self, intList):
@@ -893,7 +1057,7 @@ class VideoTagger(QtGui.QMainWindow):
         
         strList = [str(x) for x in intList]
         self.jumpList = MyListModel(strList, self) 
-        self.ui.lv_jmp.setModel(self.jumpList)
+        # self.ui.lv_jmp.setModel(self.jumpList)
         
     @cfg.logClassFunction
     def updateVial(self, vE, lbl, p):    
@@ -1114,6 +1278,7 @@ class VideoTagger(QtGui.QMainWindow):
 
 
     def displayFullResolutionFrame(self):
+        print "displayFullResolutionFrame", self.fullVideoDialog
         if not self.croppedVideo:
             self.displayingFullResolution = True
             self.fullResFrame = self.vh.getFullResolutionFrame()
@@ -1124,13 +1289,18 @@ class VideoTagger(QtGui.QMainWindow):
 
         if self.fullVideoDialog is None:
             # self.fullVideoDialog = FVD(self, self.prevFramesWidget)
+            print "displayFullResolutionFrame", "enter"
             self.fullVideoDialog = FVD(self, self.createPrevFrames(0, 0))
+            print "displayFullResolutionFrame", "created"
             self.fullVideoDialog.setScene(self.videoScene)
+            print "displayFullResolutionFrame", "setScene"
             self.setupHUD()
-            self.fullVideoDialog.show()
+            print "displayFullResolutionFrame", "setupHUID"
             self.dialogShortCutFilter = EF.shortcutHandler(self.fullVideoDialog, self, **self.filterObjArgs)
             # self.fullVideoDialog.installEventFilter(self.dialogShortCutFilter)
             self.deactivateEditMode()
+            self.fullVideoDialog.show()
+            print "displayFullResolutionFrame", "showed"
         else:
             self.fullVideoDialog.show()
 
@@ -1274,7 +1444,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.vh.updateAnnotationProperties(self.getMetadata())
 
         frameNo = self.vh.getCurrentFrameNo()
-        self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
+        # self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
 
         self.updateHUD()
              
@@ -1464,8 +1634,8 @@ class VideoTagger(QtGui.QMainWindow):
                                          QtGui.QColor(0, 0, 0))
             self.fullVideoDialog.graphicsView.setCursor(QtCore.Qt.CrossCursor)
 
-        if not self.play:
-            self.startVideo()
+        # if not self.play:
+        #     self.startVideo()
 
     def activatePostLabelQuery(self):
         self.postLabelQuery = True
@@ -1474,7 +1644,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.postLabelQuery = False
 
     def toggleEditModeCheckbox(self):
-        self.ui.cb_edit.setChecked(not self.ui.cb_edit.isChecked())
+        # self.ui.cb_edit.setChecked(not self.ui.cb_edit.isChecked())
+        pass
 
     def editToggle(self, state):
         if state:
@@ -1526,16 +1697,16 @@ class VideoTagger(QtGui.QMainWindow):
         
         self.sceneRect = QtCore.QRectF(0, 0, w,h)
         
-        self.videoView = QtGui.QGraphicsView(self)        
-        self.videoView.setFrameStyle(QtGui.QFrame.NoFrame)
-        self.videoView.setGeometry(QtCore.QRect(10, 10, w, h))#1920/2, 1080/2))
-        self.videoView.setGeometry(QtCore.QRect(150, 10, w, h))#1920/2, 1080/2))
+        # self.videoView = QtGui.QGraphicsView()
+        # self.videoView.setFrameStyle(QtGui.QFrame.NoFrame)
+        # self.videoView.setGeometry(QtCore.QRect(10, 10, w, h))#1920/2, 1080/2))
+        # self.videoView.setGeometry(QtCore.QRect(150, 10, w, h))#1920/2, 1080/2))
         self.videoScene = QtGui.QGraphicsScene(self)
         self.videoScene.setItemIndexMethod(QtGui.QGraphicsScene.NoIndex)
         self.videoScene.setSceneRect(self.sceneRect)#1920, 1080))
         self.videoScene.setBackgroundBrush(QtGui.QBrush(QtCore.Qt.black))
         
-        self.videoView.setScene(self.videoScene)
+        # self.videoView.setScene(self.videoScene)
             
             
         if path:
@@ -1571,23 +1742,23 @@ class VideoTagger(QtGui.QMainWindow):
         
 #         glw.setMouseTracking(True)
         
-        self.videoView.setViewport(self.glw)
-        self.videoView.viewport().setCursor(QtCore.Qt.BlankCursor)
-        self.videoView.setGeometry(QtCore.QRect(0, 0, w + 200, h+ 50))#1920/2, 1080/2))
-        self.videoView.show()
-#         self.videoView.fitInView(self.bgImg, QtCore.Qt.KeepAspectRatio)
-        self.videoView.fitInView(QtCore.QRect(0, 0, w, h + 50),
-                                 QtCore.Qt.KeepAspectRatio)
+#         self.videoView.setViewport(self.glw)
+#         self.videoView.viewport().setCursor(QtCore.Qt.BlankCursor)
+#         self.videoView.setGeometry(QtCore.QRect(0, 0, w + 200, h+ 50))#1920/2, 1080/2))
+#         self.videoView.show()
+# #         self.videoView.fitInView(self.bgImg, QtCore.Qt.KeepAspectRatio)
+#         self.videoView.fitInView(QtCore.QRect(0, 0, w, h + 50),
+#                                  QtCore.Qt.KeepAspectRatio)
         
 #         self.videoView.installEventFilter(self.mouseEventFilter)
-        self.videoView.setMouseTracking(True)
+#         self.videoView.setMouseTracking(True)
 #         self.lbl_v0.setAcceptHoverEvents(True)
 #         self.videoScene.setAcceptHoverEvents(True)
         self.videoScene.installEventFilter(self.mouseEventFilter)
 
         self.videoHeight = h + 50
         self.addCropRect()
-        self.videoView.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
+        # self.videoView.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
 
     def setupHUD(self):
         if self.fullVideoDialog:
@@ -1628,12 +1799,12 @@ class VideoTagger(QtGui.QMainWindow):
                                       self.frameView)
 
     def openKeySettings(self):
-        filterObjArgs = OD.ControlsSettingDialog.getSelection(self.fullVideoDialog.centralWidget(),
+        self.filterObjArgs = OD.ControlsSettingDialog.getSelection(self.fullVideoDialog.centralWidget(),
                                               self.dialogShortCutFilter.keyMap,
                                               self.dialogShortCutFilter.stepSize)
 
-        self.dialogShortCutFilter.setKeyMap(filterObjArgs['keyMap'])
-        self.dialogShortCutFilter.setStepSize(filterObjArgs['stepSize'])
+        self.dialogShortCutFilter.setKeyMap(self.filterObjArgs['keyMap'])
+        self.dialogShortCutFilter.setStepSize(self.filterObjArgs['stepSize'])
         self.exportSettings()
 
 
@@ -1661,8 +1832,8 @@ class VideoTagger(QtGui.QMainWindow):
                          
             if self.play:            
                 self.showNextFrame(self.increment)
-                self.ui.speed_lbl.setText("<b>speed</b>: {0}x".format(\
-                                                                self.increment))
+                # self.ui.speed_lbl.setText("<b>speed</b>: {0}x".format(\
+                #                                                 self.increment))
                 self.updateProgress()
 #                 if self.increment == 0:
 #                     self.play = False
@@ -1766,8 +1937,8 @@ class VideoTagger(QtGui.QMainWindow):
                                                             
     @cfg.logClassFunction
     def setVideo(self, idx):
-        self.ui.lv_paths.setCurrentIndex(self.lm.index(idx,0))
-        self.ui.sldr_paths.setSliderPosition(idx)
+        # self.ui.lv_paths.setCurrentIndex(self.lm.index(idx,0))
+        # self.ui.sldr_paths.setSliderPosition(idx)
         self.pos = self.posList[idx]
         
         if self.filterList != []:
@@ -1783,15 +1954,15 @@ class VideoTagger(QtGui.QMainWindow):
         self.frameIdx = idx
         self.vh.setFrameIdx(idx)
         self.showNextFrame(1)
-        self.ui.lv_frames.setCurrentIndex(self.frameList.index(idx,0))
+        # self.ui.lv_frames.setCurrentIndex(self.frameList.index(idx,0))
             
 
     @cfg.logClassFunction
     def selectVideo(self, idx, frame=0):
         self.idx = idx
         self.vh.getFrame(sorted(self.fileList)[idx], frame)
-        self.ui.lbl_v0.setText("<b>current file</b>: {0}".format( \
-                                                    sorted(self.fileList)[idx]))
+        # self.ui.lbl_v0.setText("<b>current file</b>: {0}".format( \
+        #                                             sorted(self.fileList)[idx]))
         
         self.increment = 0 
         self.showNextFrame(0)
@@ -1836,7 +2007,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.selectVideo(self.idx)
         
     def jump2selectedVideo(self):
-        self.selectVideoLV(self.ui.lv_paths.selectionModel().currentIndex())
+           # self.selectVideoLV(self.ui.lv_paths.selectionModel().currentIndex())
+        pass
         
 #     @cfg.logClassFunction
     def selectFrame(self, mdl):
@@ -1892,7 +2064,7 @@ class VideoTagger(QtGui.QMainWindow):
     def changeVideo(self, filePath):
         cfg.log.debug("Change video to {0}".format(filePath))
         
-        self.ui.lbl_v0.setText("current file: {0}".format(filePath))
+        # self.ui.lbl_v0.setText("current file: {0}".format(filePath))
         
         cfg.log.debug("end")
         
@@ -1953,7 +2125,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.rewinding = False               
         ## set filterObj to normal playback
         self.eventFilter.swapFromConstantSpeed()
-        self.ui.progBar.setVisible(False)
+        # self.ui.progBar.setVisible(False)
     
     def rewindIncrement(self):        
         if self.rewinding:
@@ -1961,7 +2133,7 @@ class VideoTagger(QtGui.QMainWindow):
                 self.stopRewind()
             else:                
                 self.rewindCnt += 1
-                self.ui.progBar.setValue(self.rewindCnt)
+                # self.ui.progBar.setValue(self.rewindCnt)
                 
         
     def alterAnnotation(self, annotator="peter", behaviour="just testing", 
@@ -2067,9 +2239,15 @@ class VideoTagger(QtGui.QMainWindow):
             self.isLabelingSingleFrame = False
             self.jumpToBookmark()
 
+    def getAnnotator(self):
+        if self.annotator:
+            return self.annotator
+        else:
+            return self.annotations[0]['annot']
+
     def addNewBehaviourClass(self, selectedBehaviour, color):
         self.annotations += [{'behav': selectedBehaviour,
-                              'annot': self.annotations[0]['annot'],
+                              'annot': self.getAnnotator(),
                               'color': color}]
 
         self.exportSettings()
@@ -2100,7 +2278,7 @@ class VideoTagger(QtGui.QMainWindow):
                 if elem['behav'] == selectedBehaviour:
                     newAnnotator = elem['annot']
                     newBehaviour = elem['behav']
-                    self.editAnnoLabel(self.annotations[0]['annot'], "unknown",
+                    self.editAnnoLabel(self.getAnnotator(), "unknown",
                                        newAnnotator, newBehaviour)
 
                     return selectedBehaviour
@@ -2113,13 +2291,13 @@ class VideoTagger(QtGui.QMainWindow):
                                 "press ESC.").format(selectedBehaviour))
             if color is None:
                 self.vh.eraseAnnotationSequence(self.selectedVial,
-                                                self.annotations[0]['annot'],
+                                                self.getAnnotator(),
                                                 "unknown", direction='both')
                 return None
             else:
                 self.addNewBehaviourClass(selectedBehaviour, color)
-                self.editAnnoLabel(self.annotations[0]['annot'], "unknown",
-                                   self.annotations[0]['annot'],
+                self.editAnnoLabel(self.getAnnotator(), "unknown",
+                                   self.getAnnotator(),
                                    selectedBehaviour)
 
         return selectedBehaviour
@@ -2167,7 +2345,7 @@ class VideoTagger(QtGui.QMainWindow):
     def addTempAnno(self):
         if not self.inEditMode:
             self.postLabelQuery = True
-            self.addAnno(self.annotations[0]['annot'], "unknown")
+            self.addAnno(self.getAnnotator(), "unknown")
 
 #     @cfg.logClassFunction
     def eraseAnno(self, annotator="peter", behaviour="just testing"):      
@@ -2209,7 +2387,7 @@ class VideoTagger(QtGui.QMainWindow):
 
     def getBookmarksFilename(self):
         folder = os.path.dirname(self.fileList[0])
-        annotator = self.annotations[0]['annot']
+        annotator = self.getAnnotator()
         filename = os.path.join(folder,
                                 "{anno}.bookmarks.json".format(anno=annotator))
 
@@ -2229,15 +2407,20 @@ class VideoTagger(QtGui.QMainWindow):
         cfgDict['Video']['files-running-indices'] = self.runningIndeces
         cfgDict['Video']['frame-data-visualization-path'] = self.fdvtPath
         cfgDict['Video']['rewind-on-click'] = self.rewindOnClick
-        cfgDict['Video']['vial'] = self.selectedVial
-        cfgDict['Video']['vialROI'] = self.vialROI
+        if self.selectedVial is None:
+            cfgDict['Video']['vial'] = self.selectedVial
+        else:
+            cfgDict['Video']['vial'] = self.selectedVial[0]
+        cfgDict['Video']['vialROI'] = json.dumps(self.vialROI)
         cfgDict['Video']['videoPath'] = self.path
 
-        cfgDict['StepSize'] = self.filterObjArgs['stepSize']
-        cfgDict['KeyMap'] = dict()
+        if self.filterObjArgs['stepSize']:
+            cfgDict['StepSize'] = self.filterObjArgs['stepSize']
 
-        for k in self.filterObjArgs['keyMap']:
-            cfgDict['KeyMap'][k] = self.filterObjArgs['keyMap'][k].toString()
+        if self.filterObjArgs['keyMap'] is not None:
+            cfgDict['KeyMap'] = dict()
+            for k in self.filterObjArgs['keyMap']:
+                cfgDict['KeyMap'][k] = self.filterObjArgs['keyMap'][k].toString()
 
         cfgDict['Annotation'] = {'annotations': []}
         for anno in self.annotations:
@@ -2246,6 +2429,7 @@ class VideoTagger(QtGui.QMainWindow):
                               'behav': anno['behav'],
                               'color': anno['color'].name()}]
 
+        cfgDict['Annotation']['annotator'] = self.getAnnotator()
 
         cfgDict['ActiveLearning'] = dict()
         cfgDict['ActiveLearning']['remote-request-server'] = self.serverAddress
@@ -2254,7 +2438,7 @@ class VideoTagger(QtGui.QMainWindow):
                             encoding=('utf-8'))
 
         with open(os.path.join(os.path.dirname(self.path),
-                               'config.yaml'), 'w') as f:
+                               'videoTaggerConfig.yaml'), 'w') as f:
             f.writelines(yamlStr)
 
     def aboutToQuit(self):
@@ -2262,6 +2446,41 @@ class VideoTagger(QtGui.QMainWindow):
 
     def debug(self):
         1/0
+
+    def tryToLoadConfig(self, path):
+        configPath = os.path.join(path, 'videoTaggerConfig.yaml')
+        if os.path.exists(configPath):
+            videoPath, annotations, annotator, backgroundPath, selectedVial,\
+            vialROI, \
+            videoExtension, filterObjArgs, startVideo, rewindOnClick,\
+            croppedVideo, patchesFolder, positionFolder, behaviourFolder,\
+            runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
+            bufferLength = VideoTagger.parseConfig(configPath)
+
+            self.path = videoPath
+            self.annotations = annotations
+            self.annotator = annotator
+            self.backgroundPath = backgroundPath
+            if type(selectedVial) == int:
+                self.selectedVial = [selectedVial]
+            else:
+                self.selectedVial = selectedVial
+            self.vialROI = vialROI
+            self.videoExtension = videoExtension
+            self.filterObjArgs = filterObjArgs
+            self.startVideo = startVideo
+            self.rewindOnClick = rewindOnClick
+            self.croppedVideo = croppedVideo
+            self.patchesFolder = patchesFolder
+            self.positionsFolder = positionFolder
+            self.bhvrFolder = behaviourFolder
+            self.runningIndeces = runningIndeces
+            self.fdvtPath = fdvtPath
+            self.bhvrListPath = bhvrListPath
+            self.bufferWidth = bufferWidth
+            self.bufferLength = bufferLength
+
+            self.populateFormWithInternalSettings()
 
     @staticmethod
     def parseConfig(path):
@@ -2360,7 +2579,8 @@ class VideoTagger(QtGui.QMainWindow):
             serverAddress = None
 
         # KeyMap
-        keyMap = { "stop": cfgFile['KeyMap']['stop'],
+        try:
+            keyMap = { "stop": cfgFile['KeyMap']['stop'],
                     "step-f": cfgFile['KeyMap']['step-f'],
                     "step-b": cfgFile['KeyMap']['step-b'],
                     "fwd-1": cfgFile['KeyMap']['fwd-1'],
@@ -2383,7 +2603,6 @@ class VideoTagger(QtGui.QMainWindow):
                     "erase-anno": cfgFile['KeyMap']['erase-anno'],
                     "info": cfgFile['KeyMap']['info']}
 
-        try:
             for key in keyMap:
                 keyMap[key] = QtGui.QKeySequence(str(keyMap[key]))#eval("Qt." + keyMap[key], {"Qt":QtCore.Qt})
         except KeyError:
@@ -2391,7 +2610,8 @@ class VideoTagger(QtGui.QMainWindow):
 
 
         # Step size
-        stepSize = {"stop": cfgFile['StepSize']['stop'],
+        try:
+            stepSize = {"stop": cfgFile['StepSize']['stop'],
                     "step-f": cfgFile['StepSize']['step-f'],
                     "step-b": cfgFile['StepSize']['step-b'],
                     "fwd-1": cfgFile['StepSize']['fwd-1'],
@@ -2407,6 +2627,8 @@ class VideoTagger(QtGui.QMainWindow):
                     "bwd-5": cfgFile['StepSize']['bwd-5'],
                     "bwd-6": cfgFile['StepSize']['bwd-6'],
                     "allow-steps": cfgFile['StepSize']['allow-steps']}
+        except KeyError:
+            stepSize = None
 
         filterObjArgs = dict()
         filterObjArgs['keyMap'] = keyMap
@@ -2415,8 +2637,13 @@ class VideoTagger(QtGui.QMainWindow):
 
         # Annotations
         annotations = cfgFile['Annotation']['annotations']
+        if 'annotator' in cfgFile['Annotation'].keys():
+            annotator = cfgFile['Annotation']['annotator']
+        else:
+            annotator = None
 
-        return videoPath, annotations, backgroundPath, selectedVial, vialROI, \
+        return videoPath, annotations, annotator, backgroundPath, selectedVial, \
+               vialROI, \
                 videoExtension, filterObjArgs, startVideo, rewindOnClick,\
                 croppedVideo, patchesFolder, positionFolder, behaviourFolder,\
                 runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
@@ -2543,7 +2770,7 @@ if __name__ == "__main__":
     # config.read(args.config_file)
 
 
-    videoPath, annotations, backgroundPath, selectedVial, vialROI, \
+    videoPath, annotations, annotator, backgroundPath, selectedVial, vialROI, \
     videoExtension, filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
     patchesFolder, positionFolder, behaviourFolder, runningIndeces, fdvtPath,\
     bhvrListPath, bufferWidth, bufferLength = \
@@ -2556,8 +2783,8 @@ if __name__ == "__main__":
     else:
         vp = videoPath
 
-    if not os.path.exists(os.path.join(vp, "log")):
-        os.makedirs(os.path.join(vp, "log"))
+    if not os.path.exists(os.path.join(vp, "videoTaggerLog")):
+        os.makedirs(os.path.join(vp, "videoTaggerLog"))
 
     hGUI = logging.FileHandler(os.path.join(vp, "videoTaggerLog",
                     "videoTagger." + \
@@ -2572,14 +2799,17 @@ if __name__ == "__main__":
 
     app = QtGui.QApplication(sys.argv)
     
-    w = VideoTagger(videoPath, annotations, backgroundPath, selectedVial, vialROI,
-                     videoExtension=videoExtension, filterObjArgs=filterObjArgs,
-                     startVideoName=startVideo, rewindOnClick=rewindOnClick,
-                     croppedVideo=croppedVideo, patchesFolder=patchesFolder,
-                     positionsFolder=positionFolder, behaviourFolder=behaviourFolder,
-                     runningIndeces=runningIndeces,
-                     fdvtPath=fdvtPath, bhvrListPath=bhvrListPath,
-                     bufferWidth=bufferWidth, bufferLength=bufferLength)
+    # w = VideoTagger(videoPath, annotations, backgroundPath, selectedVial, vialROI,
+    #                  videoExtension=videoExtension, filterObjArgs=filterObjArgs,
+    #                  startVideoName=startVideo, rewindOnClick=rewindOnClick,
+    #                  croppedVideo=croppedVideo, patchesFolder=patchesFolder,
+    #                  positionsFolder=positionFolder, behaviourFolder=behaviourFolder,
+    #                  runningIndeces=runningIndeces,
+    #                  fdvtPath=fdvtPath, bhvrListPath=bhvrListPath,
+    #                  bufferWidth=bufferWidth, bufferLength=bufferLength,
+    #                   annotator=annotator)
+
+    w = VideoTagger()
     
     app.connect(app, QtCore.SIGNAL("aboutToQuit()"), w.exit)
     w.quit.connect(app.quit)

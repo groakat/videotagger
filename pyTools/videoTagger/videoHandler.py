@@ -143,7 +143,11 @@ class VideoHandler(QtCore.QObject):
 #         return maxOfSelectedVials(self.selectedVials)
     
     def aboutToQuit(self):
-        self.videoLoaderLuncherThread.quit()
+        try:
+            self.videoLoaderLuncherThread.quit()
+        except RuntimeError:
+            # thread already deleted
+            pass
     
     @cfg.logClassFunction
     def setFrameIdx(self, idx):
