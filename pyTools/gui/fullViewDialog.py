@@ -72,7 +72,7 @@ class FullViewDialog(QtGui.QMainWindow):
         self.controlWidget = QtGui.QWidget(self)
         layout = QtGui.QHBoxLayout(self.controlWidget)
 
-        iconFolder = os.path.dirname(self.__file__)
+        iconFolder = os.path.dirname(FullViewDialog.__file__)
 
         self.fdvButton = SVGButton(self.controlWidget)
         self.fdvButton.load(iconFolder + '../icon/Bar_chart_font_awesome.svg')
