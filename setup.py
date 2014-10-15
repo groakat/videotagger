@@ -74,10 +74,10 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'videoTagger = pyTools.videoTagger.videoTagger:main',
+            'videotagger = pyTools.videoTagger.videoTagger:main',
         ],
         'gui_scripts': [
-            'videoTagger = pyTools.videoTagger.videoTagger:main',
+            'videotagger = pyTools.videoTagger.videoTagger:main',
         ]
     }
 )
