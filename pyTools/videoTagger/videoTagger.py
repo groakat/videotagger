@@ -141,6 +141,23 @@ class VideoTagger(QtGui.QMainWindow):
         self.filterObjArgs = filterObjArgs
 
         self.path = path
+
+
+        if not os.path.exists(os.path.join(self.path, "videoTaggerLog")):
+            os.makedirs(os.path.join(self.path, "videoTaggerLog"))
+
+        hGUI = logging.FileHandler(os.path.join(self.path, "videoTaggerLog",
+                        "videoTagger." + \
+                        time.strftime("%Y-%m-%d.%H-%M-%S", time.localtime()) +\
+                        ".log"))
+        fGUI = logging.Formatter('{"time": "%(asctime)s", "func":"%(funcName)s", "args":%(message)s}')
+        hGUI.setFormatter(fGUI)
+        for handler in cfg.logGUI.handlers:
+            cfg.logGUI.removeHandler(handler)
+
+        cfg.logGUI.addHandler(hGUI)
+
+
         self.backgroundPath = backgroundPath
         self.vialROI = vialROI
         self.startVideoName = startVideoName
@@ -2749,67 +2766,50 @@ if __name__ == "__main__":
     
     parser.add_argument('-c', '--config-file', 
                 help="path to file containing configuration")
-    
-       
+
+
+
     args = parser.parse_args()
     
     if args.config_file == None:
-        print textwrap.dedent(\
-            """
-            Expect configuration file (-c option). 
-            Run 'python videoPlayer_pySide.py -h' for more information
-            """)
-        sys.exit()
-#     
-#     with open(args.config_file, 'r') as f:
-#         config = json.load(f)
-        
-        
-    # import ConfigParser
-    # config = ConfigParser.ConfigParser()
-    # config.read(args.config_file)
+        # print textwrap.dedent(\
+        #     """
+        #     Expect configuration file (-c option).
+        #     Run 'python videoPlayer_pySide.py -h' for more information
+        #     """)
+        # sys.exit()
 
 
-    videoPath, annotations, annotator, backgroundPath, selectedVial, vialROI, \
-    videoExtension, filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
-    patchesFolder, positionFolder, behaviourFolder, runningIndeces, fdvtPath,\
-    bhvrListPath, bufferWidth, bufferLength = \
-                                VideoTagger.parseConfig(args.config_file)
-        
-    #### finish parsing config file
-    
-    if videoPath.endswith(('.' + videoExtension)):
-        vp = os.path.split(videoPath)[0]
+        app = QtGui.QApplication(sys.argv)
+        w = VideoTagger()
+
     else:
-        vp = videoPath
+        videoPath, annotations, annotator, backgroundPath, selectedVial, vialROI, \
+        videoExtension, filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
+        patchesFolder, positionFolder, behaviourFolder, runningIndeces, fdvtPath,\
+        bhvrListPath, bufferWidth, bufferLength = \
+                                    VideoTagger.parseConfig(args.config_file)
 
-    if not os.path.exists(os.path.join(vp, "videoTaggerLog")):
-        os.makedirs(os.path.join(vp, "videoTaggerLog"))
+        #### finish parsing config file
 
-    hGUI = logging.FileHandler(os.path.join(vp, "videoTaggerLog",
-                    "videoTagger." + \
-                    time.strftime("%Y-%m-%d.%H-%M-%S", time.localtime()) +\
-                    ".log"))
-    fGUI = logging.Formatter('{"time": "%(asctime)s", "func":"%(funcName)s", "args":%(message)s}')
-    hGUI.setFormatter(fGUI)
-    for handler in cfg.logGUI.handlers:
-        cfg.logGUI.removeHandler(handler)
-        
-    cfg.logGUI.addHandler(hGUI)
+        if videoPath.endswith(('.' + videoExtension)):
+            vp = os.path.split(videoPath)[0]
+        else:
+            vp = videoPath
 
-    app = QtGui.QApplication(sys.argv)
-    
-    # w = VideoTagger(videoPath, annotations, backgroundPath, selectedVial, vialROI,
-    #                  videoExtension=videoExtension, filterObjArgs=filterObjArgs,
-    #                  startVideoName=startVideo, rewindOnClick=rewindOnClick,
-    #                  croppedVideo=croppedVideo, patchesFolder=patchesFolder,
-    #                  positionsFolder=positionFolder, behaviourFolder=behaviourFolder,
-    #                  runningIndeces=runningIndeces,
-    #                  fdvtPath=fdvtPath, bhvrListPath=bhvrListPath,
-    #                  bufferWidth=bufferWidth, bufferLength=bufferLength,
-    #                   annotator=annotator)
+        app = QtGui.QApplication(sys.argv)
 
-    w = VideoTagger()
+        w = VideoTagger(videoPath, annotations, backgroundPath, selectedVial, vialROI,
+                         videoExtension=videoExtension, filterObjArgs=filterObjArgs,
+                         startVideoName=startVideo, rewindOnClick=rewindOnClick,
+                         croppedVideo=croppedVideo, patchesFolder=patchesFolder,
+                         positionsFolder=positionFolder, behaviourFolder=behaviourFolder,
+                         runningIndeces=runningIndeces,
+                         fdvtPath=fdvtPath, bhvrListPath=bhvrListPath,
+                         bufferWidth=bufferWidth, bufferLength=bufferLength,
+                          annotator=annotator)
+
+
     
     app.connect(app, QtCore.SIGNAL("aboutToQuit()"), w.exit)
     w.quit.connect(app.quit)
