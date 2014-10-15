@@ -305,9 +305,9 @@ class VideoTagger(QtGui.QMainWindow):
         self.hud = None
         # self.setupHUD()
 
-        self.timer = QtCore.QTimer(self)
-        self.timer.timeout.connect(self.showNextFrame)
-        self.timerID = None
+        # self.timer = QtCore.QTimer(self)
+        # self.timer.timeout.connect(self.showNextFrame)
+        # self.timerID = None
         
         self.populateFormWithInternalSettings()
 
@@ -352,8 +352,12 @@ class VideoTagger(QtGui.QMainWindow):
         # self.ui.lv_paths.activated.connect(self.selectVideoLV)
         #
         # self.ui.cb_trajectory.stateChanged.connect(self.showTrajectories)
-        
-        self.startLoop.connect(self.startVideo)
+
+        try:
+            self.startLoop.connect(self.startVideo)
+        except RuntimeError:
+            # has been connected already
+            pass
 
 
     def displaySetupForm(self):
@@ -361,6 +365,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.setCentralWidget(formWidget)
 
         layout = QtGui.QFormLayout(formWidget)
+        layout.setFieldGrowthPolicy(QtGui.QFormLayout.ExpandingFieldsGrow)
         self.le_videoPath = QtGui.QLineEdit(self)
         self.le_videoPath.textEdited.connect(self.tryToLoadConfig)
         self.le_annotatorName = QtGui.QLineEdit(self)
@@ -414,6 +419,33 @@ class VideoTagger(QtGui.QMainWindow):
         self.le_FDV.setText("")
         self.btn_formSubmit.clicked.connect(self.submitForm)
 
+        self.le_annotatorName.adjustSize()
+        self.le_videoPath.adjustSize()
+        self.le_bhvrFolder.adjustSize()
+        self.le_bhvrCache.adjustSize()
+        self.le_vial.adjustSize()
+        self.le_background.adjustSize()
+        self.le_patchesFolder.adjustSize()
+        self.le_positionsFolder.adjustSize()
+        self.le_FDV.adjustSize()
+        self.le_vialROI.adjustSize()
+        self.le_bufferWidth.adjustSize()
+        self.le_bufferLength.adjustSize()
+
+        self.le_annotatorName.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_videoPath.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_bhvrFolder.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_bhvrCache.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_vial.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_background.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_patchesFolder.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_positionsFolder.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_FDV.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_vialROI.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_bufferWidth.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_bufferLength.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+
+        self.resize(800, 400)
         self.show()
 
     def populateFormWithInternalSettings(self):
@@ -432,6 +464,40 @@ class VideoTagger(QtGui.QMainWindow):
         self.le_vialROI.setText(str(self.vialROI))
         self.le_bufferWidth.setText(str(self.bufferWidth))
         self.le_bufferLength.setText(str(self.bufferLength))
+
+        self.le_annotatorName.adjustSize()
+        self.le_videoPath.adjustSize()
+        self.le_bhvrFolder.adjustSize()
+        self.le_bhvrCache.adjustSize()
+        self.le_vial.adjustSize()
+        self.le_background.adjustSize()
+        self.le_patchesFolder.adjustSize()
+        self.le_positionsFolder.adjustSize()
+        self.le_FDV.adjustSize()
+        self.le_vialROI.adjustSize()
+        self.le_bufferWidth.adjustSize()
+        self.le_bufferLength.adjustSize()
+
+        self.le_annotatorName.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_videoPath.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_bhvrFolder.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_bhvrCache.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_vial.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_background.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_patchesFolder.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_positionsFolder.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_FDV.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_vialROI.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_bufferWidth.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.le_bufferLength.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+
+        # hack to keep line edits expanded
+        size = self.size()
+        if size.width() == 800:
+            size.setWidth(801)
+        else:
+            size.setWidth(800)
+        self.resize(size)
 
     def submitForm(self):
         path = self.le_videoPath.text()
@@ -477,7 +543,7 @@ class VideoTagger(QtGui.QMainWindow):
             rewindOnClick = False
 
         try:
-            videoExtension = self.videoExtension
+            videoExtension = self.videoExtension.split('.')[-1]
         except AttributeError:
             videoExtension = 'avi'
 
@@ -1937,8 +2003,8 @@ class VideoTagger(QtGui.QMainWindow):
         
     def stopVideo(self):
         cfg.log.debug("stop video")
-        self.timer.stop()
-        self.timerID = None
+        # self.timer.stop()
+        # self.timerID = None
         self.stop = True
         self.play = False
         self.vh.loadProgressive = False
@@ -2428,7 +2494,7 @@ class VideoTagger(QtGui.QMainWindow):
             cfgDict['Video']['vial'] = self.selectedVial
         else:
             cfgDict['Video']['vial'] = self.selectedVial[0]
-        cfgDict['Video']['vialROI'] = json.dumps(self.vialROI)
+        cfgDict['Video']['vialROI'] = str(self.vialROI)
         cfgDict['Video']['videoPath'] = self.path
 
         if self.filterObjArgs['stepSize']:
@@ -2511,7 +2577,7 @@ class VideoTagger(QtGui.QMainWindow):
             selectedVial = None
 
         if 'vialROI' in cfgFile['Video'].keys():
-            vialROI = cfgFile['Video']['vialROI']
+            vialROI = json.loads(cfgFile['Video']['vialROI'])
         else:
             vialROI = None
 

@@ -147,7 +147,11 @@ class FullViewDialog(QtGui.QMainWindow):
         self.startVideoButton.load('../icon/Refresh_font_awesome.svg')
         self.startVideoButton.setToolTip("Restart video event loop")
         self.startVideoButton.setFixedSize(20, 20)
-        self.startVideoButton.clicked.connect(self.parent().startVideo)
+        try:
+            self.startVideoButton.clicked.connect(self.parent().startVideo)
+        except RuntimeError:
+            # has already been connected
+            pass
         layout.addWidget(self.startVideoButton)
 
 
