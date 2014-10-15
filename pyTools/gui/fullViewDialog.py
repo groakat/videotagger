@@ -72,30 +72,33 @@ class FullViewDialog(QtGui.QMainWindow):
         self.controlWidget = QtGui.QWidget(self)
         layout = QtGui.QHBoxLayout(self.controlWidget)
 
-        iconFolder = os.path.dirname(HUD.__file__)
+        self.iconFolder = os.path.join(
+                            os.path.dirname(os.path.abspath(__file__)),
+                            os.path.pardir,
+                            'icon')
 
         self.fdvButton = SVGButton(self.controlWidget)
-        self.fdvButton.load(iconFolder + '../icon/Bar_chart_font_awesome.svg')
+        self.fdvButton.load(self.iconFolder + '/Bar_chart_font_awesome.svg')
         self.fdvButton.setToolTip("Open hierarchical view of labels")
         self.fdvButton.setFixedSize(20, 20)
         self.fdvButton.clicked.connect(self.parent().openFDV)
         layout.addWidget(self.fdvButton)
 
         self.timelineButton = SVGButton(self.controlWidget)
-        self.timelineButton.load(iconFolder + '../icon/Align_justify_font_awesome.svg')
+        self.timelineButton.load(self.iconFolder + '/Align_justify_font_awesome.svg')
         self.timelineButton.setToolTip("Open timeline panel (not implemented yet)")
         self.timelineButton.setFixedSize(20, 20)
         layout.addWidget(self.timelineButton)
 
         self.bookmarkButton = SVGButton(self.controlWidget)
-        self.bookmarkButton.load(iconFolder + '../icon/Bookmark_font_awesome.svg')
+        self.bookmarkButton.load(self.iconFolder + '/Bookmark_font_awesome.svg')
         self.bookmarkButton.setToolTip("Open bookmark panel")
         self.bookmarkButton.setFixedSize(20, 20)
         self.bookmarkButton.clicked.connect(self.toogleBookmarks)
         layout.addWidget(self.bookmarkButton)
 
         self.fullFrameLabelButton = SVGButton(self.controlWidget)
-        self.fullFrameLabelButton.load(iconFolder + '../icon/Picture_font_awesome.svg')
+        self.fullFrameLabelButton.load(self.iconFolder + '/Picture_font_awesome.svg')
         self.fullFrameLabelButton.setToolTip("Open panel showing labels covering the entire frame (not implemented yet))")
         self.fullFrameLabelButton.setFixedSize(20, 20)
         # self.fullFrameLabelButton.clicked.connect(self.toogleBookmarks)
@@ -104,7 +107,7 @@ class FullViewDialog(QtGui.QMainWindow):
         layout.addStretch()
 
         self.fullResButton = SVGButton(self.controlWidget)
-        self.fullResButton.load(iconFolder + '../icon/Search_font_awesome.svg')
+        self.fullResButton.load(self.iconFolder + '/Search_font_awesome.svg')
         self.fullResButton.setToolTip("Show current frame in full resolution [SPACE]")
         self.fullResButton.setFixedSize(20, 20)
         self.fullResButton.clicked.connect(self.parent().displayFullResolutionFrame)
@@ -113,7 +116,7 @@ class FullViewDialog(QtGui.QMainWindow):
         layout.addSpacing(30)
 
         self.playButton = SVGButton(self.controlWidget)
-        self.playButton.load(iconFolder + '../icon/Play_font_awesome.svg')
+        self.playButton.load(self.iconFolder + '/Play_font_awesome.svg')
         self.playButton.setToolTip("Play video")
         self.playButton.setFixedSize(20, 20)
         self.playButton.clicked.connect(self.playButtonClick)
@@ -122,7 +125,7 @@ class FullViewDialog(QtGui.QMainWindow):
         layout.addSpacing(30)
 
         self.modeButton = SVGButton(self.controlWidget)
-        self.modeButton.load(iconFolder + '../icon/Edit_font_awesome.svg')
+        self.modeButton.load(self.iconFolder + '/Edit_font_awesome.svg')
         self.modeButton.setToolTip("Switch to 'Edit-mode' [CTRL + RETURN]")
         self.modeButton.setFixedSize(20, 20)
         self.modeButton.clicked.connect(self.toggleEditModeCheckbox)
@@ -132,21 +135,21 @@ class FullViewDialog(QtGui.QMainWindow):
         layout.addSpacing(20)
 
         self.saveButton = SVGButton(self.controlWidget)
-        self.saveButton.load(iconFolder + '../icon/Save_font_awesome.svg')
+        self.saveButton.load(self.iconFolder + '/Save_font_awesome.svg')
         self.saveButton.setToolTip("Save all annotations [CTRL + S]")
         self.saveButton.setFixedSize(20, 20)
         self.saveButton.clicked.connect(self.parent().saveAll)
         layout.addWidget(self.saveButton)
 
         self.settingsButton = SVGButton(self.controlWidget)
-        self.settingsButton.load(iconFolder + '../icon/Cogs_font_awesome.svg')
+        self.settingsButton.load(self.iconFolder + '/Cogs_font_awesome.svg')
         self.settingsButton.setToolTip("Open settings")
         self.settingsButton.setFixedSize(20, 20)
         self.settingsButton.clicked.connect(self.parent().openKeySettings)
         layout.addWidget(self.settingsButton)
 
         self.startVideoButton = SVGButton(self.controlWidget)
-        self.startVideoButton.load(iconFolder + '../icon/Refresh_font_awesome.svg')
+        self.startVideoButton.load(self.iconFolder + '/Refresh_font_awesome.svg')
         self.startVideoButton.setToolTip("Restart video event loop")
         self.startVideoButton.setFixedSize(20, 20)
         try:
@@ -200,11 +203,11 @@ class FullViewDialog(QtGui.QMainWindow):
 
     def playButtonClick(self):
         if not self.playing:
-            self.playButton.load('../icon/Pause_font_awesome.svg')
+            self.playButton.load(self.iconFolder + '/Pause_font_awesome.svg')
             self.playButton.setToolTip("Pause video")
             self.parent().playback()
         else:
-            self.playButton.load('../icon/Play_font_awesome.svg')
+            self.playButton.load(self.iconFolder + '/Play_font_awesome.svg')
             self.playButton.setToolTip("Play video")
             self.parent().stopPlayback()
 
@@ -214,10 +217,10 @@ class FullViewDialog(QtGui.QMainWindow):
         self.editing = not self.editing
 
         if self.editing:
-            self.modeButton.load('../icon/Edit_font_awesome.svg')
+            self.modeButton.load(self.iconFolder + '/Edit_font_awesome.svg')
             self.modeButton.setToolTip("Switch to 'Edit-mode' [CTRL + RETURN]")
         else:
-            self.modeButton.load('../icon/F0fe_font_awesome.svg')
+            self.modeButton.load(self.iconFolder + '/F0fe_font_awesome.svg')
             self.modeButton.setToolTip("Switch to 'Additive-mode' [CTRL + RETURN]")
 
         self.parent().toggleEditModeCheckbox()
@@ -226,10 +229,10 @@ class FullViewDialog(QtGui.QMainWindow):
         self.bookmarksOpen = not self.bookmarksOpen
         if self.bookmarksOpen:
             self.bmView.show()
-            self.bookmarkButton.load('../icon/Bookmark_empty_font_awesome.svg')
+            self.bookmarkButton.load(self.iconFolder + '/Bookmark_empty_font_awesome.svg')
         else:
             self.bmView.hide()
-            self.bookmarkButton.load('../icon/Bookmark_font_awesome.svg')
+            self.bookmarkButton.load(self.iconFolder + '/Bookmark_font_awesome.svg')
 
 class FullViewGraphicsView(QtGui.QGraphicsView):
 
