@@ -72,5 +72,13 @@ setup(
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
     ],
-    cmdclass = {'install_scripts': my_install_scripts}
+    entry_points={
+        'console_scripts': [
+            'videoTagger = pyTools/videoTagger/videoTagger:main',
+        ],
+        'gui_scripts': [
+            'videoTagger = pyTools/videoTagger/videoTagger:main',
+        ]
+    }
 )
+#cmdclass = {'install_scripts': my_install_scripts}
