@@ -65,7 +65,7 @@ class FullViewDialog(QtGui.QMainWindow):
 
 
     def setupHUD(self):
-        self.hud.setColor(QtGui.QColor(255,255,255,50))
+        self.hud.setColor(QtGui.QColor(255,255,255,100))
         self.hud.setGeometry(QtCore.QRect(10, 10, 841, 50))
 
     def setupControlWidget(self):

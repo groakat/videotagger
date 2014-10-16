@@ -10,27 +10,27 @@ class HUD(QtGui.QWidget):
 
         self.annotatorStr = None
         self.annotatorDisp = QtGui.QLabel(self)
-        self.annotatorFont = QtGui.QFont('', 10)
+        self.annotatorFont = QtGui.QFont('', 12)
         self.annotatorDisp.setFont(self.annotatorFont)
         self.behaviourStr = None
         self.behaviourDisp = QtGui.QLabel(self)
-        self.behaviourFont = QtGui.QFont('', 10)
+        self.behaviourFont = QtGui.QFont('', 12)
         self.behaviourDisp.setFont(self.behaviourFont)
         self.fileStr = None
         self.fileDisp = QtGui.QLabel(self)
-        self.fileFont = QtGui.QFont('', 10)
+        self.fileFont = QtGui.QFont('', 12)
         self.fileDisp.setFont(self.fileFont)
         self.frameStr = None
         self.frameDisp = QtGui.QLabel(self)
-        self.frameFont = QtGui.QFont('', 10)
+        self.frameFont = QtGui.QFont('', 12)
         self.frameDisp.setFont(self.frameFont)
         self.speedStr = None
         self.speedDisp = QtGui.QLabel(self)
-        self.speedFont = QtGui.QFont('', 10)
+        self.speedFont = QtGui.QFont('', 12)
         self.speedDisp.setFont(self.speedFont)
         self.modeStr = None
         self.modeDisp = QtGui.QLabel(self)
-        self.modeFont = QtGui.QFont('', 10)
+        self.modeFont = QtGui.QFont('', 12)
         self.modeDisp.setFont(self.modeFont)
 
         self.setAnnotator('')
@@ -165,7 +165,7 @@ class HUD(QtGui.QWidget):
         tWidth = 10
         y = 10
         self.fileDisp.move(tWidth, y)
-        y += 14
+        y += 18
 
         w = tWidth
         self.modeDisp.move(w, y)
@@ -173,13 +173,13 @@ class HUD(QtGui.QWidget):
         self.frameDisp.move(w, y)
         w += tWidth + self.frameDisp.rect().width()
         self.speedDisp.move(w, y)
-        y += 16
+        y += 18
 
         self.annotatorDisp.move(tWidth, y)
-        y += 12
+        y += 18
 
         self.behaviourDisp.move(tWidth - 5, y)
-        y += 14
+        y += 18
 
         self.adjustSize()
 
