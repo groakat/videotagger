@@ -387,6 +387,12 @@ class bookmarkView(QtGui.QWidget):
     def __init__(self, fullViewDialog, videoTagger, *args, **kwargs):
         super(bookmarkView, self).__init__(*args, **kwargs)
 
+
+        self.iconFolder = os.path.join(
+                            os.path.dirname(os.path.abspath(__file__)),
+                            os.path.pardir,
+                            'icon')
+
         self.videoTagger = videoTagger
         self.fullViewDialog = fullViewDialog
 
@@ -398,19 +404,19 @@ class bookmarkView(QtGui.QWidget):
         self.buttonLayout = QtGui.QHBoxLayout(self.buttonWidget)
 
         self.undoButton = SVGButton(self.buttonWidget)
-        self.undoButton.load('../icon/Reply_font_awesome.svg')
+        self.undoButton.load(self.iconFolder + '/Reply_font_awesome.svg')
         self.undoButton.setToolTip("undo jumping to bookmark")
         self.undoButton.clicked.connect(self.undoJump)
         self.undoButton.setFixedSize(20, 20)
 
         self.addButton = SVGButton(self.buttonWidget)
-        self.addButton.load('../icon/Plus_font_awesome.svg')
+        self.addButton.load(self.iconFolder + '/Plus_font_awesome.svg')
         self.addButton.setToolTip("add bookmark")
         self.addButton.clicked.connect(self.addBookmark)
         self.addButton.setFixedSize(20, 20)
 
         self.removeButton = SVGButton(self.buttonWidget)
-        self.removeButton.load('../icon/Minus_font_awesome.svg')
+        self.removeButton.load(self.iconFolder + '/Minus_font_awesome.svg')
         self.removeButton.setToolTip("remove bookmark")
         self.removeButton.clicked.connect(self.removeBookmark)
         self.removeButton.setFixedSize(20, 20)
