@@ -1728,7 +1728,8 @@ class VideoTagger(QtGui.QMainWindow):
 
     def toggleEditModeCheckbox(self):
         # self.ui.cb_edit.setChecked(not self.ui.cb_edit.isChecked())
-        pass
+        self.editToggle(not self.inEditMode)
+        # pass
 
     def editToggle(self, state):
         if state:
