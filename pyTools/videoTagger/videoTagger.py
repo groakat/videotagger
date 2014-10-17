@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath('../../'))
 # from OpenGL import GLU
 from PySide import QtGui
 from PySide import QtCore
-# from PySide import QtOpenGL
+from PySide import QtOpenGL
 
 
 from pyTools.gui.videoPlayer_auto import Ui_Form
