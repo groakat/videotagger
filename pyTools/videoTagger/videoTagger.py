@@ -423,6 +423,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.cb_videoSelection.clear()
         self.cb_videoSelection.addItems(self.fileList)
 
+    def vialSelected(self):
+        self.cb_videoSelection.clear()
 
     def displaySetupForm(self):
         formWidget = QtGui.QWidget(self)
@@ -476,6 +478,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.le_vial = QtGui.QLineEdit(self)
         self.le_vial.setValidator(QtGui.QIntValidator())
         self.le_vial.setText("0")
+        self.le_vial.editingFinished.connect(self.vialSelected)
         self.le_croppedVideo = QtGui.QCheckBox(self)
         self.le_croppedVideo.setChecked(True)
         self.le_patchesFolder = QtGui.QLineEdit(self)
@@ -613,6 +616,9 @@ class VideoTagger(QtGui.QMainWindow):
         self.resize(size)
 
     def submitForm(self):
+        if self.cb_videoSelection.count() == 0:
+            self.loadVideoList()
+
         path = self.le_videoPath.text()
         annotations = []
         annotator = self.le_annotatorName.text()
