@@ -43,6 +43,7 @@ class FullViewDialog(QtGui.QMainWindow):
         self.playing = False
         self.editing = True
         self.bookmarksOpen = False
+        self.trajectoryEnabled = False
         self.mouseFilter = MouseFilterObj(self)
         self.installEventFilter(self.mouseFilter)
         # self.hud.installEventFilter(self.mouseFilter)
@@ -94,7 +95,7 @@ class FullViewDialog(QtGui.QMainWindow):
         self.bookmarkButton.load(self.iconFolder + '/Bookmark_font_awesome.svg')
         self.bookmarkButton.setToolTip("Open bookmark panel")
         self.bookmarkButton.setFixedSize(20, 20)
-        self.bookmarkButton.clicked.connect(self.toogleBookmarks)
+        self.bookmarkButton.clicked.connect(self.toggleBookmarks)
         layout.addWidget(self.bookmarkButton)
 
         self.fullFrameLabelButton = SVGButton(self.controlWidget)
@@ -103,6 +104,13 @@ class FullViewDialog(QtGui.QMainWindow):
         self.fullFrameLabelButton.setFixedSize(20, 20)
         # self.fullFrameLabelButton.clicked.connect(self.toogleBookmarks)
         layout.addWidget(self.fullFrameLabelButton)
+
+        self.trajectoryButton = SVGButton(self.controlWidget)
+        self.trajectoryButton.load(self.iconFolder + '/trajectory.svg')
+        self.trajectoryButton.setToolTip("Enable display of trajectory")
+        self.trajectoryButton.setFixedSize(20, 20)
+        self.trajectoryButton.clicked.connect(self.toggleTrajectory)
+        layout.addWidget(self.trajectoryButton)
 
         layout.addStretch()
 
@@ -132,7 +140,7 @@ class FullViewDialog(QtGui.QMainWindow):
         layout.addWidget(self.modeButton)
 
         layout.addStretch()
-        layout.addSpacing(20)
+        layout.addSpacing(60)
 
         self.saveButton = SVGButton(self.controlWidget)
         self.saveButton.load(self.iconFolder + '/Save_font_awesome.svg')
@@ -225,7 +233,7 @@ class FullViewDialog(QtGui.QMainWindow):
 
         self.parent().toggleEditModeCheckbox()
 
-    def toogleBookmarks(self):
+    def toggleBookmarks(self):
         self.bookmarksOpen = not self.bookmarksOpen
         if self.bookmarksOpen:
             self.bmView.show()
@@ -233,6 +241,16 @@ class FullViewDialog(QtGui.QMainWindow):
         else:
             self.bmView.hide()
             self.bookmarkButton.load(self.iconFolder + '/Bookmark_font_awesome.svg')
+
+    def toggleTrajectory(self):
+        self.trajectoryEnabled = not self.trajectoryEnabled
+        if self.trajectoryEnabled:
+            self.parent().showTrajectories(True)
+            # self.bookmarkButton.load(self.iconFolder + '/Bookmark_empty_font_awesome.svg')
+        else:
+            self.parent().showTrajectories(False)
+            # self.bookmarkButton.load(self.iconFolder + '/Bookmark_font_awesome.svg')
+
 
 class FullViewGraphicsView(QtGui.QGraphicsView):
 
