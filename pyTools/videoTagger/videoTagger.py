@@ -404,6 +404,8 @@ class VideoTagger(QtGui.QMainWindow):
                                                 "Open Video Folder",
                                                 self.le_videoPath.text())
 
+        self.le_videoPath.setText(filename)
+
         if filename:
             self.tryToLoadConfig(filename)
 
