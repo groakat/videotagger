@@ -1350,7 +1350,12 @@ class VideoHandler(QtCore.QObject):
     @cfg.logClassFunction
     def saveAll(self):
         for key in self.annoDict:
-            tmpFilename = '.'.join(key.split(".")[:-1]) + ".bhvr"
+            dirname = os.path.dirname(key)[:-len(self.patchesFolder)] + \
+                            self.bhvrFolder
+            basename = '.'.join(os.path.basename(key).split(".")[:-1]) + \
+                       ".bhvr"
+            tmpFilename = os.path.join(dirname, basename)
+            print tmpFilename
             self.annoDict[key].annotation.saveToFile(tmpFilename)
 
         if os.path.exists(self.tmpFile):
