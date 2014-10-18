@@ -454,8 +454,10 @@ class bookmarkView(QtGui.QWidget):
         self.lm = BookmarkListModel(parent=self,
                             filenameFunc=self.videoTagger.getBookmarksFilename)
         self.listView.setModel(self.lm)
+        self.listView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
 
         self.listView.activated.connect(self.jumpToBookmark)
+        self.listView.doubleClicked.connect(self.jumpToBookmark)
 
     def addItem(self, item):
         self.lm.addItem(item)
