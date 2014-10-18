@@ -1515,11 +1515,19 @@ class VideoTagger(QtGui.QMainWindow):
         else:
             self.updateLabel(self.lbl_v0, frame[0][0], frame[1][0][0])
 
+    def resetFullFrameAnnotationDisplay(self):
+        self.fullVideoDialog.lblView.clear()
+
+    def addFullFrameAnnotationToDisplay(self, lbl, color):
+        self.fullVideoDialog.lblView.addItem(lbl, color)
+
 
     def displayAnnotationROIs(self, anno, selectedVial):
         # place annotation roi
         sv = selectedVial
         self.tmpAnnotation.setFrameList([anno])
+
+        self.resetFullFrameAnnotationDisplay()
 
         rois = []
         for i in range(len(self.annotations)):
@@ -1544,7 +1552,10 @@ class VideoTagger(QtGui.QMainWindow):
                 # ensure that annotations without boundingbox do not mess up
                 # anything
                 if None in b:
+                    color = self.annotations[i]['color']
+                    self.addFullFrameAnnotationToDisplay(l, color)
                     continue
+
                 rois += [[b, self.annotations[i], l]]
 
         self.positionAnnotationRoi(rois)
@@ -1681,8 +1692,8 @@ class VideoTagger(QtGui.QMainWindow):
 
     ##### MOVEABLE RECT
     def deleteLeftLabels(self):
-        annotator = self.lastLabelRectContext.annotator
-        behaviour = self.lastLabelRectContext.behaviour
+        annotator = self.lastLabelRectContext['anno']
+        behaviour = self.lastLabelRectContext['bhvr']
         labelledFrames = self.vh.eraseAnnotationSequence(self.selectedVial,
                                                          annotator,
                                                          behaviour,
@@ -1692,8 +1703,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.convertLabelListAndReply(labelledFrames)
 
     def deleteRightLabels(self):
-        annotator = self.lastLabelRectContext.annotator
-        behaviour = self.lastLabelRectContext.behaviour
+        annotator = self.lastLabelRectContext['anno']
+        behaviour = self.lastLabelRectContext['bhvr']
         labelledFrames = self.vh.eraseAnnotationSequence(self.selectedVial,
                                                          annotator,
                                                          behaviour,
@@ -1703,8 +1714,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.convertLabelListAndReply(labelledFrames)
 
     def deleteAllLabels(self):
-        annotator = self.lastLabelRectContext.annotator
-        behaviour = self.lastLabelRectContext.behaviour
+        annotator = self.lastLabelRectContext['anno']
+        behaviour = self.lastLabelRectContext['bhvr']
         labelledFrames = self.vh.eraseAnnotationSequence(self.selectedVial,
                                                          annotator,
                                                          behaviour,
@@ -1714,8 +1725,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.convertLabelListAndReply(labelledFrames)
 
     def deleteLabel(self):
-        annotator = self.lastLabelRectContext.annotator
-        behaviour = self.lastLabelRectContext.behaviour
+        annotator = self.lastLabelRectContext['anno']
+        behaviour = self.lastLabelRectContext['bhvr']
         labelledFrames = self.vh.eraseAnnotationCurrentFrame(self.selectedVial,
                                                              annotator,
                                                              behaviour)
@@ -1728,14 +1739,23 @@ class VideoTagger(QtGui.QMainWindow):
         self.menu.hide()
         behaviourNew = self.cle.text()
 
-        behaviourOld = self.lastLabelRectContext.behaviour
-        annotatorOld = self.lastLabelRectContext.annotator
+        behaviourOld = self.lastLabelRectContext['bhvr']
+        annotatorOld = self.lastLabelRectContext['anno']
 
         self.editAnnoLabel(annotatorOld, behaviourOld,
                            annotatorOld, behaviourNew)
 
     def registerLastLabelRectContext(self, labelRect):
-        self.lastLabelRectContext = labelRect
+        self.registerLastLabelInteraction(labelRect.behaviour,
+                                          labelRect.annotator)
+
+    def registerLastLabelInteraction(self, behaviour, annotator=None):
+        self.lastLabelRectContext = dict()
+        if annotator is None:
+            self.lastLabelRectContext['anno'] = self.getAnnotator()
+        else:
+            self.lastLabelRectContext['anno'] = annotator
+        self.lastLabelRectContext['bhvr'] = behaviour
 
     def labelRectChangedSlot(self, activeRect):
         self.contentChanged = True
@@ -1766,10 +1786,15 @@ class VideoTagger(QtGui.QMainWindow):
 
         self.menu = QtGui.QMenu(self)
         self.menu.addAction(wa)
-        delAction = self.menu.addAction("delete (this frame)")
-        delAllAction = self.menu.addAction("delete (all)")
-        delRightAction = self.menu.addAction("delete (this and all to right)")
-        delLeftAction = self.menu.addAction("delete (this and all to left)")
+
+        self.delMenu = QtGui.QMenu(self)
+        self.delMenu.setTitle("delete")
+
+        self.menu.addMenu(self.delMenu)
+        delAction = self.delMenu.addAction("delete (this frame)")
+        delAllAction = self.delMenu.addAction("delete (all)")
+        delRightAction = self.delMenu.addAction("delete (this and all to right)")
+        delLeftAction = self.delMenu.addAction("delete (this and all to left)")
 
         wa.triggered.connect(self.lineEditChanged)
         delAction.triggered.connect(self.deleteLabel)
@@ -2460,6 +2485,13 @@ class VideoTagger(QtGui.QMainWindow):
         self.annotations += [{'behav': selectedBehaviour,
                               'annot': self.getAnnotator(),
                               'color': color}]
+
+        labels = []
+
+        for i in range(len(self.annotations)):
+            labels += ["{b}".format(b=self.annotations[i]['behav'])]
+
+        self.cle.setModel(labels)
 
         self.exportSettings()
 

@@ -27,8 +27,11 @@ class FullViewDialog(QtGui.QMainWindow):
 
         self.hSplitter.addWidget(self.splitter)
         self.bmView = bookmarkView(self, self.parent())
+        self.lblView = fullFrameLabelView(self, self.parent())
         self.hSplitter.addWidget(self.bmView)
+        self.hSplitter.addWidget(self.lblView)
         self.bmView.hide()
+        self.lblView.hide()
 
         self.cw.setLayout(l)
         # self.cw = QtGui.QWidget(self)
@@ -43,6 +46,7 @@ class FullViewDialog(QtGui.QMainWindow):
         self.playing = False
         self.editing = True
         self.bookmarksOpen = False
+        self.labelsOpen = False
         self.trajectoryEnabled = False
         self.mouseFilter = MouseFilterObj(self)
         self.installEventFilter(self.mouseFilter)
@@ -102,7 +106,7 @@ class FullViewDialog(QtGui.QMainWindow):
         self.fullFrameLabelButton.load(self.iconFolder + '/Picture_font_awesome.svg')
         self.fullFrameLabelButton.setToolTip("Open panel showing labels covering the entire frame (not implemented yet))")
         self.fullFrameLabelButton.setFixedSize(20, 20)
-        # self.fullFrameLabelButton.clicked.connect(self.toogleBookmarks)
+        self.fullFrameLabelButton.clicked.connect(self.toggleFullFrameLabels)
         layout.addWidget(self.fullFrameLabelButton)
 
         self.trajectoryButton = SVGButton(self.controlWidget)
@@ -232,6 +236,15 @@ class FullViewDialog(QtGui.QMainWindow):
             self.modeButton.setToolTip("Switch to 'Additive-mode' [CTRL + RETURN]")
 
         self.parent().toggleEditModeCheckbox()
+
+    def toggleFullFrameLabels(self):
+        self.labelsOpen = not self.labelsOpen
+        if self.labelsOpen:
+            self.lblView.show()
+            # self.bookmarkButton.load(self.iconFolder + '/Bookmark_empty_font_awesome.svg')
+        else:
+            self.lblView.hide()
+            # self.bookmarkButton.load(self.iconFolder + '/Bookmark_font_awesome.svg')
 
     def toggleBookmarks(self):
         self.bookmarksOpen = not self.bookmarksOpen
@@ -481,6 +494,81 @@ class bookmarkView(QtGui.QWidget):
         bookmarkIdx = mdl.row()
         str, key, idx = self.lm.getItem(bookmarkIdx)
         self.videoTagger.selectVideo(key, idx)
+
+
+class fullFrameLabelView(QtGui.QWidget):
+    def __init__(self, fullViewDialog, videoTagger, *args, **kwargs):
+        super(fullFrameLabelView, self).__init__(*args, **kwargs)
+
+
+        self.iconFolder = os.path.join(
+                            os.path.dirname(os.path.abspath(__file__)),
+                            os.path.pardir,
+                            'icon')
+
+        self.videoTagger = videoTagger
+        self.fullViewDialog = fullViewDialog
+
+        self.baseLayout = QtGui.QVBoxLayout(self)
+        self.baseLayout.setContentsMargins(0,0,0,0)
+        self.headerLabel = QtGui.QLabel(self)
+        self.headerLabel.setText("Labels covering the entire frame")
+        self.buttonWidget = QtGui.QWidget(self)
+        self.buttonLayout = QtGui.QHBoxLayout(self.buttonWidget)
+
+        self.removeButton = SVGButton(self.buttonWidget)
+        self.removeButton.load(self.iconFolder + '/Minus_font_awesome.svg')
+        self.removeButton.setToolTip("remove bookmark")
+        self.removeButton.clicked.connect(self.removeLabel)
+        self.removeButton.setFixedSize(20, 20)
+
+
+        self.buttonLayout.addStretch()
+        self.buttonLayout.addWidget(self.removeButton)
+        self.buttonWidget.setLayout(self.buttonLayout)
+
+        self.listView = QtGui.QListWidget(self)
+        self.baseLayout.addWidget(self.headerLabel)
+        self.baseLayout.addWidget(self.listView)
+        self.baseLayout.addWidget(self.buttonWidget)
+
+        # self.lm = QtGui.QStandardItemModel()
+        # self.listView.setModel(self.lm)
+        # self.listView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+
+        self.listView.activated.connect(self.editLabel)
+        self.listView.doubleClicked.connect(self.editLabel)
+
+    def clear(self):
+        self.listView.clear()
+
+    def addItem(self, labelStr, color):
+        self.listView.addItem(labelStr)
+        self.listView.item(self.listView.count() - 1).setForeground(color)
+
+
+    # def addBookmark(self):
+    #     key, idx = self.videoTagger.getCurrentKey_idx()
+    #     description = OD.StringRequestDialog.getLabel(self.fullViewDialog.centralWidget(),
+    #                                                   "Set bookmark name")
+    #     self.lm.addItem(description, key, idx)
+    #     self.lm.save()
+
+    def removeLabel(self):
+        idx = self.listView.selectionModel().currentIndex().row()
+        self.lm.removeItem(idx)
+        self.lm.save()
+
+    def undoJump(self):
+        pass
+
+    def editLabel(self, mdl):
+        behaviour = self.listView.item(mdl.row()).data(0)
+        self.videoTagger.registerLastLabelInteraction(behaviour)
+        self.videoTagger.menu.exec_(QtGui.QCursor.pos())
+
+
+
 
 
 class MouseFilterObj(QtCore.QObject):
