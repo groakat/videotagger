@@ -195,9 +195,9 @@ class ClassSelectDialog(OverlayDialogBase):
         self.contentLayout  = QtGui.QVBoxLayout()
 
         self.button = QtGui.QPushButton(self.content)
-        self.button.setText("Alright'o")
+        self.button.setText("OK")
         self.messageLabel = QtGui.QLabel(self.content)
-        self.messageLabel.setText("What's you want?")
+        self.messageLabel.setText("Which class do you want to assign to this label?")
         self.autoCompleteBox = MR.AutoCompleteComboBox(self.content)
 
         self.previewWidget = self.generatePreviewLabels()
@@ -237,9 +237,9 @@ class FDVShowDialog(OverlayDialogBase):
         self.contentLayout  = QtGui.QVBoxLayout()
 
         self.button = QtGui.QPushButton(self.content)
-        self.button.setText("Alright'o")
+        self.button.setText("Close")
         self.messageLabel = QtGui.QLabel(self.content)
-        self.messageLabel.setText("What's you want?")
+        self.messageLabel.setText("Hierarchical Frame View")
         if self.FDV is not None:
             self.FDV = self.FDV
 
@@ -353,9 +353,9 @@ class ControlsSettingDialog(OverlayDialogBase):
         self.contentLayout  = QtGui.QVBoxLayout()
 
         self.button = QtGui.QPushButton(self)
-        self.button.setText("Alright'o")
+        self.button.setText("OK")
         self.messageLabel = QtGui.QLabel(self)
-        self.messageLabel.setText("What's you want?")
+        self.messageLabel.setText("Select Keyboard Sequences and Stepsizes")
 
         self.populateKeySequencesFromSettings()
 
@@ -429,7 +429,7 @@ class StringRequestDialog(OverlayDialogBase):
         self.contentLayout  = QtGui.QVBoxLayout()
 
         self.button = QtGui.QPushButton(self.content)
-        self.button.setText("Alright'o")
+        self.button.setText("OK")
         self.messageLabel = QtGui.QLabel(self.content)
         if self.message is not None:
             self.messageLabel.setText(self.message)
@@ -492,7 +492,7 @@ class ColorRequestDialog(OverlayDialogBase):
         self.contentLayout  = QtGui.QVBoxLayout()
 
         self.button = QtGui.QPushButton(self.content)
-        self.button.setText("Alright'o")
+        self.button.setText("OK")
         self.messageLabel = QtGui.QLabel(self.content)
         if self.message is not None:
             self.messageLabel.setText(self.message)

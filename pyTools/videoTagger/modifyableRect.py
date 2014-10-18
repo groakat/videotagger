@@ -107,28 +107,29 @@ class Test(QtGui.QMainWindow):
         print OD.ControlsSettingDialog.getSelection(self.centralWidget(), None)
         pass
 
+
 class CustomQCompleter(QtGui.QCompleter):
     """
-    copied from: http://stackoverflow.com/a/7767999/2156909
+    adapted from: http://stackoverflow.com/a/7767999/2156909
     """
     def __init__(self, *args):#parent=None):
         super(CustomQCompleter, self).__init__(*args)
         self.local_completion_prefix = ""
         self.source_model = None
+        self.filterProxyModel = QtGui.QSortFilterProxyModel(self)
 
     def setModel(self, model):
         self.source_model = model
-        super(CustomQCompleter, self).setModel(self.source_model)
+        self.filterProxyModel = QtGui.QSortFilterProxyModel(self)
+        self.filterProxyModel.setSourceModel(model)
+        super(CustomQCompleter, self).setModel(self.filterProxyModel)
 
     def updateModel(self):
-        local_completion_prefix = self.local_completion_prefix
-        class InnerProxyModel(QtGui.QSortFilterProxyModel):
-            def filterAcceptsRow(self, sourceRow, sourceParent):
-                index0 = self.sourceModel().index(sourceRow, 0, sourceParent)
-                return local_completion_prefix.lower() in self.sourceModel().data(index0).lower()
-        proxy_model = InnerProxyModel()
-        proxy_model.setSourceModel(self.source_model)
-        super(CustomQCompleter, self).setModel(proxy_model)
+        pattern = QtCore.QRegExp(self.local_completion_prefix,
+                                 QtCore.Qt.CaseInsensitive,
+                                 QtCore.QRegExp.FixedString)
+        self.filterProxyModel.setFilterRegExp(pattern)
+
 
     def splitPath(self, path):
         self.local_completion_prefix = path
@@ -144,8 +145,8 @@ class AutoCompleteLineEdit(QtGui.QLineEdit):
         self.comp = CustomQCompleter([""], self)
         self.comp.setCompletionMode(QtGui.QCompleter.PopupCompletion)
         self.comp.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
-        self.setCompleter(self.comp)#
         self.setModel(["hallo babe", "world", "we", "are babe"])
+        self.setCompleter(self.comp)#
 
     def setModel(self, strList):
         # self.comp.model().setStringList(strList)
@@ -159,9 +160,9 @@ class AutoCompleteComboBox(QtGui.QComboBox):
         self.setInsertPolicy(self.NoInsert)
 
         # self.comp = QtGui.QCompleter([""], self)
-        self.comp = CustomQCompleter([""], self)
+        self.comp = CustomQCompleter(self)
         self.comp.setCompletionMode(QtGui.QCompleter.PopupCompletion)
-        self.comp.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        # self.comp.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
         self.setCompleter(self.comp)#
         self.setModel(["hallo babe", "world", "we", "are babe"])
 
