@@ -2480,10 +2480,12 @@ class VideoTagger(QtGui.QMainWindow):
 
         self.dialogShortCutFilter.activateShortcuts()
 
-        print selectedBehaviour
         if selectedBehaviour is None:
             ## delete label
-            pass
+            self.vh.eraseAnnotationSequence(self.selectedVial,
+                                            self.getAnnotator(),
+                                            'unknown',
+                                            direction='both')
         else:
             for i , elem in enumerate(self.annotations):
                 if elem['behav'] == selectedBehaviour:
@@ -2501,10 +2503,10 @@ class VideoTagger(QtGui.QMainWindow):
                                 "please select a color. Otherwise " +
                                 "press ESC.").format(selectedBehaviour))
             if color is None:
-                self.vh.eraseAnnotationSequence(self.selectedVial,
-                                                self.getAnnotator(),
-                                                "unknown", direction='both')
-                return None
+                # self.vh.eraseAnnotationSequence(self.selectedVial,
+                #                                 self.getAnnotator(),
+                #                                 "unknown", direction='both')
+                return self.queryForLabel()
             else:
                 self.addNewBehaviourClass(selectedBehaviour, color)
                 self.editAnnoLabel(self.getAnnotator(), "unknown",
