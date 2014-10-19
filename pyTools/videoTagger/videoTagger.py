@@ -2723,7 +2723,7 @@ class VideoTagger(QtGui.QMainWindow):
             self.vialROI = vialROI
             self.videoExtension = videoExtension
             self.filterObjArgs = filterObjArgs
-            self.startVideo = startVideo
+            self.startVideoPath = startVideo
             self.rewindOnClick = rewindOnClick
             self.croppedVideo = croppedVideo
             self.patchesFolder = patchesFolder

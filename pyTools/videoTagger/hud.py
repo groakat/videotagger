@@ -163,8 +163,6 @@ class HUD(QtGui.QWidget):
         for c, ffa in self.fullFrameAnnotations.items():
             self.fullFrameAnnotations[c].setVisible(False)
 
-
-
     def setFullFrameAnnotation(self, color):
         if color.name() in self.fullFrameAnnotations:
             self.fullFrameAnnotations[color.name()].setVisible(True)
