@@ -213,6 +213,12 @@ class FullViewDialog(QtGui.QMainWindow):
     def setMode(self, str, color=None):
         self.hud.setMode(str, color)
 
+    def clearFullFrameAnnotations(self):
+        self.hud.clearFullFrameAnnotations()
+
+    def setFullFrameAnnotation(self, color):
+        self.hud.setFullFrameAnnotation(color)
+
     def playButtonClick(self):
         if not self.playing:
             self.playButton.load(self.iconFolder + '/Pause_font_awesome.svg')

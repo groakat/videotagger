@@ -33,6 +33,9 @@ class HUD(QtGui.QWidget):
         self.modeFont = QtGui.QFont('', 12)
         self.modeDisp.setFont(self.modeFont)
 
+        self.fullFrameAnnotations = dict()
+        self.fullFrameAnnotationStack = dict()
+
         self.setAnnotator('')
         self.setBehaviour('')
         self.setFile('')
@@ -156,6 +159,33 @@ class HUD(QtGui.QWidget):
         self.modeDisp.adjustSize()
         self.updateElements()
 
+    def clearFullFrameAnnotations(self):
+        for c, ffa in self.fullFrameAnnotations.items():
+            self.fullFrameAnnotations[c].setVisible(False)
+
+
+
+    def setFullFrameAnnotation(self, color):
+        if color.name() in self.fullFrameAnnotations:
+            self.fullFrameAnnotations[color.name()].setVisible(True)
+        else:
+            lbl = QtGui.QLabel(self)
+            lbl.setStyleSheet("""
+                QLabel {{
+                color: {0};
+                background-color: {0};
+                border-bottom-color:  {0};
+                border-top:  {0};
+                border-left:  {0};
+                border-right:  {0};
+                border-width : 1.5px;
+                border-style: none;
+                height: 20px;
+                width: 40px}}""".format(color.name()))
+            lbl.setText("    ")
+            self.fullFrameAnnotations[color.name()] = lbl
+
+
 
     def enterEvent(self, event):
         self.setVisible(False)
@@ -173,6 +203,12 @@ class HUD(QtGui.QWidget):
         self.frameDisp.move(w, y)
         w += tWidth + self.frameDisp.rect().width()
         self.speedDisp.move(w, y)
+        w += tWidth + self.speedDisp.rect().width()
+        for c, lbl in self.fullFrameAnnotations.items():
+            if lbl.isVisible():
+                lbl.move(w,y + 5)
+                w += lbl.rect().width()
+
         y += 18
 
         self.annotatorDisp.move(tWidth, y)
@@ -188,3 +224,4 @@ class HUD(QtGui.QWidget):
         p = self.palette()
         p.setColor(self.backgroundRole(), color)
         self.setPalette(p)
+

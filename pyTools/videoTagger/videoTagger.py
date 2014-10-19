@@ -1522,9 +1522,11 @@ class VideoTagger(QtGui.QMainWindow):
 
     def resetFullFrameAnnotationDisplay(self):
         self.fullVideoDialog.lblView.clear()
+        self.fullVideoDialog.clearFullFrameAnnotations()
 
     def addFullFrameAnnotationToDisplay(self, lbl, color):
         self.fullVideoDialog.lblView.addItem(lbl, color)
+        self.fullVideoDialog.setFullFrameAnnotation(color)
 
 
     def displayAnnotationROIs(self, anno, selectedVial):
