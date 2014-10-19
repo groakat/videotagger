@@ -559,6 +559,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.additionallayoutWidget.setVisible(False)
         self.resize(800, 100)
         self.show()
+        self.tryToLoadConfig(self.le_videoPath.text())
 
     def populateFormWithInternalSettings(self):
         self.fileList = self.getFileList(self.path, self.getVideoExtension(),
@@ -619,7 +620,6 @@ class VideoTagger(QtGui.QMainWindow):
         self.resize(size)
 
     def submitForm(self):
-        self.tryToLoadConfig(self.le_videoPath.text())
         if self.cb_videoSelection.count() == 0:
             self.loadVideoList()
 
