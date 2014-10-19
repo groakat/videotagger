@@ -318,6 +318,7 @@ class VideoTagger(QtGui.QMainWindow):
         
         self.setCropCenter(None, None)
 
+
         self.firstLoop = True
         self.selectVideo(startIdx, self.idx)
         # self.startLoop.emit()
@@ -618,11 +619,11 @@ class VideoTagger(QtGui.QMainWindow):
         self.resize(size)
 
     def submitForm(self):
+        self.tryToLoadConfig(self.le_videoPath.text())
         if self.cb_videoSelection.count() == 0:
             self.loadVideoList()
 
         path = self.le_videoPath.text()
-        annotations = []
         annotator = self.le_annotatorName.text()
         backgroundPath = self.le_background.text()
         selectedVial = int(self.le_vial.text())
@@ -670,6 +671,10 @@ class VideoTagger(QtGui.QMainWindow):
         except AttributeError:
             serverAddress = "tcp://127.0.0.1:4242"
 
+        try:
+            annotations = self.annotations
+        except AttributeError:
+            annotations = []
 
         self.init(  path=path,
                     annotations=annotations,
