@@ -602,6 +602,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.le_bufferWidth.setText(str(self.bufferWidth))
         self.le_bufferLength.setText(str(self.bufferLength))
         self.le_startFrame.setText(str(self.idx))
+        self.le_croppedVideo.setChecked(self.croppedVideo)
 
         self.le_annotatorName.adjustSize()
         self.le_videoPath.adjustSize()
