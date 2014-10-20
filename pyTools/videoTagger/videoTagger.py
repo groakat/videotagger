@@ -325,6 +325,10 @@ class VideoTagger(QtGui.QMainWindow):
 
 
         self.firstLoop = True
+
+
+        self.exportSettings()
+
         self.selectVideo(startIdx, self.idx)
         self.startLoop.emit()
         self.stopPlayback()
@@ -448,6 +452,15 @@ class VideoTagger(QtGui.QMainWindow):
         self.cb_videoSelection.clear()
 
     def displaySetupForm(self):
+        settings = QtCore.QSettings()
+        path = settings.value("path")
+
+        if path:
+            self.path = path
+        else:
+            self.path = ''
+
+
         formWidget = QtGui.QWidget(self)
         self.setCentralWidget(formWidget)
 
@@ -536,7 +549,7 @@ class VideoTagger(QtGui.QMainWindow):
         # self.additionallayout.addRow("", self.btn_formSubmit)
 
         self.le_annotatorName.setText("P")
-        self.le_videoPath.setText("/media/peter/Seagate Backup Plus Drive/testData/")
+        self.le_videoPath.setText(self.path)
         self.le_bhvrFolder.setText("bhvr")
         self.le_bhvrCache.setText("")
         self.le_vial.setText("0")
@@ -2724,6 +2737,11 @@ class VideoTagger(QtGui.QMainWindow):
                                'videoTaggerConfig.yaml'), 'w') as f:
             f.writelines(yamlStr)
 
+
+        settings = QtCore.QSettings()
+        settings.setValue("path", self.path)
+
+
     def aboutToQuit(self):
         self.exit()
 
@@ -3071,6 +3089,10 @@ def main():
             vp = videoPath
 
         app = QtGui.QApplication(sys.argv)
+
+        app.setOrganizationName("UCL")
+        app.setOrganizationDomain("https://github.com/groakat/VideoTagger")
+        app.setApplicationName("videoTagger")
 
         w = VideoTagger(videoPath, annotations, backgroundPath, selectedVial, vialROI,
                          videoExtension=videoExtension, filterObjArgs=filterObjArgs,
