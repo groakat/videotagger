@@ -268,7 +268,7 @@ class VideoTagger(QtGui.QMainWindow):
         # self.fileList = self.convertFileList(self.fileList, '.' + self.videoExtension)
         
         self.vh = VH.VideoHandler(self.fileList, self.changeVideo, 
-                               self.selectedVial, startIdx=startIdx,
+                               self.getSelectedVial(), startIdx=startIdx,
                                videoExtension='.' + videoExtension,
                                bufferWidth=bufferWidth, 
                                bufferLength=bufferLength,
@@ -321,7 +321,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         self.firstLoop = True
         self.selectVideo(startIdx, self.idx)
-        # self.startLoop.emit()
+        self.startLoop.emit()
         self.stopPlayback()
 
 
@@ -365,7 +365,20 @@ class VideoTagger(QtGui.QMainWindow):
             with open(bhvrListPath, "r") as f:
                 fileList = json.load(f)
 
-        fileList = self.convertFileList(fileList, '.' + videoExtension)
+        if len(fileList) == 1:
+            # TODO reencode video
+            pass
+
+        elif len(fileList) == 3:
+            core = '_'.join(fileList[0].split('_')[:-1])
+            if core + '_full.' + videoExtension in fileList \
+            and core + '_small.' + videoExtension in fileList \
+            and core + '_full_org.' + videoExtension in fileList:
+                return [core + '_small.' + videoExtension]
+            else:
+                fileList = self.convertFileList(fileList, '.' + videoExtension)
+        else:
+            fileList = self.convertFileList(fileList, '.' + videoExtension)
 
         return fileList
 
@@ -835,7 +848,7 @@ class VideoTagger(QtGui.QMainWindow):
         w = QtGui.QWidget(self)
         
         # AnnoView
-        av = AV.AnnoView(self, w, vialNo=self.selectedVial, 
+        av = AV.AnnoView(self, w, vialNo=self.getSelectedVial(), 
                                        annotator=[self.annotations[idx]["annot"]], 
                                        behaviourName=[self.annotations[idx]["behav"]], 
                                        color = self.annotations[idx]["color"], 
@@ -1032,7 +1045,7 @@ class VideoTagger(QtGui.QMainWindow):
                     self.fdvt.importAnnotations(self.convertFileList(self.fileList, 
                                                                      '.bhvr'), 
                                                 self.annotations, 
-                                                self.selectedVial)
+                                                self.getSelectedVial())
                     print "finished importing annotations"
                 
                 
@@ -1311,7 +1324,7 @@ class VideoTagger(QtGui.QMainWindow):
             
                 
         newX = p[0] - 32
-        if self.selectedVial is None:
+        if self.getSelectedVial() is None:
             newY = self.vialROI[0][1] - p[1] - 32
         else:
             newY = self.vialROI[self.selectedVial[0]][1] - p[1] - 32
@@ -1397,8 +1410,8 @@ class VideoTagger(QtGui.QMainWindow):
         if self.sceneRect != QtCore.QRectF(0, 0, w,h):
             cfg.log.debug("changing background")
             # self.videoView.setGeometry(QtCore.QRect(380, 10, w, h))#1920/2, 1080/2))
-            self.videoView.setGeometry(QtCore.QRect(380, 10, 360, 203))#1920/2, 1080/2))
-            self.videoView.fitInView(QtCore.QRect(380, 10, w, h))#1920/2, 1080/2))
+            # self.videoView.setGeometry(QtCore.QRect(380, 10, 360, 203))#1920/2, 1080/2))
+            # self.videoView.fitInView(QtCore.QRect(380, 10, w, h))#1920/2, 1080/2))
             self.videoScene.setSceneRect(QtCore.QRectF(0, 0, w,h))            
             self.videoScene.setBackgroundBrush(QtGui.QBrush(QtCore.Qt.black))
             lbl.setPos(0,0)
@@ -1486,13 +1499,6 @@ class VideoTagger(QtGui.QMainWindow):
 
     def displayFullResolutionFrame(self):
         print "displayFullResolutionFrame", self.fullVideoDialog
-        if not self.croppedVideo:
-            self.displayingFullResolution = True
-            self.fullResFrame = self.vh.getFullResolutionFrame()
-            self.videoSizeSmallToFullMult = self.fullResFrame[1][0][0].shape[0] / \
-                                        float(self.frames[0][1][0][0].shape[0])
-
-            self.displayFrame(self.fullResFrame, 0)
 
         if self.fullVideoDialog is None:
             # self.fullVideoDialog = FVD(self, self.prevFramesWidget)
@@ -1510,6 +1516,16 @@ class VideoTagger(QtGui.QMainWindow):
             print "displayFullResolutionFrame", "showed"
         else:
             self.fullVideoDialog.show()
+
+        if not self.croppedVideo:
+            self.displayingFullResolution = True
+            self.fullResFrame = self.vh.getFullResolutionFrame()
+
+            if self.frames != []:
+                self.videoSizeSmallToFullMult = self.fullResFrame[1][0][0].shape[0] / \
+                                        float(self.frames[0][1][0][0].shape[0])
+
+            self.displayFrame(self.fullResFrame, 0)
 
 
 
@@ -1632,7 +1648,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.rewindIncrement()
         self.frames = []    
         
-        if self.selectedVial is None:
+        if self.getSelectedVial() is None:
             sv = 0            
         else:
             sv = self.selectedVial[0]
@@ -1701,7 +1717,7 @@ class VideoTagger(QtGui.QMainWindow):
     def deleteLeftLabels(self):
         annotator = self.lastLabelRectContext['anno']
         behaviour = self.lastLabelRectContext['bhvr']
-        labelledFrames = self.vh.eraseAnnotationSequence(self.selectedVial,
+        labelledFrames = self.vh.eraseAnnotationSequence(self.getSelectedVial(),
                                                          annotator,
                                                          behaviour,
                                                          direction='left')
@@ -1712,7 +1728,7 @@ class VideoTagger(QtGui.QMainWindow):
     def deleteRightLabels(self):
         annotator = self.lastLabelRectContext['anno']
         behaviour = self.lastLabelRectContext['bhvr']
-        labelledFrames = self.vh.eraseAnnotationSequence(self.selectedVial,
+        labelledFrames = self.vh.eraseAnnotationSequence(self.getSelectedVial(),
                                                          annotator,
                                                          behaviour,
                                                          direction='right')
@@ -1723,7 +1739,7 @@ class VideoTagger(QtGui.QMainWindow):
     def deleteAllLabels(self):
         annotator = self.lastLabelRectContext['anno']
         behaviour = self.lastLabelRectContext['bhvr']
-        labelledFrames = self.vh.eraseAnnotationSequence(self.selectedVial,
+        labelledFrames = self.vh.eraseAnnotationSequence(self.getSelectedVial(),
                                                          annotator,
                                                          behaviour,
                                                          direction='both')
@@ -1734,7 +1750,7 @@ class VideoTagger(QtGui.QMainWindow):
     def deleteLabel(self):
         annotator = self.lastLabelRectContext['anno']
         behaviour = self.lastLabelRectContext['bhvr']
-        labelledFrames = self.vh.eraseAnnotationCurrentFrame(self.selectedVial,
+        labelledFrames = self.vh.eraseAnnotationCurrentFrame(self.getSelectedVial(),
                                                              annotator,
                                                              behaviour)
 
@@ -2207,7 +2223,7 @@ class VideoTagger(QtGui.QMainWindow):
         
         self.increment = 0 
         self.showNextFrame(0)
-        self.startLoop.emit()
+        # self.startLoop.emit()
         
     @cfg.logClassFunctionInfo
     def selectVideoTime(self, day, hour, minute, frame, data=None):
@@ -2447,7 +2463,7 @@ class VideoTagger(QtGui.QMainWindow):
             curFile = self.fileList[self.idx]
             self.fdvt.importAnnotation(self.vh.annoDict[curFile].annotation)
             for a in self.annotations:
-                newFilt = Annotation.AnnotationFilter(self.selectedVial,
+                newFilt = Annotation.AnnotationFilter(self.getSelectedVial(),
                                                    [a['annot']],
                                                    [a['behav']])
                 self.fdvt.addNewClass(newFilt)
@@ -2488,6 +2504,12 @@ class VideoTagger(QtGui.QMainWindow):
         else:
             return self.annotations[0]['annot']
 
+    def getSelectedVial(self):
+        if self.croppedVideo:
+            return self.selectedVial
+        else:
+            return None
+
     def addNewBehaviourClass(self, selectedBehaviour, color):
         self.annotations += [{'behav': selectedBehaviour,
                               'annot': self.getAnnotator(),
@@ -2521,7 +2543,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         if selectedBehaviour is None:
             ## delete label
-            self.vh.eraseAnnotationSequence(self.selectedVial,
+            self.vh.eraseAnnotationSequence(self.getSelectedVial(),
                                             self.getAnnotator(),
                                             'unknown',
                                             direction='both')
@@ -2566,11 +2588,11 @@ class VideoTagger(QtGui.QMainWindow):
             self.confidence = confidence
             self.queryPreviews = []
 
-        labelledFrames = self.vh.addAnnotation(self.selectedVial, annotator, 
+        labelledFrames = self.vh.addAnnotation(self.getSelectedVial(), annotator, 
                               behaviour, metadata=self.getMetadata())
             
         if oneClickAnnotation:                
-            labelledFrames = self.vh.addAnnotation(self.selectedVial, annotator, 
+            labelledFrames = self.vh.addAnnotation(self.getSelectedVial(), annotator, 
                               behaviour, metadata=self.getMetadata())
                 
         self.annoIsOpen = self.vh.annoAltStart is not None #not self.annoIsOpen
@@ -2603,22 +2625,22 @@ class VideoTagger(QtGui.QMainWindow):
     def eraseAnno(self, annotator="peter", behaviour="just testing"):      
         cfg.logGUI.info(json.dumps({"annotator": annotator,
                                 "behaviour": behaviour}))
-        self.vh.eraseAnnotation(self.selectedVial, annotator, behaviour)
+        self.vh.eraseAnnotation(self.getSelectedVial(), annotator, behaviour)
 
     def editAnnoROI(self, annotator, behaviour, newROI):
         self.editAnnoMeta(annotator, behaviour, "boundingBox", newROI)
 
     def editAnnoMeta(self, annotator, behaviour, newMetaKey, newMetaValue):
-        self.vh.editAnnotationMetaCurrentFrame(self.selectedVial, annotator,
+        self.vh.editAnnotationMetaCurrentFrame(self.getSelectedVial(), annotator,
                                     behaviour, newMetaKey, newMetaValue)
 
     def editAnnoLabel(self, annotatorOld, behaviourOld, annotatorNew, behaviourNew):
 
         cfg.log.info("--------- edit label ------------")
-        self.vh.editAnnotationLabel(self.selectedVial, annotatorOld,
+        self.vh.editAnnotationLabel(self.getSelectedVial(), annotatorOld,
                                 behaviourOld, annotatorNew, behaviourNew)
 
-        if self.selectedVial is None:
+        if self.getSelectedVial() is None:
             sv = 0
         else:
             sv = self.selectedVial[0]
@@ -2702,7 +2724,10 @@ class VideoTagger(QtGui.QMainWindow):
     def debug(self):
         1/0
 
-    def tryToLoadConfig(self, path):
+    def tryToLoadConfig(self, path=None):
+        if path is None:
+            path = self.le_videoPath.text()
+
         configPath = os.path.join(path, 'videoTaggerConfig.yaml')
         if os.path.exists(configPath):
             videoPath, annotations, annotator, backgroundPath, selectedVial,\
