@@ -176,8 +176,13 @@ class VideoTagger(QtGui.QMainWindow):
         
         
         self.croppedVideo = croppedVideo
-        self.positionsFolder = positionsFolder
-        self.patchesFolder = patchesFolder
+        if self.croppedVideo:
+            self.positionsFolder = positionsFolder
+            self.patchesFolder = patchesFolder
+        else:
+            self.positionsFolder = ''
+            self.patchesFolder = ''
+
         self.bhvrFolder = behaviourFolder
         self.cropWidth = 64
         self.cropHeight = 32
