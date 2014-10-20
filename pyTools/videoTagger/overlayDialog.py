@@ -26,8 +26,8 @@ class OverlayDialogBase(QtGui.QWidget):
 
         self.setGeometry(self.parent.geometry())
         # self.setGeometry(QtCore.QRect(0,0,100,100))
-        self.parentEventHandler = OverlayDialogBase.ParentEventHandler(self)
-        self.parent.installEventFilter(self.parentEventHandler)
+        # self.parentEventHandler = OverlayDialogBase.ParentEventHandler(self)
+        # self.parent.installEventFilter(self.parentEventHandler)
         #
         # self.setupContent()
         # self.setupLayout()
@@ -103,7 +103,7 @@ class OverlayDialogBase(QtGui.QWidget):
         if self.eventLoop is not None:
             self.eventLoop.exit()
 
-        self.parent.removeEventFilter(self.parentEventHandler)
+        # self.parent.removeEventFilter(self.parentEventHandler)
         super(OverlayDialogBase, self).close()
 
     def keyPressEvent(self, event):
@@ -114,21 +114,23 @@ class OverlayDialogBase(QtGui.QWidget):
                 self.eventLoop.exit()
             else:
                 self.close()
+        else:
+            super(OverlayDialogBase, self).keyPressEvent(event)
 
-    class ParentEventHandler(QtCore.QObject):
-        def __init__(self, overlayDialog):
-            super(OverlayDialogBase.ParentEventHandler, self).__init__(
-                                                            overlayDialog)
-            self.overlayDialog = overlayDialog
+    # class ParentEventHandler(QtCore.QObject):
+    #     def __init__(self, overlayDialog):
+    #         super(OverlayDialogBase.ParentEventHandler, self).__init__(
+    #                                                         overlayDialog)
+    #         self.overlayDialog = overlayDialog
+    #
+    #     def eventFilter(self, obj, event):
+    #         if event.type() == QtCore.QEvent.Type.Resize:
+    #             self.overlayDialog.setGeometry(obj.geometry())
 
-        def eventFilter(self, obj, event):
-            if event.type() == QtCore.QEvent.Type.Resize:
-                self.overlayDialog.setGeometry(obj.geometry())
-
-            if event.type() == QtCore.QEvent.KeyPress\
-            or event.type() == QtCore.QEvent.KeyRelease:
-                if event.key() == QtCore.Qt.Key_Escape:
-                    self.overlayDialog.close()
+            # if event.type() == QtCore.QEvent.KeyPress\
+            # or event.type() == QtCore.QEvent.KeyRelease:
+            #     if event.key() == QtCore.Qt.Key_Escape:
+            #         self.overlayDialog.close()
 
             return False
 
@@ -247,6 +249,7 @@ class FDVShowDialog(OverlayDialogBase):
         if self.FDV is not None:
             self.contentLayout.addWidget(self.FDV)
         self.contentLayout.addWidget(self.button)
+
 
         self.content.setLayout(self.contentLayout)
 

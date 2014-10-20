@@ -32,6 +32,7 @@ class Test(QtGui.QMainWindow):
         MainWindow.setCentralWidget(self.centralwidget)
 
 
+
     def connectElements(self):
         self.pb_debug.clicked.connect(self.buttonClick)
 
@@ -103,9 +104,11 @@ class Test(QtGui.QMainWindow):
         # acid.setComboBoxEditable(True)
         # print acid.exec_()
 
-        import pyTools.videoTagger.overlayDialog as OD
-        print OD.ControlsSettingDialog.getSelection(self.centralWidget(), None)
-        pass
+        # import pyTools.videoTagger.overlayDialog as OD
+        # print OD.ControlsSettingDialog.getSelection(self.centralWidget(), None)
+        # pass
+
+        self.menu.exec_()
 
 
 class CustomQCompleter(QtGui.QCompleter):
@@ -121,20 +124,25 @@ class CustomQCompleter(QtGui.QCompleter):
     def setModel(self, model):
         self.source_model = model
         self.filterProxyModel = QtGui.QSortFilterProxyModel(self)
-        self.filterProxyModel.setSourceModel(model)
+        self.filterProxyModel.setSourceModel(self.source_model)
         super(CustomQCompleter, self).setModel(self.filterProxyModel)
 
     def updateModel(self):
+        self.filterProxyModel.setSourceModel(self.source_model)
         pattern = QtCore.QRegExp(self.local_completion_prefix,
                                  QtCore.Qt.CaseInsensitive,
                                  QtCore.QRegExp.FixedString)
+
         self.filterProxyModel.setFilterRegExp(pattern)
 
 
     def splitPath(self, path):
         self.local_completion_prefix = path
         self.updateModel()
-        return ""
+        if self.filterProxyModel.rowCount() == 0:
+            self.filterProxyModel.setSourceModel(QtGui.QStringListModel([path]))
+
+        return []
 
 
 
@@ -164,7 +172,7 @@ class AutoCompleteComboBox(QtGui.QComboBox):
         self.comp.setCompletionMode(QtGui.QCompleter.PopupCompletion)
         # self.comp.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
         self.setCompleter(self.comp)#
-        self.setModel(["hallo babe", "world", "we", "are babe"])
+        self.setModel(["hallo babe", "world", "we", "are good"])
 
     def setModel(self, strList):
         # self.comp.model().setStringList(strList)
@@ -256,6 +264,7 @@ class ResizeableGraphicsRectItem(QtGui.QGraphicsRectItem):
         wa = QtGui.QWidgetAction(self.parent)
         self.cle = ContextLineEdit(self.parent)
         wa.setDefaultWidget(self.cle)
+
 
         menu = QtGui.QMenu(self.parent)
         menu.addAction("test")
@@ -588,10 +597,11 @@ class LabelRectItem(InfoRectItem):
         if not self.activated:
             return
 
+        self.menu.exec_(event.screenPos())
+
         if self.contextRegisterCallback:
             self.contextRegisterCallback(self)
 
-        self.menu.exec_(event.screenPos())
 
 
 class MouseInsideFilterObj(QtCore.QObject):#And this one

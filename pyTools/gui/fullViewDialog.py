@@ -170,8 +170,6 @@ class FullViewDialog(QtGui.QMainWindow):
             # has already been connected
             pass
         layout.addWidget(self.startVideoButton)
-
-
         self.splitter.addWidget(self.controlWidget)
 
 
