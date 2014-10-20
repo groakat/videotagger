@@ -127,7 +127,14 @@ class VideoHandler(QtCore.QObject):
         self.curMetadata = None
         self.tempValue = dict()
 
-        self.tmpFile = r"E:\peter\videoTagger.bhvr~"
+        if len(self.patchesFolder) > 0:
+            dirname = os.path.dirname(posList[0])[:-len(self.patchesFolder)]
+        else:
+            dirname = os.path.dirname(posList[0])
+        
+        tmpFilename = os.path.join(dirname, "videoTagger.bhvr~")
+        
+        self.tmpFile = tmpFilename
 
         # always do that at the end
 #         self.checkBuffer()
@@ -1350,8 +1357,13 @@ class VideoHandler(QtCore.QObject):
     @cfg.logClassFunction
     def saveAll(self):
         for key in self.annoDict:
-            dirname = os.path.dirname(key)[:-len(self.patchesFolder)] + \
+            if len(self.patchesFolder) > 0:
+                dirname = os.path.dirname(key)[:-len(self.patchesFolder)] + \
                             self.bhvrFolder
+            else:
+                dirname = os.path.dirname(key) + \
+                            self.bhvrFolder
+            
             basename = '.'.join(os.path.basename(key).split(".")[:-1]) + \
                        ".bhvr"
             tmpFilename = os.path.join(dirname, basename)

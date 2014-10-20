@@ -220,7 +220,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.prevSize = 100
         if fdvtPathRel is not None:
             self.fdvtPathRel = fdvtPathRel
-            self.fdvtPath = os.path.join(os.path.dirname(self.path),
+            self.fdvtPath = os.path.join(self.getPathDirname(),
                                      fdvtPathRel)
         else:
             self.fdvtPath = None
@@ -2689,7 +2689,7 @@ class VideoTagger(QtGui.QMainWindow):
         return self.idx, self.vh.getCurrentKey_idx()[1]
 
     def getBookmarksFilename(self):
-        folder = os.path.dirname(self.fileList[0])
+        folder = self.getPathDirname()
         annotator = self.getAnnotator()
         filename = os.path.join(folder,
                                 "{anno}.bookmarks.json".format(anno=annotator))
@@ -2742,8 +2742,9 @@ class VideoTagger(QtGui.QMainWindow):
         yamlStr = yaml.dump(cfgDict, default_flow_style=False,
                             encoding=('utf-8'))
 
-
-        with open(os.path.join(os.path.dirname(self.path),
+        
+            
+        with open(os.path.join(self.getPathDirname(),
                                'videoTaggerConfig.yaml'), 'w') as f:
             f.writelines(yamlStr)
 
@@ -2751,6 +2752,13 @@ class VideoTagger(QtGui.QMainWindow):
         settings = QtCore.QSettings()
         settings.setValue("path", self.path)
 
+    def getPathDirname(self):        
+        if os.path.isdir(self.path):
+            dir = os.path.dirname(self.path + '/')
+        else:
+            dir = os.path.dirname(self.path)
+            
+        return dir
 
     def aboutToQuit(self):
         self.exit()
