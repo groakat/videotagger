@@ -119,7 +119,7 @@ class VideoTagger(QtGui.QMainWindow):
                     patchesFolder='',
                     videoExtension='avi', #'.v0.avi',
                     runningIndeces=True,
-                    fdvtPath=None,
+                    fdvtPathRel=None,
                     bhvrListPath=None,
                     serverAddress="tcp://127.0.0.1:4242",
                     bufferWidth=300,
@@ -218,7 +218,13 @@ class VideoTagger(QtGui.QMainWindow):
         self.addingAnnotations = True
         # self.ui.lbl_eraser.setVisible(False)
         self.prevSize = 100
-        self.fdvtPath = fdvtPath
+        if fdvtPathRel is not None:
+            self.fdvtPathRel = fdvtPathRel
+            self.fdvtPath = os.path.join(os.path.dirname(self.path),
+                                     fdvtPathRel)
+        else:
+            self.fdvtPath = None
+
         self.isLabelingSingleFrame = False
         self.templateFrame = None
 
@@ -242,6 +248,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.annoIsOpen = False
         self.metadata = []
         self.confidence = 0
+
+        self.frameView = None
         
         self.vialROI = vialROI
 
@@ -290,7 +298,6 @@ class VideoTagger(QtGui.QMainWindow):
         self.connectedToServer = False
         self.rpcIH = None
         self.fdvt = None
-        # self.setupFrameView()
         self.bookmark = None
 
         
@@ -610,7 +617,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.le_background.setText(self.backgroundPath)
         self.le_patchesFolder.setText(str(self.patchesFolder))
         self.le_positionsFolder.setText(str(self.positionsFolder))
-        self.le_FDV.setText(self.fdvtPath)
+        self.le_FDV.setText(self.fdvtPathRel)
         self.le_vialROI.setText(str(self.vialROI))
         self.le_bufferWidth.setText(str(self.bufferWidth))
         self.le_bufferLength.setText(str(self.bufferLength))
@@ -723,7 +730,7 @@ class VideoTagger(QtGui.QMainWindow):
                     patchesFolder=patchesFolder,
                     videoExtension=videoExtension,
                     runningIndeces=runningIndeces,
-                    fdvtPath=fdvtPath,
+                    fdvtPathRel=fdvtPath,
                     bhvrListPath=bhvrListPath,
                     serverAddress=serverAddress,
                     bufferWidth=bufferWidth,
@@ -2065,6 +2072,9 @@ class VideoTagger(QtGui.QMainWindow):
 
 
     def openFDV(self):
+        if self.frameView is None:
+            self.setupFrameView()
+
         OD.FDVShowDialog.getSelection(self.fullVideoDialog.centralWidget(),
                                       self.frameView)
 
@@ -2698,7 +2708,7 @@ class VideoTagger(QtGui.QMainWindow):
         cfgDict['Video']['position-folder'] = self.positionsFolder
         cfgDict['Video']['behaviour-folder'] = self.bhvrFolder
         cfgDict['Video']['files-running-indices'] = self.runningIndeces
-        cfgDict['Video']['frame-data-visualization-path'] = self.fdvtPath
+        cfgDict['Video']['frame-data-visualization-path'] = self.fdvtPathRel
         cfgDict['Video']['rewind-on-click'] = self.rewindOnClick
         cfgDict['Video']['start-frame'] = self.idx
         cfgDict['Video']['start-video'] = self.fileList[self.idx]
@@ -2779,7 +2789,7 @@ class VideoTagger(QtGui.QMainWindow):
             self.positionsFolder = positionFolder
             self.bhvrFolder = behaviourFolder
             self.runningIndeces = runningIndeces
-            self.fdvtPath = fdvtPath
+            self.fdvtPathRel = fdvtPath
             self.bhvrListPath = bhvrListPath
             self.bufferWidth = bufferWidth
             self.bufferLength = bufferLength
