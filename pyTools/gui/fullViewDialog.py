@@ -1,4 +1,4 @@
-from PySide import QtCore, QtGui, QtSvg
+from PySide import QtCore, QtGui, QtSvg, QtOpenGL
 from pyTools.gui import fullViewDialog_auto
 from pyTools.gui.fullViewDialog_auto import Ui_Dialog
 import pyTools.videoTagger.hud as HUD
@@ -15,6 +15,27 @@ class FullViewDialog(QtGui.QMainWindow):
         self.previewWidget = previewWidget
         self.cw = QtGui.QWidget(self)
         self.setCentralWidget(self.cw)
+        # self.cw = QtGui.QWidget(self)
+        self.horizontalLayout = None
+        self.verticalLayout = None
+        self.graphicsView = None
+        self.setupUI()
+        self.scene = None
+        self.hud = HUD.HUD(self.graphicsView)
+        self.setupHUD()
+        self.setupControlWidget()
+        self.playing = False
+        self.editing = True
+        self.bookmarksOpen = False
+        self.labelsOpen = False
+        self.trajectoryEnabled = False
+        self.annoViewOpen = False
+        self.avY = 0
+        self.mouseFilter = MouseFilterObj(self)
+        self.installEventFilter(self.mouseFilter)
+        # self.hud.installEventFilter(self.mouseFilter)
+
+    def setupUI(self):
         l = QtGui.QHBoxLayout(self.cw)
         self.hSplitter = QtGui.QSplitter(QtCore.Qt.Horizontal, self.cw)
         self.hSplitter.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
@@ -34,36 +55,32 @@ class FullViewDialog(QtGui.QMainWindow):
         self.lblView.hide()
 
         self.cw.setLayout(l)
-        # self.cw = QtGui.QWidget(self)
-        self.horizontalLayout = None
-        self.verticalLayout = None
-        self.graphicsView = None
-        self.setupUI()
-        self.scene = None
-        self.hud = HUD.HUD(self.graphicsView)
-        self.setupHUD()
-        self.setupControlWidget()
-        self.playing = False
-        self.editing = True
-        self.bookmarksOpen = False
-        self.labelsOpen = False
-        self.trajectoryEnabled = False
-        self.mouseFilter = MouseFilterObj(self)
-        self.installEventFilter(self.mouseFilter)
-        # self.hud.installEventFilter(self.mouseFilter)
 
-    def setupUI(self):
         if self.previewWidget is not None:
             prevDummyWidget = QtGui.QWidget()
             prevLayout = QtGui.QHBoxLayout(prevDummyWidget)
             prevLayout.addWidget(self.previewWidget)
 
-        # self.graphicsView = QtGui.QGraphicsView()
+        self.centeringAnnoViewWidget  = QtGui.QWidget()
+        self.centeringAnnoViewLayout = QtGui.QHBoxLayout(self.centeringAnnoViewWidget)
+        self.annoViewWidget = QtGui.QWidget()
+        self.annoViewLayout = QtGui.QVBoxLayout(self.annoViewWidget)
+        self.annoViewLayout.setSpacing(-10)
+
+        # self.centeringAnnoViewLayout.addStretch()
+        self.centeringAnnoViewLayout.addWidget(self.annoViewWidget)
+        # self.centeringAnnoViewLayout.addStretch()
+
+        self.centeringAnnoViewLayout.insertStretch(0)
+        self.centeringAnnoViewLayout.insertStretch(-1)
+        self.annoViewWidget.hide()
+        
         self.graphicsView = FullViewGraphicsView()
         self.graphicsView.setObjectName("graphicsView")
         self.graphicsView.setMouseTracking(True)
 
         self.splitter.addWidget(prevDummyWidget)
+        self.splitter.addWidget(self.centeringAnnoViewWidget)
         self.splitter.addWidget(self.graphicsView)
 
         self.setGeometry(QtCore.QRect(100,100,800, 600))
@@ -93,6 +110,7 @@ class FullViewDialog(QtGui.QMainWindow):
         self.timelineButton.load(self.iconFolder + '/Align_justify_font_awesome.svg')
         self.timelineButton.setToolTip("Open timeline panel (not implemented yet)")
         self.timelineButton.setFixedSize(20, 20)
+        self.timelineButton.clicked.connect(self.toggleTimeline)
         layout.addWidget(self.timelineButton)
 
         self.bookmarkButton = SVGButton(self.controlWidget)
@@ -188,10 +206,17 @@ class FullViewDialog(QtGui.QMainWindow):
     #     self.graphicsView.centerOn(0, 0)
 
     def showEvent(self, event):
-        super(FullViewDialog, self).showEvent(event)
+        ret = super(FullViewDialog, self).showEvent(event)
         if self.scene:
             self.graphicsView.fitInView(self.scene.sceneRect())
 
+        return ret
+
+    def addAnnoView(self, aVWidget):
+        self.annoViewLayout.addWidget(aVWidget)
+        # aVWidget.setParent(self.annoViewWidget)
+        # aVWidget.move(0, self.avY)
+        # self.avY += 10
 
     def setAnnotator(self, str):
         self.hud.setAnnotator(str)
@@ -268,6 +293,12 @@ class FullViewDialog(QtGui.QMainWindow):
             self.parent().showTrajectories(False)
             # self.bookmarkButton.load(self.iconFolder + '/Bookmark_font_awesome.svg')
 
+    def toggleTimeline(self):
+        self.annoViewOpen = not self.annoViewOpen
+        if self.annoViewOpen:
+            self.annoViewWidget.show()
+        else:
+            self.annoViewWidget.hide()
 
 class FullViewGraphicsView(QtGui.QGraphicsView):
 
@@ -276,12 +307,14 @@ class FullViewGraphicsView(QtGui.QGraphicsView):
 
 
     def resizeEvent(self, event):
-        super(FullViewGraphicsView, self).resizeEvent(event)
+        ret = super(FullViewGraphicsView, self).resizeEvent(event)
 
         if self.scene():
             bounds = self.scene().sceneRect()
             self.fitInView(bounds, QtCore.Qt.KeepAspectRatio)
             self.centerOn(0, 0)
+
+        return ret
 
 
 

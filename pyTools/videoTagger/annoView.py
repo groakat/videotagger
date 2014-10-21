@@ -64,25 +64,25 @@ class AnnoViewItem(QtGui.QGraphicsRectItem):
         pen = QtGui.QPen(QtCore.Qt.red)
         self.setPen(pen)
         self.annoView.centerAt(self)
-        QtGui.QGraphicsRectItem.hoverEnterEvent(self, event)
+        return QtGui.QGraphicsRectItem.hoverEnterEvent(self, event)
     
     def hoverLeaveEvent(self, event):
         pen = QtGui.QPen(QtGui.QColor(0,0,0,0))
         self.setPen(pen)
         self.annoView.centerAt(None)
-        QtGui.QGraphicsRectItem.hoverLeaveEvent(self, event)
+        return QtGui.QGraphicsRectItem.hoverLeaveEvent(self, event)
         
     def mousePressEvent(self, event):
         self.annoView.alterAnnotation(self)
-        QtGui.QGraphicsRectItem.mousePressEvent(self, event)
+        return QtGui.QGraphicsRectItem.mousePressEvent(self, event)
 
     
     
 class AnnoView(QtGui.QWidget):
     
     @cfg.logClassFunction
-    def __init__(self, parent, parentWidget, vialNo=None, behaviourName=None, annotator=None,
-                color=None, geo=None):
+    def __init__(self, parent, parentWidget, vialNo=None, behaviourName=None,
+                 annotator=None, color=None, geo=None):
         super(AnnoView, self).__init__(parentWidget)
         #QGraphicsView.__init__(parent)
         
@@ -111,13 +111,16 @@ class AnnoView(QtGui.QWidget):
             
         self.setStyleSheet("* {margin: 0px; border-width: 0px; padding: 0px}")
         self.gV = QtGui.QGraphicsView(parentWidget)
-        self.gV.setGeometry(QtCore.QRect(amWidth + 15, cMarkerExtra, geo.width(), geo.height()))
+        self.gV.setGeometry(QtCore.QRect(amWidth + 15, cMarkerExtra, geo.width(),
+                                         geo.height()))
         self.gV.setFrameStyle(QtGui.QFrame.NoFrame)
         self.gV.setStyleSheet("* {margin: 0px; border-width: 0px; padding: 0px}")
         
         self.cMarker1 = QtGui.QLabel(parentWidget)
-        self.cMarker1.setGeometry(QtCore.QRect(amWidth + 20 + geo.width() / 2, 
-                                       0, 1, geo.height() + cMarkerExtra * 2))
+        gvGeo = self.gV.geometry()
+        self.cMarker1.setGeometry(QtCore.QRect(gvGeo.x() + gvGeo.width() / 2,
+                                       0, 1, gvGeo.height() + cMarkerExtra * 2))
+
         self.cMarker1.setFrameStyle(QtGui.QFrame.VLine)
         self.cMarker1.raise_()
         
@@ -211,14 +214,15 @@ class AnnoView(QtGui.QWidget):
         center = self.frameAmount / 2 + 1
         self.gV.centerOn(self.frames[center])
         self.setZoom(0)
+
         
         
         
-#     def sizeHint(self):
-#         return QtCore.QSize(self.width, int(self.boxHeight))
-#     
-#     def minimumSizeHint(self):
-#         return self.sizeHint()
+    # def sizeHint(self):
+    #     return QtCore.QSize(self.width, int(self.boxHeight))
+    #
+    # def minimumSizeHint(self):
+    #     return self.sizeHint()
         
             
     def centerAt(self, avItem):

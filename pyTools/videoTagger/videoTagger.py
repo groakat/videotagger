@@ -881,7 +881,7 @@ class VideoTagger(QtGui.QMainWindow):
                                        geo=QtCore.QRect(10, 5, width, 
                                                        height))        
         av.show()
-        av.move(15, 5)     
+        # av.move(15, 5)
         self.annoViewList += [av]
         
         # label        
@@ -907,8 +907,10 @@ class VideoTagger(QtGui.QMainWindow):
 #         lay.addWidget(lbl,  alignment=QtCore.Qt.AlignHCenter)
 #         
 #         w.setLayout(lay)
-#         
-        w.setFixedHeight(height + 25)
+#
+        # hack!!
+        w.setFixedHeight(height + 10)
+        w.setFixedWidth(width + 100)
         
         return w
         
@@ -916,15 +918,19 @@ class VideoTagger(QtGui.QMainWindow):
     def createAnnoViews(self):
         self.annoViewList = []
         self.annoViewLabel = []
+        self.annoViewWidgets = []
         
         yPos = 430 
         xPos = 60 
         height = 10
-        width = 1000
+        width = 600
         
                         
-        self.annoViewCol = CC.collapseContainer(width=1100)
-        
+        # self.annoViewCol = CC.collapseContainer(width=1100)
+
+        # self.annoViewCol = QtGui.QVBoxLayout(self)
+
+
         for i in range(len(self.annotations)):            
             self.annotations[i]["color"] = QtGui.QColor(self.annotations[i]["color"])
             self.annotations[i]["color"].setAlphaF(0.8)
@@ -934,7 +940,9 @@ class VideoTagger(QtGui.QMainWindow):
             title = "Annotation View: {a}: {b}".format(\
                                                 a=self.annotations[i]['annot'],
                                                 b=self.annotations[i]['behav'])
-            self.annoViewCol.addWidget(w, title)
+
+            self.annoViewWidgets += [w]
+            # self.annoViewCol.addWidget(w, title)
             
         for aV in self.annoViewList:
             self.vh.addAnnoView(aV)  
@@ -1538,6 +1546,10 @@ class VideoTagger(QtGui.QMainWindow):
             self.dialogShortCutFilter = EF.shortcutHandler(self.fullVideoDialog, self, **self.filterObjArgs)
             # self.fullVideoDialog.installEventFilter(self.dialogShortCutFilter)
             self.deactivateEditMode()
+
+            for avw in self.annoViewWidgets:
+                self.fullVideoDialog.addAnnoView(avw)
+
             self.fullVideoDialog.show()
             print "displayFullResolutionFrame", "showed"
         else:
@@ -1709,6 +1721,8 @@ class VideoTagger(QtGui.QMainWindow):
         # self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
 
         self.updateHUD()
+        if self.fullVideoDialog is not None:
+            self.fullVideoDialog.graphicsView.viewport().update()
              
 
 
