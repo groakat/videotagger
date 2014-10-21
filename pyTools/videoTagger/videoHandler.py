@@ -135,6 +135,7 @@ class VideoHandler(QtCore.QObject):
         tmpFilename = os.path.join(dirname, "videoTagger.bhvr~")
         
         self.tmpFile = tmpFilename
+        
 
         # always do that at the end
 #         self.checkBuffer()
@@ -1361,13 +1362,13 @@ class VideoHandler(QtCore.QObject):
                 dirname = os.path.dirname(key)[:-len(self.patchesFolder)] + \
                             self.bhvrFolder
             else:
-                dirname = os.path.dirname(key) + \
-                            self.bhvrFolder
+                dirname = os.path.join(os.path.dirname(key),
+                                        self.bhvrFolder)
             
             basename = '.'.join(os.path.basename(key).split(".")[:-1]) + \
                        ".bhvr"
             tmpFilename = os.path.join(dirname, basename)
-            print tmpFilename
+            print "saving behaviour files to", tmpFilename
             self.annoDict[key].annotation.saveToFile(tmpFilename)
 
         if os.path.exists(self.tmpFile):
