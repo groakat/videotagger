@@ -388,9 +388,17 @@ class AnnotationLoaderLuncher(QtCore.QObject):
 
         videoFolder = os.path.dirname(videoPath)
         bvhrName = os.path.basename(videoPath)
-        bhvrFolder = videoFolder[:-len(self.patchesFolder)] + \
-                    self.bhvrFolder
+        if len(self.patchesFolder) > 1:
+            bhvrFolder = os.path.join(videoFolder[:-len(self.patchesFolder)],
+                        self.bhvrFolder)
+        else:
+            bhvrFolder = os.path.join(videoFolder,
+                                        self.bhvrFolder)
+        
         bhvrPath = bhvrFolder + '/' + bvhrName
+        
+        
+        print "adjwaiwdjwaiojdwioa" , videoFolder, bvhrName, bhvrFolder, bhvrPath
 
         if len(self.availableALs) == 0:
             cfg.log.debug("create new AnnotationLoader {0}".format(videoPath))
@@ -413,7 +421,7 @@ class AnnotationLoaderLuncher(QtCore.QObject):
             cfg.log.debug("finished thread emit create new AnnotationLoader {0}".format(videoPath))
             self.threads[aL] = [annotationLoaderThread, aL.startLoading]
             
-            cfg.log.info("finished create new AnnotationLoader {0}".format(videoPath))
+            cfg.log.info("finished create new AnnotationLoader {0}".format(bhvrPath))
         else:
             aL = self.availableALs.pop()
             cfg.log.info("recycle new AnnotationLoader {0}, was previous: {1}".format(videoPath, aL.bhvrPath))
@@ -514,7 +522,7 @@ class AnnotationLoader(QtCore.QObject):
                 videoLength = self.retrieveVideoLength(self.bhvrPath)
                 out = Annotation.Annotation(frameNo=videoLength, vialNames=self.vialNames)
         else:
-            cfg.log.warning("AnnotationLoader: f does NOT exist create empty Annotation")
+            cfg.log.warning("AnnotationLoader: f does NOT exist create empty Annotation at {0}".format(self.bhvrPath))
             videoLength = self.retrieveVideoLength(self.videoPath)
             out = Annotation.Annotation(frameNo=videoLength, vialNames=self.vialNames)
             cfg.log.info("new annotation with length {0}".format(videoLength))

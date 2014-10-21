@@ -620,11 +620,11 @@ class LabelRectItem(InfoRectItem):
         if not self.activated:
             return
 
-        self.menu.exec_(event.screenPos())
 
         if self.contextRegisterCallback:
             self.contextRegisterCallback(self)
 
+        self.menu.exec_(event.screenPos())
 
 
 class MouseInsideFilterObj(QtCore.QObject):#And this one

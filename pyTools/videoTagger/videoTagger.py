@@ -2964,7 +2964,11 @@ class VideoTagger(QtGui.QMainWindow):
 
 
         # Annotations
-        annotations = cfgFile['Annotation']['annotations']
+        if 'annotations' in cfgFile['Annotation']:
+            annotations = cfgFile['Annotation']['annotations']
+        else:
+            annotations = []
+            
         if 'annotator' in cfgFile['Annotation'].keys():
             annotator = cfgFile['Annotation']['annotator']
         else:
