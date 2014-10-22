@@ -26,8 +26,8 @@ class OverlayDialogBase(QtGui.QWidget):
 
         self.setGeometry(self.parent.geometry())
         # self.setGeometry(QtCore.QRect(0,0,100,100))
-        # self.parentEventHandler = OverlayDialogBase.ParentEventHandler(self)
-        # self.parent.installEventFilter(self.parentEventHandler)
+        self.parentEventHandler = OverlayDialogBase.ParentEventHandler(self)
+        self.parent.installEventFilter(self.parentEventHandler)
         #
         # self.setupContent()
         # self.setupLayout()
@@ -117,20 +117,20 @@ class OverlayDialogBase(QtGui.QWidget):
         else:
             super(OverlayDialogBase, self).keyPressEvent(event)
 
-    # class ParentEventHandler(QtCore.QObject):
-    #     def __init__(self, overlayDialog):
-    #         super(OverlayDialogBase.ParentEventHandler, self).__init__(
-    #                                                         overlayDialog)
-    #         self.overlayDialog = overlayDialog
-    #
-    #     def eventFilter(self, obj, event):
-    #         if event.type() == QtCore.QEvent.Type.Resize:
-    #             self.overlayDialog.setGeometry(obj.geometry())
+    class ParentEventHandler(QtCore.QObject):
+        def __init__(self, overlayDialog):
+            super(OverlayDialogBase.ParentEventHandler, self).__init__(
+                                                            overlayDialog)
+            self.overlayDialog = overlayDialog
 
-            # if event.type() == QtCore.QEvent.KeyPress\
-            # or event.type() == QtCore.QEvent.KeyRelease:
-            #     if event.key() == QtCore.Qt.Key_Escape:
-            #         self.overlayDialog.close()
+        def eventFilter(self, obj, event):
+            if event.type() == QtCore.QEvent.Type.Resize:
+                self.overlayDialog.setGeometry(obj.geometry())
+
+            if event.type() == QtCore.QEvent.KeyPress\
+            or event.type() == QtCore.QEvent.KeyRelease:
+                if event.key() == QtCore.Qt.Key_Escape:
+                    self.overlayDialog.close()
 
             return False
 
