@@ -2397,14 +2397,16 @@ class VideoTagger(QtGui.QMainWindow):
                               'color': color}]
 
         height = 10
-        width = 1000
+        width = 600
         i = len(self.annotations) - 1
 
         w = self.createAnnoView(width, height, i)
         title = "Annotation View: {a}: {b}".format(\
                                             a=self.annotations[i]['annot'],
                                             b=self.annotations[i]['behav'])
-        self.annoViewCol.addWidget(w, title)
+
+        self.fullVideoDialog.addAnnoView(w)
+        # self.annoViewCol.addWidget(w, title)
 
 
 #         self.increment = 40
@@ -2558,14 +2560,29 @@ class VideoTagger(QtGui.QMainWindow):
                               'annot': self.getAnnotator(),
                               'color': color}]
 
+        height = 10
+        width = 600
+        i = len(self.annotations) - 1
+
+        w = self.createAnnoView(width, height, i)
+        title = "Annotation View: {a}: {b}".format(\
+                                            a=self.annotations[i]['annot'],
+                                            b=self.annotations[i]['behav'])
+
+
+        self.vh.addAnnoView(self.annoViewList[-1])
+        self.fullVideoDialog.addAnnoView(w)
+
+
         labels = []
 
         for i in range(len(self.annotations)):
             labels += ["{b}".format(b=self.annotations[i]['behav'])]
-
         self.cle.setModel(labels)
 
         self.exportSettings()
+
+        self.showNextFrame(0)
 
 
     def queryForLabel(self):
