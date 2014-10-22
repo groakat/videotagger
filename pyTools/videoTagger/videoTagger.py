@@ -223,6 +223,7 @@ class VideoTagger(QtGui.QMainWindow):
             self.fdvtPath = os.path.join(self.getPathDirname(),
                                      fdvtPathRel)
         else:
+            self.fdvtPathRel = None
             self.fdvtPath = None
 
         self.isLabelingSingleFrame = False
