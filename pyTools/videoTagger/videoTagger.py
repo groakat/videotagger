@@ -2504,7 +2504,6 @@ class VideoTagger(QtGui.QMainWindow):
         increment = labelledFrames[2]
 
         if self.fdvt.meta['not-initialized']:
-            print "aiwodfjawoigfwghoaifai"
             curFile = self.fileList[self.idx]
             self.fdvt.importAnnotation(self.vh.annoDict[curFile].annotation)
             for a in self.annotations:
@@ -2583,6 +2582,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.exportSettings()
 
         self.showNextFrame(0)
+
+        ## TODO add new class to FDVT
 
 
     def queryForLabel(self):
