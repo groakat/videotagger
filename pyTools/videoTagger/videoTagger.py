@@ -120,7 +120,7 @@ class VideoTagger(QtGui.QMainWindow):
                     videoExtension='avi', #'.v0.avi',
                     runningIndeces=True,
                     fdvtPathRel=None,
-                    bhvrListPath=None,
+                    videoListPath=None,
                     serverAddress="tcp://127.0.0.1:4242",
                     bufferWidth=300,
                     bufferLength=4,
@@ -164,7 +164,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.startVideoName = startVideoName
         self.videoEnding = videoExtension
         self.runningIndeces = runningIndeces
-        self.bhvrListPath = bhvrListPath
+        self.videoListPath = videoListPath
         self.bufferWidth = bufferWidth
         self.bufferLength = bufferLength
 
@@ -261,7 +261,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.filterList = []
 
         self.fileList = self.getFileList(path, self.getVideoExtension(),
-                                         bhvrListPath)
+                                         videoListPath)
 
         self.lm = MyListModel(self.fileList, self)
         
@@ -373,13 +373,13 @@ class VideoTagger(QtGui.QMainWindow):
             pass
 
 
-    def getFileList(self, path, videoExtension, bhvrListPath):
+    def getFileList(self, path, videoExtension, videoListPath):
         if path.endswith(videoExtension):
             fileList = [path]#.split(videoExtension)[0] + '.' + videoExtension]
-        elif bhvrListPath is None:
+        elif videoListPath is None:
             fileList = systemMisc.providePosList(path, ending='.' + videoExtension)#'.bhvr')
         else:
-            with open(bhvrListPath, "r") as f:
+            with open(videoListPath, "r") as f:
                 fileList = json.load(f)
 
         if len(fileList) == 1:
@@ -392,10 +392,10 @@ class VideoTagger(QtGui.QMainWindow):
             and core + '_small.' + videoExtension in fileList \
             and core + '_full_org.' + videoExtension in fileList:
                 return [core + '_small.' + videoExtension]
-            else:
-                fileList = self.convertFileList(fileList, '.' + videoExtension)
-        else:
-            fileList = self.convertFileList(fileList, '.' + videoExtension)
+        #     else:
+        #         fileList = self.convertFileList(fileList, '.' + videoExtension)
+        # else:
+        #     fileList = self.convertFileList(fileList, '.' + videoExtension)
 
         return fileList
 
@@ -445,13 +445,13 @@ class VideoTagger(QtGui.QMainWindow):
         self.videoExtension = 'avi'
         self.path = self.le_videoPath.text()
         if self.le_bhvrCache.text():
-            self.bhvrListPath = self.le_bhvrCache.text()
+            self.videoListPath = self.le_bhvrCache.text()
         else:
-            self.bhvrListPath = None
+            self.videoListPath = None
         self.croppedVideo = self.le_croppedVideo.isChecked()
         self.runningIndeces = self.le_filesRunningIdx.isChecked()
         self.fileList = self.getFileList(self.path, self.getVideoExtension(),
-                                         self.bhvrListPath)
+                                         self.videoListPath)
 
         self.cb_videoSelection.clear()
         self.cb_videoSelection.addItems(self.fileList)
@@ -602,7 +602,7 @@ class VideoTagger(QtGui.QMainWindow):
 
     def populateFormWithInternalSettings(self):
         self.fileList = self.getFileList(self.path, self.getVideoExtension(),
-                                         self.bhvrListPath)
+                                         self.videoListPath)
 
         self.cb_videoSelection.clear()
         self.cb_videoSelection.addItems(self.fileList)
@@ -610,7 +610,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.le_annotatorName.setText(self.getAnnotator())
         self.le_videoPath.setText(self.path)
         self.le_bhvrFolder.setText(self.bhvrFolder)
-        self.le_bhvrCache.setText(self.bhvrListPath)
+        self.le_bhvrCache.setText(self.videoListPath)
         if self.selectedVial is None:
             self.le_vial.setText(str(self.selectedVial))
         else:
@@ -678,15 +678,15 @@ class VideoTagger(QtGui.QMainWindow):
         # videoExtension='.avi', #'.v0.avi',
         runningIndeces = self.le_filesRunningIdx.isChecked()
         fdvtPath = self.le_FDV.text()
-        bhvrListPath = self.le_bhvrCache.text()
+        videoListPath = self.le_bhvrCache.text()
         # serverAddress="tcp://127.0.0.1:4242",
         bufferWidth = int(self.le_bufferWidth.text())
         bufferLength= int(self.le_bufferLength.text())
         startVideoName = self.cb_videoSelection.currentText()
         startFrame = int(self.le_startFrame.text())
 
-        if not bhvrListPath:
-            bhvrListPath = None
+        if not videoListPath:
+            videoListPath = None
 
         if not fdvtPath:
             fdvtPath = None
@@ -732,7 +732,7 @@ class VideoTagger(QtGui.QMainWindow):
                     videoExtension=videoExtension,
                     runningIndeces=runningIndeces,
                     fdvtPathRel=fdvtPath,
-                    bhvrListPath=bhvrListPath,
+                    videoListPath=videoListPath,
                     serverAddress=serverAddress,
                     bufferWidth=bufferWidth,
                     bufferLength=bufferLength,
@@ -1049,15 +1049,15 @@ class VideoTagger(QtGui.QMainWindow):
 #                 pass
 #         painter.end()
         
-        
+    #
     def convertFileList(self, fileList, videoEnding):
         fl = []
         for f in sorted(fileList):
-            if self.runningIndeces:
-                fl += [f.split('.')[0] + videoEnding]                
+            if self.croppedVideo:
+                fl += [f.split('.')[0] + videoEnding]
             else:
                 fl += ['.'.join(f.split('.')[:2]) + videoEnding]
-        
+
         return fl
         
         
@@ -2323,9 +2323,9 @@ class VideoTagger(QtGui.QMainWindow):
         cfg.log.debug("select frame idx {0}. {1}".format( idx, self.jmpIdx[idx]))
         self.setFrame(self.jmpIdx[idx])
         
-    @cfg.logClassFunction
-    def loadNewVideo(self):
-        self.videoList[self.fileList[0]] = DL.VideoLoader(self.fileList[0])
+    # @cfg.logClassFunction
+    # def loadNewVideo(self):
+    #     self.videoList[self.fileList[0]] = DL.VideoLoader(self.fileList[0])
         
     @cfg.logClassFunction
     def showTrajectories(self, state):
@@ -2352,13 +2352,13 @@ class VideoTagger(QtGui.QMainWindow):
                 lbl += [self.videoScene.addRect(geo, QtGui.QPen(penCol))]
             self.trajLabels += [lbl]
     
-    @cfg.logClassFunction
-    @QtCore.Slot(list)
-    def addVideo(self, videoList):
-        cfg.log.debug("slot")
-        self.videoList += videoList
-        
-        cfg.log.debug("{0}".format(self.videoList))
+    # @cfg.logClassFunction
+    # @QtCore.Slot(list)
+    # def addVideo(self, videoList):
+    #     cfg.log.debug("slot")
+    #     self.videoList += videoList
+    #
+    #     cfg.log.debug("{0}".format(self.videoList))
         
     @cfg.logClassFunction
     @QtCore.Slot(str)
@@ -2733,7 +2733,7 @@ class VideoTagger(QtGui.QMainWindow):
         cfgDict = dict()
         cfgDict['Video'] = dict()
         cfgDict['Video']['background'] = self.backgroundPath
-        cfgDict['Video']['bhvr-cache'] = self.bhvrListPath
+        cfgDict['Video']['video-cache'] = self.videoListPath
         cfgDict['Video']['bufferLength'] = self.bufferLength
         cfgDict['Video']['bufferWidth'] = self.bufferWidth
         cfgDict['Video']['cropped-video'] = self.croppedVideo
@@ -2809,7 +2809,7 @@ class VideoTagger(QtGui.QMainWindow):
             vialROI, \
             videoExtension, filterObjArgs, startVideo, rewindOnClick,\
             croppedVideo, patchesFolder, positionFolder, behaviourFolder,\
-            runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
+            runningIndeces, fdvtPath, videoListPath, bufferWidth, \
             bufferLength, startFrame = VideoTagger.parseConfig(configPath)
 
             self.path = path
@@ -2831,7 +2831,7 @@ class VideoTagger(QtGui.QMainWindow):
             self.bhvrFolder = behaviourFolder
             self.runningIndeces = runningIndeces
             self.fdvtPathRel = fdvtPath
-            self.bhvrListPath = bhvrListPath
+            self.videoListPath = videoListPath
             self.bufferWidth = bufferWidth
             self.bufferLength = bufferLength
             self.idx = startFrame
@@ -2874,10 +2874,12 @@ class VideoTagger(QtGui.QMainWindow):
         else:
             fdvtPath = None
 
-        if 'bhvr-cache' in cfgFile['Video'].keys():
-            bhvrListPath = cfgFile['Video']['bhvr-cache']
+        if 'video-cache' in cfgFile['Video'].keys():
+            videoListPath = cfgFile['Video']['video-cache']
+        elif 'bhvr-cache' in cfgFile['Video'].keys():
+            videoListPath = cfgFile['Video']['bhvr-cache']
         else:
-            bhvrListPath = None
+            videoListPath = None
 
         if 'start-video' in cfgFile['Video'].keys():
             startVideo = cfgFile['Video']['start-video']
@@ -3011,7 +3013,7 @@ class VideoTagger(QtGui.QMainWindow):
                vialROI, \
                 videoExtension, filterObjArgs, startVideo, rewindOnClick,\
                 croppedVideo, patchesFolder, positionFolder, behaviourFolder,\
-                runningIndeces, fdvtPath, bhvrListPath, bufferWidth, \
+                runningIndeces, fdvtPath, videoListPath, bufferWidth, \
                 bufferLength, startFrame
 
 
@@ -3133,7 +3135,7 @@ def main():
         videoPath, annotations, annotator, backgroundPath, selectedVial, vialROI, \
         videoExtension, filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
         patchesFolder, positionFolder, behaviourFolder, runningIndeces, fdvtPath,\
-        bhvrListPath, bufferWidth, bufferLength, startFrame = \
+        videoListPath, bufferWidth, bufferLength, startFrame = \
                                     VideoTagger.parseConfig(args.config_file)
 
         #### finish parsing config file
@@ -3155,7 +3157,7 @@ def main():
                          croppedVideo=croppedVideo, patchesFolder=patchesFolder,
                          positionsFolder=positionFolder, behaviourFolder=behaviourFolder,
                          runningIndeces=runningIndeces,
-                         fdvtPath=fdvtPath, bhvrListPath=bhvrListPath,
+                         fdvtPath=fdvtPath, videoListPath=videoListPath,
                          bufferWidth=bufferWidth, bufferLength=bufferLength,
                           annotator=annotator, startFrame=startFrame)
 

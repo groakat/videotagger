@@ -19,14 +19,25 @@ def cacheFilelist(config_file):
     if videoPath.endswith(('avi', "mpeg", "mp4")):
         videoPath = os.path.dirname(videoPath)
 
-    bhvrList = systemMisc.providePosList(videoPath, ending='.bhvr')
-    print bhvrList
+    if croppedVideo:
+        extension = ".{0}.{1}".format(selectedVial, videoExtension)
+    else:
+        extension = ".{0}".format(videoExtension)
+        
+    videoList = systemMisc.providePosList(videoPath, ending=extension)
+    print videoList
 
     with open(bhvrListPath, "w") as f:
-        json.dump(bhvrList, f)
+        json.dump(videoList, f)
 
 
     print "start parsting bhvr files"
+    bhvrList = [x[:-len(extension)] + '.bhvr' for x in videoList]
+
+    for bhvrPath in bhvrList:
+        if not os.path.exists(bhvrPath):
+            del bhvrPath
+
     fdtv = FDV.FrameDataVisualizationTreeBehaviour()
     fdtv.importAnnotations(bhvrList, annotations, selectedVial, runningIndeces=runningIndeces)
     fdtv.save(fdvtPath)
