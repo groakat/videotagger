@@ -522,10 +522,12 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
     def insertFrameArray(self, day, hour, minute, frames):
         # super(FrameDataVisualizationTreeBehaviour, self).insertFrameArray(day, hour, minute, frames)
+
+        self.verifyStructureExists(day, hour, minute)
+
         for k, i in frames.items():
             self.addSample(day, hour, minute, k, i)
 
-        self.verifyStructureExists(day, hour, minute)
         # frameList = [i for k, i in frames.items()]
         if frames.items():
             frameArray = self.dict2array(frames)
@@ -661,7 +663,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         hour = 0
         minute = 0
 
-        if len(annotation.frameList) < fps * 60:
+        if len(annotation.frameList) <= fps * 60:
             frameSlc = slice(0, len(annotation.frameList))
             data = self.convertFrameListToDatum(annotation, frameSlc,
                                                 self.meta['filtList'])
@@ -682,7 +684,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             self.meta['not-initialized'] = False
 
     # @profile
-    def importAnnotationsFromSingleFile(self, bhvrList, annotations, vials,
+    def importAnnotationsFromSingleFile(self, bhvrFile, annotations, vials,
                                         runningIndeces=False, fps=30):
         self.meta['singleFileMode'] = True
 
@@ -697,18 +699,19 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                                                         [behaviour]))
 
         anno = Annotation.Annotation()
-        anno.loadFromFile(bhvrList[0])
+        anno.loadFromFile(bhvrFile)
 
         self.importAnnotation(anno, fps)
 
 
-    def importAnnotations(self, bhvrList, annotations, vials, runningIndeces=False, fps=30):
+    def importAnnotations(self, bhvrList, annotations, vials, runningIndeces=False,
+                          fps=30):
         if len(bhvrList) == 0:
             self.resetAllSamples()
             return
 
         if len(bhvrList) == 1:
-            self.importAnnotationsFromSingleFile(bhvrList, annotations, vials,
+            self.importAnnotationsFromSingleFile(bhvrList[0], annotations, vials,
                                                  runningIndeces=False, fps=30)
             return
         else:
@@ -737,23 +740,36 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
             anno.loadFromFile(f)
 
-            # data = np.zeros((len(anno.frameList)))
+            if not runningIndeces:
+                day, hour, minute, second = filename2Time(f)
+            else:
+                day, hour, minute, second = filename2TimeRunningIndeces(f)
 
-            for l in range(len(filtList)):
+            frameSlc = slice(0, len(anno.frameList))
+            data = self.convertFrameListToDatum(anno, frameSlc,
+                                                self.meta['filtList'])
+            self.insertFrameArray(day, hour, minute, data)
 
-                filteredAnno = anno.filterFrameList(filtList[l])
-
-                if not runningIndeces:
-                    day, hour, minute, second = filename2Time(f)
-                else:
-                    day, hour, minute, second = filename2TimeRunningIndeces(f)
+            self.meta['not-initialized'] = False
 
 
+            # self.meta['not-initialized'] = False
 
-                for i in range(len(filteredAnno.frameList)):
-                    if filteredAnno.frameList[i][0] is not None:
-                        self.addSample(day, hour, minute,
-                                              filteredAnno.frameList[i][0])
+            # for l in range(len(filtList)):
+            #
+            #     filteredAnno = anno.filterFrameList(filtList[l])
+            #
+            #     if not runningIndeces:
+            #         day, hour, minute, second = filename2Time(f)
+            #     else:
+            #         day, hour, minute, second = filename2TimeRunningIndeces(f)
+
+
+                # for i in range(len(filteredAnno.frameList)):
+                #     if filteredAnno.frameList[i][0] is not None:
+
+                        # self.addSample(day, hour, minute,
+                        #                       filteredAnno.frameList[i][0])
             #             if data[i] != 0:
             #                 warnings.warn("Ambigous label of frame {f} in {d}".format(f=i, d=f))
             #             data[i] = l + 1
@@ -761,7 +777,6 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             # else:
             #     self.insertFrameArray(day, hour, minute, data)
 
-            self.meta['not-initialized'] = False
 
 
     def getAnnotationFilterCode(self, filt):

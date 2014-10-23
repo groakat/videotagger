@@ -83,7 +83,7 @@ def prepareFolder(folder):
         folder, videoPath, videoExtension = generateSmallVideo(filename)
         yamlPath = generateStandardYaml(folder, videoPath,videoExtension)
 
-        CF.cacheFilelist(yamlPath)
+        CF.cacheFilelistFromConfig(yamlPath)
 
     return yamlPath
 

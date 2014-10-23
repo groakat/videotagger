@@ -1,6 +1,5 @@
 import pyTools.system.misc as systemMisc
 import pyTools.misc.FrameDataVisualization2 as FDV
-from pyTools.videoTagger.videoTagger import VideoTagger
 
 import json
 import sys
@@ -8,41 +7,125 @@ import argparse
 import textwrap
 import os
 
-def cacheFilelist(config_file):
-    videoPath, annotations, annotator, backgroundPath, selectedVial, vialROI, \
-    videoExtension, filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
-    patchesFolder, positionFolder, behaviourFolder, runningIndeces, fdvtPath,\
-    bhvrListPath, bufferWidth, bufferLength, startFrame = \
-                                    VideoTagger.parseConfig(config_file)
 
-    print "start searching bhvr files"
+def getPathDirname(path):
+    if os.path.isdir(path):
+        dir = os.path.dirname(path + '/')
+    else:
+        dir = os.path.dirname(path)
+
+    return dir
+
+def generateVideoListPath(videoPath, videoListPathRel):
+    if not videoListPathRel:
+        videoListPathRel = 'videoCache.json'
+        videoListPath = os.path.join(getPathDirname(videoPath),
+                                     videoListPathRel)
+        i = 1
+        while os.path.exists(videoListPath):
+            videoListPathRel = 'videoCache_{0}.json'.format(i)
+            videoListPath = os.path.join(getPathDirname(videoPath),
+                                         videoListPathRel)
+            i += 1
+
+    else:
+        videoListPath = os.path.join(getPathDirname(videoPath),
+                                     videoListPathRel)
+
+    return videoListPath, videoListPathRel
+
+def generateFDVTPath(videoPath, fdvtPathRel):
+    if not fdvtPathRel:
+        fdvtPathRel = 'framedataVis.npy'
+        fdvtPath = os.path.join(getPathDirname(videoPath),
+                                fdvtPathRel)
+        i = 1
+        while os.path.exists(fdvtPathRel):
+            fdvtPathRel = 'framedataVis{0}.npy'.format(i)
+            fdvtPath = os.path.join(getPathDirname(videoPath),
+                                    fdvtPathRel)
+            i += 1
+    else:
+        fdvtPath = os.path.join(getPathDirname(videoPath),
+                                fdvtPathRel)
+
+    return fdvtPathRel, fdvtPath
+
+def convertVideoToBehaviourFiles(videoList, patchesFolder, behaviourFolder,
+                                 videoExtension):
+    bhvrList = []
+    for video in videoList:
+        folder = os.path.dirname(video)
+        if len(patchesFolder) > 0:
+            folder = folder[:-len(patchesFolder)]
+
+        folder = os.path.join(folder, behaviourFolder)
+
+        basename = os.path.basename(video)
+        basename = basename[:-len(videoExtension)] + 'bhvr'
+
+        bhvrList += [os.path.join(folder, basename)]
+
+    return bhvrList
+
+
+def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
+                  videoListPath, fdvtPathRel, annotations, runningIndeces,
+                  patchesFolder, behaviourFolder):
+
     if videoPath.endswith(('avi', "mpeg", "mp4")):
         videoPath = os.path.dirname(videoPath)
 
     if croppedVideo:
-        extension = ".{0}.{1}".format(selectedVial, videoExtension)
+        extension = ".v{0}.{1}".format(selectedVial, videoExtension)
     else:
         extension = ".{0}".format(videoExtension)
-        
+
+    print extension
     videoList = systemMisc.providePosList(videoPath, ending=extension)
-    print videoList
+    videoListPath, videoListPathRel = generateVideoListPath(videoPath,
+                                                           videoListPath)
+    fdvtPathRel, fdvtPath = generateFDVTPath(videoPath, fdvtPathRel)
 
-    with open(bhvrListPath, "w") as f:
-        json.dump(videoList, f)
+    rootPath = getPathDirname(videoPath)
+    videoListRel = [x[len(rootPath)+1:] for x in videoList]
+    with open(videoListPath, "w") as f:
+        json.dump(videoListRel, f)
 
+    potBhvrList = convertVideoToBehaviourFiles(videoList,
+                                            patchesFolder,
+                                            behaviourFolder,
+                                            videoExtension)
+    bhvrList = []
+    for i, bhvrPath in enumerate(potBhvrList):
+        if os.path.exists(bhvrPath):
+            bhvrList += [bhvrPath]
 
-    print "start parsting bhvr files"
-    bhvrList = [x[:-len(extension)] + '.bhvr' for x in videoList]
-
-    for bhvrPath in bhvrList:
-        if not os.path.exists(bhvrPath):
-            del bhvrPath
 
     fdtv = FDV.FrameDataVisualizationTreeBehaviour()
-    fdtv.importAnnotations(bhvrList, annotations, selectedVial, runningIndeces=runningIndeces)
+    fdtv.importAnnotations(bhvrList, annotations, selectedVial,
+                           runningIndeces=runningIndeces)
+
+    print fdvtPath, fdvtPathRel
+
     fdtv.save(fdvtPath)
 
+    return videoListPathRel, fdvtPathRel
+
+
+def cacheFilelistFromConfig(config_file):
+    videoPath, annotations, annotator, backgroundPath, selectedVial, vialROI, \
+    videoExtension, filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
+    patchesFolder, positionFolder, behaviourFolder, runningIndeces, fdvtPathRel,\
+    videoListPathRel, bufferWidth, bufferLength, startFrame = \
+                                    VideoTagger.parseConfig(config_file)
+
+    cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
+                  videoListPathRel, fdvtPathRel, annotations, runningIndeces)
+
 if __name__ == "__main__":
+    from pyTools.videoTagger.videoTagger import VideoTagger
+
     parser = argparse.ArgumentParser(\
     formatter_class=argparse.RawDescriptionHelpFormatter,\
     description=textwrap.dedent(\
@@ -90,7 +173,7 @@ if __name__ == "__main__":
     
        
     args = parser.parse_args()
-    cacheFilelist(args.config_file)
+    cacheFilelistFromConfig(args.config_file)
 
     
     
