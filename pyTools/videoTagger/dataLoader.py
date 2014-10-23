@@ -397,8 +397,6 @@ class AnnotationLoaderLuncher(QtCore.QObject):
         
         bhvrPath = bhvrFolder + '/' + bvhrName
         
-        
-        print "adjwaiwdjwaiojdwioa" , videoFolder, bvhrName, bhvrFolder, bhvrPath
 
         if len(self.availableALs) == 0:
             cfg.log.debug("create new AnnotationLoader {0}".format(videoPath))
@@ -565,7 +563,7 @@ class AnnotationLoader(QtCore.QObject):
             modi /= 2
             
 
-        return idx + 1
+        return idx + 2
     
     
 class VideoLengthQuery(QtCore.QObject):
