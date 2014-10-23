@@ -1020,7 +1020,7 @@ class VideoTagger(QtGui.QMainWindow):
         
         if self.fdvtPath is not None:
             self.frameView.loadSequence(self.fdvtPath)
-            
+
         self.fdvt = self.frameView.fdvt
             
             
@@ -2331,7 +2331,7 @@ class VideoTagger(QtGui.QMainWindow):
             idx = 0
             minutes = day * (24 * 60) + hour * 60  + minute
             frame += minutes * 30 * 60
-        elif self.usingVideoRunningIndeces:
+        elif self.runningIndeces:
             idx = day * (24 * 60) + hour * 60 + minute
             idx -= 1
         else:
@@ -2584,7 +2584,6 @@ class VideoTagger(QtGui.QMainWindow):
                     self.frameView.setColors(colors)
                     dv = self.fdvt.getDeltaValue(key, frame, filt, increment)
                 deltaVector += [dv]
-
 
         if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
             self.fdvt.insertDeltaVector(deltaVector)
