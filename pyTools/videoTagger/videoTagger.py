@@ -238,7 +238,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.fullVideoDialog = None
         self.displayingFullResolution = False
         self.fullResFrame = None
-        self.videoSizeSmallToFullMult = 5
+        self.videoSizeSmallToFullMult = 0
+        self.videoSizeSmallToFullMultInit = False
         
         self.rewindOnClick = rewindOnClick
         self.rewindStepSize = 500
@@ -1634,6 +1635,7 @@ class VideoTagger(QtGui.QMainWindow):
             if self.frames != []:
                 self.videoSizeSmallToFullMult = self.fullResFrame[1][0][0].shape[0] / \
                                         float(self.frames[0][1][0][0].shape[0])
+                self.videoSizeSmallToFullMultInit = True
 
             self.displayFrame(self.fullResFrame, 0)
 
@@ -1777,7 +1779,13 @@ class VideoTagger(QtGui.QMainWindow):
             self.frames += [self.vh.getCurrentFrame()]
             increment = 8
             offset = (self.trajNo / 2) 
-        
+
+        if not self.videoSizeSmallToFullMultInit:
+            if self.fullResFrame:
+                self.videoSizeSmallToFullMult = self.fullResFrame[1][0][0].shape[0] / \
+                                        float(self.frames[0][1][0][0].shape[0])
+
+
         frame = self.frames[0]
         anno = frame[2]
 
