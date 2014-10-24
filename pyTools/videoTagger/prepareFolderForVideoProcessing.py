@@ -59,20 +59,21 @@ def generateStandardYaml(rootFolder, videoPath, videoExtension, backgroundImg=No
     with open('config-template.yaml', 'r') as f:
         templateStr = f.readlines()
 
-    config = ''.join(templateStr).format(rootFolder=rootFolder,
-                                videoPath=videoPath,
-                                backgroundImg=backgroundImg,
-                                videoExt=videoExtension)
+    config = ''.join(templateStr).format(videoPath=videoPath,
+                                         backgroundImg=backgroundImg,
+                                         videoExt=videoExtension,
+                                         patches='""',
+                                         positions='""')
 
-    yamlPath = os.path.join(rootFolder, 'config.yaml')
+    yamlPath = os.path.join(rootFolder, 'videoTaggerConfig.yaml')
     with open(yamlPath, 'w') as f:
         f.writelines(config)
 
     return yamlPath
 
 def checkForConfig(folder):
-    if os.path.exists(os.path.join(folder, 'config.yaml')):
-        return os.path.join(folder, 'config.yaml')
+    if os.path.exists(os.path.join(folder, 'videoTaggerConfig.yaml')):
+        return os.path.join(folder, 'videoTaggerConfig.yaml')
     else:
         return False
 
@@ -89,4 +90,4 @@ def prepareFolder(folder):
 
 
 if __name__ == "__main__":
-    prepareFolder('/media/peter/Seagate Backup Plus Drive/test3')
+    prepareFolder('/media/peter/Seagate Backup Plus Drive/gabe_mouse_run/')

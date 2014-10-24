@@ -62,6 +62,11 @@ def maxOfSelectedVials(selectedVials):
         return max(selectedVials)
 
 
+def testImport():
+    # call this function if you want to test if VideoTagger has been imported
+    # already
+    pass
+
 #################################################################### 
 class MyListModel(QtCore.QAbstractListModel): 
     def __init__(self, datain, parent=None, *args): 
@@ -204,7 +209,7 @@ class VideoTagger(QtGui.QMainWindow):
         #
         # self.ui.sldr_paths.setMaximum(len(self.fileList))
 
-        self.idx = startFrame
+        self.startFrameIdx = startFrame
         self.play = False
         self.frameIdx = -1
         self.showTraject = False
@@ -271,20 +276,20 @@ class VideoTagger(QtGui.QMainWindow):
         
         #self.setVideo(0)
         if startVideoName == None:
-            startIdx = 0
+            self.idx = 0
         else:            
-            startIdx = [i for i in range(len(self.fileListRel))
+            self.idx = [i for i in range(len(self.fileListRel))
                             if self.fileListRel[i].find(startVideoName) != -1]
-            if not startIdx:
+            if not self.idx:
                 raise ValueError("startVideo not found in videoPath")
-            elif  len(startIdx) > 1:
+            elif  len(self.idx) > 1:
                 raise ValueError("startVideo not unique")
             
-            startIdx = startIdx[0]
+            self.idx = self.idx[0]
 
         # self.fileList = self.convertFileList(self.fileList, '.' + self.videoExtension)
         self.vh = VH.VideoHandler(self.fileList, self.changeVideo, 
-                               self.getSelectedVial(), startIdx=startIdx,
+                               self.getSelectedVial(), startIdx=self.idx,
                                videoExtension='.' + videoExtension,
                                bufferWidth=bufferWidth, 
                                bufferLength=bufferLength,
@@ -339,7 +344,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         self.exportSettings()
 
-        self.selectVideo(startIdx, self.idx)
+        self.selectVideo( self.idx, self.startFrameIdx)
         self.startLoop.emit()
         self.stopPlayback()
 
@@ -398,16 +403,17 @@ class VideoTagger(QtGui.QMainWindow):
             pass
 
         elif len(videoListRel) == 3:
-            core = '_'.join(fileList[0].split('_')[:-1])
-            if core + '_full.' + videoExtension in fileList \
-            and core + '_small.' + videoExtension in fileList \
-            and core + '_full_org.' + videoExtension in fileList:
-                fileList = [core + '_small.' + videoExtension]
+            core = '.'.join(sorted(videoListRel)[0].split('.')[:-1])
+            if core + '_full.' + videoExtension in videoListRel \
+            and core + '_small.' + videoExtension in videoListRel \
+            and core + '.' + videoExtension in videoListRel:
+                videoListRel = [core + '_small.' + videoExtension]
+                self.startVideo = videoListRel[0]
         #     else:
         #         fileList = self.convertFileList(fileList, '.' + videoExtension)
         # else:
         #     fileList = self.convertFileList(fileList, '.' + videoExtension)
-                videoListRel = [x[len(rootPath)+1:] for x in fileList]
+        #         videoListRel = [x[len(rootPath)+1:] for x in fileList]
 
         return videoListRel
 
@@ -485,7 +491,11 @@ class VideoTagger(QtGui.QMainWindow):
 
 
             videoPath = self.le_videoPath.text()
-            selectedVial = int(self.le_vial.text())
+            if self.le_vial.text().lower() != 'none':
+                selectedVial = int(self.le_vial.text())
+            else:
+                selectedVial = None
+
             croppedVideo = self.le_croppedVideo.isChecked()
             videoExtension = 'avi'
             runningIndeces = self.le_filesRunningIdx.isChecked()
@@ -719,8 +729,16 @@ class VideoTagger(QtGui.QMainWindow):
         path = self.le_videoPath.text()
         annotator = self.le_annotatorName.text()
         backgroundPath = self.le_background.text()
-        selectedVial = int(self.le_vial.text())
-        vialROI = json.loads(self.le_vialROI.text())
+        if self.le_vial.text().lower() != 'none':
+            selectedVial = int(self.le_vial.text())
+        else:
+            selectedVial = None
+
+        if self.le_vialROI.text().lower() != 'none':
+            vialROI = json.loads(self.le_vialROI.text())
+        else:
+            vialROI = None
+
         # filterObjArgs=None,
         # startVideoName=None,
         # rewindOnClick=False,
@@ -2796,13 +2814,16 @@ class VideoTagger(QtGui.QMainWindow):
         cfgDict['Video']['files-running-indices'] = self.runningIndeces
         cfgDict['Video']['frame-data-visualization-path'] = self.fdvtPathRel
         cfgDict['Video']['rewind-on-click'] = self.rewindOnClick
-        cfgDict['Video']['start-frame'] = self.idx
+        cfgDict['Video']['start-frame'] = self.getCurrentKey_idx()[1]
         cfgDict['Video']['start-video'] = self.fileListRel[self.idx]
         if self.selectedVial is None:
             cfgDict['Video']['vial'] = self.selectedVial
         else:
             cfgDict['Video']['vial'] = self.selectedVial[0]
-        cfgDict['Video']['vialROI'] = str(self.vialROI)
+        if self.vialROI is None:
+            cfgDict['Video']['vialROI'] = None
+        else:
+            cfgDict['Video']['vialROI'] = str(self.vialROI)
         cfgDict['Video']['videoPath'] = self.path
 
         if self.filterObjArgs['stepSize']:
@@ -2903,7 +2924,10 @@ class VideoTagger(QtGui.QMainWindow):
             selectedVial = None
 
         if 'vialROI' in cfgFile['Video'].keys():
-            vialROI = json.loads(cfgFile['Video']['vialROI'])
+            if cfgFile['Video']['vialROI'] is not None:
+                vialROI = json.loads(cfgFile['Video']['vialROI'])
+            else:
+                vialROI = None
         else:
             vialROI = None
 

@@ -81,10 +81,10 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
     else:
         extension = ".{0}".format(videoExtension)
 
-    print extension
     videoList = systemMisc.providePosList(videoPath, ending=extension)
     videoListPath, videoListPathRel = generateVideoListPath(videoPath,
                                                            videoListPath)
+
     fdvtPathRel, fdvtPath = generateFDVTPath(videoPath, fdvtPathRel)
 
     rootPath = getPathDirname(videoPath)
@@ -114,6 +114,11 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
 
 
 def cacheFilelistFromConfig(config_file):
+    try:
+        VideoTagger.testFunction()
+    except NameError:
+        from pyTools.videoTagger.videoTagger import VideoTagger
+
     videoPath, annotations, annotator, backgroundPath, selectedVial, vialROI, \
     videoExtension, filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
     patchesFolder, positionFolder, behaviourFolder, runningIndeces, fdvtPathRel,\
@@ -121,11 +126,11 @@ def cacheFilelistFromConfig(config_file):
                                     VideoTagger.parseConfig(config_file)
 
     cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
-                  videoListPathRel, fdvtPathRel, annotations, runningIndeces)
+                  videoListPathRel, fdvtPathRel, annotations, runningIndeces,
+                  patchesFolder, behaviourFolder)
 
 if __name__ == "__main__":
     from pyTools.videoTagger.videoTagger import VideoTagger
-
     parser = argparse.ArgumentParser(\
     formatter_class=argparse.RawDescriptionHelpFormatter,\
     description=textwrap.dedent(\
