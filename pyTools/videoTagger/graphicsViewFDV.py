@@ -711,6 +711,12 @@ class GraphicsViewFDV(QtGui.QWidget):
             self.minute = self.getFdvtLabel('minutes', 0)
             self.frame = self.getFdvtLabel('frames', 0)
 
+            if self.day == False \
+            or self.hour == False \
+            or self.minute == False \
+            or self.frame == False:
+                return
+
         self.plotData(self.day, self.hour, self.minute, self.frame)
         self.plotData(self.day, self.hour, self.minute, self.frame)
 

@@ -167,7 +167,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         self.backgroundPath = backgroundPath
         self.vialROI = vialROI
-        self.startVideoName = startVideoName
+        self.startVideoPath = startVideoName
         self.videoEnding = videoExtension
         self.runningIndeces = runningIndeces
         self.videoListPathRel = videoListPathRel
@@ -409,7 +409,7 @@ class VideoTagger(QtGui.QMainWindow):
             and core + '_small.' + videoExtension in videoListRel \
             and core + '.' + videoExtension in videoListRel:
                 videoListRel = [core + '_small.' + videoExtension]
-                self.startVideo = videoListRel[0]
+                self.startVideoPath = videoListRel[0]
         #     else:
         #         fileList = self.convertFileList(fileList, '.' + videoExtension)
         # else:
@@ -2169,6 +2169,7 @@ class VideoTagger(QtGui.QMainWindow):
         if self.frameView is None:
             self.setupFrameView()
 
+
         OD.FDVShowDialog.getSelection(self.fullVideoDialog.centralWidget(),
                                       self.frameView)
 
@@ -2574,7 +2575,8 @@ class VideoTagger(QtGui.QMainWindow):
 
         """
         if not self.fdvt:
-            return
+            self.setupFrameView()
+            self.frameView.hide()
 
         frames = labelledFrames[0]
         filt = labelledFrames[1]

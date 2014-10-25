@@ -231,6 +231,7 @@ class FDVShowDialog(OverlayDialogBase):
 
     def setFDV(self, FDV):
         self.FDV = FDV
+        self.FDV.show()
         # self.setupContent()
         # self.setupLayout()
 
