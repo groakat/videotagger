@@ -32,6 +32,7 @@ if sys.platform != "win32":
 import pyTools.misc.FrameDataVisualization2 as FDV
 import pyTools.videoTagger.graphicsViewFDV as GFDV
 import pyTools.gui.collapseContainer as CC
+import pyTools.videoTagger.prepareFolderForVideoProcessing as PFFVP
 
 import numpy as np
 import scipy.misc as scim
@@ -391,7 +392,9 @@ class VideoTagger(QtGui.QMainWindow):
         if path.endswith(videoExtension):
             fileList = [path]#.split(videoExtension)[0] + '.' + videoExtension]
             videoListRel = [x[len(rootPath)+1:] for x in fileList]
-        elif not videoListPathRel:
+        elif not videoListPathRel \
+        or not os.path.exists(CFL.generateVideoListPath(path,
+                                                        videoListPathRel)[0]):
             fileList = systemMisc.providePosList(path, ending='.' + videoExtension)#'.bhvr')
             videoListRel = [x[len(rootPath)+1:] for x in fileList]
         else:
@@ -483,40 +486,53 @@ class VideoTagger(QtGui.QMainWindow):
 
         # only load config to get annotations sorted
         configPath = os.path.join(path, 'videoTaggerConfig.yaml')
-        if os.path.exists(configPath):
-            videoPath, annotations, annotator, backgroundPath, selectedVial,\
-            vialROI, \
-            videoExtension, filterObjArgs, startVideo, rewindOnClick,\
-            croppedVideo, patchesFolder, positionFolder, behaviourFolder,\
-            runningIndeces, fdvtPathRel, videoListPath, bufferWidth, \
-            bufferLength, startFrame = VideoTagger.parseConfig(configPath)
+        if not os.path.exists(configPath):
+            self.registerFormValues()
+            self.exportSettings()
+
+        videoPath, annotations, annotator, backgroundPath, selectedVial,\
+        vialROI, \
+        videoExtension, filterObjArgs, startVideo, rewindOnClick,\
+        croppedVideo, patchesFolder, positionFolder, behaviourFolder,\
+        runningIndeces, fdvtPathRel, videoListPath, bufferWidth, \
+        bufferLength, startFrame = VideoTagger.parseConfig(configPath)
 
 
-            videoPath = self.le_videoPath.text()
-            if self.le_vial.text().lower() != 'none':
-                selectedVial = int(self.le_vial.text())
-            else:
-                selectedVial = None
+        videoPath = self.le_videoPath.text()
+        if self.le_vial.text().lower() != 'none':
+            selectedVial = int(self.le_vial.text())
+        else:
+            selectedVial = None
 
-            croppedVideo = self.le_croppedVideo.isChecked()
-            videoExtension = 'avi'
-            runningIndeces = self.le_filesRunningIdx.isChecked()
-            fdvtPathRel = self.le_FDV.text()
-            videoListPath = self.le_bhvrCache.text()
-            behaviourFolder = self.le_bhvrFolder.text()
-            patchesFolder = self.le_patchesFolder.text()
+        croppedVideo = self.le_croppedVideo.isChecked()
+        videoExtension = 'avi'
+        runningIndeces = self.le_filesRunningIdx.isChecked()
+        fdvtPathRel = self.le_FDV.text()
+        videoListPath = self.le_bhvrCache.text()
+        behaviourFolder = self.le_bhvrFolder.text()
+        patchesFolder = self.le_patchesFolder.text()
 
-            self.videoListPathRel, self.fdvtPathRel = CFL.cacheFilelist(videoPath,
-                                                   croppedVideo,
-                                                   selectedVial,
-                                                   videoExtension,
-                                                   videoListPath,
-                                                   fdvtPathRel,
-                                                   annotations,
-                                                   runningIndeces,
-                                                   patchesFolder,
-                                                   behaviourFolder)
-            self.populateFormWithInternalSettings()
+        if len(self.fileList) == 1 and not croppedVideo:
+            config = PFFVP.prepareFolder(path,
+                                         alwaysGenerateSmallVideo=True)
+            self.tryToLoadConfig(config)
+        else:
+            self.videoListPathRel, self.fdvtPathRel = \
+                            CFL.cacheFilelist(videoPath,
+                                               croppedVideo,
+                                               selectedVial,
+                                               videoExtension,
+                                               videoListPath,
+                                               fdvtPathRel,
+                                               annotations,
+                                               runningIndeces,
+                                               patchesFolder,
+                                               behaviourFolder)
+
+        self.idx = 0
+        self.startFrameIdx = 0
+
+        self.populateFormWithInternalSettings()
 
     def vialSelected(self):
         self.cb_videoSelection.clear()
@@ -687,7 +703,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.le_vialROI.setText(str(self.vialROI))
         self.le_bufferWidth.setText(str(self.bufferWidth))
         self.le_bufferLength.setText(str(self.bufferLength))
-        self.le_startFrame.setText(str(self.idx))
+        self.le_startFrame.setText(str(self.getCurrentKey_idx()[1]))
         self.le_croppedVideo.setChecked(self.croppedVideo)
 
         self.le_annotatorName.adjustSize()
@@ -724,92 +740,95 @@ class VideoTagger(QtGui.QMainWindow):
             size.setWidth(800)
         self.resize(size)
 
-    def submitForm(self):
+    def registerFormValues(self):
+
         if self.cb_videoSelection.count() == 0:
             self.loadVideoList()
 
-        path = self.le_videoPath.text()
-        annotator = self.le_annotatorName.text()
-        backgroundPath = self.le_background.text()
+        self.path = self.le_videoPath.text()
+        self.annotator = self.le_annotatorName.text()
+        self.backgroundPath = self.le_background.text()
         if self.le_vial.text().lower() != 'none':
-            selectedVial = int(self.le_vial.text())
+            self.selectedVial = [int(self.le_vial.text())]
         else:
-            selectedVial = None
+            self.selectedVial = None
 
         if self.le_vialROI.text().lower() != 'none':
-            vialROI = json.loads(self.le_vialROI.text())
+            self.vialROI = json.loads(self.le_vialROI.text())
         else:
-            vialROI = None
+            self.vialROI = None
 
         # filterObjArgs=None,
         # startVideoName=None,
         # rewindOnClick=False,
-        croppedVideo = self.le_croppedVideo.isChecked()
-        positionsFolder = self.le_positionsFolder.text()
-        behaviourFolder = self.le_bhvrFolder.text()
-        patchesFolder = self.le_patchesFolder.text()
+        self.croppedVideo = self.le_croppedVideo.isChecked()
+        self.positionsFolder = self.le_positionsFolder.text()
+        self.bhvrFolder = self.le_bhvrFolder.text()
+        self.patchesFolder = self.le_patchesFolder.text()
         # videoExtension='.avi', #'.v0.avi',
-        runningIndeces = self.le_filesRunningIdx.isChecked()
-        fdvtPath = self.le_FDV.text()
-        videoListPath = self.le_bhvrCache.text()
+        self.runningIndeces = self.le_filesRunningIdx.isChecked()
+        self.fdvtPath = self.le_FDV.text()
+        self.videoListPath = self.le_bhvrCache.text()
         # serverAddress="tcp://127.0.0.1:4242",
-        bufferWidth = int(self.le_bufferWidth.text())
-        bufferLength= int(self.le_bufferLength.text())
-        startVideoName = self.cb_videoSelection.currentText()
-        startFrame = int(self.le_startFrame.text())
+        self.bufferWidth = int(self.le_bufferWidth.text())
+        self.bufferLength= int(self.le_bufferLength.text())
+        self.startVideoName = self.cb_videoSelection.currentText()
+        self.startFrame = int(self.le_startFrame.text())
 
-        if not videoListPath:
-            videoListPath = None
+        if not self.videoListPath:
+            self.videoListPath = None
 
-        if not fdvtPath:
-            fdvtPath = None
-
-        try:
-            filterObjArgs = self.filterObjArgs
-        except AttributeError:
-            filterObjArgs = None
+        if not self.fdvtPath:
+            self.fdvtPath = None
 
         try:
-            rewindOnClick = self.rewindOnClick
+            self.filterObjArgs = self.filterObjArgs
         except AttributeError:
-            rewindOnClick = False
+            self.filterObjArgs = None
 
         try:
-            videoExtension = self.videoExtension#.split('.')[-1]
+            self.rewindOnClick = self.rewindOnClick
         except AttributeError:
-            videoExtension = 'avi'
+            self.rewindOnClick = False
 
         try:
-            serverAddress = self.serverAddress
+            self.videoExtension = self.videoExtension#.split('.')[-1]
         except AttributeError:
-            serverAddress = "tcp://127.0.0.1:4242"
+            self.videoExtension = 'avi'
 
         try:
-            annotations = self.annotations
+            self.serverAddress = self.serverAddress
         except AttributeError:
-            annotations = []
+            self.serverAddress = "tcp://127.0.0.1:4242"
 
-        self.init(  path=path,
-                    annotations=annotations,
-                    annotator=annotator,
-                    backgroundPath=backgroundPath,
-                    selectedVial=selectedVial,
-                    vialROI=vialROI,
-                    filterObjArgs=filterObjArgs,
-                    startVideoName=startVideoName,
-                    rewindOnClick=rewindOnClick,
-                    croppedVideo=croppedVideo,
-                    positionsFolder=positionsFolder,
-                    behaviourFolder=behaviourFolder,
-                    patchesFolder=patchesFolder,
-                    videoExtension=videoExtension,
-                    runningIndeces=runningIndeces,
-                    fdvtPathRel=fdvtPath,
-                    videoListPathRel=videoListPath,
-                    serverAddress=serverAddress,
-                    bufferWidth=bufferWidth,
-                    bufferLength=bufferLength,
-                    startFrame=startFrame)
+        try:
+            self.annotations = self.annotations
+        except AttributeError:
+            self.annotations = []
+
+    def submitForm(self):
+        self.registerFormValues()
+        self.init(  path=self.path,
+                    annotations=self.annotations,
+                    annotator=self.annotator,
+                    backgroundPath=self.backgroundPath,
+                    selectedVial=self.selectedVial,
+                    vialROI=self.vialROI,
+                    filterObjArgs=self.filterObjArgs,
+                    startVideoName=self.startVideoName,
+                    rewindOnClick=self.rewindOnClick,
+                    croppedVideo=self.croppedVideo,
+                    positionsFolder=self.positionsFolder,
+                    behaviourFolder=self.bhvrFolder,
+                    patchesFolder=self.patchesFolder,
+                    videoExtension=self.videoExtension,
+                    runningIndeces=self.runningIndeces,
+                    fdvtPathRel=self.fdvtPath,
+                    videoListPathRel=self.videoListPath,
+                    serverAddress=self.serverAddress,
+                    bufferWidth=self.bufferWidth,
+                    bufferLength=self.bufferLength,
+                    startFrame=self.startFrame)
         
     def transferElementsInCollapseContainer(self):
         self.createVideoDisplayWidget()
@@ -1005,10 +1024,7 @@ class VideoTagger(QtGui.QMainWindow):
         # self.annoViewCol = QtGui.QVBoxLayout(self)
 
 
-        for i in range(len(self.annotations)):            
-            self.annotations[i]["color"] = QtGui.QColor(self.annotations[i]["color"])
-            self.annotations[i]["color"].setAlphaF(0.8)
-            
+        for i in range(len(self.annotations)):
             
             w = self.createAnnoView(width, height, i)
             title = "Annotation View: {a}: {b}".format(\
@@ -2818,7 +2834,10 @@ class VideoTagger(QtGui.QMainWindow):
         
         
     def getCurrentKey_idx(self):
-        return self.idx, self.vh.getCurrentKey_idx()[1]
+        try:
+            return self.idx, self.vh.getCurrentKey_idx()[1]
+        except AttributeError:
+            return 0, 0
 
     def getBookmarksFilename(self):
         folder = self.getPathDirname()
@@ -2840,11 +2859,19 @@ class VideoTagger(QtGui.QMainWindow):
         cfgDict['Video']['position-folder'] = self.positionsFolder
         cfgDict['Video']['behaviour-folder'] = self.bhvrFolder
         cfgDict['Video']['files-running-indices'] = self.runningIndeces
-        cfgDict['Video']['frame-data-visualization-path'] = self.fdvtPathRel
+        try:
+            cfgDict['Video']['frame-data-visualization-path'] = \
+                                                        self.fdvtPathRel
+        except AttributeError:
+            cfgDict['Video']['frame-data-visualization-path'] = \
+                                                     "framedataVis.npy"
+            cfg.log.info("no path for FDVT set. Export standard.")
+
         cfgDict['Video']['rewind-on-click'] = self.rewindOnClick
-        cfgDict['Video']['start-frame'] = self.getCurrentKey_idx()[1]
-        cfgDict['Video']['start-video'] = self.fileListRel[self.idx]
-        if self.selectedVial is None:
+        startVideoIdx, startFrame = self.getCurrentKey_idx()
+        cfgDict['Video']['start-frame'] = startFrame
+        cfgDict['Video']['start-video'] = self.fileListRel[startVideoIdx]
+        if self.selectedVial is None or type(self.selectedVial) == int:
             cfgDict['Video']['vial'] = self.selectedVial
         else:
             cfgDict['Video']['vial'] = self.selectedVial[0]
@@ -2854,13 +2881,19 @@ class VideoTagger(QtGui.QMainWindow):
             cfgDict['Video']['vialROI'] = str(self.vialROI)
         cfgDict['Video']['videoPath'] = self.path
 
-        if self.filterObjArgs['stepSize']:
-            cfgDict['StepSize'] = self.filterObjArgs['stepSize']
+        try:
+            if self.filterObjArgs['stepSize']:
+                cfgDict['StepSize'] = self.filterObjArgs['stepSize']
+        except (AttributeError, TypeError):
+            cfg.log.info("No stepsize setup")
 
-        if self.filterObjArgs['keyMap'] is not None:
-            cfgDict['KeyMap'] = dict()
-            for k in self.filterObjArgs['keyMap']:
-                cfgDict['KeyMap'][k] = self.filterObjArgs['keyMap'][k].toString()
+        try:
+            if self.filterObjArgs['keyMap'] is not None:
+                cfgDict['KeyMap'] = dict()
+                for k in self.filterObjArgs['keyMap']:
+                    cfgDict['KeyMap'][k] = self.filterObjArgs['keyMap'][k].toString()
+        except (AttributeError, TypeError):
+            cfg.log.info("No keymap setup")
 
         cfgDict['Annotation'] = {'annotations': []}
         for anno in self.annotations:
@@ -2916,6 +2949,10 @@ class VideoTagger(QtGui.QMainWindow):
 
             self.path = path
             self.annotations = annotations
+            for anno in self.annotations:
+                anno["color"] = QtGui.QColor(anno["color"])
+                anno["color"].setAlphaF(0.8)
+
             self.annotator = annotator
             self.backgroundPath = backgroundPath
             if type(selectedVial) == int:
@@ -2936,8 +2973,7 @@ class VideoTagger(QtGui.QMainWindow):
             self.videoListPathRel = videoListPathRel
             self.bufferWidth = bufferWidth
             self.bufferLength = bufferLength
-            self.idx = startFrame
-
+            self.frameIdx = startFrame
             self.populateFormWithInternalSettings()
 
     @staticmethod
@@ -2947,7 +2983,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         # Video
         if 'vial' in cfgFile['Video'].keys():
-            selectedVial = cfgFile['Video']['vial']
+            selectedVial = [cfgFile['Video']['vial']]
         else:
             selectedVial = None
 

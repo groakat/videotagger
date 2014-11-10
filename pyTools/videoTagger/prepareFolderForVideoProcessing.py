@@ -56,7 +56,9 @@ def generateSmallVideo(videoPath, ext='avi'):
     return folder, targetPath, ext
 
 def generateStandardYaml(rootFolder, videoPath, videoExtension, backgroundImg=None):
-    with open('config-template.yaml', 'r') as f:
+    templateFolder = os.path.dirname(os.path.realpath(__file__))
+    with open(os.path.join(templateFolder,
+                           'config-template.yaml'), 'r') as f:
         templateStr = f.readlines()
 
     config = ''.join(templateStr).format(videoPath=videoPath,
@@ -77,9 +79,9 @@ def checkForConfig(folder):
     else:
         return False
 
-def prepareFolder(folder):
+def prepareFolder(folder, alwaysGenerateSmallVideo=False):
     yamlPath = checkForConfig(folder)
-    if not yamlPath:
+    if not yamlPath or alwaysGenerateSmallVideo:
         filename = checkForCleanFolder(folder)
         folder, videoPath, videoExtension = generateSmallVideo(filename)
         yamlPath = generateStandardYaml(folder, videoPath,videoExtension)

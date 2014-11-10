@@ -488,7 +488,7 @@ class VideoHandler(QtCore.QObject):
         self.idx += increment
 
         if self.idx >= self.getVideoLength(self.posPath):
-            keys = sorted(self.videoDict.keys())
+            keys = self.posList #sorted(self.videoDict.keys())
             pos = [i for i,k in enumerate(keys) if k==self.posPath][0]
             changedFile = False
             while self.idx >= self.getVideoLength(self.posPath): 
@@ -534,7 +534,7 @@ class VideoHandler(QtCore.QObject):
         self.idx -= decrement
         
         if self.idx < 0:
-            keys = sorted(self.videoDict.keys())
+            keys = self.posList #sorted(self.videoDict.keys())
             pos = [i for i,k in enumerate(keys) if k==self.posPath][0]
             changedFile = False
             while self.idx < 0:
