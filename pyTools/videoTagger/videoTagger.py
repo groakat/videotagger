@@ -239,7 +239,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.fullVideoDialog = None
         self.displayingFullResolution = False
         self.fullResFrame = None
-        self.videoSizeSmallToFullMult = 0
+        self.videoSizeSmallToFullMult = 1
         self.videoSizeSmallToFullMultInit = False
         
         self.rewindOnClick = rewindOnClick
