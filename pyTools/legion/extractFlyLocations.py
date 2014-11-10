@@ -297,7 +297,7 @@ class FlyExtractor(object):
 
 
     def generateScriptConfigString(self, recCfgList,redoAll):
-        baseString = "{i} {vf} {bf} {pf} {fcp} {ncp} {recIdx} {runIdx} {mpr}\n"
+        baseString = '{i} "{vf}" "{bf}" "{pf}" "{fcp}" "{ncp}" {recIdx} {runIdx} {mpr}\n'
         cfgString = ""
         cnt = 0
         for recIdx, runIdx in recCfgList:
@@ -363,5 +363,5 @@ if __name__ == "__main__":
 
 
     fe = FlyExtractor(videoFolder, backgroundFolder, backgroundFolder, flyClassifierPath, noveltyClassfyPath,
-                      recIdx=recIdx, runIdx=runIdx, minPerRun=minPerRun, ffmpegpath='~/usr/bin/ffmpeg')
+                      recIdx=recIdx, runIdx=runIdx, minPerRun=minPerRun, ffmpegpath='ffmpeg')
     fe.extractPatches()

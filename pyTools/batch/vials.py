@@ -861,7 +861,7 @@ class Vials(object):
             accPos.append([f, pos])
                         
             baseName = baseSaveDir + os.path.basename(f).strip('.mp4')# + '.{0}{1}.{2:05d}{3}'
-            ffmpegCmd = "ffmpeg -y -i {0}.v{1}.%05d.png -c:v libx264 -preset veryslow -qp 0 -r 30 {0}.v{1}.mp4"
+            ffmpegCmd = 'ffmpeg -y -i "{0}.v{1}.%05d.png" -c:v libx264 -preset veryslow -qp 0 -r 30 "{0}.v{1}.mp4"'
             for patchNo in range(len(pos)):
                 p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo)
                                     , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -977,7 +977,7 @@ class Vials(object):
             # render images as avi for complete losslessness
             
             # ffmpeg -y -f image2 -r 29.97 -i /tmp/2013-02-19.00-01-00.v0.%05d.png -vcodec ffv1 -sameq /tmp/test.avi
-            ffmpegCmd = "{ffmpeg} -y -f image2 -r {2} -i {3}.v{1}.%05d.tif -vcodec ffv1 -qscale 0 -r {2} {0}.v{1}.avi"
+            ffmpegCmd = '{ffmpeg} -y -f image2 -r {2} -i "{3}.v{1}.%05d.tif" -vcodec ffv1 -qscale 0 -r {2} "{0}.v{1}.avi"'
             
             for patchNo in range(len(pos)):
                 p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName, ffmpeg=ffmpegpath),
@@ -988,12 +988,12 @@ class Vials(object):
             
             # render images as mp4 for very fast playback
             #ffmpeg -y -f image2 -r 29.97 -i 2013-02-19.00-00-00.v0.%05d.tif -c:v libx264 -preset faster -qp 0 test.mp4
-            ffmpegCmd = "{ffmpeg} -y -i {3}.v{1}.%05d.tif -c:v libx264 -preset faster -qp 0 -r {2} {0}.v{1}.mp4"
-            for patchNo in range(len(pos)):
-                p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName,ffmpeg=ffmpegpath),
-                                    shell=True, stdout=subprocess.PIPE, 
-                                    stderr=subprocess.STDOUT)
-                output = p.communicate()[0]
+            # ffmpegCmd = '{ffmpeg} -y -i "{3}.v{1}.%05d.tif" -c:v libx264 -preset faster -qp 0 -r {2} "{0}.v{1}.mp4"'
+            # for patchNo in range(len(pos)):
+            #     p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName,ffmpeg=ffmpegpath),
+            #                         shell=True, stdout=subprocess.PIPE,
+            #                         stderr=subprocess.STDOUT)
+            #     output = p.communicate()[0]
                 
             # delete images of frames
             if delTmpImg:
