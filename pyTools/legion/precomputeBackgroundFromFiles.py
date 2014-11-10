@@ -174,6 +174,12 @@ class backgroundPrecompute(object):
                                          self.wasUpdated[2],
                                          self.wasUpdated[3]),
                         self.update)
+            print("save new background image to: {0}".format(
+                                        bgFilename.format(
+                                            self.wasUpdated[0],
+                                            self.wasUpdated[1],
+                                            self.wasUpdated[2],
+                                            self.wasUpdated[3])))
 
         self.resetUpdate()
 
@@ -252,9 +258,14 @@ class backgroundPrecompute(object):
 
     def computeBackgroundFromFolder(self, folder, idx=None):
         fileList, recRngs = self.generateRecordingRanges(folder)
-        rngStart = 0
+        if idx > 0:
+            rngStart = recRngs[idx - 1][2] + 1
+        else:
+            rngStart = 0
+
         if  idx is not None:
             recRngs = [recRngs[idx]]
+
 
         for recRng in recRngs:
             self.configureBackgroundModel(folder, recRng[0], recRng[1])
@@ -270,7 +281,7 @@ def generateConfigFile(configPath, flyClassifierPath, noveltyClassfyPath,
     fileList, recRngs = bP.generateRecordingRanges(sourceFolder)
 
     configs = []
-    baseString = "{cnt} {idx} {clfPath} {novPath} {src} {target}\n"
+    baseString = '{cnt} {idx} "{clfPath}" "{novPath}" "{src}" "{target}"\n'
 
     cnt = 0
     for i in range(len(recRngs)):
