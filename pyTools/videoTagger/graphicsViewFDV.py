@@ -13,6 +13,9 @@ from PySide import QtCore, QtGui
 
 import copy
 
+
+import pyTools.misc.config as cfg
+
 class Test(QtGui.QMainWindow):
 
     def __init__(self):
@@ -208,27 +211,56 @@ class GraphicsViewFDV(QtGui.QWidget):
             self.updateDisplay(useCurrentPos=True)
 
     def createFDVTTemplate(self):
-        days = set()
-        hours = set()
-        minutes = set()
+        # days = set()
+        # hours = set()
+        # minutes = set()
         frames = list(np.arange(np.floor(1800 / self.frameResolution), dtype=float))
+        #
+        # days = days.union(self.fdvt.hier.keys()).difference(['meta'])
+        # for day in self.fdvt.hier.keys():
+        #     if day == 'meta':
+        #         continue
+        #
+        #     hours = hours.union(self.fdvt.hier[day].keys()).difference(['meta'])
+        #     for hour in self.fdvt.hier[day].keys():
+        #         if hour == 'meta':
+        #             continue
+        #
+        #         minutes = minutes.union(self.fdvt.hier[day][hour].keys()).difference(['meta'])
+        #
+        # self.rangeTemplate =  {'days': sorted(days),
+        #                        'hours': sorted(hours),
+        #                        'minutes': sorted(minutes),
+        #                        'frames': frames}
 
-        days = days.union(self.fdvt.hier.keys()).difference(['meta'])
-        for day in self.fdvt.hier.keys():
-            if day == 'meta':
-                continue
+        self.rangeTemplate = self.fdvt.meta['rangeTemplate']
 
-            hours = hours.union(self.fdvt.hier[day].keys()).difference(['meta'])
-            for hour in self.fdvt.hier[day].keys():
-                if hour == 'meta':
-                    continue
+        for days in self.rangeTemplate['days']:
+            self.addElement('days', 4.5)
+            rect = self.rects['days'][-1]
+            for k, barLet in enumerate(rect.childItems()):
+                geo = barLet.rect()
+                geo.setY(0)
+                geo.setHeight(0)
+                barLet.setRect(geo)
 
-                minutes = minutes.union(self.fdvt.hier[day][hour].keys()).difference(['meta'])
+        for hour in self.rangeTemplate['hours']:
+            self.addElement('hours', 3)
+            rect = self.rects['hours'][-1]
+            for k, barLet in enumerate(rect.childItems()):
+                geo = barLet.rect()
+                geo.setY(0)
+                geo.setHeight(0)
+                barLet.setRect(geo)
 
-        self.rangeTemplate =  {'days': sorted(days),
-                               'hours': sorted(hours),
-                               'minutes': sorted(minutes),
-                               'frames': frames}
+        for minute in self.rangeTemplate['minutes']:
+            self.addElement('minutes', 1.5)
+            rect = self.rects['minutes'][-1]
+            for k, barLet in enumerate(rect.childItems()):
+                geo = barLet.rect()
+                geo.setY(0)
+                geo.setHeight(0)
+                barLet.setRect(geo)
 
         for frame in frames:
             self.addElement('frames', 0)
@@ -238,7 +270,6 @@ class GraphicsViewFDV(QtGui.QWidget):
                 geo.setY(0)
                 geo.setHeight(0)
                 barLet.setRect(geo)
-
 
     def loadFDVT(self, fdvt):
         self.initDataPlots()
@@ -352,23 +383,26 @@ class GraphicsViewFDV(QtGui.QWidget):
                 # self.fdvt.data[self.day][self.hour][self.minute][instance] \
                 #                 * self.frameResolution
 
-        if level == "minutes":
-            try:
-                return sorted(self.fdvt.data[self.day][self.hour].keys())[instance]
-            except:
-                return False
+        return sorted(self.fdvt.meta['rangeTemplate'][level])[instance]
 
-        if level == "hours":
-            try:
-                return sorted(self.fdvt.data[self.day].keys())[instance]
-            except:
-                return False
-
-        if level == "days":
-            try:
-                return sorted(self.fdvt.data.keys())[instance]
-            except:
-                return False
+        # if level == "minutes":
+        #     try:
+        #         # return sorted(self.fdvt.data[self.day][self.hour].keys())[instance]
+        #         return sorted(self.fdvt.data[self.day][self.hour].keys())[instance]
+        #     except:
+        #         return False
+        #
+        # if level == "hours":
+        #     try:
+        #         return sorted(self.fdvt.data[self.day].keys())[instance]
+        #     except:
+        #         return False
+        #
+        # if level == "days":
+        #     try:
+        #         return sorted(self.fdvt.data.keys())[instance]
+        #     except:
+        #         return False
 
     def getTemplateLabel(self, level, instance):
         if self.rangeTemplate[level] is None:
@@ -443,6 +477,7 @@ class GraphicsViewFDV(QtGui.QWidget):
 
 
     def addElement(self, rectKey, y):
+        cfg.log.info("{0}, {1}".format(rectKey, y))
         rects = self.rects[rectKey]
 
         rects += [self.createStackedBar(rectKey, len(rects))]
@@ -454,6 +489,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         clickRects = self.clickRects[rectKey]
         if len(clickRects) < len(rects):
 
+            cfg.log.info("add clickrect {0}, {1}".format(rectKey, y))
             clickRects += [self.createClickBar(rectKey, len(clickRects))]
 
             for i, bar in enumerate(clickRects):
@@ -528,14 +564,9 @@ class GraphicsViewFDV(QtGui.QWidget):
             #                         self.getFdvtLabel(level, idx)) \
             #         / self.frameResolution
 
-
-    def changeElements(self, data, rectKey, y):
-        for clickRect in self.clickRects[rectKey]:
-            clickRect.setBrush(self.clickBrush)
-
+    def updateBars(self, data, rectKey, y):
         rects = self.rects[rectKey]
         maxHeight = 0
-
         maxCum = np.max(np.sum(data, axis=1))
         minBarHeight =  maxCum * 0.05
         for i, d in enumerate(data):
@@ -567,7 +598,9 @@ class GraphicsViewFDV(QtGui.QWidget):
 
             self.normalizeBar(r, accH, len(rects))
 
+        return rects, maxHeight
 
+    def drawMissingValues(self, rectKey, rects, y):
         if self.rangeTemplate[rectKey] is not None\
         and rectKey != 'frames':
             missingValues = set(self.rangeTemplate[rectKey]).difference(self.getFdvtLabel(rectKey, slice(None, None)))
@@ -589,7 +622,17 @@ class GraphicsViewFDV(QtGui.QWidget):
                     barLet.setRect(geo)
 
 
-        self.normalizeSubplot(self.subPlot[rectKey], maxHeight, y)
+    def drawBars(self, data, rectKey, y):
+        for clickRect in self.clickRects[rectKey]:
+            clickRect.setBrush(self.clickBrush)
+
+        if data != []:
+            rects, maxHeight = self.updateBars(data, rectKey, y)
+
+            self.drawMissingValues(rectKey, rects, y)
+
+
+            self.normalizeSubplot(self.subPlot[rectKey], maxHeight, y)
 
         self.overviewScene.update()
         self.gv_center.update()
@@ -609,28 +652,28 @@ class GraphicsViewFDV(QtGui.QWidget):
         # print data
         # data = np.random.rand(2,4)
         # print data
-        self.changeElements(data, 'days', 4.5)
+        self.drawBars(data, 'days', 4.5)
         self.setPolyPosition('days', dayIdx)
         self.createAxis('days')
 
     def plotHours(self,  fdvt, hourIdx):
         data = fdvt.plotData['hours']['data']
         # data = np.random.rand(24,4)
-        self.changeElements(data, 'hours', 3)
+        self.drawBars(data, 'hours', 3)
         self.setPolyPosition('hours', hourIdx)
         self.createAxis('hours')
 
     def plotMinutes(self,  fdvt, minuteIdx):
         data = fdvt.plotData['minutes']['data']
         # data = np.random.rand(60,4)
-        self.changeElements(data, 'minutes', 1.5)
+        self.drawBars(data, 'minutes', 1.5)
         self.setPolyPosition('minutes', minuteIdx)
         self.createAxis('minutes')
 
     def plotFrames(self, fdvt, frameIdx):
         data = fdvt.plotData['frames']['data']
         # data = np.random.rand(1764/self.frameResolution,4)
-        self.changeElements(data,'frames', 0)
+        self.drawBars(data,'frames', 0)
         self.setPolyPosition('frames', frameIdx)
         self.createAxis('frames')
 
@@ -641,25 +684,32 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.minute = minute
         self.frame = frame
 
+
         self.fdvt.generateConfidencePlotData(day, hour, minute, frame,
                                                 self.frameResolution)
+
+        # self.fdvt.generatePlotDataFrames(day, hour, minute, frame,
+        #                                         self.frameResolution)
+
+
         try:
-            dayIdx = sorted(self.fdvt.data.keys()).index(day)
+            dayIdx = sorted(self.fdvt.meta['rangeTemplate']['days']).index(day)
         except ValueError:
             return
 
         self.plotDays(self.fdvt, dayIdx)
 
         try:
-            hourIdx = sorted(self.fdvt.data[day].keys()).index(hour)
+            hourIdx = sorted(self.fdvt.meta['rangeTemplate']['hours']).index(hour)
         except ValueError:
             return
 
         self.plotHours(self.fdvt, hourIdx)
 
         try:
-            minuteIdx = sorted(self.fdvt.data[day][hour].keys()).index(minute)
+            minuteIdx = sorted(self.fdvt.meta['rangeTemplate']['minutes']).index(minute)
         except ValueError:
+            cfg.log.info("value error")
             return
 
         self.plotMinutes(self.fdvt, minuteIdx)
@@ -679,19 +729,20 @@ class GraphicsViewFDV(QtGui.QWidget):
 
 
     def mouseClickOnBar(self, level, instance):
+        cfg.log.info("{0} {1}".format(level, instance))
         if level == "frames":
             self.frame = instance * self.frameResolution
         else:
             self.frame = 0
 
         if level == "minutes":
-            self.minute = sorted(self.fdvt.hier[self.day][self.hour].keys())[instance]
+            self.minute = self.getFdvtLabel('minutes', instance)
 
         if level == "hours":
-            self.hour = sorted(self.fdvt.hier[self.day].keys())[instance]
+            self.hour = self.getFdvtLabel('hours', instance)
 
         if level == "days":
-            self.day = sorted(self.fdvt.hier.keys())[instance]
+            self.day = self.getFdvtLabel('days', instance)
 
         t1 = time.time()
         self.plotData(self.day, self.hour, self.minute, self.frame)
@@ -706,16 +757,20 @@ class GraphicsViewFDV(QtGui.QWidget):
             return
 
         if not useCurrentPos:
+            # if self.fdvt.addedNewData:
+            #     self.createFDVTTemplate()
+
             self.day = self.getFdvtLabel('days', 0)
             self.hour = self.getFdvtLabel('hours', 0)
             self.minute = self.getFdvtLabel('minutes', 0)
             self.frame = self.getFdvtLabel('frames', 0)
 
-            if self.day == False \
-            or self.hour == False \
-            or self.minute == False \
-            or self.frame == False:
-                return
+
+        # if self.day == False \
+        # or self.hour == False \
+        # or self.minute == False:
+        #     return
+
 
         self.plotData(self.day, self.hour, self.minute, self.frame)
         self.plotData(self.day, self.hour, self.minute, self.frame)

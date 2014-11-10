@@ -3,7 +3,9 @@ import os
 import warnings
 import pyTools.misc.basic as bsc
 import pyTools.videoProc.annotation as Annotation
+import pyTools.videoTagger.dataLoader as DL
 
+import pyTools.misc.config as cfg
 
 def filename2Time(f):
     timestamp = f.split('/')[-1]
@@ -131,6 +133,8 @@ class FrameDataVisualizationTreeBase(object):
                             data = np.random.rand(1)[0] * minMax
                         self.addSample(day, hour, minute, frame, data)
 
+        self.addedNewData = True
+
 
     def verifyStructureExists(self, day, hour, minute):
         try:
@@ -188,11 +192,14 @@ class FrameDataVisualizationTreeBase(object):
         except KeyError:
             self.insertSample(day, hour, minute, frame, data)
 
+        self.addedNewData = True
+
     def insertSample(self, day, hour, minute, frame, data):
         self.data[day][hour][minute][frame] = data
         self.updateMax(day, hour, minute, data)
         self.addSampleToMean(day, hour, minute, data)
         self.meta['totalNoFrames'] += 1
+        self.addedNewData = True
 
     def removeSample(self, day, hour, minute, frame):
         oldData = self.getValue(day, hour, minute, frame)
@@ -204,6 +211,7 @@ class FrameDataVisualizationTreeBase(object):
 
         self.addSampleToMean(day, hour, minute, -oldData, -1)
         self.meta['totalNoFrames'] -= 1
+        self.addedNewData = True
 
 
     def replaceSample(self, day, hour, minute, frame, data):
@@ -218,6 +226,7 @@ class FrameDataVisualizationTreeBase(object):
         #     self.updateMax(day, hour, minute, data)
         self.removeSample(day, hour, minute, frame)
         self.insertSample(day, hour, minute, frame, data)
+        self.addedNewData = True
 
 
     def updateMax(self, day, hour, minute, data):
@@ -273,7 +282,12 @@ class FrameDataVisualizationTreeBase(object):
             self.plotData['hours']['tick'] += [0]
             return
 
-        for key in sorted(self.hier[day].keys()):
+        try:
+            keys = self.hier[day].keys()
+        except KeyError:
+            return
+
+        for key in sorted(keys):
             if key in ['meta']:
                 continue
 
@@ -295,7 +309,12 @@ class FrameDataVisualizationTreeBase(object):
             self.plotData['minutes']['tick'] += [0]
             return
 
-        for key in sorted(self.hier[day][hour].keys()):
+        try:
+            keys = self.hier[day][hour].keys()
+        except KeyError:
+            return
+
+        for key in sorted(keys):
             if key in ['meta']:
                 continue
 
@@ -318,10 +337,15 @@ class FrameDataVisualizationTreeBase(object):
             self.plotData['frames']['tick'] += [0]
             return
 
+        try:
+            keys = self.hier[day][hour][minute].keys()
+        except KeyError:
+            return
+
         cnt = 0
         tmpVal = []
         tmpKeys = []
-        for key in sorted(self.hier[day][hour][minute].keys()):
+        for key in sorted(keys):
             if key in ['meta']:
                 continue
 
@@ -343,6 +367,38 @@ class FrameDataVisualizationTreeBase(object):
             self.plotData['frames']['weight'] += [sum(tmpVal) / cnt]
             self.plotData['frames']['tick'] += [tmpKeys]
 
+
+    def createFDVTTemplateFromHierarchy(self):
+        """
+        It is recommended to use `createFDVTTemplateFromVideoList`
+
+        :param days:
+        :param hours:
+        :param minutes:
+        :return:
+        """
+        days = set()
+        hours = set()
+        minutes = set()
+        frames = list(np.arange(1800), dtype=float)
+
+        days = days.union(self.hier.keys()).difference(['meta'])
+        for day in self.hier.keys():
+            if day == 'meta':
+                continue
+
+            hours = hours.union(self.hier[day].keys()).difference(['meta'])
+            for hour in self.hier[day].keys():
+                if hour == 'meta':
+                    continue
+
+                minutes = minutes.union(self.hier[day][hour].keys()).difference(['meta'])
+
+        self.rangeTemplate =  {'days': sorted(days),
+                               'hours': sorted(hours),
+                               'minutes': sorted(minutes),
+                               'frames': frames}
+
 ########### formerly in arrayBase
 
     def insertFrameArray(self, day, hour, minute, frames):
@@ -354,12 +410,14 @@ class FrameDataVisualizationTreeBase(object):
         self.addFrameArrayToMean(day, hour, minute, frames)
         self.updateMax(day, hour, minute, np.max(frames))
         self.meta['totalNoFrames'] += frames.shape[0]
+        self.addedNewData = True
 
 
     def insertDeltaValue(self, deltaValue):
         idx = deltaValue[0]
         data = deltaValue[1]
         self.updateValue(*self.idx2key(idx), data=data)
+        self.addedNewData = True
 
 
     def insertDeltaVector(self, deltaVector):
@@ -381,6 +439,7 @@ class FrameDataVisualizationTreeBase(object):
 
         mean = np.mean(self.tree[day][hour][minute]['data'])
         self.propagateMean(day, hour, minute, mean, N)
+        self.addedNewData = True
         # self.addSampleToMean(day, hour, minute, data)
 
 
@@ -418,6 +477,7 @@ class FrameDataVisualizationTreeBase(object):
                     frames = np.random.rand(len(frameRng))  * minMax
                     frames[np.random.rand(len(frameRng)) > 0.98] = 1
                     self.insertFrameArray(day, hour, minute, frames)
+
 
     def getDeltaPositionMultipleFiles(self, key, frame):
         treeKey = filename2Time(key)
@@ -519,6 +579,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         self.insertSampleIncrement(*key, dataKey=data, dataInc=increment)
         frameArray = self.dict2array({key[3]:{data: increment}})
         self.addFrameArrayToStack(key[0], key[1], key[2], frameArray)
+        self.addedNewData = True
 
     def insertFrameArray(self, day, hour, minute, frames):
         # super(FrameDataVisualizationTreeBehaviour, self).insertFrameArray(day, hour, minute, frames)
@@ -532,6 +593,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         if frames.items():
             frameArray = self.dict2array(frames)
             self.addFrameArrayToStack(day, hour, minute, frameArray)
+        self.addedNewData = True
 
 
     def addFrameArrayToStack(self, day, hour, minute, frames):
@@ -606,6 +668,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         self.updateMax(day, hour, minute, data)
         # self.addSampleToMean(day, hour, minute, data)
         self.meta['totalNoFrames'] += 1
+        self.addedNewData = True
 
     def calcStack(self, data):
         if np.max(data) > self.meta['maxClass']:
@@ -656,7 +719,69 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
     def addNewClass(self, filt):
         self.meta['filtList'] += [filt]
         self.meta['maxClass'] = len(self.meta['filtList'])
+        self.addedNewData = True
 
+
+
+    def createFDVTTemplateFromVideoList(self, videoList, runningIndeces):
+        """
+        It is recommended to use `createFDVTTemplateFromVideoList`
+
+        :param days:
+        :param hours:
+        :param minutes:
+        :return:
+        """
+        days = set()
+        hours = set()
+        minutes = set()
+        frames = list(np.arange(1800, dtype=float))
+
+        for video in videoList:
+            if not runningIndeces:
+                day, hour, minute, second = filename2Time(video)
+            else:
+                day, hour, minute, second = filename2TimeRunningIndeces(video)
+
+            days = days.union([day])
+            hours = hours.union([hour])
+            minutes = minutes.union([minute])
+
+        self.meta['rangeTemplate'] =  {'days': sorted(days),
+                                       'hours': sorted(hours),
+                                       'minutes': sorted(minutes),
+                                       'frames': frames}
+
+    def createFDVTTemplateFromSingleVideoFile(self, videoPath):
+        frames = list(np.arange(1800, dtype=float))
+
+        lastFrame = DL.retrieveVideoLength(videoPath)
+
+        maxDay, maxHour, maxMinute, endFrame = \
+                        self.getDeltaPositionSingleFile('', lastFrame)
+
+        if maxDay > 0:
+            days = range(maxDay + 1)
+            hours = range(24)
+            minutes = range(60)
+        elif maxHour > 0:
+            days = [0]
+            hours = range(maxHour + 1)
+            minutes = range(60)
+        elif maxMinute > 0:
+            days = [0]
+            hours = [0]
+            minutes = range(maxMinute + 1)
+        else:
+            days = [0]
+            hours = [0]
+            minutes = [0]
+            frames = range(endFrame)
+
+        self.meta['rangeTemplate'] =  {'days': sorted(days),
+                                       'hours': sorted(hours),
+                                       'minutes': sorted(minutes),
+                                       'frames': frames}
 
     def importAnnotation(self, annotation, fps=30):
         day = 0
@@ -683,13 +808,33 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
             self.meta['not-initialized'] = False
 
-    # @profile
-    def importAnnotationsFromSingleFile(self, bhvrFile, annotations, vials,
-                                        runningIndeces=False, fps=30):
-        self.meta['singleFileMode'] = True
 
+    # @profile
+    def importAnnotationsFromSingleFile(self, bhvrFile, annotations,
+                                        vials, runningIndeces=False, fps=30):
         # filtList = []
+        # self.resetAllSamples()
+
+
+        anno = Annotation.Annotation()
+        anno.loadFromFile(bhvrFile)
+
+        self.importAnnotation(anno, fps)
+
+
+    def importAnnotations(self, bhvrList, videoList, annotations, vials,
+                          runningIndeces=False, fps=30, singleFileMode=None):
+
+        filtList = []
         self.resetAllSamples()
+
+        if len(videoList) == 1:
+            self.createFDVTTemplateFromSingleVideoFile(videoList[0])
+            self.meta['singleFileMode'] = True
+        elif len(videoList) > 1:
+            self.createFDVTTemplateFromVideoList(videoList, runningIndeces)
+            self.meta['singleFileMode'] = False
+
 
         for i in range(len(annotations)):
             annotator = annotations[i]["annot"]
@@ -698,41 +843,30 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                                                         [annotator],
                                                         [behaviour]))
 
-        anno = Annotation.Annotation()
-        anno.loadFromFile(bhvrFile)
-
-        self.importAnnotation(anno, fps)
-
-
-    def importAnnotations(self, bhvrList, annotations, vials, runningIndeces=False,
-                          fps=30):
         if len(bhvrList) == 0:
-            self.resetAllSamples()
             return
 
-        if len(bhvrList) == 1:
-            self.importAnnotationsFromSingleFile(bhvrList[0], annotations, vials,
+        if len(videoList) == 1:
+            self.importAnnotationsFromSingleFile(bhvrList[0],
+                                                 annotations, vials,
                                                  runningIndeces=False, fps=30)
             return
-        else:
-            self.meta['singleFileMode'] = False
 
-        filtList = []
-        self.resetAllSamples()
-
-        for i in range(len(annotations)):
-            annotator = annotations[i]["annot"]
-            behaviour = annotations[i]["behav"]
-            filtList += [Annotation.AnnotationFilter(vials,
-                                                          [annotator],
-                                                          [behaviour])]
-
+#
+#         for i in range(len(annotations)):
+#             annotator = annotations[i]["annot"]
+#             behaviour = annotations[i]["behav"]
+#             filtList += [Annotation.AnnotationFilter(vials,
+#                                                           [annotator],
+#                                                           [behaviour])]
+#
+# #         self.meta['maxClass'] = len(filtList)
+#         self.meta['filtList'] = filtList
 #         self.meta['maxClass'] = len(filtList)
-        self.meta['filtList'] = filtList
-        self.meta['maxClass'] = len(filtList)
 
         if len(filtList) == 0:
-            raise ValueError("no annotations specified!")
+            return
+            # raise ValueError("no annotations specified!")
 
         for f in bhvrList:
             # load annotation and filter it #
@@ -748,9 +882,10 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             frameSlc = slice(0, len(anno.frameList))
             data = self.convertFrameListToDatum(anno, frameSlc,
                                                 self.meta['filtList'])
-            self.insertFrameArray(day, hour, minute, data)
 
-            self.meta['not-initialized'] = False
+            if data != {}:
+                self.insertFrameArray(day, hour, minute, data)
+                self.meta['not-initialized'] = False
 
 
             # self.meta['not-initialized'] = False
@@ -838,27 +973,51 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         #     self.plotData['frames']['weight'] = [0]
         #     self.plotData['frames']['tick'] = [0]
         #     return
-
+        cfg.log.info("{0}, {1}, {2}, {3}".format(day, hour, minute, frame))
         self.plotData['days'] = dict()
         stack = self.getStackFromStump(self.hier)
         self.plotData['days']['data'] = np.asarray(stack)#.T
         self.plotData['days']['weight'] = 0
 
         self.plotData['hours'] = dict()
-        stack = self.getStackFromStump(self.hier[day])
-        self.plotData['hours']['data'] = np.asarray(stack)#.T
+        try:
+            stump = self.hier[day]
+        except KeyError:
+            stump = None
+
+        if stump is not None:
+            stack = self.getStackFromStump(stump)
+            self.plotData['hours']['data'] = np.asarray(stack)#.T
+        else:
+            self.plotData['hours']['data'] = []
         self.plotData['hours']['weight'] = 0
 
         self.plotData['minutes'] = dict()
-        stack = self.getStackFromStump(self.hier[day][hour])
-        self.plotData['minutes']['data'] = np.asarray(stack)#.T
+        try:
+            stump = self.hier[day][hour]
+        except KeyError:
+            stump = None
+
+        if stump is not None:
+            stack = self.getStackFromStump(stump)
+            self.plotData['minutes']['data'] = np.asarray(stack)#.T
+        else:
+            self.plotData['minutes']['data'] = []
         self.plotData['minutes']['weight'] = 0
 
 
         self.plotData['frames'] = dict()
-        self.createStackData(self.plotData['frames'],
-                             self.data[day][hour][minute],
-                             frameResolution)
+        try:
+            stump = self.data[day][hour][minute]
+        except KeyError:
+            stump = None
+
+        if stump is not None:
+            self.createStackData(self.plotData['frames'],
+                                 stump,
+                                 frameResolution)
+        else:
+            self.plotData['frames']['data'] = []
 
 
     def createStackData(self, plotData, inData, frameResolution):

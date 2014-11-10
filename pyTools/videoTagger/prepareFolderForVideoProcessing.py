@@ -90,4 +90,4 @@ def prepareFolder(folder):
 
 
 if __name__ == "__main__":
-    prepareFolder('/media/peter/Seagate Backup Plus Drive/gabe_mouse_run/')
+    prepareFolder('/media/peter/Seagate Backup Plus Drive/gabe_mouse_run_test/')

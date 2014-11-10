@@ -6,6 +6,7 @@ import sys
 import argparse
 import textwrap
 import os
+import pyTools.misc.config as cfg
 
 
 def getPathDirname(path):
@@ -82,6 +83,14 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
         extension = ".{0}".format(videoExtension)
 
     videoList = systemMisc.providePosList(videoPath, ending=extension)
+
+    if len(videoList) == 3:
+        core = '.'.join(sorted(videoList)[0].split('.')[:-1])
+        if core + '_full' + extension in videoList \
+        and core + '_small' + extension in videoList \
+        and core + extension in videoList:
+            videoList = [core + '_small' + extension]
+
     videoListPath, videoListPathRel = generateVideoListPath(videoPath,
                                                            videoListPath)
 
@@ -101,10 +110,16 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
         if os.path.exists(bhvrPath):
             bhvrList += [bhvrPath]
 
+    singleFileMode = None
+    if len(videoList) > 1:
+        singleFileMode = False
+    else:
+        singleFileMode = True
 
     fdtv = FDV.FrameDataVisualizationTreeBehaviour()
-    fdtv.importAnnotations(bhvrList, annotations, selectedVial,
-                           runningIndeces=runningIndeces)
+    fdtv.importAnnotations(bhvrList, videoList, annotations, selectedVial,
+                           runningIndeces=runningIndeces,
+                           singleFileMode=singleFileMode)
 
     print fdvtPath, fdvtPathRel
 

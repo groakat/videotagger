@@ -405,6 +405,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         elif len(videoListRel) == 3:
             core = '.'.join(sorted(videoListRel)[0].split('.')[:-1])
+            core = '.'.join(sorted(videoListRel)[0].split('.')[:-1])
             if core + '_full.' + videoExtension in videoListRel \
             and core + '_small.' + videoExtension in videoListRel \
             and core + '.' + videoExtension in videoListRel:
@@ -1028,6 +1029,7 @@ class VideoTagger(QtGui.QMainWindow):
     
         
     def setupFrameView(self):
+        cfg.log.info("before init frameview")
         self.frameView = GFDV.GraphicsViewFDV(self)
         self.frameView.setGeometry(QtCore.QRect(10, 10, 891, 221))
         self.frameView.setObjectName("frameView")
@@ -1035,11 +1037,14 @@ class VideoTagger(QtGui.QMainWindow):
         self.frameView.registerButtonPressCallback('frames', self.selectVideoTime)
         
         colors = [a['color'] for a in self.annotations]
+        cfg.log.info("before setColors frameview")
         self.frameView.setColors(colors)
         
         if self.fdvtPath is not None:
+            cfg.log.info("before loading fdvt")
             self.frameView.loadSequence(self.fdvtPath)
 
+        cfg.log.info("end")
         self.fdvt = self.frameView.fdvt
             
             
@@ -1632,9 +1637,13 @@ class VideoTagger(QtGui.QMainWindow):
             self.displayingFullResolution = True
             self.fullResFrame = self.vh.getFullResolutionFrame()
 
-            if self.frames != []:
-                self.videoSizeSmallToFullMult = self.fullResFrame[1][0][0].shape[0] / \
-                                        float(self.frames[0][1][0][0].shape[0])
+            if not self.croppedVideo:
+                if self.frames != []:
+                    self.videoSizeSmallToFullMult = self.fullResFrame[1][0][0].shape[0] / \
+                                            float(self.frames[0][1][0][0].shape[0])
+                    self.videoSizeSmallToFullMultInit = True
+            else:
+                self.videoSizeSmallToFullMult = 1
                 self.videoSizeSmallToFullMultInit = True
 
             self.displayFrame(self.fullResFrame, 0)
@@ -1743,8 +1752,8 @@ class VideoTagger(QtGui.QMainWindow):
     
     @cfg.logClassFunction
     def showNextFrame(self, increment=None, checkBuffer=True):
-        #~ logGUI.debug(json.dumps({"increment":increment, 
-                                 #~ "checkBuffer":checkBuffer}))
+        # logGUI.debug(json.dumps({"increment":increment,
+        #                          ~ "checkBuffer":checkBuffer}))
 
         self.displayingFullResolution = False
 
@@ -1781,9 +1790,13 @@ class VideoTagger(QtGui.QMainWindow):
             offset = (self.trajNo / 2) 
 
         if not self.videoSizeSmallToFullMultInit:
-            if self.fullResFrame:
-                self.videoSizeSmallToFullMult = self.fullResFrame[1][0][0].shape[0] / \
-                                        float(self.frames[0][1][0][0].shape[0])
+            if not self.croppedVideo:
+                if self.fullResFrame:
+                    self.videoSizeSmallToFullMult = self.fullResFrame[1][0][0].shape[0] / \
+                                            float(self.frames[0][1][0][0].shape[0])
+            else:
+                self.videoSizeSmallToFullMult = 1
+                self.videoSizeSmallToFullMultInit = True
 
 
         frame = self.frames[0]
@@ -2575,8 +2588,10 @@ class VideoTagger(QtGui.QMainWindow):
 
         """
         if not self.fdvt:
+            cfg.log.info("before setup frameview")
             self.setupFrameView()
             self.frameView.hide()
+            cfg.log.info("after setup frameview")
 
         frames = labelledFrames[0]
         filt = labelledFrames[1]
@@ -2585,16 +2600,18 @@ class VideoTagger(QtGui.QMainWindow):
 
         increment = labelledFrames[2]
 
-        if self.fdvt.meta['not-initialized']:
-            curFile = self.fileList[self.idx]
-            self.fdvt.importAnnotation(self.vh.annoDict[curFile].annotation)
-            for a in self.annotations:
-                newFilt = Annotation.AnnotationFilter(self.getSelectedVial(),
-                                                   [a['annot']],
-                                                   [a['behav']])
-                self.fdvt.addNewClass(newFilt)
-
-            self.frameView.loadFDVT(self.fdvt)
+        # if self.fdvt.meta['not-initialized']:
+        #
+        #     curFile = self.fileList[self.idx]
+        #     self.fdvt.importAnnotation(self.vh.annoDict[curFile].annotation)
+        #     for a in self.annotations:
+        #         newFilt = Annotation.AnnotationFilter(self.getSelectedVial(),
+        #                                            [a['annot']],
+        #                                            [a['behav']])
+        #         self.fdvt.addNewClass(newFilt)
+        #
+        #     self.frameView.loadFDVT(self.fdvt)
+        #     cfg.log.info("data after: {0}".format(self.fdvt.data))
 
         deltaVector = []
         for key in frames.keys():
@@ -2614,6 +2631,7 @@ class VideoTagger(QtGui.QMainWindow):
                 deltaVector += [dv]
 
         if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
+            cfg.log.info("delta vector: {0}".format(deltaVector))
             self.fdvt.insertDeltaVector(deltaVector)
             self.frameView.updateDisplay(useCurrentPos=True)
 

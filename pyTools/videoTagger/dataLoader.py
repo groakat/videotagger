@@ -617,7 +617,33 @@ class VideoLengthQuery(QtCore.QObject):
         self.videoLength.emit([self.filename, idx])
         self.length = idx
         self.thread.quit()
-        
+
+
+
+
+def retrieveVideoLength(filename, initialStepSize=10000):
+    """
+    Finds video length by accessing it bruteforce
+
+    """
+    idx = 0
+    modi = initialStepSize
+    vE = VE.videoExplorer()
+
+    while modi > 1:
+        while True:
+            try:
+                vE.getFrame(filename, frameNo=idx, frameMode='RGB')
+            except StopIteration:
+                break
+
+            idx += modi
+
+        idx -= modi
+        modi /= 2
+
+
+    return idx + 2
         
         
 class MyThread(QtCore.QThread):    
