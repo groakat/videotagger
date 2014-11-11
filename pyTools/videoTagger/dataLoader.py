@@ -563,7 +563,7 @@ class AnnotationLoader(QtCore.QObject):
             modi /= 2
             
 
-        return idx + 2
+        return idx + 1 # + 1 to make it the same behaviour as len()
     
     
 class VideoLengthQuery(QtCore.QObject):
@@ -643,7 +643,7 @@ def retrieveVideoLength(filename, initialStepSize=10000):
         modi /= 2
 
 
-    return idx + 2
+    return idx + 1 # + 1 to make it the same behaviour as len()
         
         
 class MyThread(QtCore.QThread):    
