@@ -3261,6 +3261,12 @@ def main():
 
     args = parser.parse_args()
 
+    app = QtGui.QApplication(sys.argv)
+
+    app.setOrganizationName("UCL")
+    app.setOrganizationDomain("https://github.com/groakat/VideoTagger")
+    app.setApplicationName("videoTagger")
+
     if args.config_file == None:
         # print textwrap.dedent(\
         #     """
@@ -3269,8 +3275,6 @@ def main():
         #     """)
         # sys.exit()
 
-
-        app = QtGui.QApplication(sys.argv)
         w = VideoTagger()
 
     else:
@@ -3287,11 +3291,6 @@ def main():
         else:
             vp = videoPath
 
-        app = QtGui.QApplication(sys.argv)
-
-        app.setOrganizationName("UCL")
-        app.setOrganizationDomain("https://github.com/groakat/VideoTagger")
-        app.setApplicationName("videoTagger")
 
         w = VideoTagger(videoPath, annotations, backgroundPath, selectedVial, vialROI,
                          videoExtension=videoExtension, filterObjArgs=filterObjArgs,
