@@ -290,6 +290,7 @@ class VideoTagger(QtGui.QMainWindow):
             self.idx = self.idx[0]
 
         # self.fileList = self.convertFileList(self.fileList, '.' + self.videoExtension)
+
         self.vh = VH.VideoHandler(self.fileList, self.changeVideo, 
                                self.getSelectedVial(), startIdx=self.idx,
                                videoExtension='.' + videoExtension,
@@ -586,10 +587,10 @@ class VideoTagger(QtGui.QMainWindow):
         self.le_annotatorName = QtGui.QLineEdit(self)
         self.le_bhvrFolder = QtGui.QLineEdit(self)
         self.le_bufferWidth = QtGui.QLineEdit(self)
-        self.le_bufferWidth.setInputMask('900')
+        self.le_bufferWidth.setValidator(QtGui.QIntValidator())
         self.le_bufferWidth.setText("200")
         self.le_bufferLength = QtGui.QLineEdit(self)
-        self.le_bufferLength.setInputMask('90')
+        self.le_bufferLength.setValidator(QtGui.QIntValidator())
         self.le_bufferLength.setText("5")
         self.le_bhvrCache = QtGui.QLineEdit(self)
         self.le_vialROI = QtGui.QLineEdit(self)
