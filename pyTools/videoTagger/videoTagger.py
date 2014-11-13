@@ -2831,6 +2831,7 @@ class VideoTagger(QtGui.QMainWindow):
         cfg.log.info("escape annotation")    
         cfg.logGUI.info('"------escape annotation--------"')
         self.vh.escapeAnnotationAlteration()
+        self.updateHUD(annotator="", behaviour="")
         self.annoIsOpen = False
         
         
