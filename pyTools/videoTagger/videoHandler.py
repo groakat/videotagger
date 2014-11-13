@@ -913,7 +913,7 @@ class VideoHandler(QtCore.QObject):
             self.annoDict[key] = aL
             # save pathlength and bufferEnding if requested earlier
 
-            self.videoLengths[key] = len(annotation.frameList)
+            self.videoLengths[key] = len(aL.annotation.frameList)
             # if annotation is not None:
             #     self.videoLengths[key] = len(annotation.frameList)
             # else:

@@ -526,7 +526,7 @@ class AnnotationLoader(QtCore.QObject):
             cfg.log.info("new annotation with length {0}".format(videoLength))
 
         if out is None:
-            1/0
+            cfg.log.warning("annotation is None. Should never, ever happen!")
 
         self.annotation = out
 #         self.loadedAnnotation.emit([self, self.path])
