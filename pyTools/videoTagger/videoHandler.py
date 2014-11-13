@@ -902,7 +902,8 @@ class VideoHandler(QtCore.QObject):
             aL = annotationBundle[2]
             annotation = aL.annotation
 
-            if annotation is None and self.videoDict[key] == {}:
+            if annotation is None:
+                # annotation not yet loaded
                 continue
 
             if annotation:
