@@ -913,12 +913,12 @@ class VideoHandler(QtCore.QObject):
             self.annoDict[key] = aL
             # save pathlength and bufferEnding if requested earlier
 
-            # self.videoLengths[key] = len(annotation.frameList)
-            if annotation is not None:
-                self.videoLengths[key] = len(annotation.frameList)
-            else:
-                self.videoLengths[key] = \
-                                    self.videoDict[key].getPositionLength()
+            self.videoLengths[key] = len(annotation.frameList)
+            # if annotation is not None:
+            #     self.videoLengths[key] = len(annotation.frameList)
+            # else:
+            #     self.videoLengths[key] = \
+            #                         self.videoDict[key].getPositionLength()
 
             if key in self.bufferEndingQueue:
                 self.bufferEndingQueue.pop(self.bufferEndingQueue.index(key))

@@ -524,7 +524,10 @@ class AnnotationLoader(QtCore.QObject):
             videoLength = self.retrieveVideoLength(self.videoPath)
             out = Annotation.Annotation(frameNo=videoLength, vialNames=self.vialNames)
             cfg.log.info("new annotation with length {0}".format(videoLength))
-            
+
+        if out is None:
+            1/0
+
         self.annotation = out
 #         self.loadedAnnotation.emit([self, self.path])
 
