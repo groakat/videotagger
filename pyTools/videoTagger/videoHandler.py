@@ -900,11 +900,11 @@ class VideoHandler(QtCore.QObject):
             key = annotationBundle[0]
 #             path = annotationBundle[1]
             aL = annotationBundle[2]
+            annotation = aL.annotation
 
             if annotation is None and self.videoDict[key] == {}:
                 continue
 
-            annotation = aL.annotation
             if annotation:
                 for aV in self.annoViewList:
                     aV.addAnnotation(annotation, key,
