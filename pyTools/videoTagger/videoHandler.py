@@ -896,10 +896,14 @@ class VideoHandler(QtCore.QObject):
     def loadAnnotationBundle(self): 
         self.annotationBundle = sorted(self.annotationBundle, key=lambda x: x[1])
         
-        for annotationBundle in self.annotationBundle:
+        for i, annotationBundle in enumerate(self.annotationBundle):
             key = annotationBundle[0]
 #             path = annotationBundle[1]
             aL = annotationBundle[2]
+
+            if annotation is None and self.videoDict[key] == {}:
+                continue
+
             annotation = aL.annotation
             if annotation:
                 for aV in self.annoViewList:
@@ -919,8 +923,10 @@ class VideoHandler(QtCore.QObject):
             if key in self.bufferEndingQueue:
                 self.bufferEndingQueue.pop(self.bufferEndingQueue.index(key))
                 self.bufferEnding(key)
+
+            del self.annotationBundle[i]
             
-        self.annotationBundle = []
+        # self.annotationBundle = []
         
             
     @cfg.logClassFunction
