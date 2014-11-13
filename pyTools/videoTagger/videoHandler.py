@@ -69,7 +69,9 @@ class VideoHandler(QtCore.QObject):
         self.annoAltStart = None
         
         ## video loading
-        self.vLL = DL.VideoLoaderLuncher(eofCallback=self.endOfFileNotice)
+        self.vLL = DL.VideoLoaderLuncher(eofCallback=self.endOfFileNotice,
+                                         bufferLength=bufferLength * 2 +
+                                                      self.bufferJut * 2 + 3)
 
         self.videoLoaderLuncherThread = DL.MyThread("videoLuncher")
         self.vLL.moveToThread(self.videoLoaderLuncherThread)
@@ -94,7 +96,10 @@ class VideoHandler(QtCore.QObject):
         
         ## annotation loading
         self.aLL = DL.AnnotationLoaderLuncher(self.endOfFileNotice, videoExtension,
-                                              self.patchesFolder, self.bhvrFolder)
+                                              self.patchesFolder, self.bhvrFolder,
+                                              bufferLength=bufferLength * 2 +
+                                                           self.bufferJut * 2
+                                                           + 3)
 
         self.annotationLoaderLuncherThread = DL.MyThread("annotationLuncher")
         self.aLL.moveToThread(self.annotationLoaderLuncherThread)
@@ -106,7 +111,7 @@ class VideoHandler(QtCore.QObject):
         self.newAnnotationLoader.connect(self.aLL.lunchAnnotationLoader)
         self.deleteAnnotationLoader.connect(self.aLL.deleteAnnotationLoader)
         
-        self.posCache = Cache.PosFileCache()       
+        self.posCache = Cache.PosFileCache(size=300)
         
         
         

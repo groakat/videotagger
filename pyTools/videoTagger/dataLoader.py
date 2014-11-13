@@ -264,7 +264,7 @@ class VideoLoaderLuncher(QtCore.QObject):
     loadVideos = QtCore.Signal() 
     
     @cfg.logClassFunction
-    def __init__(self, eofCallback):
+    def __init__(self, eofCallback, bufferLength):
         """
         This object will exectute `func` with `args` in a
         separate thread. You can query ready() to check
@@ -282,8 +282,26 @@ class VideoLoaderLuncher(QtCore.QObject):
         self.dumpingPlace = []
         self.threads = dict()
         self.eofCallback = eofCallback
-            
-    
+        self.bufferLength = bufferLength
+        while len(self.availableVLs) < self.bufferLength:
+            self.createNewVideoLuncher()
+
+    def createNewVideoLuncher(self):
+        videoLoaderThread = MyThread("videoLoader {0}".format(len(
+                                                        self.threads.keys())))
+
+        vL = VideoLoader("", idxSlice=slice(0, 1),
+                         thread=videoLoaderThread,
+                         selectedVials=[0])
+
+        vL.moveToThread(videoLoaderThread)
+        videoLoaderThread.start()
+
+        vL.startLoading.connect(vL.loadVideos)
+        vL.eof.connect(self.eofCallback)
+
+        self.threads[vL] = [videoLoaderThread, vL.startLoading]
+        self.availableVLs += [vL]
     
 #     @cfg.logClassFunction
     @QtCore.Slot(list)
@@ -365,7 +383,7 @@ class AnnotationLoaderLuncher(QtCore.QObject):
     loadAnnotations = QtCore.Signal()
     
     def __init__(self, loadedCallback, videoExtension,
-                 patchesFolder, behaviourFolder):
+                 patchesFolder, behaviourFolder, bufferLength):
         super(AnnotationLoaderLuncher, self).__init__(None)
             
         self.availableALs = []
@@ -375,7 +393,27 @@ class AnnotationLoaderLuncher(QtCore.QObject):
         self.videoExtension = videoExtension
         self.patchesFolder = patchesFolder
         self.bhvrFolder = behaviourFolder
-    
+        self.bufferLength = bufferLength
+
+        while len(self.availableALs) < bufferLength:
+            self.createNewAnnotationLoader()
+
+    def createNewAnnotationLoader(self):
+        annotationLoaderThread = MyThread("AnnotationLoader {0}".format(len(
+                                                    self.threads.keys())))
+
+        aL = AnnotationLoader("", "", "", annotationLoaderThread,
+                              self.videoExtension)
+
+        aL.moveToThread(annotationLoaderThread)
+        annotationLoaderThread.start()
+
+        aL.startLoading.connect(aL.loadAnnotation)
+        aL.loadedAnnotation.connect(self.loadedCallback)
+        self.threads[aL] = [annotationLoaderThread, aL.startLoading]
+        self.availableALs += [aL]
+
+
     @QtCore.Slot(list)
     def lunchAnnotationLoader(self, lst):
         key = lst[0]
