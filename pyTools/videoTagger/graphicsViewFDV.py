@@ -271,6 +271,7 @@ class GraphicsViewFDV(QtGui.QWidget):
                 geo.setHeight(0)
                 barLet.setRect(geo)
 
+
     def loadFDVT(self, fdvt):
         self.initDataPlots()
         self.fdvt = fdvt
@@ -473,6 +474,7 @@ class GraphicsViewFDV(QtGui.QWidget):
             rectItem.setBrush(brush)
             rectItem.setPen(pen)
 
+
         return bar
 
 
@@ -598,6 +600,7 @@ class GraphicsViewFDV(QtGui.QWidget):
 
             self.normalizeBar(r, accH, len(rects))
 
+
         return rects, maxHeight
 
     def drawMissingValues(self, rectKey, rects, y):
@@ -633,6 +636,7 @@ class GraphicsViewFDV(QtGui.QWidget):
 
 
             self.normalizeSubplot(self.subPlot[rectKey], maxHeight, y)
+
 
         self.overviewScene.update()
         self.gv_center.update()

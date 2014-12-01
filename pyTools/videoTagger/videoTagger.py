@@ -501,7 +501,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         videoPath = self.le_videoPath.text()
         if self.le_vial.text().lower() != 'none':
-            selectedVial = int(self.le_vial.text())
+            selectedVial = [int(self.le_vial.text())]
         else:
             selectedVial = None
 

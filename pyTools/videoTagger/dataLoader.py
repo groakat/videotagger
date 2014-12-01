@@ -437,7 +437,7 @@ class AnnotationLoaderLuncher(QtCore.QObject):
         
 
         if len(self.availableALs) == 0:
-            cfg.log.debug("create new AnnotationLoader {0}".format(videoPath))
+            cfg.log.info("create new AnnotationLoader {0}".format(videoPath))
             
 #             vL = VideoLoader(path, vH, selectedVials=selectedVials) 
                                      
@@ -452,7 +452,7 @@ class AnnotationLoaderLuncher(QtCore.QObject):
             aL.startLoading.connect(aL.loadAnnotation)
             aL.loadedAnnotation.connect(self.loadedCallback)
             
-            cfg.log.debug("finished thread coonecting signal create new AnnotationLoader {0}".format(videoPath))
+            cfg.log.info("finished thread coonecting signal create new AnnotationLoader {0}".format(videoPath))
             aL.startLoading.emit()
             cfg.log.debug("finished thread emit create new AnnotationLoader {0}".format(videoPath))
             self.threads[aL] = [annotationLoaderThread, aL.startLoading]

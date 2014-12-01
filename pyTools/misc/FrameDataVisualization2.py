@@ -261,13 +261,18 @@ class FrameDataVisualizationTreeBase(object):
             self.plotData['days']['tick'] += [0]
             return
 
-        for key in sorted(self.hier.keys()):
-            if key in ['meta']:
-                continue
+        for key in sorted(self.meta['rangeTemplate']['days']):
+            if key in self.hier.keys():
+                if key in ['meta']:
+                    continue
 
-            self.plotData['days']['data'] += [self.hier[key]['meta']['max']]
-            self.plotData['days']['weight'] += [self.hier[key]['meta']['mean']]
-            self.plotData['days']['tick'] += [key]
+                self.plotData['days']['data'] += [self.hier[key]['meta']['max']]
+                self.plotData['days']['weight'] += [self.hier[key]['meta']['mean']]
+                self.plotData['days']['tick'] += [key]
+            else:
+                self.plotData['days']['data'] += [0]
+                self.plotData['days']['weight'] += [0]
+
 
 
 
@@ -287,15 +292,19 @@ class FrameDataVisualizationTreeBase(object):
         except KeyError:
             return
 
-        for key in sorted(keys):
-            if key in ['meta']:
-                continue
+        for key in sorted(self.meta['rangeTemplate']['hours']):
+            if key in keys:
+                if key in ['meta']:
+                    continue
 
-            self.plotData['hours']['data'] += \
-                                            [self.hier[day][key]['meta']['max']]
-            self.plotData['hours']['weight'] += \
-                                           [self.hier[day][key]['meta']['mean']]
-            self.plotData['hours']['tick'] += [key]
+                self.plotData['hours']['data'] += \
+                                                [self.hier[day][key]['meta']['max']]
+                self.plotData['hours']['weight'] += \
+                                               [self.hier[day][key]['meta']['mean']]
+                self.plotData['hours']['tick'] += [key]
+            else:
+                self.plotData['hours']['data'] += [0]
+                self.plotData['hours']['weight'] += [0]
 
 
     def generatePlotDataMinutes(self, day, hour, minute, frame):
@@ -314,15 +323,20 @@ class FrameDataVisualizationTreeBase(object):
         except KeyError:
             return
 
-        for key in sorted(keys):
-            if key in ['meta']:
-                continue
+        for key in sorted(self.meta['rangeTemplate']['hours']):
+            if key in keys:
+                if key in ['meta']:
+                    continue
 
-            self.plotData['minutes']['data'] += \
-                                    [self.hier[day][hour][key]['meta']['max']]
-            self.plotData['minutes']['weight'] += \
-                                    [self.hier[day][hour][key]['meta']['mean']]
-            self.plotData['minutes']['tick'] += [key]
+                self.plotData['minutes']['data'] += \
+                                        [self.hier[day][hour][key]['meta']['max']]
+                self.plotData['minutes']['weight'] += \
+                                        [self.hier[day][hour][key]['meta']['mean']]
+                self.plotData['minutes']['tick'] += [key]
+            else:
+                self.plotData['minutes']['data'] += [0]
+                self.plotData['minutes']['weight'] += [0]
+
 
 
     def generatePlotDataFrames(self, day, hour, minute, frame,
@@ -345,12 +359,16 @@ class FrameDataVisualizationTreeBase(object):
         cnt = 0
         tmpVal = []
         tmpKeys = []
-        for key in sorted(keys):
-            if key in ['meta']:
-                continue
+        for key in sorted(self.meta['rangeTemplate']['frames']):
+            if key in keys:
+                if key in ['meta']:
+                    continue
 
-            tmpVal += [self.data[day][hour][minute][key]]
-            tmpKeys += [key]
+                tmpVal += [self.data[day][hour][minute][key]]
+                tmpKeys += [key]
+            else:
+                tmpVal += [0]
+
             cnt += 1
 
             if not (cnt < frameResolution):
@@ -360,6 +378,7 @@ class FrameDataVisualizationTreeBase(object):
                 cnt = 0
                 tmpVal = []
                 tmpKeys = []
+
 
 
         if cnt != 0:
@@ -560,7 +579,9 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
     def dict2array(self, d):
         if d:
-            ar = np.zeros((self.meta['maxClass'], max(d.keys()) + 1))
+            ar = np.zeros((self.meta['maxClass'],
+                           len(self.meta['rangeTemplate']['frames'])))
+            # ar = np.zeros((self.meta['maxClass'], max(d.keys()) + 1))
             for k, frame in d.items():
                 for c, v in frame.items():
                     ar[c, k] = v
@@ -933,10 +954,10 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
 
 
-    def getStackFromStump(self, stump):
+    def getStackFromStump(self, stump, timeKey):
         stack = []
-        for k in sorted(stump.keys()):
-            if k != 'meta':
+        for k in sorted(self.meta['rangeTemplate'][timeKey]):
+            if k in stump.keys():
                 if stump[k]['meta']['stack'].shape[0] != self.meta['maxClass']:
                     tmp = np.zeros(self.meta['maxClass'])
                     tmp[:stump[k]['meta']['stack'].shape[0]] = \
@@ -944,6 +965,8 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                     stump[k]['meta']['stack'] = tmp
 
                 stack += [stump[k]['meta']['stack']]
+            else:
+                stack += [np.zeros(self.meta['maxClass'])]
 
         return stack
 
@@ -975,7 +998,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         #     return
         cfg.log.info("{0}, {1}, {2}, {3}".format(day, hour, minute, frame))
         self.plotData['days'] = dict()
-        stack = self.getStackFromStump(self.hier)
+        stack = self.getStackFromStump(self.hier, 'days')
         self.plotData['days']['data'] = np.asarray(stack)#.T
         self.plotData['days']['weight'] = 0
 
@@ -986,7 +1009,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             stump = None
 
         if stump is not None:
-            stack = self.getStackFromStump(stump)
+            stack = self.getStackFromStump(stump, 'hours')
             self.plotData['hours']['data'] = np.asarray(stack)#.T
         else:
             self.plotData['hours']['data'] = []
@@ -999,7 +1022,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             stump = None
 
         if stump is not None:
-            stack = self.getStackFromStump(stump)
+            stack = self.getStackFromStump(stump, 'minutes')
             self.plotData['minutes']['data'] = np.asarray(stack)#.T
         else:
             self.plotData['minutes']['data'] = []
@@ -1017,7 +1040,10 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                                  stump,
                                  frameResolution)
         else:
-            self.plotData['frames']['data'] = []
+            self.plotData['frames']['data'] = np.zeros((
+                                    len(self.meta['rangeTemplate']['frames']) /
+                                    frameResolution,
+                                    self.meta['maxClass']))
 
 
     def createStackData(self, plotData, inData, frameResolution):

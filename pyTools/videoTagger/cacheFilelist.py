@@ -78,7 +78,12 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
         videoPath = os.path.dirname(videoPath)
 
     if croppedVideo:
-        extension = ".v{0}.{1}".format(selectedVial, videoExtension)
+        if type(selectedVial) == list:
+            sv = selectedVial[0]
+        else:
+            sv = selectedVial
+
+        extension = ".v{0}.{1}".format(sv, videoExtension)
     else:
         extension = ".{0}".format(videoExtension)
 

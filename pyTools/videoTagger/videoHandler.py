@@ -577,7 +577,7 @@ class VideoHandler(QtCore.QObject):
                
         bufferedKeys = self.checkBuffersRight()
         bufferedKeys = self.checkBuffersLeft(bufferedKeys)
-        
+
         cfg.log.debug("buffered keys: {0}".format(bufferedKeys))
         self.deleteOldBuffers(bufferedKeys,  updateAnnoViewPositions)
         
@@ -777,7 +777,6 @@ class VideoHandler(QtCore.QObject):
             self.ensureBuffering(key, idx)
         else:
             self.videoLengths[key] = None
-            cfg.log.info("requesting new annotation {0}".format(key))
             self.fetchNewAnnotation(key)
             self.bufferEndingQueue += [key]
             
@@ -844,7 +843,6 @@ class VideoHandler(QtCore.QObject):
                                   idx, idxRange])        
         
         if path not in self.annoDict.keys():
-            cfg.log.info("request new annotationLoader {0}".format(path))
 #             self.newAnnotationLoader.emit([path])
             self.fetchNewAnnotation(path)
         
@@ -900,7 +898,9 @@ class VideoHandler(QtCore.QObject):
     @cfg.logClassFunction
     def loadAnnotationBundle(self): 
         self.annotationBundle = sorted(self.annotationBundle, key=lambda x: x[1])
-        
+
+        delList = []
+
         for i, annotationBundle in enumerate(self.annotationBundle):
             key = annotationBundle[0]
 #             path = annotationBundle[1]
@@ -915,7 +915,7 @@ class VideoHandler(QtCore.QObject):
                 for aV in self.annoViewList:
                     aV.addAnnotation(annotation, key,
                                      addAllAtOnce=(not self.loadProgressive))
-                
+
             self.annoDict[key] = aL
             # save pathlength and bufferEnding if requested earlier
 
@@ -930,9 +930,13 @@ class VideoHandler(QtCore.QObject):
                 self.bufferEndingQueue.pop(self.bufferEndingQueue.index(key))
                 self.bufferEnding(key)
 
-            del self.annotationBundle[i]
-            
-        # self.annotationBundle = []
+            delList += [i]
+
+        # delete processed items
+        self.annotationBundle[:] = [ item \
+                                        for i,item in \
+                                            enumerate(self.annotationBundle) \
+                                            if i not in delList]
         
             
     @cfg.logClassFunction
