@@ -571,6 +571,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         maxHeight = 0
         maxCum = np.max(np.sum(data, axis=1))
         minBarHeight =  maxCum * 0.05
+
         for i, d in enumerate(data):
             if self.rangeTemplate[rectKey] is not None:
                 idx = self.getKeyIndexInFDVT(rectKey, i)
@@ -629,7 +630,14 @@ class GraphicsViewFDV(QtGui.QWidget):
         for clickRect in self.clickRects[rectKey]:
             clickRect.setBrush(self.clickBrush)
 
-        if data != []:
+        dataPresent = False
+
+        if type(data) == list:
+            dataPresent = data != []
+        else:
+            dataPresent = data.size
+
+        if dataPresent:
             rects, maxHeight = self.updateBars(data, rectKey, y)
 
             self.drawMissingValues(rectKey, rects, y)
