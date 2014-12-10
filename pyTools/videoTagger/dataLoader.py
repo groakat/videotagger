@@ -236,7 +236,7 @@ class VideoLoader(QtCore.QObject):
                 out += [self.frameList[i][idx]]
 #                 else:
 #                     out += []
-                
+
             return out
         else:
             cfg.log.error("error in fetching key {0}, idx {1}".format(self.posPath, idx))
@@ -492,6 +492,7 @@ class AnnotationLoaderLuncher(QtCore.QObject):
                 
             self.availableALs += [aL]
         else:
+            cfg.log.info("putting Annotation on dumping place {0}".format(aL.bhvrPath))
             self.dumpingPlace += [aL]
         
     @QtCore.Slot()    
@@ -591,7 +592,7 @@ class AnnotationLoader(QtCore.QObject):
                                                     self.vialNames[0],
                                                     ext=self.videoExtension)
         
-        while modi > 1:
+        while modi > 0:
             while True:
                 try:
                     vE.getFrame(filename, frameNo=idx, frameMode='RGB')
@@ -671,7 +672,7 @@ def retrieveVideoLength(filename, initialStepSize=10000):
     modi = initialStepSize
     vE = VE.videoExplorer()
 
-    while modi > 1:
+    while modi > 0:
         while True:
             try:
                 vE.getFrame(filename, frameNo=idx, frameMode='RGB')
