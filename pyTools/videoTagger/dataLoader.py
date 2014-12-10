@@ -478,12 +478,15 @@ class AnnotationLoaderLuncher(QtCore.QObject):
                 cfg.log.info("making {0} available again (dumping ground)".format(aL))           
                 self.availableALs += [aL]
                 self.dumpingPlace.remove(aL)
+            elif aL is None:
+                self.dumpingPlace.remove(aL)
+
                 
         aL = lst[0]
 #         vidPath = lst[1]
         
         # TODO is this potential memory leak?
-        if aL is not None and not aL.loading:  
+        if (aL is not None) and (not aL.loading):
             if aL.annotation.hasChanged:
                 cfg.log.info("saving {0}".format(aL.bhvrPath))
                 aL.annotation.saveToFile(aL.bhvrPath)
@@ -492,7 +495,10 @@ class AnnotationLoaderLuncher(QtCore.QObject):
                 
             self.availableALs += [aL]
         else:
-            cfg.log.info("putting Annotation on dumping place {0}".format(aL.bhvrPath))
+            if aL is None:
+                cfg.log.info("putting Annotation on dumping place is None")
+            else:
+                cfg.log.info("putting Annotation on dumping place is {0}".format(aL.bhvrPath))
             self.dumpingPlace += [aL]
         
     @QtCore.Slot()    

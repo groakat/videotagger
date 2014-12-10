@@ -3,7 +3,6 @@ import copy
 import os
 from collections import namedtuple
 
-
 AnnotationFilter = \
         namedtuple("AnnotationFilter", ["vials", "annotators", "behaviours"])
 
@@ -63,9 +62,10 @@ class Annotation():
         if not os.path.exists(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
 
-        f = open(filename, 'w')
-        json.dump(self.frameList, f, sort_keys=True,indent=4, separators=(',', ': '))
-        f.close()
+        s = json.dumps(self.frameList, sort_keys=True,indent=4, separators=(',', ': '))
+        with open(filename, 'w') as f:
+            f.write(s)
+
         self.hasChanged = False
         
     def saveToTmpFile(self, filename):

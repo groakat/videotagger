@@ -1739,12 +1739,12 @@ class VideoTagger(QtGui.QMainWindow):
             frame = self.prevFrames[i]
             self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
 
+        self.vh.posCache.checkNeighboursRight(30)
 
     def updatePreviewLabels(self, frameSwitch=False):
         offset = (len(self.prevFrameLbls) - 1) / 2
         self.prevFrames = []
         multipliers = []
-
         for i in range(len(self.prevFrameLbls)):
             self.prevFrames += [self.vh.getTempFrame(i - offset)]
             multipliers += [1.0 / self.videoSizeSmallToFullMult]
@@ -1794,9 +1794,9 @@ class VideoTagger(QtGui.QMainWindow):
         offset = 5  
         
         cfg.log.debug("increment: {0}, checkBuffer: {1}".format(increment, checkBuffer))
-        
+
         if increment >= 0:
-            self.frames += [self.vh.getNextFrame(increment, doBufferCheck=checkBuffer, 
+            self.frames += [self.vh.getNextFrame(increment, doBufferCheck=checkBuffer,
                                                  unbuffered=False)]
         elif increment < 0:
             self.frames += [self.vh.getPrevFrame(-increment, doBufferCheck=checkBuffer,
@@ -1820,11 +1820,16 @@ class VideoTagger(QtGui.QMainWindow):
         anno = frame[2]
 
         self.displayFrame(frame, sv)
-        self.displayAnnotationROIs(anno, sv)
+
+        if np.abs(increment) <= 10:
+            self.displayAnnotationROIs(anno, sv)
+
         self.displayTrajectory(increment, sv, offset)
 
         # showing previews #
-        self.updatePreviewLabels(frameSwitch=(increment != 0))
+        if np.abs(increment) <= 10:
+            self.updatePreviewLabels(frameSwitch=(increment != 0))
+
         self.vh.updateAnnotationProperties(self.getMetadata())
 
         frameNo = self.vh.getCurrentFrameNo()

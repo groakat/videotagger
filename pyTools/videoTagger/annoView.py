@@ -5,6 +5,7 @@ from PySide import QtCore
 import pyTools.videoProc.annotation as Annotation
 import pyTools.misc.basic as bsc 
 import pyTools.misc.config as cfg
+import time
 #from qimage2ndarray import *
 # from PyQt4.uic.Compiler.qtproxies import QtCore
 
@@ -309,9 +310,9 @@ class AnnoView(QtGui.QWidget):
         if not tempPositionOnly:
             self.selKey = key
             self.idx = idx
-            
-        self.addTempAnno(key, idx, metadata)        
-        self.updateConfidenceList()#(key, idx)
+
+        self.addTempAnno(key, idx, metadata)
+        self.updateConfidenceList()
         self.updateGraphicView()
         
     @cfg.logClassFunction
@@ -439,17 +440,18 @@ class AnnoView(QtGui.QWidget):
 
     @cfg.logClassFunction
     def updateGraphicView(self):
-        for i in range(len(self.confidenceList)):   
+        for i in range(len(self.confidenceList)):
             conf = self.confidenceList[i].conf
-            if [True for c in conf if c != None]:
+            tmp = (not None) in conf
+            if tmp:
                 self.frames[i].setBrush(self.brushA)
                 self.frames[i].setPen(self.penA)
-            else:              
+            else:
                 self.frames[i].setBrush(self.brushI)
                 self.frames[i].setPen(self.penI)
-                
+
             self.frames[i].update()
-            
+
         self.activeMarker.setVisible(self.addingAnno or self.erasingAnno)
         
     @cfg.logClassFunction
