@@ -646,12 +646,17 @@ class VideoHandler(QtCore.QObject):
         # advance and behind buffer key
         advKeyIdx = self.videoPathList.index(sorted(bufferedKeys.keys())[-1]) + 1
         if advKeyIdx > len(self.videoPathList):
-            advKeyIdx = None
+            advKey = None
+        else:
+            advKey = self.videoPathList[advKeyIdx]
                     
         behKeyIdx = self.videoPathList.index(sorted(bufferedKeys.keys())[0]) - 1
         if behKeyIdx < 0:
-            behKeyIdx = None
-            
+            behKey = None
+        else:
+            behKey = self.videoPathList[behKeyIdx]
+
+        validKeys4Anno = []
         # check all buffers if lying within jut, unbuffer otherwise
         for key in self.videoDict.keys():
             if key in bufferedKeys.keys():
@@ -660,23 +665,28 @@ class VideoHandler(QtCore.QObject):
                         self.unbuffer(key, idx, updateAnnoViewPositions)
             else:
                 for idx in sorted(self.videoDict[key].keys()):
-                    if idx == 0 and key == advKeyIdx:
+                    if idx == 0 and key == advKey:
                         # ahead buffered first buffer
+                        validKeys4Anno += [key]
                         continue
-                    if key == behKeyIdx \
+                    if key == behKey \
                     and len(self.videoDict[key].keys()) == 1:
-                        # behing (left hand side) buffered last buffer
+                        # behind (left hand side) buffered last buffer
+                        validKeys4Anno += [key]
                         continue
                     
                     self.unbuffer(key, idx, updateAnnoViewPositions)
-                    
+
+        for key in self.videoDict.keys():
+            if key not in validKeys4Anno \
+            and key not in bufferedKeys.keys():
                 try:
-                    self.deleteAnnotationLoader.emit([self.annoDict[key]])
+                    self.deleteAnnotationLoader.emit([self.annoDict[key], "deleteOldBuffers"])
                     self.annoDict[key] = None
                     del self.annoDict[key]
-                except:
+                except KeyError:
                     pass
-            
+
             
     @cfg.logClassFunction
     def unbuffer(self, key, idx, updateAnnoViewPositions):        
@@ -818,6 +828,7 @@ class VideoHandler(QtCore.QObject):
         self.annoDict[key] = None
         
         path = key.split(self.videoEnding)[0] + '.bhvr'
+        cfg.log.info("fetching {0}, {1}".format(key, path))
         self.newAnnotationLoader.emit([key, path])
         
     @QtCore.Slot(list)
