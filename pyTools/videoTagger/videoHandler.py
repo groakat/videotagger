@@ -487,27 +487,28 @@ class VideoHandler(QtCore.QObject):
         
     @cfg.logClassFunction#Info
     def getVideoLength(self, posPath):
-        vidLength = 0
         try:
-            if self.videoLengths[self.posPath] != None:
-                vidLength = self.videoLengths[self.posPath]
+            if self.videoLengths[posPath] != None:
+                return self.videoLengths[posPath]
             else:
-                res = self.getPositionArray(self.posPath)
+                res = self.getPositionArray(posPath)
 
                 if res == None:
                     # hack will probably break if video is longer than 300 frames
-                    vidLength = 300
+                    vidLength = DL.retrieveVideoLength(posPath)
                 else:
                     vidLength = res.shape[0]
         except KeyError:
-            res = self.getPositionArray(self.posPath)
+            res = self.getPositionArray(posPath)
 
             if res == None:
                 # hack will probably break if video is longer than 300 frames
-                vidLength = 300
+                vidLength = DL.retrieveVideoLength(posPath)
             else:
                 vidLength = res.shape[0]
-            
+
+        self.videoLengths[posPath] = vidLength
+
         return vidLength
         
         
@@ -821,15 +822,16 @@ class VideoHandler(QtCore.QObject):
             self.fetchNewAnnotation(key)
             self.bufferEndingQueue += [key]
             
-    def fetchNewAnnotation(self, key):
-        if key not in self.videoLengths.keys():
-            self.videoLengths[key] = None
+    def fetchNewAnnotation(self, videoPath):
+        if videoPath not in self.videoLengths.keys():
+            self.videoLengths[videoPath] = None
             
-        self.annoDict[key] = None
+        self.annoDict[videoPath] = None
         
-        path = key.split(self.videoEnding)[0] + '.bhvr'
-        cfg.log.info("fetching {0}, {1}".format(key, path))
-        self.newAnnotationLoader.emit([key, path])
+        path = videoPath.split(self.videoEnding)[0] + '.bhvr'
+        cfg.log.info("fetching {0}, {1}".format(videoPath, path))
+        self.newAnnotationLoader.emit([videoPath, path,
+                                  self.getVideoLength(videoPath)])
         
     @QtCore.Slot(list)
     def endOfFileNotice(self, lst):
@@ -882,7 +884,7 @@ class VideoHandler(QtCore.QObject):
         self.videoDict[path][idx] = None        
         
         self.newVideoLoader.emit([path, self, self.selectedVials, 
-                                  idx, idxRange])        
+                                  idx, idxRange])
         
         if path not in self.annoDict.keys():
 #             self.newAnnotationLoader.emit([path])

@@ -419,7 +419,7 @@ class AnnotationLoaderLuncher(QtCore.QObject):
         key = lst[0]
         videoPath = lst[1]
         aL = None
-
+        videoLength = lst[2]
         
 #         path = '.'.join(path.split(self.videoEnding)[:1]) + '.bhvr'
 
@@ -463,7 +463,7 @@ class AnnotationLoaderLuncher(QtCore.QObject):
             cfg.log.info("recycle new AnnotationLoader {0}, was previous: {1}".format(videoPath, aL.bhvrPath))
             thread, signal = self.threads[aL]
             aL.init(bhvrPath, videoPath, key, thread, self.videoExtension)
-            signal.emit()
+            signal.emit([videoLength])
 
         self.createdAnnotationLoader.emit([key, videoPath, aL])
         
@@ -509,7 +509,7 @@ class AnnotationLoaderLuncher(QtCore.QObject):
             
 class AnnotationLoader(QtCore.QObject):        
     loadedAnnotation = QtCore.Signal(list) 
-    startLoading = QtCore.Signal()
+    startLoading = QtCore.Signal(list)
 
     @cfg.logClassFunction
     def __del__(self):        
@@ -546,9 +546,12 @@ class AnnotationLoader(QtCore.QObject):
         self.thread = thread
         self.videoExtension = videoExtension
     
-    @cfg.logClassFunction
-    def loadAnnotation(self):
-        from os.path import isfile    
+    # @cfg.logClassFunction
+    @QtCore.Slot(list)
+    def loadAnnotation(self, lst):
+        from os.path import isfile
+
+        videoLength = lst[0]
         
         self.loading = True     
                     
@@ -562,11 +565,14 @@ class AnnotationLoader(QtCore.QObject):
                 cfg.log.info("AnnotationLoader: loaded Annotation {0} {1}".format(self.bhvrPath, self))
             except:
                 cfg.log.warning("load annotation of "+f+" failed, reset annotaions")
-                videoLength = self.retrieveVideoLength(self.bhvrPath)
+                if videoLength is None:
+                    videoLength = self.retrieveVideoLength(self.bhvrPath)
                 out = Annotation.Annotation(frameNo=videoLength, vialNames=self.vialNames)
         else:
             cfg.log.warning("AnnotationLoader: f does NOT exist create empty Annotation at {0}".format(self.bhvrPath))
-            videoLength = self.retrieveVideoLength(self.videoPath)
+            if videoLength is None:
+                videoLength = self.retrieveVideoLength(self.videoPath)
+
             out = Annotation.Annotation(frameNo=videoLength, vialNames=self.vialNames)
             cfg.log.info("new annotation with length {0}".format(videoLength))
 
