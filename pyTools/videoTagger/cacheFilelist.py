@@ -88,6 +88,7 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
         extension = ".{0}".format(videoExtension)
 
     videoList = systemMisc.providePosList(videoPath, ending=extension)
+    backgroundList = systemMisc.providePosList(videoPath, ending='png')
 
     if len(videoList) == 3:
         core = '.'.join(sorted(videoList)[0].split('.')[:-1])
@@ -103,8 +104,11 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
 
     rootPath = getPathDirname(videoPath)
     videoListRel = [x[len(rootPath)+1:] for x in videoList]
+    bgListRel = [x[len(rootPath)+1:] for x in backgroundList]
+    data = {'videoList': videoListRel,
+            'backgroundList': bgListRel}
     with open(videoListPath, "w") as f:
-        json.dump(videoListRel, f)
+        json.dump(data, f)
 
     potBhvrList = convertVideoToBehaviourFiles(videoList,
                                             patchesFolder,

@@ -199,6 +199,9 @@ class VideoTagger(QtGui.QMainWindow):
         self.postLabelQuery = False
         self.videoExtension = videoExtension
 
+
+        self.bgImgArray = 0
+
         if type(selectedVial) == int:
             self.selectedVial = [selectedVial]
         else:
@@ -268,8 +271,14 @@ class VideoTagger(QtGui.QMainWindow):
         
         self.filterList = []
 
-        self.fileListRel = self.getFileList(path, self.getVideoExtension(),
+        self.fileListRel, self.bgListRel =\
+                        self.getFileList(path, self.getVideoExtension(),
                                          videoListPathRel)
+
+        if self.bgListRel:
+            self.bgList = [os.path.join(self.path, x) for x in self.bgListRel]
+        else:
+            self.bgList = []
 
         self.fileList = self.getAbsolutePaths(self.fileListRel)
 
@@ -291,14 +300,16 @@ class VideoTagger(QtGui.QMainWindow):
 
         # self.fileList = self.convertFileList(self.fileList, '.' + self.videoExtension)
 
-        self.vh = VH.VideoHandler(self.fileList, self.changeVideo, 
+        self.vh = VH.VideoHandler(self.fileList, self.bgList,
+                                  self.changeVideo,
                                self.getSelectedVial(), startIdx=self.idx,
                                videoExtension='.' + videoExtension,
                                bufferWidth=bufferWidth, 
                                bufferLength=bufferLength,
                                positionsFolder=self.positionsFolder,
                                patchesFolder=self.patchesFolder,
-                               behaviourFolder=behaviourFolder)
+                               behaviourFolder=behaviourFolder,
+                               currentROI=self.vialROI[self.selectedVial[0]])
         
         
         self.updateFrameList(range(2000))
@@ -393,15 +404,21 @@ class VideoTagger(QtGui.QMainWindow):
         if path.endswith(videoExtension):
             fileList = [path]#.split(videoExtension)[0] + '.' + videoExtension]
             videoListRel = [x[len(rootPath)+1:] for x in fileList]
+            bgListRel = []
         elif not videoListPathRel \
         or not os.path.exists(CFL.generateVideoListPath(path,
                                                         videoListPathRel)[0]):
             fileList = systemMisc.providePosList(path, ending='.' + videoExtension)#'.bhvr')
             videoListRel = [x[len(rootPath)+1:] for x in fileList]
+
+            fileList = systemMisc.providePosList(path, ending='.png')
+            bgListRel = [x[len(rootPath)+1:] for x in fileList]
         else:
             videoListPath = CFL.generateVideoListPath(path, videoListPathRel)[0]
             with open(videoListPath, "r") as f:
-                videoListRel = json.load(f)
+                tmp = json.load(f)
+                videoListRel = tmp['videoList']
+                bgListRel = tmp['backgroundList']
 
         if len(videoListRel) == 1:
             # TODO reencode video
@@ -414,6 +431,7 @@ class VideoTagger(QtGui.QMainWindow):
             and core + '_small.' + videoExtension in videoListRel \
             and core + '.' + videoExtension in videoListRel:
                 videoListRel = [core + '_small.' + videoExtension]
+                bgListRel = []
                 self.startVideoPath = videoListRel[0]
         #     else:
         #         fileList = self.convertFileList(fileList, '.' + videoExtension)
@@ -421,7 +439,7 @@ class VideoTagger(QtGui.QMainWindow):
         #     fileList = self.convertFileList(fileList, '.' + videoExtension)
         #         videoListRel = [x[len(rootPath)+1:] for x in fileList]
 
-        return videoListRel
+        return videoListRel, bgListRel
 
     def getVideoExtension(self):
         if self.croppedVideo:
@@ -474,7 +492,8 @@ class VideoTagger(QtGui.QMainWindow):
             self.videoListPathRel = None
         self.croppedVideo = self.le_croppedVideo.isChecked()
         self.runningIndeces = self.le_filesRunningIdx.isChecked()
-        self.fileListRel = self.getFileList(self.path, self.getVideoExtension(),
+        self.fileListRel, self.bgListRel =\
+                    self.getFileList(self.path, self.getVideoExtension(),
                                          self.videoListPathRel)
 
         self.fileList = self.getAbsolutePaths(self.fileListRel)
@@ -680,7 +699,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.tryToLoadConfig(self.le_videoPath.text())
 
     def populateFormWithInternalSettings(self):
-        self.fileListRel = self.getFileList(self.path, self.getVideoExtension(),
+        self.fileListRel, self.bgListRel =\
+                    self.getFileList(self.path, self.getVideoExtension(),
                                          self.videoListPathRel)
 
         self.fileList = self.getAbsolutePaths(self.fileListRel)
@@ -1818,6 +1838,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         frame = self.frames[0]
         anno = frame[2]
+        background = frame[3]
 
         self.displayFrame(frame, sv)
 
@@ -1838,7 +1859,9 @@ class VideoTagger(QtGui.QMainWindow):
         self.updateHUD()
         if self.fullVideoDialog is not None:
             self.fullVideoDialog.graphicsView.viewport().update()
-             
+
+        if background is not None:
+            self.updateBackground(background)
 
 
         
@@ -2071,12 +2094,26 @@ class VideoTagger(QtGui.QMainWindow):
         penCol.setHsv(50, 255, 255, 255)
         self.cropRect = self.videoScene.addRect(geo, QtGui.QPen(penCol))
 
+    def updateBackground(self, background):
+        pixmap = QtGui.QPixmap()
+        px = QtGui.QPixmap.fromImage(background)
+
+        self.videoScene.removeItem(self.bgImg)
+        self.bgImg = QtGui.QGraphicsPixmapItem(px)
+        self.videoScene.addItem(self.bgImg)
+
+
+        self.bgImg.setZValue(-1)
+
+
     @cfg.logClassFunction
     def setBackground(self, path=None):
         
         if path:        
             a = plt.imread(path) * 255
-            
+
+            self.bgImgArray = a
+
             # crop and rotate background image to show only one vial
             rng = slice(*self.vialROI[self.selectedVial[0]])
             a = np.rot90(a[:, rng]).astype(np.uint32)
@@ -2095,6 +2132,7 @@ class VideoTagger(QtGui.QMainWindow):
             
             pixmap = QtGui.QPixmap()
             px = QtGui.QPixmap.fromImage(im)
+
             
         else:
             h = 250

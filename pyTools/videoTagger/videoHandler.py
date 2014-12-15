@@ -32,9 +32,11 @@ class VideoHandler(QtCore.QObject):
     changedFile = QtCore.Signal(str)
     
     @cfg.logClassFunction
-    def __init__(self, videoPathList, fileChangeCb, selectedVials=[0], startIdx=0,
+    def __init__(self, videoPathList, backgroundPathList,
+                 fileChangeCb, selectedVials=[0], startIdx=0,
                  videoExtension='.avi', bufferWidth=300, bufferLength=4,
-                 patchesFolder='', positionsFolder='', behaviourFolder=''):
+                 patchesFolder='', positionsFolder='', behaviourFolder='',
+                 currentROI=[]):
         super(VideoHandler, self).__init__()        
         
         self.videoDict = dict()
@@ -63,7 +65,9 @@ class VideoHandler(QtCore.QObject):
         
         
         self.videoPathList = sorted(videoPathList)
+        self.bgPathList = sorted(backgroundPathList)
         self.posPath = videoPathList[startIdx]
+        self.bgNeighboursLUT = dict()
         
         
         self.annoAltStart = None
@@ -118,7 +122,19 @@ class VideoHandler(QtCore.QObject):
 
         self.posCache.getItem(self.getPositionPath(self.posPath),
                               checkNeighbours=True)
-        
+
+
+        if self.bgPathList:
+            self.preComputeClosestBackground()
+
+            self.bgCache = Cache.BackgroundFileCache(
+                                        vialROI=currentROI,
+                                        sortedFileList=self.bgPathList,
+                                        size=100)
+
+
+            self.bgCache.getItem(self.bgNeighboursLUT[self.posPath],
+                                        checkNeighbours=True)
         
         self.bufferEndingQueue = []         # queue of videos that need to
                                             # be prefetched (i.e. bufferEnding
@@ -222,6 +238,27 @@ class VideoHandler(QtCore.QObject):
 
         return [pos, frame, annotation]
 
+    def preComputeClosestBackground(self):
+        self.bgNeighboursLUT = dict()
+        videoBasenames = [os.path.basename(x) for x in self.videoPathList]
+        bgBasenames = [os.path.basename(x) for x in self.bgPathList]
+        self.bgNeighboursLUT[self.videoPathList[0]] = videoBasenames[0]
+        bgN = 0
+        skippedList = []
+        for i,videoPath in enumerate(self.videoPathList):
+            if videoBasenames[i] >= bgBasenames[bgN]:
+                oldBGN = bgN
+                while videoBasenames[i] >= bgBasenames[bgN]\
+                and bgN + 1 < len(bgBasenames):
+                    bgN += 1
+                    if bgN > oldBGN + 1:
+                        skippedList += [bgN - 1]
+
+            self.bgNeighboursLUT[videoPath] = self.bgPathList[bgN]
+
+        self.bgPathList = sorted(set(zip(*self.bgNeighboursLUT.items())[1]))
+
+
     def alignFullResVideo(self):
         pass
 
@@ -314,6 +351,14 @@ class VideoHandler(QtCore.QObject):
         
         return frame
 
+    def getCurrentBackground(self):
+        try:
+            bgPath = self.bgNeighboursLUT[self.posPath]
+            background = self.bgCache.getItem(bgPath, checkNeighbours=True)
+        except KeyError:
+            background = None
+
+        return background
 
     def getCurrentAnnotation(self):
         if self.posPath in self.annoDict.keys():
@@ -388,12 +433,14 @@ class VideoHandler(QtCore.QObject):
 
         annotation = self.getCurrentAnnotation()
 
+        background = self.getCurrentBackground()
+
         frameList += [frame]
             
         frameList += [annotation]
 
 
-        return [pos, frame, annotation]
+        return [pos, frame, annotation, background]
     
 
 
