@@ -3,6 +3,7 @@ import numpy as np
 from PySide import QtCore, QtGui
 import qimage2ndarray as QI2A
 import pylab as plt
+import scipy.misc as msc
 
 
 import pyTools.misc.config as cfg
@@ -124,8 +125,18 @@ class BackgroundFileCache(CachePrefetchBase):
         self.vialROI = vialROI
 
     def loadDatum(self, key):
-        background = plt.imread(key) * 255
+        img = QtGui.QImage()
+        img.load(key)
 
+        rawImg = QI2A.recarray_view(img)
+
+        background = np.zeros((rawImg.shape[0], rawImg.shape[1], 4),
+                              dtype=rawImg['r'].dtype)
+
+        background[:,:,0] = rawImg['r']
+        background[:,:,1] = rawImg['g']
+        background[:,:,2] = rawImg['b']
+        background[:,:,3] = rawImg['a']
 
         # crop and rotate background image to show only one vial
         rng = slice(*self.vialROI)
