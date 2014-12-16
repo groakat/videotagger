@@ -15,10 +15,18 @@ def scanForVideoFiles(folder):
 
 def checkForCleanFolder(folder):
     fileList = scanForVideoFiles(folder)
-    if len(fileList) != 1:
-        raise ValueError("The directory you have chosen is not 'clean'. I.e. you need to select a folder that contains only a single video file you want to work on")
-    else:
+    if len(fileList) == 1:
         return fileList[0]
+    elif len(fileList) == 3:
+        core = os.path.commonprefix(fileList)
+        videoExtension = fileList[0].split('.')[-1]
+        if core + '_full.' + videoExtension in fileList \
+        and core + '_small.' + videoExtension in fileList \
+        and core + '.' + videoExtension in fileList:
+            fileList = [core + '.' + videoExtension]
+            return fileList[0]
+    else:
+        raise ValueError("The directory you have chosen is not 'clean'. I.e. you need to select a folder that contains only a single video file you want to work on")
 
 def generateSmallVideo(videoPath, ext='avi'):
     basename = os.path.basename(videoPath)
@@ -29,7 +37,7 @@ def generateSmallVideo(videoPath, ext='avi'):
     targetBasename = basename_wo_ext + "_small" + os.path.extsep + ext
     targetPath = os.path.join(folder, targetBasename)
 
-    ffmpegStr = ('ffmpeg -i "{orgPath}" -vf scale=320:-1 ' + \
+    ffmpegStr = ('ffmpeg -i "{orgPath}" -y -vf scale=320:-1 ' + \
                 '-strict -2 "{targetPath}"').format(orgPath=videoPath,
                                                  targetPath=targetPath)
 
@@ -43,7 +51,7 @@ def generateSmallVideo(videoPath, ext='avi'):
     targetFullBasename = basename_wo_ext + "_full" + os.path.extsep + ext
     targetFullPath = os.path.join(folder, targetFullBasename)
 
-    ffmpegStr = ('ffmpeg -i "{orgPath}" -an ' +\
+    ffmpegStr = ('ffmpeg -i "{orgPath}" -y -an ' +\
                 '-b 10000k -c:v mpeg4 "{targetPath}"').format(orgPath=videoPath,
                                                       targetPath=targetFullPath)
 

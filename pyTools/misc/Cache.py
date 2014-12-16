@@ -89,7 +89,12 @@ class CachePrefetchBase(CacheBase, QtCore.QObject):
                 pass
 
     def checkNeighboursRight(self, rng=10):
-        key = sorted(self.cache.keys())[-1]
+        try:
+            key = sorted(self.cache.keys())[-1]
+        except IndexError:
+            # cache is empty, probably because self.fileList is []
+            return
+
         self.checkNeighbours(key, rng)
 
     def getItem(self, key, checkNeighbours=False):

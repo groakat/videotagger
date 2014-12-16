@@ -83,19 +83,22 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
         else:
             sv = selectedVial
 
-        extension = ".v{0}.{1}".format(sv, videoExtension)
+        videoExtension = ".v{0}.{1}".format(sv, videoExtension)
+        posExtension = ".v{0}.pos.npy".format(sv)
     else:
-        extension = ".{0}".format(videoExtension)
+        videoExtension = ".{0}".format(videoExtension)
+        posExtension = ".pos.npy"
 
-    videoList = systemMisc.providePosList(videoPath, ending=extension)
+    videoList = systemMisc.providePosList(videoPath, ending=videoExtension)
     backgroundList = systemMisc.providePosList(videoPath, ending='png')
+    posList = systemMisc.providePosList(videoPath, ending=posExtension)
 
     if len(videoList) == 3:
         core = '.'.join(sorted(videoList)[0].split('.')[:-1])
-        if core + '_full' + extension in videoList \
-        and core + '_small' + extension in videoList \
-        and core + extension in videoList:
-            videoList = [core + '_small' + extension]
+        if core + '_full' + videoExtension in videoList \
+        and core + '_small' + videoExtension in videoList \
+        and core + videoExtension in videoList:
+            videoList = [core + '_small' + videoExtension]
 
     videoListPath, videoListPathRel = generateVideoListPath(videoPath,
                                                            videoListPath)
@@ -105,8 +108,10 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
     rootPath = getPathDirname(videoPath)
     videoListRel = [x[len(rootPath)+1:] for x in videoList]
     bgListRel = [x[len(rootPath)+1:] for x in backgroundList]
+    posListRel = [x[len(rootPath)+1:] for x in posList]
     data = {'videoList': videoListRel,
-            'backgroundList': bgListRel}
+            'backgroundList': bgListRel,
+            'positionList': posListRel}
     with open(videoListPath, "w") as f:
         json.dump(data, f)
 

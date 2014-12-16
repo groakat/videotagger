@@ -32,7 +32,7 @@ class VideoHandler(QtCore.QObject):
     changedFile = QtCore.Signal(str)
     
     @cfg.logClassFunction
-    def __init__(self, videoPathList, backgroundPathList,
+    def __init__(self, videoPathList, backgroundPathList, positionPathList,
                  fileChangeCb, selectedVials=[0], startIdx=0,
                  videoExtension='.avi', bufferWidth=300, bufferLength=4,
                  patchesFolder='', positionsFolder='', behaviourFolder='',
@@ -66,6 +66,7 @@ class VideoHandler(QtCore.QObject):
         
         self.videoPathList = sorted(videoPathList)
         self.bgPathList = sorted(backgroundPathList)
+        self.posList = sorted(positionPathList)
         self.posPath = videoPathList[startIdx]
         self.bgNeighboursLUT = dict()
         
@@ -115,13 +116,16 @@ class VideoHandler(QtCore.QObject):
         self.newAnnotationLoader.connect(self.aLL.lunchAnnotationLoader)
         self.deleteAnnotationLoader.connect(self.aLL.deleteAnnotationLoader)
 
-        positionList = sorted([self.getPositionPath(x) for x in self.videoPathList])
+        # positionList = sorted([self.getPositionPath(x) for x in self.videoPathList])
 
-        self.posCache = Cache.PosFileCache(sortedFileList=positionList,
+        self.posCache = Cache.PosFileCache(sortedFileList=self.posList,
                                            size=2000)
 
-        self.posCache.getItem(self.getPositionPath(self.posPath),
+        try:
+            self.posCache.getItem(self.getPositionPath(self.posPath),
                               checkNeighbours=True)
+        except IOError:
+            pass
 
 
         if self.bgPathList:
@@ -516,7 +520,7 @@ class VideoHandler(QtCore.QObject):
 
         try:
             pos = self.posCache.getItem(posKey)
-        except:
+        except IOError:
             pos = None
             
         return pos
@@ -693,7 +697,7 @@ class VideoHandler(QtCore.QObject):
             
         # advance and behind buffer key
         advKeyIdx = self.videoPathList.index(sorted(bufferedKeys.keys())[-1]) + 1
-        if advKeyIdx > len(self.videoPathList):
+        if advKeyIdx >= len(self.videoPathList):
             advKey = None
         else:
             advKey = self.videoPathList[advKeyIdx]

@@ -271,7 +271,7 @@ class VideoTagger(QtGui.QMainWindow):
         
         self.filterList = []
 
-        self.fileListRel, self.bgListRel =\
+        self.fileListRel, self.bgListRel, self.posListRel=\
                         self.getFileList(path, self.getVideoExtension(),
                                          videoListPathRel)
 
@@ -279,6 +279,11 @@ class VideoTagger(QtGui.QMainWindow):
             self.bgList = [os.path.join(self.path, x) for x in self.bgListRel]
         else:
             self.bgList = []
+
+        if self.posListRel:
+            self.posList = [os.path.join(self.path, x) for x in self.posListRel]
+        else:
+            self.posList = []
 
         self.fileList = self.getAbsolutePaths(self.fileListRel)
 
@@ -300,7 +305,12 @@ class VideoTagger(QtGui.QMainWindow):
 
         # self.fileList = self.convertFileList(self.fileList, '.' + self.videoExtension)
 
-        self.vh = VH.VideoHandler(self.fileList, self.bgList,
+        if self.selectedVial is not None:
+            currentROI = self.vialROI[self.selectedVial[0]]
+        else:
+            currentROI = None
+
+        self.vh = VH.VideoHandler(self.fileList, self.bgList, self.posList,
                                   self.changeVideo,
                                self.getSelectedVial(), startIdx=self.idx,
                                videoExtension='.' + videoExtension,
@@ -309,7 +319,7 @@ class VideoTagger(QtGui.QMainWindow):
                                positionsFolder=self.positionsFolder,
                                patchesFolder=self.patchesFolder,
                                behaviourFolder=behaviourFolder,
-                               currentROI=self.vialROI[self.selectedVial[0]])
+                               currentROI=currentROI)
         
         
         self.updateFrameList(range(2000))
@@ -405,6 +415,7 @@ class VideoTagger(QtGui.QMainWindow):
             fileList = [path]#.split(videoExtension)[0] + '.' + videoExtension]
             videoListRel = [x[len(rootPath)+1:] for x in fileList]
             bgListRel = []
+            posListRel = []
         elif not videoListPathRel \
         or not os.path.exists(CFL.generateVideoListPath(path,
                                                         videoListPathRel)[0]):
@@ -413,12 +424,16 @@ class VideoTagger(QtGui.QMainWindow):
 
             fileList = systemMisc.providePosList(path, ending='.png')
             bgListRel = [x[len(rootPath)+1:] for x in fileList]
+
+            fileList = systemMisc.providePosList(path, ending='.pos.npy')
+            posListRel = [x[len(rootPath)+1:] for x in fileList]
         else:
             videoListPath = CFL.generateVideoListPath(path, videoListPathRel)[0]
             with open(videoListPath, "r") as f:
                 tmp = json.load(f)
                 videoListRel = tmp['videoList']
                 bgListRel = tmp['backgroundList']
+                posListRel = tmp['positionList']
 
         if len(videoListRel) == 1:
             # TODO reencode video
@@ -432,6 +447,7 @@ class VideoTagger(QtGui.QMainWindow):
             and core + '.' + videoExtension in videoListRel:
                 videoListRel = [core + '_small.' + videoExtension]
                 bgListRel = []
+                posListRel = []
                 self.startVideoPath = videoListRel[0]
         #     else:
         #         fileList = self.convertFileList(fileList, '.' + videoExtension)
@@ -439,7 +455,7 @@ class VideoTagger(QtGui.QMainWindow):
         #     fileList = self.convertFileList(fileList, '.' + videoExtension)
         #         videoListRel = [x[len(rootPath)+1:] for x in fileList]
 
-        return videoListRel, bgListRel
+        return videoListRel, bgListRel, posListRel
 
     def getVideoExtension(self):
         if self.croppedVideo:
@@ -492,7 +508,7 @@ class VideoTagger(QtGui.QMainWindow):
             self.videoListPathRel = None
         self.croppedVideo = self.le_croppedVideo.isChecked()
         self.runningIndeces = self.le_filesRunningIdx.isChecked()
-        self.fileListRel, self.bgListRel =\
+        self.fileListRel, self.bgListRel, self.posListRel =\
                     self.getFileList(self.path, self.getVideoExtension(),
                                          self.videoListPathRel)
 
@@ -699,7 +715,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.tryToLoadConfig(self.le_videoPath.text())
 
     def populateFormWithInternalSettings(self):
-        self.fileListRel, self.bgListRel =\
+        self.fileListRel, self.bgListRel, self.posListRel =\
                     self.getFileList(self.path, self.getVideoExtension(),
                                          self.videoListPathRel)
 
