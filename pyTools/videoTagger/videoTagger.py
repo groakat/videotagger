@@ -34,6 +34,8 @@ import pyTools.videoTagger.graphicsViewFDV as GFDV
 import pyTools.gui.collapseContainer as CC
 import pyTools.videoTagger.prepareFolderForVideoProcessing as PFFVP
 
+import pyTools.system.plugins as P
+
 import numpy as np
 import scipy.misc as scim
 import pylab as plt
@@ -3218,7 +3220,29 @@ class VideoTagger(QtGui.QMainWindow):
                 runningIndeces, fdvtPathRel, videoListPathRel, bufferWidth, \
                 bufferLength, startFrame
 
+    def getVideoDataForPlugin(self):
+        annotationFilters = []
 
+        for a in self.annotations:
+            annotationFilters += [Annotation.AnnotationFilter(
+                                        vials=self.selectedVial,
+                                        annotators=a['annot'],
+                                        behaviours=a['behav'])]
+
+        videoData = P.VideoData(rootFolder=self.path,
+                                videoListRel=self.fileListRel,
+                                posListRel=self.posListRel,
+                                annotationFolder=self.bhvrFolder,
+                                featureFolder='feat',
+                                videoFolder=self.patchesFolder,
+                                positionFolder=self.positionsFolder,
+                                annotationFilters=annotationFilters)
+
+        return videoData
+
+
+    def updateFDVT(self, meta, fdvt):
+        print("update FDVT")
 
 class ContextLineEdit(QtGui.QLineEdit):
 

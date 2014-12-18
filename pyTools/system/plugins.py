@@ -7,10 +7,14 @@ import json
 MetaData = namedtuple('plugin_meta_data', ['name',
                                            'description'])
 
-VideoData = namedtuple('video_data', ["posList",
-                                      "annotationList",
-                                      'videoList',
-                                      'featureFolder'])
+VideoData = namedtuple('video_data', ["rootFolder",
+                                      'videoListRel',
+                                      'posListRel',
+                                      "annotationFolder",
+                                      'featureFolder',
+                                      'videoFolder',
+                                      'positionFolder',
+                                      'annotationFilters'])
 
 class PluginBase(object):
     def __init__(self, videoData, FDVTsendCallback):
@@ -21,12 +25,17 @@ class PluginBase(object):
         :return:
         """
         self.meta = self.getMeta()
-        self.posList = []
-        self.annotationList = []
-        self.videoList = []
+        self.rootFolder = None
+        self.videoListRel = []
+        self.posListRel = []
+        self.annotationFolder = None
         self.featureFolder = None
+        self.videoFolder = None
+        self.positionFolder = None
+        self.annotationFilters = []
         self.classifier = None
         self.fdvt = None
+        self.widget = None
         self.FDVTsendCallback = FDVTsendCallback
         self.registerFileLists(videoData)
 
@@ -44,6 +53,114 @@ class PluginBase(object):
 
         raise NotImplementedError('You need to implement this method to provide meta data of your plugin')
 
+    def runPlugin(self):
+        """
+        Method that contains the logic of the plugin.
+
+        This means typically that the plugin loops over the video files and
+        extracts some features from the videos and applies a machine
+        learning algorithm to it.
+
+        At the end the function should call `self.sendFDVT()` to update the GUI
+        :return:
+        """
+        raise NotImplementedError('You need to implement this method to provide the logic of your plugin')
+        self.sendFDVT()
+
+    def sendFDVT(self):
+        """
+        Sends the FrameDataVisualizationTree back to the GUI
+        :return:
+        """
+        if self.fdvt is not None:
+            self.FDVTsendCallback(self.meta, self.fdvt)
+        else:
+            ValueError("Call generateFDVT() before sending it")
+
+    def getWidget(self):
+        """
+        Defines a widget that is shown to the user in the main GUI
+        :return: QWidget
+        """
+        if self.widget is not None:
+            return self.widget
+
+        w = QtGui.QWidget()
+        label = QtGui.QLabel("Plugin: {0}".format(self.meta.name))
+        startButton = QtGui.QPushButton("Start")
+        self.statusLabel = QtGui.QLabel()
+        self.progressBar = QtGui.QProgressBar()
+        layout = QtGui.QVBoxLayout()
+
+        layout.addWidget(label)
+        layout.addWidget(startButton)
+        layout.addWidget(self.statusLabel)
+        layout.addWidget(self.progressBar)
+        w.setLayout(layout)
+
+        self.statusLabel.hide()
+        self.progressBar.hide()
+
+        startButton.clicked.connect(self.runPlugin)
+
+        w.setToolTip(self.meta.description)
+
+        self.widget = w
+
+        return w
+
+    def setStatus(self, message, maxProgressValue):
+        """
+        Sets up progress bar and label showing the current process.
+
+        This method can be called a the beginning of each processing step
+        to inform the user of the global progress in the pipeline.
+
+        :param message: typically the current processing step
+        :param maxProgressValue: maximal steps within the current processing task
+        :return:
+        """
+        self.statusLabel.show()
+        self.progressBar.show()
+        self.statusLabel.setText(message)
+        self.progressBar.setMaximum(maxProgressValue)
+        self.widget.updateGeometry()
+
+    def updateStatus(self, progress):
+        """
+        Updates the status to reflect how many steps finished within the current task.
+
+        :param progress: number of steps finished
+        :return:
+        """
+        self.progressBar.setValue(progress)
+
+    def hideStatus(self):
+        """
+        Hides the status part of the plugin widget
+        :return:
+        """
+        self.progressBar.hide()
+        self.statusLabel.hide()
+
+    def registerFileLists(self, videoData):
+        """
+        :param posList: list containing absolute paths to position files
+        :param annotationList: list containing absolute paths to behaviour files (annotations)
+        :param videoList: list containing absolute paths to video files
+        :return:
+        """
+        self.annotationFolder = videoData.annotationFolder
+        self.videoListRel = videoData.videoListRel
+        self.featureFolder = videoData.featureFolder
+        self.annotationFilters = videoData.annotationFilters
+        self.rootFolder = videoData.rootFolder
+        self.videoFolder = videoData.videoFolder
+        self.posListRel = videoData.posListRel
+        self.positionFolder = videoData.positionFolder
+
+
+class ClassificationPluginBase(PluginBase):
     def extractFeatures(self):
         """
         Iteration over video file to extract features
@@ -83,6 +200,8 @@ class PluginBase(object):
         This means typically that the plugin loops over the video files and
         extracts some features from the videos and applies a machine
         learning algorithm to it.
+
+        At the end the function should call `self.sendFDVT()` to update the GUI
         :return:
         """
         self.extractFeatures()
@@ -91,62 +210,7 @@ class PluginBase(object):
         self.generateFDVT()
         self.sendFDVT()
 
-    def sendFDVT(self):
-        if self.fdvt is not None:
-            self.FDVTsendCallback(self.meta, self.fdvt)
-        else:
-            ValueError("Call generateFDVT() before sending it")
-
-    def getWidget(self):
-        """
-        Defines a widget that is shown to the user in the main GUI
-        :return: QWidget
-        """
-        w = QtGui.QWidget()
-        label = QtGui.QLabel("Plugin: {0}".format(self.meta.name))
-        startButton = QtGui.QPushButton("Start")
-        self.statusLabel = QtGui.QLabel()
-        self.progressBar = QtGui.QProgressBar()
-        layout = QtGui.QVBoxLayout()
-
-        layout.addWidget(label)
-        layout.addWidget(startButton)
-        layout.addWidget(self.statusLabel)
-        layout.addWidget(self.progressBar)
-        w.setLayout(layout)
-
-        self.statusLabel.hide()
-        self.progressBar.hide()
-
-        startButton.clicked.connect(self.runPlugin)
-        return w
-
-    def setStatus(self, message, maxProgressValue):
-        self.statusLabel.show()
-        self.progressBar.show()
-        self.statusLabel.setText(message)
-        self.progressBar.setMaximum(maxProgressValue)
-
-    def updateStatus(self, progress):
-        self.progressBar.setValue(progress)
-
-    def hideStatus(self):
-        self.progressBar.hide()
-        self.statusLabel.hide()
-
-    def registerFileLists(self, videoData):
-        """
-        :param posList: list containing absolute paths to position files
-        :param annotationList: list containing absolute paths to behaviour files (annotations)
-        :param videoList: list containing absolute paths to video files
-        :return:
-        """
-        self.posList = videoData.posList
-        self.annotationList = videoData.annotationList
-        self.videoList = videoData.videoList
-        self.featureFolder = videoData.featureFolder
-
-class TutorialPlugin(PluginBase):
+class TutorialPlugin(ClassificationPluginBase):
     def getMeta(self):
         """
         Function that return meta data of plugin
@@ -161,8 +225,8 @@ class TutorialPlugin(PluginBase):
         Iteration over video file to extract features
         :return:
         """
-        self.setStatus("extracting features..", len(self.videoList))
-        for i, videoFile in enumerate(self.videoList):
+        self.setStatus("extracting features..", len(self.videoListRel))
+        for i, videoFile in enumerate(self.videoListRel):
             print("Extracting features of {0}".format(videoFile))
             QtCore.QThread.msleep(1)
             self.updateStatus(i)

@@ -2,12 +2,12 @@ from PySide import QtCore, QtGui
 import pyTools.system.plugins as P
 import json
 
-import imp
-import os
+from pluginManager import PluginParser as PP
 
 class PluginGUITest(QtGui.QMainWindow):
     def __init__(self):
         super(PluginGUITest, self).__init__()
+        self.plugins = []
 
         self.pluginFolder = '/home/peter/phd/code/pyTools/pyTools/pyTools/sandbox/plugins/'
         self.MainModule = '__init__'
@@ -37,7 +37,7 @@ class PluginGUITest(QtGui.QMainWindow):
         self.pb_debug.clicked.connect(self.buttonClick)
 
     def buttonClick(self):
-        self.getTutorialPlugin()
+        self.getPluginsFromFolder()
 
     def updateFDVT(self, meta, fdvt):
         print("update FDVT")
@@ -52,6 +52,22 @@ class PluginGUITest(QtGui.QMainWindow):
                               featureFolder='')
 
         return videoData
+
+    def getPluginsFromFolder(self):
+        videoData = self.loadFileList()
+        plugins = PP.PluginParser.retrievePlugins('/home/peter/phd/code/pyTools/pyTools/pyTools/sandbox/plugins/', P.PluginBase)
+
+        for i in range(len(self.plugins)-1, -1, -1):
+            p = self.plugins[i]
+            self.layout.removeWidget(p.getWidget())
+
+            del self.plugins[i]
+
+        self.plugins = []
+        for p in plugins:
+            plugin = p(videoData, self.updateFDVT)
+            self.plugins += [plugin]
+            self.layout.addWidget(plugin.getWidget())
 
     def getTutorialPlugin(self):
         videoData = self.loadFileList()
