@@ -2,6 +2,7 @@ import pyTools.system.plugins as P
 import os
 import numpy as np
 import pyTools.features.trajectory.Burgos as B
+import pyTools.videoProc.annotation as A
 
 
 class SimpleFlyShowCase(P.ClassificationPluginBase):
@@ -13,6 +14,9 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
         meta = P.MetaData(name='Simple Trajectory Classifier',
                         description='Simple Plugin to show how to implement interfaces using simple trajectory features')
         return meta
+
+    def rel2absFile(self, relFile):
+        return  os.path.join(self.rootFolder, relFile)
 
     def generateFeatureSavePath(self, trajPath):
         posFolder = os.path.dirname(trajPath)
@@ -29,8 +33,35 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
                                     os.path.basename(trajPath))
 
         trajFeatFile = trajFeatFile[:-len('.pos.npy')] + '.burgos.npy'
-        print("saving to {0}".format(trajFeatFile))
         return trajFeatFile
+
+
+    def convertVideoToAnnoFilename(self, videoFile):
+        bn = os.path.basename(videoFile)[:-4] + '.bhvr'
+        baseFolder = os.path.dirname(videoFile)[:-len(self.videoFolder)]
+        annoFile = os.path.join(baseFolder,
+                                self.annotationFolder,
+                                bn)
+        return annoFile
+
+    def convertAnnoToVideoFilename(self, annoFile):
+        bn = os.path.basename(annoFile)[:-5] + self.videoListRel[0][-4:]
+        baseFolder = os.path.dirname(annoFile)[:-len(self.annotationFolder)]
+        videoFile = os.path.join(baseFolder,
+                                self.videoFolder,
+                                bn)
+
+        return videoFile
+
+    def convertAnnoToFeatFilename(self, annoFile):
+        bn = os.path.basename(annoFile)[:-5] + '.burgos.npy'
+        baseFolder = os.path.dirname(annoFile)[:-len(self.annotationFolder)]
+        featFile = os.path.join(baseFolder,
+                                self.featureFolder,
+                                'burgos',
+                                bn)
+
+        return featFile
 
     def extractFeatures(self):
         """
@@ -58,7 +89,7 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
         currentTraj = nextTraj
 
 
-        for i in range(2, len(self.posListRel)-1):
+        for i in range(1, len(self.posListRel)-1):
             nextTraj = np.load(os.path.join(self.rootFolder,
                                             self.posListRel[i]))
 
@@ -86,11 +117,83 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
                                       dt=currentTraj.shape[0]/1000.0)[1:]
         np.save(self.generateFeatureSavePath(self.posListRel[-1]), feat)
 
+
+    def annotationFileList(self):
+        annoFileList = []
+        for videoFile in self.videoListRel:
+            annoFileList += [self.convertVideoToAnnoFilename(videoFile)]
+
+        return annoFileList
+
+
+    def createAnnotationArrays(self, annoFileList):
+        maxClass = len(self.annotationFilters)
+        annotationArrays = dict()
+        for annoFile in sorted(annoFileList):
+            if os.path.exists(self.rel2absFile(annoFile)):
+                anno = A.Annotation()
+                anno.loadFromFile(self.rel2absFile(annoFile))
+                for i, annoFilter in enumerate(self.annotationFilters):
+                    filtAnno = anno.filterFrameListBool(annoFilter)
+                    if i == 0:
+                        annotationArrays[annoFile] = np.zeros(
+                                                    (filtAnno.shape[0],
+                                                     maxClass),
+                                                    dtype=np.bool)
+                    annotationArrays[annoFile][:,i] = filtAnno
+
+            1/0
+
+        return annotationArrays
+
+
+    def getClassLabels(self):
+        annoFileList = self.annotationFileList()
+        annoArrays = self.createAnnotationArrays(annoFileList)
+        return annoArrays
+
+
+    def loadFeatures(self, select, annoFile):
+        featFile = self.rel2absFile(self.convertAnnoToFeatFilename(annoFile))
+        feat = np.load(featFile)
+        return feat[select]
+
+    def createClassArray(self, classMatrix, select):
+        """
+        Simplified. Does not account for two concurrent labels in a frame
+        :param classArray:
+        :param select:
+        :return:
+        """
+        maxClass = len(self.annotationFilters)
+        filtered = classMatrix[select]
+        classMask = np.arange(maxClass) + 1
+        return np.max(filtered * classMask, axis=1)
+
+
+    def loadFeatureMatrix(self, annoArrays):
+        classArray = []
+        featureArray = []
+        for annoFile, classMatrix in annoArrays.items():
+            select = np.where(classMatrix == True)[0]
+            if not select.size: # if not "empty"
+                featureArray += [self.loadFeatures(select, annoFile)]
+                classArray += [self.createClassArray(classMatrix, select)]
+
+        1/0
+
+
+    def getTrainingsMatrices(self):
+        annoArrays = self.getClassLabels()
+        classMatrix, featureMatrix = self.loadFeatureMatrix(annoArrays)
+        1/0
+
     def trainClassifier(self):
         """
         Trains a classifier on the given labels
         :return:
         """
+        self.getTrainingsMatrices()
         self.setStatus("Training classifier..", 100)
         print("Training classifier")
         for i in range(100):
@@ -131,8 +234,8 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
         At the end the function should call `self.sendFDVT()` to update the GUI
         :return:
         """
-        self.extractFeatures()
-        # self.trainClassifier()
+        # self.extractFeatures()
+        self.trainClassifier()
         # self.classify()
         # self.generateFDVT()
         # self.sendFDVT()

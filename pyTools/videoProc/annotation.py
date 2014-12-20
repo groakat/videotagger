@@ -2,6 +2,7 @@ import json
 import copy
 import os
 from collections import namedtuple
+import numpy as np
 
 AnnotationFilter = \
         namedtuple("AnnotationFilter", ["vials", "annotators", "behaviours"])
@@ -243,6 +244,120 @@ class Annotation():
         # self.children += [out]
         
         return out
+
+    def filterFrameListBool(self, filterTuple, frameRange=None, exactMatch=True): #vialNo=None, behaviourName=None, annotator=None):
+        """
+        Returns a new annotation object that contains only annotations that
+        satisfy all filter criteria.
+
+        Args:
+            vialNo (None, int or list of int):
+                                defines the vials that will be filtered. Possible
+                                values are
+
+                                None:
+                                    do not filter any specific vial
+                                int:
+                                    search only in this single vial
+                                list of int:
+                                    search in all vials given in the list
+            behaviourName (None or list of strings):
+                                defines the behaviours that will be filtered.
+                                Possible values are
+
+                                None:
+                                    do not filter any specific behaviour
+                                list of string:
+                                    behaviours to filter
+            annotator (None or list of strings):
+                                defines the annotators that will be filtered.
+                                Possible values are
+
+                                None:
+                                    do not filter any specific annotator
+                                list of strings:
+                                    annotators to be filtered for
+
+            frameRange (list of int):
+                                frames in which the filterTuple is searched for
+
+        Returns:
+            new annotator object satisfying the filter criteria
+        """
+
+        vialNo = filterTuple.vials
+        behaviourName = filterTuple.behaviours
+        annotator = filterTuple.annotators
+
+        if vialNo is None\
+        or vialNo == [None]:
+            vials = range(len(self.frameList[0]))
+        elif type(vialNo) == int:
+            vials = [vialNo]
+        else:
+            # asuming vialNo to be a list
+            vials = vialNo
+
+        if frameRange is None:
+            frameRange = range(len(self.frameList))
+
+        filteredList = np.zeros((max(frameRange) + 1,), dtype=np.bool)
+        for frameNo in frameRange:
+            behaviourPresent = False
+            newVials = []
+
+            for vIdx in vials:
+                v = self.frameList[frameNo][vIdx]
+
+                vNew = dict()
+
+                if "behaviour" in v:
+                    bNew = dict()
+
+                    if behaviourName == None:
+                        bhvrList = v["behaviour"].keys()
+                    else:
+                        bhvrList = behaviourName
+
+                    for bhvrName in bhvrList:
+                        matchList = self.behaviourMatch(bhvrName, v["behaviour"].keys(),
+                                               exactMatch=exactMatch)
+
+                        for bhvrMatch in matchList:
+                        # if bhvrName in v["behaviour"]:
+                            bhvr = v["behaviour"][bhvrMatch]
+                            an = dict()
+
+                            if annotator is None:
+                                anList = bhvr.keys()
+                            else:
+                                anList = annotator
+
+                            for anName in anList:
+                                if anName in bhvr:
+                                    an[anName] = bhvr[anName]
+
+                            if an:
+                                bNew[bhvrMatch] = an
+
+                    if bNew:
+                        if "name" in v:
+                            vNew['name'] = v['name']
+
+                        vNew['behaviour'] = bNew
+                        newVials += [vNew]
+                        behaviourPresent = True
+                    else:
+                        newVials += [None]
+                else:
+                    newVials += [None]
+
+            if behaviourPresent:
+                filteredList[frameNo] = True
+            else:
+                filteredList[frameNo] = False
+
+        return filteredList
 
     def addAnnotation(self, vial, frames, annotator,behaviour, metadata=1.0):
         """
