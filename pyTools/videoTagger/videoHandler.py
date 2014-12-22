@@ -693,7 +693,7 @@ class VideoHandler(QtCore.QObject):
             
         # advance and behind buffer key
         advKeyIdx = self.videoPathList.index(sorted(bufferedKeys.keys())[-1]) + 1
-        if advKeyIdx > len(self.videoPathList):
+        if advKeyIdx >= len(self.videoPathList):
             advKey = None
         else:
             advKey = self.videoPathList[advKeyIdx]

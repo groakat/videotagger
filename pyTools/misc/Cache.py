@@ -27,7 +27,11 @@ class CacheBase(QtCore.QObject):
         return datum
     
     def retrieveDatum(self, key):
-        datum = self.loadDatum(key)
+        try:
+            datum = self.loadDatum(key)
+        except IOError:
+            datum = None
+            
         if  len(self.cache.keys()) >= self.size:
             self.cache.popitem(last=False)
             

@@ -299,6 +299,10 @@ class VideoTagger(QtGui.QMainWindow):
             self.idx = self.idx[0]
 
         # self.fileList = self.convertFileList(self.fileList, '.' + self.videoExtension)
+        if self.selectedVial is None:
+            currentROI = []
+        else:
+            currentROI = self.vialROI[self.selectedVial[0]]
 
         self.vh = VH.VideoHandler(self.fileList, self.bgList,
                                   self.changeVideo,
@@ -309,7 +313,7 @@ class VideoTagger(QtGui.QMainWindow):
                                positionsFolder=self.positionsFolder,
                                patchesFolder=self.patchesFolder,
                                behaviourFolder=behaviourFolder,
-                               currentROI=self.vialROI[self.selectedVial[0]])
+                               currentROI=currentROI)
         
         
         self.updateFrameList(range(2000))
@@ -483,11 +487,8 @@ class VideoTagger(QtGui.QMainWindow):
             self.tryToLoadConfig(filename)
 
     def loadVideoList(self):
-        self.selectedVial = [int(self.le_vial.text())]
-        self.videoExtension = 'avi'
-        self.path = self.le_videoPath.text()
-        if self.le_bhvrCache.text():
-            self.videoListPathRel = self.le_bhvrCache.text()
+        if self.le_patchesFolder.text():
+            self.videoListPathRel = self.le_patchesFolder.text()
         else:
             self.videoListPathRel = None
         self.croppedVideo = self.le_croppedVideo.isChecked()
@@ -505,9 +506,10 @@ class VideoTagger(QtGui.QMainWindow):
         path = self.le_videoPath.text()
 
         # only load config to get annotations sorted
-        configPath = os.path.join(path, 'videoTaggerConfig.yaml')
+        configPath = os.path.join(path, 'videoTaggerConfig.yaml')		
+        self.registerFormValues()
+        
         if not os.path.exists(configPath):
-            self.registerFormValues()
             self.exportSettings()
 
         videoPath, annotations, annotator, backgroundPath, selectedVial,\
@@ -531,7 +533,7 @@ class VideoTagger(QtGui.QMainWindow):
         videoListPath = self.le_bhvrCache.text()
         behaviourFolder = self.le_bhvrFolder.text()
         patchesFolder = self.le_patchesFolder.text()
-
+        
         if len(self.fileList) == 1 and not croppedVideo:
             config = PFFVP.prepareFolder(path,
                                          alwaysGenerateSmallVideo=True)
@@ -616,7 +618,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.le_vialROI.setText("[ [350,660], [661,960], [971,1260], [1290,1590] ]")
         self.le_background = QtGui.QLineEdit(self)
         self.le_vial = QtGui.QLineEdit(self)
-        self.le_vial.setValidator(QtGui.QIntValidator())
+        #self.le_vial.setValidator(QtGui.QIntValidator())
         self.le_vial.setText("0")
         self.le_vial.editingFinished.connect(self.vialSelected)
         self.le_croppedVideo = QtGui.QCheckBox(self)
@@ -762,10 +764,6 @@ class VideoTagger(QtGui.QMainWindow):
         self.resize(size)
 
     def registerFormValues(self):
-
-        if self.cb_videoSelection.count() == 0:
-            self.loadVideoList()
-
         self.path = self.le_videoPath.text()
         self.annotator = self.le_annotatorName.text()
         self.backgroundPath = self.le_background.text()
@@ -826,7 +824,10 @@ class VideoTagger(QtGui.QMainWindow):
             self.annotations = self.annotations
         except AttributeError:
             self.annotations = []
-
+			
+        if self.cb_videoSelection.count() == 0:
+            self.loadVideoList()
+			
     def submitForm(self):
         self.registerFormValues()
         self.init(  path=self.path,
