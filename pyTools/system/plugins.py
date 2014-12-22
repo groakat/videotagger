@@ -126,6 +126,13 @@ class PluginBase(object):
         self.progressBar.setMaximum(maxProgressValue)
         self.widget.updateGeometry()
 
+    def incrementStatus(self):
+        """
+        Adds one to the value of the progress bar
+        :return:
+        """
+        self.progressBar.setValue(self.progressBar.value() + 1)
+
     def updateStatus(self, progress):
         """
         Updates the status to reflect how many steps finished within the current task.

@@ -3,9 +3,15 @@ import os
 import numpy as np
 import pyTools.features.trajectory.Burgos as B
 import pyTools.videoProc.annotation as A
+from sklearn.ensemble import RandomForestClassifier as RFC
 
 
 class SimpleFlyShowCase(P.ClassificationPluginBase):
+
+    def __init__(self, *args, **kwargs):
+        super(SimpleFlyShowCase, self).__init__(*args, **kwargs)
+        self.classifier = None
+
     def getMeta(self):
         """
         Function that return meta data of plugin
@@ -89,7 +95,7 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
         currentTraj = nextTraj
 
 
-        for i in range(1, len(self.posListRel)-1):
+        for i in range(2, len(self.posListRel)-1):
             nextTraj = np.load(os.path.join(self.rootFolder,
                                             self.posListRel[i]))
 
@@ -102,7 +108,8 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
 
             feat = B.generateTrajFeatures(traj,
                                           dt=currentTraj.shape[0]/1000.0)[1:-1]
-            np.save(self.generateFeatureSavePath(self.posListRel[i]), feat)
+
+            np.save(self.generateFeatureSavePath(self.posListRel[i-1]), feat)
 
             prevTraj = currentTraj
             currentTraj = nextTraj
@@ -193,8 +200,9 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
 
         for annoFile, selection in sorted(draws.items()):
             negFeatureMatrix += [self.loadFeatures(selection, annoFile)]
+            self.incrementStatus()
 
-        return negFeatureMatrix
+        return np.vstack(negFeatureMatrix)
 
     def capNegativeSelects(self, negativeSelects, lastSelect):
         if lastSelect == [None, None]:
@@ -230,31 +238,33 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
             selSet = set(selection)
 
             negativeSelects[annoFile] = sorted(rngSet - selSet)
+            self.incrementStatus()
 
         negativeSelects = self.capNegativeSelects(negativeSelects, lastSelect)
 
         negFeatureMatrix = self.sampleNegatives(negativeSelects, N)
         classArray += [np.zeros((negFeatureMatrix.shape[0],))]
-        featureMatrix += negFeatureMatrix
+        featureMatrix += [negFeatureMatrix]
 
-        return np.vstack(classArray), np.vstack(featureMatrix)
+        return np.hstack(classArray), np.vstack(featureMatrix)
 
     def getTrainingsMatrices(self):
         annoArrays = self.getClassLabels()
         classArray, featureMatrix = self.loadFeatureMatrix(annoArrays)
-        1/0
+        return classArray, featureMatrix
+
+
 
     def trainClassifier(self):
         """
         Trains a classifier on the given labels
         :return:
         """
-        self.getTrainingsMatrices()
-        self.setStatus("Training classifier..", 100)
-        print("Training classifier")
-        for i in range(100):
-            QtCore.QThread.msleep(10)
-            self.updateStatus(i)
+        self.setStatus("Training classifier..", len(self.videoListRel)*3)
+        classArray, featureMatrix = self.getTrainingsMatrices()
+        self.classifier = RFC(n_jobs=4)
+        self.classifier.fit(featureMatrix, classArray)
+
 
     def classify(self):
         """
@@ -290,7 +300,7 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
         At the end the function should call `self.sendFDVT()` to update the GUI
         :return:
         """
-        # self.extractFeatures()
+        self.extractFeatures()
         self.trainClassifier()
         # self.classify()
         # self.generateFDVT()
