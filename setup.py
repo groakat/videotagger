@@ -81,7 +81,7 @@ setup(
         ]
     },
     package_data = {
-        '': ['*.svg']
+        '': ['*.svg', '*.yaml']
     }
 )
 #cmdclass = {'install_scripts': my_install_scripts}
