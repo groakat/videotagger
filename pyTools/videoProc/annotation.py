@@ -187,7 +187,7 @@ class Annotation():
         for frameNo in frameRange:
             behaviourPresent = False
             newVials = []
-            
+
             for vIdx in vials:
                 v = self.frameList[frameNo][vIdx]
                 
@@ -365,7 +365,7 @@ class Annotation():
         """
         if vial == None:
             # just use first index
-            vial = 0       
+            vial = 0
             
         if isinstance(metadata, (int, long, float, complex)):
             tmpVal = metadata     

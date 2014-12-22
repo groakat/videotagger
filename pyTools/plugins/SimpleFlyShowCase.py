@@ -142,8 +142,6 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
                                                     dtype=np.bool)
                     annotationArrays[annoFile][:,i] = filtAnno
 
-            1/0
-
         return annotationArrays
 
 
@@ -170,22 +168,80 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
         classMask = np.arange(maxClass) + 1
         return np.max(filtered * classMask, axis=1)
 
+    def getFeatureLength(self):
+        return 8
+
+    def sampleNegatives(self, negativeSelects, N):
+        negFeatureMatrix = []
+        draws = dict()
+
+        for n in range(N):
+            key = negativeSelects.keys()[np.random.randint(0,
+                                                    len(negativeSelects))]
+            idx = np.random.randint(0, len(negativeSelects[key]))
+
+            if not key in draws:
+                draws[key] = []
+
+            draws[key] += [negativeSelects[key][idx]]
+            del negativeSelects[key][idx]
+            if negativeSelects[key] == []:
+                del negativeSelects[key]
+
+            if negativeSelects == {}:
+                break
+
+        for annoFile, selection in sorted(draws.items()):
+            negFeatureMatrix += [self.loadFeatures(selection, annoFile)]
+
+        return negFeatureMatrix
+
+    def capNegativeSelects(self, negativeSelects, lastSelect):
+        if lastSelect == [None, None]:
+            return {}
+
+        for k in negativeSelects.items():
+            if k > lastSelect[0]:
+                del negativeSelects[k]
+
+        if lastSelect[0] in negativeSelects.keys():
+            selection = np.asarray(negativeSelects[lastSelect[0]])
+            negativeSelects[lastSelect[0]] = list(selection[selection <
+                                                       lastSelect[1]])
+
+        return negativeSelects
+
 
     def loadFeatureMatrix(self, annoArrays):
         classArray = []
-        featureArray = []
-        for annoFile, classMatrix in annoArrays.items():
-            select = np.where(classMatrix == True)[0]
-            if not select.size: # if not "empty"
-                featureArray += [self.loadFeatures(select, annoFile)]
-                classArray += [self.createClassArray(classMatrix, select)]
+        featureMatrix = []
+        negativeSelects = dict()
+        lastSelect = [None, None]
+        N = 0
+        for annoFile, classMatrix in sorted(annoArrays.items()):
+            selection = np.where(classMatrix == True)[0]
+            if selection.size: # if not "empty"
+                featureMatrix += [self.loadFeatures(selection, annoFile)]
+                classArray += [self.createClassArray(classMatrix, selection)]
+                N += selection.shape[0]
+                lastSelect = [annoFile, selection[-1]]
 
-        1/0
+            rngSet = set(range(classMatrix.shape[0]))
+            selSet = set(selection)
 
+            negativeSelects[annoFile] = sorted(rngSet - selSet)
+
+        negativeSelects = self.capNegativeSelects(negativeSelects, lastSelect)
+
+        negFeatureMatrix = self.sampleNegatives(negativeSelects, N)
+        classArray += [np.zeros((negFeatureMatrix.shape[0],))]
+        featureMatrix += negFeatureMatrix
+
+        return np.vstack(classArray), np.vstack(featureMatrix)
 
     def getTrainingsMatrices(self):
         annoArrays = self.getClassLabels()
-        classMatrix, featureMatrix = self.loadFeatureMatrix(annoArrays)
+        classArray, featureMatrix = self.loadFeatureMatrix(annoArrays)
         1/0
 
     def trainClassifier(self):

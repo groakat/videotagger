@@ -3226,8 +3226,8 @@ class VideoTagger(QtGui.QMainWindow):
         for a in self.annotations:
             annotationFilters += [Annotation.AnnotationFilter(
                                         vials=self.selectedVial,
-                                        annotators=a['annot'],
-                                        behaviours=a['behav'])]
+                                        annotators=[a['annot']],
+                                        behaviours=[a['behav']])]
 
         videoData = P.VideoData(rootFolder=self.path,
                                 videoListRel=self.fileListRel,
