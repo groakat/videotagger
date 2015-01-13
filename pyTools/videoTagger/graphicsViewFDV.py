@@ -6,6 +6,7 @@ import pyTools.misc.FrameDataVisualization2 as FDV
 
 import sys
 import numpy as np
+import matplotlib.pyplot as plt
 
 np.set_printoptions(threshold='nan')
 import time
@@ -36,7 +37,7 @@ class Test(QtGui.QMainWindow):
             QtGui.QColor(255, 0, 0),
             QtGui.QColor(0, 0, 0)]
         self.gvFDV.setColors(c)
-        self.gvFDV.loadSequence('/media/peter/Seagate Backup Plus Drive/peter/behaviourTree.npy')
+        self.gvFDV.loadSequence('/media/peter/Seagate Backup Plus Drive/tmp/fdvt.npy')
 
         self.show()
 
@@ -90,6 +91,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.sceneRect = None
 
         self.brushes = None
+        self.cm = []
 
         self.mouseReleaseCallbacks = {'days':[],
                                       'hours':[],
@@ -117,7 +119,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         # self.setupGV()
 
         self.show()
-        self.gv_center.fitInView(-0.1, -0.1, 1.1, 7,QtCore.Qt.IgnoreAspectRatio)
+        # self.gv_center.fitInView(-0.1, -0.5, 1.1, 7,QtCore.Qt.IgnoreAspectRatio)
 
 
     def initDataPlots(self):
@@ -279,8 +281,8 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.updateDisplay()
 
     def loadSequence(self, fdvtPath):
-        fdvt = FDV.FrameDataVisualizationTreeBehaviour()
-        fdvt.load(fdvtPath)
+        # fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+        fdvt = FDV.loadFDVT(fdvtPath)
         self.loadFDVT(fdvt)
         # self.createFDVTTemplate()
         # self.updateDisplay()
@@ -298,11 +300,13 @@ class GraphicsViewFDV(QtGui.QWidget):
 
     def resizeEvent(self, event):
         super(GraphicsViewFDV, self).resizeEvent(event)
-        self.gv_center.fitInView(-0.1, -1, 1.1, 6,QtCore.Qt.IgnoreAspectRatio)
+        # self.gv_center.fitInView(-0.1, -10, 1.1, 6,QtCore.Qt.IgnoreAspectRatio)
+        self.gv_center.fitInView(self.overviewRect)
 
     def showEvent(self, event):
         super(GraphicsViewFDV, self).showEvent(event)
-        self.gv_center.fitInView(-0.1, -1, 1.1, 6,QtCore.Qt.IgnoreAspectRatio)
+        # self.gv_center.fitInView(-0.1, -1, 1.1, 6,QtCore.Qt.IgnoreAspectRatio)
+        self.gv_center.fitInView(self.overviewRect)
 
 
     def setupGV(self):
@@ -316,6 +320,12 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         self.initPositionPointers()
         self.initSubPlots()
+
+        self.createColormap()
+
+        self.overviewRect = self.overviewScene.addRect(-0.01, -1, 1.2, 7)
+        # self.overviewRect = self.overviewScene.addRect(-0.01, -1, 2, 7)
+        self.gv_center.fitInView(self.overviewRect)
 
 
     def initSubPlots(self):
@@ -438,10 +448,65 @@ class GraphicsViewFDV(QtGui.QWidget):
         text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
         # text.scale(0.002, -0.005)
         pw = text.boundingRect().width() * 0.002
-        ph = text.boundingRect().height() * 0.015
+        ph = text.boundingRect().height() * 0.005
 
         x = 0.5 - (pw / 2.0)
-        text.setPos(x, y + 1 + ph)
+        text.setPos(x, y - ph)
+
+    def createLegend(self):
+        self.legend = QtGui.QGraphicsRectItem(None, self.overviewScene)
+        for i, brush in enumerate(self.colormap):
+            pen = QtGui.QPen(QtGui.QColor(0, 255, 0, 0))
+            rect = QtCore.QRectF(0, i, 0.02, 1)
+            rectItem = QtGui.QGraphicsRectItem(rect, self.legend)
+            rectItem.setBrush(brush)
+            rectItem.setPen(pen)
+
+        self.legend.setPos(1.1, 0)
+        self.legend.setZValue(2)
+
+        self.normalizeSubplot(self.legend, 127, 0)
+
+        axes = QtGui.QGraphicsRectItem()
+        line = QtGui.QGraphicsLineItem(0, 0, 0, 2, axes)
+        pen = QtGui.QPen(QtGui.QColor(0, 0, 0))
+        line.setPen(pen)
+
+        for i, t in enumerate([0, 0.25, 0.5, 0.75, 1]):
+            lbl = t
+
+            x = i * 0.5
+            line = QtGui.QGraphicsLineItem(0, x, 0.01, x,  axes)
+            line.setPen(pen)
+
+            font = QtGui.QFont()
+            font.setPointSize(5)
+            text = QtGui.QGraphicsTextItem(str(t), axes)
+            text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
+            text.setFont(font)
+            # text.scale(0.002, -0.005)
+            pw = text.boundingRect().width() * 0.002
+            ph = text.boundingRect().height() * 0.0075
+
+
+            # x = i * spacing / l  - (pw / 2.0) + 1 / (2 *l)
+            text.setPos(0.015, x + ph)
+
+        self.overviewScene.addItem(axes)
+        axes.setPos(1.12, 0)
+
+        return self.legend
+
+    def createColormap(self):
+        pair = plt.cm.get_cmap('Paired', 255)
+        colors = pair(range(255)) * 255
+        self.colormap = []
+        for c in colors:
+            self.colormap += [QtGui.QBrush(QtGui.QColor(c[0],
+                                                        c[1],
+                                                        c[2]))]
+
+        self.createLegend()
 
 
     def createClickBar(self, rectKey, instance):
@@ -477,12 +542,31 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         return bar
 
+    def createFloatBar(self, rectKey, instance):
+        sp = self.subPlot[rectKey]
+        rects = []
+        bar = QtGui.QGraphicsRectItem(sp)
+        pen = QtGui.QPen(QtGui.QColor(0, 255, 0, 0))
+        brush = QtGui.QBrush(QtGui.QColor(0, 255, 0, 0))
+        rect = QtCore.QRectF(0, 0, 1, np.random.rand(1))
+        rectItem = FDVBar(rect, bar)
+        rectItem.setBarCoordinates(level=rectKey, instance=instance)
+        rectItem.setCallback(self.mouseClickOnBar)
+        rectItem.setBrush(brush)
+        rectItem.setPen(pen)
 
-    def addElement(self, rectKey, y):
+
+        return bar
+
+
+    def addElement(self, rectKey, y, stacked=True):
         cfg.log.info("{0}, {1}".format(rectKey, y))
         rects = self.rects[rectKey]
 
-        rects += [self.createStackedBar(rectKey, len(rects))]
+        if stacked:
+            rects += [self.createStackedBar(rectKey, len(rects))]
+        else:
+            rects += [self.createFloatBar(rectKey, len(rects))]
 
         for i, bar in enumerate(rects):
             x = float(i) / len(rects)
@@ -566,7 +650,8 @@ class GraphicsViewFDV(QtGui.QWidget):
             #                         self.getFdvtLabel(level, idx)) \
             #         / self.frameResolution
 
-    def updateBars(self, data, rectKey, y):
+    def updateBarsStack(self, plotData, rectKey, y):
+        data = plotData['data']
         rects = self.rects[rectKey]
         maxHeight = 0
         maxCum = np.max(np.sum(data, axis=1))
@@ -579,7 +664,7 @@ class GraphicsViewFDV(QtGui.QWidget):
                 idx = i
 
             while idx >= len(rects):
-                self.addElement(rectKey, y)
+                self.addElement(rectKey, y, stacked=True)
 
             r = rects[idx]
 
@@ -601,6 +686,57 @@ class GraphicsViewFDV(QtGui.QWidget):
 
             self.normalizeBar(r, accH, len(rects))
 
+        return rects, maxHeight
+
+    def applyColorMapToBar(self, bar, weight):
+        max = 1#self.fdvt.hier['meta']['max']
+
+        bin = int(np.floor((weight / float(max)) * 254.999))
+
+        # bar.setBrush(QtGui.QBrush(QtGui.QColor(0,0,0)))#self.colormap[bin])
+        bar.setBrush(self.colormap[bin])
+
+
+
+    def updateBarsFloat(self, plotData, rectKey, y):
+        data = plotData['data']
+        weight = plotData['weight']
+
+        rects = self.rects[rectKey]
+        maxHeight = 0
+        maxCum = np.max(data)
+        minBarHeight =  maxCum * 0.05
+
+        for i, d in enumerate(data):
+            if self.rangeTemplate[rectKey] is not None:
+                idx = self.getKeyIndexInFDVT(rectKey, i)
+            else:
+                idx = i
+
+            while idx >= len(rects):
+                self.addElement(rectKey, y, stacked=False)
+
+            r = rects[idx]
+
+            accH = 0
+            barLet = r.childItems()[0]
+            h = d
+
+            if h != 0 and h < minBarHeight:
+                h = minBarHeight
+
+            geo = barLet.rect()
+            geo.setY(accH)
+            geo.setHeight(h)
+            barLet.setRect(geo)
+            accH += h
+
+            self.applyColorMapToBar(barLet, weight[i])
+
+            if maxHeight < accH:
+                maxHeight = accH
+
+            self.normalizeBar(r, accH, len(rects))
 
         return rects, maxHeight
 
@@ -632,18 +768,24 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         dataPresent = False
 
-        if type(data) == list:
+        if type(data['data']) == list:
             dataPresent = data != []
         else:
             dataPresent = data.size
 
         if dataPresent:
-            rects, maxHeight = self.updateBars(data, rectKey, y)
+            if self.fdvt.meta['isCategoric']:
+                rects, maxHeight = self.updateBarsStack(data, rectKey, y)
 
-            self.drawMissingValues(rectKey, rects, y)
+                self.drawMissingValues(rectKey, rects, y)
 
 
-            self.normalizeSubplot(self.subPlot[rectKey], maxHeight, y)
+                self.normalizeSubplot(self.subPlot[rectKey], maxHeight, y)
+            else:
+                rects, maxHeight = self.updateBarsFloat(data, rectKey, y)
+
+                self.normalizeSubplot(self.subPlot[rectKey], maxHeight, y)
+
 
 
         self.overviewScene.update()
@@ -660,7 +802,7 @@ class GraphicsViewFDV(QtGui.QWidget):
 
 
     def plotDays(self, fdvt, dayIdx):
-        data = fdvt.plotData['days']['data']
+        data = fdvt.plotData['days']
         # print data
         # data = np.random.rand(2,4)
         # print data
@@ -669,21 +811,21 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.createAxis('days')
 
     def plotHours(self,  fdvt, hourIdx):
-        data = fdvt.plotData['hours']['data']
+        data = fdvt.plotData['hours']
         # data = np.random.rand(24,4)
         self.drawBars(data, 'hours', 3)
         self.setPolyPosition('hours', hourIdx)
         self.createAxis('hours')
 
     def plotMinutes(self,  fdvt, minuteIdx):
-        data = fdvt.plotData['minutes']['data']
+        data = fdvt.plotData['minutes']
         # data = np.random.rand(60,4)
         self.drawBars(data, 'minutes', 1.5)
         self.setPolyPosition('minutes', minuteIdx)
         self.createAxis('minutes')
 
     def plotFrames(self, fdvt, frameIdx):
-        data = fdvt.plotData['frames']['data']
+        data = fdvt.plotData['frames']
         # data = np.random.rand(1764/self.frameResolution,4)
         self.drawBars(data,'frames', 0)
         self.setPolyPosition('frames', frameIdx)

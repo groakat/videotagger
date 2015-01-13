@@ -46,6 +46,27 @@ def provideFileList(baseFolder, featFolder, vial, ending='.pos.npy'):
     print("scaning files done")
     return fileList
 
+def loadFDVT(path):
+    """
+    Dynamically determines the type of the FDVT and returns the correct type
+    :param path:
+    :return:
+    """
+    FDVT = np.load(path).item()
+    if FDVT['meta']['type'].split('.')[-1] == 'FrameDataVisualizationTreeBase':
+        fdv = FrameDataVisualizationTreeBase()
+    elif FDVT['meta']['type'].split('.')[-1] == 'FrameDataVisualizationTreeBehaviour':
+        fdv = FrameDataVisualizationTreeBehaviour()
+    else:
+        # fallback
+        fdv = FrameDataVisualizationTreeBehaviour()
+
+    fdv.FDVT = FDVT
+    fdv.data = FDVT['data']
+    fdv.hier = FDVT['hier']
+    fdv.meta = FDVT['meta']
+
+    return fdv
 
 class FrameDataVisualizationTreeBase(object):
 
@@ -59,10 +80,8 @@ class FrameDataVisualizationTreeBase(object):
                      'hier': self.hier,
                      'meta': self.meta}
 
-        self.meta['isCategoric'] = False
-        self.meta['singleFileMode'] = True     # if True, only one file (key) is used
-                                        # to save the entire annotation
-        self.meta['totalNoFrames'] = 0
+        self.resetAllSamples()
+
         self.addedNewData = True
         # self.ranges = dict()
 
@@ -77,6 +96,17 @@ class FrameDataVisualizationTreeBase(object):
                      'hier': self.hier,
                      'meta': self.meta}
         self.meta['totalNoFrames'] = 0
+        self.meta['type'] = type(self).__name__
+
+        self.meta['isCategoric'] = False
+        self.meta['singleFileMode'] = True     # if True, only one file (key) is used
+                                        # to save the entire annotation
+        self.meta['totalNoFrames'] = 0
+
+        self.meta['maxDay'] = 0
+        self.meta['maxHour'] = 0
+        self.meta['maxMinute'] = 0
+
         self.addedNewData = True
         # self.ranges = dict()
 
@@ -136,26 +166,68 @@ class FrameDataVisualizationTreeBase(object):
         self.addedNewData = True
 
 
+
+    def computeTemplateRange(self):
+        frames = list(np.arange(1800, dtype=float))
+
+        if self.meta['maxDay'] > 0:
+            days = range(self.meta['maxDay'] + 1)
+            hours = range(24)
+            minutes = range(60)
+        elif self.meta['maxHour'] > 0:
+            days = [0]
+            hours = range(self.meta['maxHour'] + 1)
+            minutes = range(60)
+        elif self.meta['maxMinute'] > 0:
+            days = [0]
+            hours = [0]
+            minutes = range(self.meta['maxMinute'] + 1)
+        else:
+            days = [0]
+            hours = [0]
+            minutes = [0]
+            frames = range(max(self.hier[0][0][0]))
+
+        self.meta['rangeTemplate'] =  {'days': sorted(days),
+                                       'hours': sorted(hours),
+                                       'minutes': sorted(minutes),
+                                       'frames': frames}
+
+
     def verifyStructureExists(self, day, hour, minute):
         try:
             self.hier['meta']
         except KeyError:
             self.hier['meta'] = self.getStandardHierDatum()
-            
+
+        recomputeTemplate = False
+
         if day not in self.data.keys():
             self.data[day] = dict()
             self.hier[day] = dict()
             self.hier[day]['meta'] = self.getStandardHierDatum()
+            if day > self.meta['maxDay']:
+                self.meta['maxDay'] = day
+                recomputeTemplate = True
             
         if hour not in self.data[day].keys():
             self.data[day][hour] = dict()
             self.hier[day][hour] = dict()
             self.hier[day][hour]['meta'] = self.getStandardHierDatum()
+            if hour > self.meta['maxHour']:
+                self.meta['maxHour'] = hour
+                recomputeTemplate = True
             
         if minute not in self.data[day][hour].keys():
             self.data[day][hour][minute] = dict()
             self.hier[day][hour][minute] = dict()
             self.hier[day][hour][minute]['meta'] = self.getStandardHierDatum()
+            if minute > self.meta['maxMinute']:
+                self.meta['maxMinute'] = minute
+                recomputeTemplate = True
+
+        if recomputeTemplate:
+            self.computeTemplateRange()
 
     def incrementMean(self, prevMean, data, n):
         return prevMean + (1.0/n) * (data - prevMean)
@@ -199,6 +271,7 @@ class FrameDataVisualizationTreeBase(object):
         self.updateMax(day, hour, minute, data)
         self.addSampleToMean(day, hour, minute, data)
         self.meta['totalNoFrames'] += 1
+
         self.addedNewData = True
 
     def removeSample(self, day, hour, minute, frame):
@@ -215,18 +288,11 @@ class FrameDataVisualizationTreeBase(object):
 
 
     def replaceSample(self, day, hour, minute, frame, data):
-        # oldData = self.getValue(day, hour, minute, frame)
-        # self.data[day][hour][minute][frame] = data
-        #
-        # if oldData == self.hier[day][hour][minute]['meta']['max']:
-        #     newMax = np.max([self.data[day][hour][minute][k] \
-        #                 for k in self.data[day][hour][minute].keys()])
-        #     self.updateMax(day, hour, minute, newMax)
-        # else:
-        #     self.updateMax(day, hour, minute, data)
         self.removeSample(day, hour, minute, frame)
         self.insertSample(day, hour, minute, frame, data)
         self.addedNewData = True
+
+
 
 
     def updateMax(self, day, hour, minute, data):
@@ -323,7 +389,7 @@ class FrameDataVisualizationTreeBase(object):
         except KeyError:
             return
 
-        for key in sorted(self.meta['rangeTemplate']['hours']):
+        for key in sorted(self.meta['rangeTemplate']['minutes']):
             if key in keys:
                 if key in ['meta']:
                     continue
@@ -341,6 +407,7 @@ class FrameDataVisualizationTreeBase(object):
 
     def generatePlotDataFrames(self, day, hour, minute, frame,
                                frameResolution=1):
+        frameResolution = float(frameResolution)
         self.plotData['frames'] = dict()
         self.plotData['frames']['data'] = []
         self.plotData['frames']['weight'] = []
@@ -352,7 +419,7 @@ class FrameDataVisualizationTreeBase(object):
             return
 
         try:
-            keys = self.hier[day][hour][minute].keys()
+            keys = self.data[day][hour][minute].keys()
         except KeyError:
             return
 
@@ -383,7 +450,7 @@ class FrameDataVisualizationTreeBase(object):
 
         if cnt != 0:
             self.plotData['frames']['data'] += [max(tmpVal)]
-            self.plotData['frames']['weight'] += [sum(tmpVal) / cnt]
+            self.plotData['frames']['weight'] += [sum(tmpVal) / float(cnt)]
             self.plotData['frames']['tick'] += [tmpKeys]
 
 
