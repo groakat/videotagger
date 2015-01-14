@@ -453,7 +453,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         x = 0.5 - (pw / 2.0)
         text.setPos(x, y - ph)
 
-    def createLegend(self):
+    def createFloatLegend(self):
         self.legend = QtGui.QGraphicsRectItem(None, self.overviewScene)
         for i, brush in enumerate(self.colormap):
             pen = QtGui.QPen(QtGui.QColor(0, 255, 0, 0))
@@ -492,8 +492,17 @@ class GraphicsViewFDV(QtGui.QWidget):
             # x = i * spacing / l  - (pw / 2.0) + 1 / (2 *l)
             text.setPos(0.015, x + ph)
 
+        font = QtGui.QFont()
+        font.setPointSize(5)
+        text = QtGui.QGraphicsTextItem("Mean of items \nbelow bar", axes)
+        text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
+        text.setFont(font)
+        text.setPos(-0.05, 2.4)
+
+
         self.overviewScene.addItem(axes)
-        axes.setPos(1.12, 0)
+        axes.setPos(1.07, 3)
+        self.legend.setPos(1.05, 3)
 
         return self.legend
 
@@ -506,7 +515,7 @@ class GraphicsViewFDV(QtGui.QWidget):
                                                         c[1],
                                                         c[2]))]
 
-        self.createLegend()
+        self.createFloatLegend()
 
 
     def createClickBar(self, rectKey, instance):
