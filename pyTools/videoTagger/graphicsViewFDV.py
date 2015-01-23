@@ -34,10 +34,10 @@ class Test(QtGui.QMainWindow):
         # self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v0.npy')
         c = [QtGui.QColor(0, 255, 0),
             QtGui.QColor(0,  0, 255),
-            QtGui.QColor(255, 0, 0),
-            QtGui.QColor(0, 0, 0)]
+            QtGui.QColor(255, 0, 0)]#,
+            # QtGui.QColor(0, 0, 0)]
         self.gvFDV.setColors(c)
-        self.gvFDV.loadSequence('/media/peter/Seagate Backup Plus Drive/tmp/fdvt.npy')
+        self.gvFDV.loadSequence('/media/peter/Seagate Backup Plus Drive/tmp/stackFdvt.npy')
 
         self.show()
 
@@ -278,6 +278,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.initDataPlots()
         self.fdvt = fdvt
         self.createFDVTTemplate()
+        self.createLegend()
         self.updateDisplay()
 
     def loadSequence(self, fdvtPath):
@@ -453,6 +454,73 @@ class GraphicsViewFDV(QtGui.QWidget):
         x = 0.5 - (pw / 2.0)
         text.setPos(x, y - ph)
 
+
+    def createStackLegend(self):
+        filtList = self.fdvt.meta['filtList']
+
+        pair = plt.cm.get_cmap('hsv', len(filtList) + 1)
+        colors = pair(range(len(filtList))) * 255
+
+        self.legend = QtGui.QGraphicsRectItem(None, self.overviewScene)
+        self.colormap = []
+        for c in colors:
+            self.colormap += [QtGui.QBrush(QtGui.QColor(c[0],
+                                                        c[1],
+                                                        c[2]))]
+
+            cfg.log.info("color {0}".format(c))
+
+        self.brushes = []
+        for i, brush in enumerate(self.colormap):
+            pen = QtGui.QPen(QtGui.QColor(0, 255, 0, 0))
+            rect = QtCore.QRectF(0, i, 0.02, 1)
+            rectItem = QtGui.QGraphicsRectItem(rect, self.legend)
+            rectItem.setBrush(brush)
+            rectItem.setPen(pen)
+
+        self.legend.setPos(1.1, 0)
+        self.legend.setZValue(2)
+
+        self.normalizeSubplot(self.legend, len(self.colormap) * 0.5, 0)
+
+        axes = QtGui.QGraphicsRectItem()
+        line = QtGui.QGraphicsLineItem(0, 0, 0, 2, axes)
+        pen = QtGui.QPen(QtGui.QColor(0, 0, 0))
+        line.setPen(pen)
+
+        for i, c in enumerate(self.colormap):
+            lbl = filtList[i].behaviours[0]
+
+            x = (2.0 / len(self.colormap)) * i + 0.25
+            line = QtGui.QGraphicsLineItem(0, x, 0.01, x,  axes)
+            line.setPen(pen)
+
+            font = QtGui.QFont()
+            font.setPointSize(7)
+            text = QtGui.QGraphicsTextItem(lbl, axes)
+            text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
+            text.setFont(font)
+            # text.scale(0.002, -0.005)
+            pw = text.boundingRect().width() * 0.002
+            ph = text.boundingRect().height() * 0.0075
+
+
+            # x = i * spacing / l  - (pw / 2.0) + 1 / (2 *l)
+            text.setPos(0.015, x + ph)
+
+        font = QtGui.QFont()
+        font.setPointSize(7)
+        text = QtGui.QGraphicsTextItem("Annotations by \n{0}".format(
+                                            filtList[0].annotators[0]), axes)
+        text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
+        text.setFont(font)
+        text.setPos(-0.05, 2.4)
+
+
+        self.overviewScene.addItem(axes)
+        axes.setPos(1.07, 3)
+        self.legend.setPos(1.05, 3)
+
     def createFloatLegend(self):
         self.legend = QtGui.QGraphicsRectItem(None, self.overviewScene)
         for i, brush in enumerate(self.colormap):
@@ -506,6 +574,12 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         return self.legend
 
+    def createLegend(self):
+        if self.fdvt.meta['isCategoric']:
+            self.createStackLegend()
+        else:
+            self.createFloatLegend()
+
     def createColormap(self):
         pair = plt.cm.get_cmap('Paired', 255)
         colors = pair(range(255)) * 255
@@ -515,7 +589,7 @@ class GraphicsViewFDV(QtGui.QWidget):
                                                         c[1],
                                                         c[2]))]
 
-        self.createFloatLegend()
+        # self.createFloatLegend()
 
 
     def createClickBar(self, rectKey, instance):
@@ -778,9 +852,9 @@ class GraphicsViewFDV(QtGui.QWidget):
         dataPresent = False
 
         if type(data['data']) == list:
-            dataPresent = data != []
+            dataPresent = data['data'] != []
         else:
-            dataPresent = data.size
+            dataPresent = data['data'].size
 
         if dataPresent:
             if self.fdvt.meta['isCategoric']:

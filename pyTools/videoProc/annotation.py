@@ -245,6 +245,26 @@ class Annotation():
         
         return out
 
+    def mergeFrameLists(self, frameLists):
+        mergedList = []
+        for frameList in frameLists:
+            mergedList += zip(*frameList)
+
+        return zip(*mergedList)
+
+
+    def filterFrameLists(self, filterTuples, frameRange=None, exactMatch=True):
+        frameLists = []
+        for filterTuple in filterTuples:
+            anno = self.filterFrameList(filterTuple, frameRange, exactMatch)
+            frameLists += [anno.frameList]
+
+        frameList = self.mergeFrameLists(frameLists)
+
+        return frameList
+
+
+
     def filterFrameListBool(self, filterTuple, frameRange=None, exactMatch=True): #vialNo=None, behaviourName=None, annotator=None):
         """
         Returns a new annotation object that contains only annotations that

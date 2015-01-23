@@ -75,6 +75,9 @@ class CachePrefetchBase(CacheBase, QtCore.QObject):
         del self.prefetchList[self.prefetchList.index(key)]
 
     def checkNeighbours(self, key, rng=10):
+        if len(self.fileList) == 0:
+            return
+
         idx = self.fileList.index(key)
         for i in range(rng):
             try:

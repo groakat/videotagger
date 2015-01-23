@@ -5,12 +5,13 @@ import pyTools.features.trajectory.Burgos as B
 import pyTools.videoProc.annotation as A
 from sklearn.ensemble import RandomForestClassifier as RFC
 import pyTools.misc.FrameDataVisualization2 as FDV
+import pyTools.system.videoExplorer as VE
 
 
-class SimpleFlyShowCase(P.ClassificationPluginBase):
+class SimpleHistogramPlugin(P.ClassificationPluginBase):
 
     def __init__(self, *args, **kwargs):
-        super(SimpleFlyShowCase, self).__init__(*args, **kwargs)
+        super(SimpleHistogramPlugin, self).__init__(*args, **kwargs)
         self.classifier = None
 
     def getMeta(self):
@@ -18,8 +19,8 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
         Function that return meta data of plugin
         :return: MetaData object
         """
-        meta = P.MetaData(name='Simple Trajectory Classifier',
-                        description='Simple Plugin to show how to implement interfaces using simple trajectory features')
+        meta = P.MetaData(name='Simple Histogram Classifier',
+                        description='Simple Plugin to show how to implement interfaces using simple histogram features of the video')
         return meta
 
     def rel2absFile(self, relFile):
@@ -32,14 +33,14 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
                                          self.featureFolder)
         trajFeatFolder = os.path.join(self.rootFolder,
                                       generalFeatFolder,
-                                      'burgos')
+                                      'colorHistogram')
         if not os.path.exists(trajFeatFolder):
             os.makedirs(trajFeatFolder)
 
         trajFeatFile = os.path.join(trajFeatFolder,
                                     os.path.basename(trajPath))
 
-        trajFeatFile = trajFeatFile[:-len('.pos.npy')] + '.burgos.npy'
+        trajFeatFile = trajFeatFile[:-len('.pos.npy')] + '.histogram.npy'
         return trajFeatFile
 
 
@@ -61,69 +62,62 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
         return videoFile
 
     def convertAnnoToFeatFilename(self, annoFile):
-        bn = os.path.basename(annoFile)[:-5] + '.burgos.npy'
+        bn = os.path.basename(annoFile)[:-5] + '.histogram.npy'
         baseFolder = os.path.dirname(annoFile)[:-len(self.annotationFolder)]
         featFile = os.path.join(baseFolder,
                                 self.featureFolder,
-                                'burgos',
+                                'colorHistogram',
                                 bn)
 
         return featFile
+
+    def computeHistogramFromFrame(self, frame):
+        frame.reshape((-1, 3))
+        H, edges = np.histogramdd(frame, bins = (8, 8, 8))
+        return H
+
+    def extractFeatureFromFrame(self, frame, annotation):
+        """
+        TODO: Implement this function
+        :return:
+        """
+
+        return self.computeHistogramFromFrame(frame)
 
     def extractFeatures(self):
         """
         Iteration over video file to extract features
         :return:
         """
-        self.setStatus("extracting features..", len(self.videoListRel))
-        prevTraj = None
-        currentTraj = np.load(os.path.join(self.rootFolder,
-                                           self.posListRel[0]))
-        nextTraj = np.load(os.path.join(self.rootFolder,
-                                           self.posListRel[1]))
+        if len(self.videoListRel) == 1:
+            progressSteps = VE.videoExplorer.retrieveVideoLength(
+                            self.rel2absFile(self.videoListRel[0]))
+        else:
+            progressSteps = len(self.videoListRel)
 
-        traj = np.zeros((currentTraj.shape[0] + 1, currentTraj.shape[1]),
-                        dtype=currentTraj.dtype)
+        self.setStatus("extracting features..", progressSteps)
+        for i, relVidFile in enumerate(self.videoListRel):
+            feat = []
+            vE = VE.videoExplorer()
+            vE.setVideoStream(self.rel2absFile(relVidFile), frameMode='RGB')
 
-        traj[:-1] = currentTraj
-        traj[-1] = nextTraj[0]
+            anno = A.Annotation()
+            anno.loadFromFile(self.rel2absFile(
+                                self.convertVideoToAnnoFilename(relVidFile)))
+            
+            anno.filterFrameLists(self.annotationFilters)
+            1/0
+            for frame in vE:
+                feat += [self.extractFeatureFromFrame(frame,
+                                                      anno.frameList[i])]
+                if len(self.videoListRel) == 1:
+                    self.incrementStatus()
 
-        feat = B.generateTrajFeatures(traj,
-                                      dt=currentTraj.shape[0]/1000.0)[:-1]
-        np.save(self.generateFeatureSavePath(self.posListRel[0]), feat)
+            np.save(self.generateFeatureSavePath(relVidFile),
+                    np.asarray(feat))
 
-        prevTraj = currentTraj
-        currentTraj = nextTraj
-
-
-        for i in range(2, len(self.posListRel)-1):
-            nextTraj = np.load(os.path.join(self.rootFolder,
-                                            self.posListRel[i]))
-
-            traj = np.zeros((currentTraj.shape[0] + 2, currentTraj.shape[1]),
-                            dtype=currentTraj.dtype)
-
-            traj[0] = prevTraj[-1]
-            traj[1:-1] = currentTraj
-            traj[-1] = nextTraj[0]
-
-            feat = B.generateTrajFeatures(traj,
-                                          dt=currentTraj.shape[0]/1000.0)[1:-1]
-
-            np.save(self.generateFeatureSavePath(self.posListRel[i-1]), feat)
-
-            prevTraj = currentTraj
-            currentTraj = nextTraj
-            self.updateStatus(i)
-
-        traj = np.zeros((nextTraj.shape[0] + 1, nextTraj.shape[1]),
-                        dtype=nextTraj.dtype)
-        traj[0] = currentTraj[-1]
-        traj[1:] = nextTraj
-
-        feat = B.generateTrajFeatures(traj,
-                                      dt=currentTraj.shape[0]/1000.0)[1:]
-        np.save(self.generateFeatureSavePath(self.posListRel[-1]), feat)
+            if len(self.videoListRel) > 1:
+                self.incrementStatus()
 
 
     def annotationFileList(self):
@@ -175,9 +169,6 @@ class SimpleFlyShowCase(P.ClassificationPluginBase):
         filtered = classMatrix[select]
         classMask = np.arange(maxClass) + 1
         return np.max(filtered * classMask, axis=1)
-
-    def getFeatureLength(self):
-        return 8
 
     def sampleNegatives(self, negativeSelects, N):
         negFeatureMatrix = []

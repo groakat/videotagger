@@ -12,7 +12,7 @@ def filename2Time(f):
     day, timePart = timestamp.split('.')[:2]
     hour, minute, second = timePart.split('-')
 
-    return day, hour, minute, second
+    return day, int(hour), int(minute), int(second)
 
 
 def filename2TimeRunningIndeces(f):
@@ -20,7 +20,7 @@ def filename2TimeRunningIndeces(f):
     rawMinutes = timestamp.split('_')[-1]
     day, hour, minute, second = minutes2Time(int(rawMinutes))
 
-    return day, hour, minute, second
+    return day, int(hour), int(minute), int(second)
 
 def minutes2Time(rawMinutes):
     days = rawMinutes // (60 * 24)
@@ -53,11 +53,12 @@ def loadFDVT(path):
     :return:
     """
     FDVT = np.load(path).item()
-    if FDVT['meta']['type'].split('.')[-1] == 'FrameDataVisualizationTreeBase':
-        fdv = FrameDataVisualizationTreeBase()
-    elif FDVT['meta']['type'].split('.')[-1] == 'FrameDataVisualizationTreeBehaviour':
-        fdv = FrameDataVisualizationTreeBehaviour()
-    else:
+    try:
+        if FDVT['meta']['type'].split('.')[-1] == 'FrameDataVisualizationTreeBase':
+            fdv = FrameDataVisualizationTreeBase()
+        elif FDVT['meta']['type'].split('.')[-1] == 'FrameDataVisualizationTreeBehaviour':
+            fdv = FrameDataVisualizationTreeBehaviour()
+    except KeyError:
         # fallback
         fdv = FrameDataVisualizationTreeBehaviour()
 
@@ -102,6 +103,9 @@ class FrameDataVisualizationTreeBase(object):
         self.meta['singleFileMode'] = True     # if True, only one file (key) is used
                                         # to save the entire annotation
         self.meta['totalNoFrames'] = 0
+
+        self.meta['rangeTemplate'] = dict()
+        self.meta['rangeTemplate']['frames'] = range(1800)
 
         self.meta['maxDay'] = 0
         self.meta['maxHour'] = 0
@@ -169,21 +173,42 @@ class FrameDataVisualizationTreeBase(object):
 
     def computeTemplateRange(self):
         frames = list(np.arange(1800, dtype=float))
+        multipleDays = False
 
-        if self.meta['maxDay'] > 0:
-            days = range(self.meta['maxDay'] + 1)
-            hours = range(24)
-            minutes = range(60)
+        if not isinstance(self.meta['maxDay'], basestring):
+            if self.meta['maxDay'] > 0:
+                days = range(self.meta['maxDay'] + 1)
+                hours = range(24)
+                minutes = range(60)
+                multipleDays = True
+        else:
+            try:
+                if self.meta['rangeTemplate']['days'] == [0]:
+                    self.meta['rangeTemplate']['days'] = []
+            except KeyError:
+                # 'days' do not exist yet
+                self.meta['rangeTemplate']['days'] = []
+
+            if self.meta['maxDay'] not in self.meta['rangeTemplate']['days']:
+                days = self.meta['rangeTemplate']['days'] + \
+                       [self.meta['maxDay']]
+            else:
+                days = self.meta['rangeTemplate']['days']
+
+            if len(self.meta['rangeTemplate']['days']) > 1:
+                hours = range(24)
+                minutes = range(60)
+                multipleDays = True
+
+        if multipleDays:
+            pass
         elif self.meta['maxHour'] > 0:
-            days = [0]
             hours = range(self.meta['maxHour'] + 1)
             minutes = range(60)
         elif self.meta['maxMinute'] > 0:
-            days = [0]
             hours = [0]
             minutes = range(self.meta['maxMinute'] + 1)
         else:
-            days = [0]
             hours = [0]
             minutes = [0]
             frames = range(max(self.hier[0][0][0]))
@@ -191,7 +216,7 @@ class FrameDataVisualizationTreeBase(object):
         self.meta['rangeTemplate'] =  {'days': sorted(days),
                                        'hours': sorted(hours),
                                        'minutes': sorted(minutes),
-                                       'frames': frames}
+                                       'frames': sorted(frames)}
 
 
     def verifyStructureExists(self, day, hour, minute):
@@ -206,24 +231,34 @@ class FrameDataVisualizationTreeBase(object):
             self.data[day] = dict()
             self.hier[day] = dict()
             self.hier[day]['meta'] = self.getStandardHierDatum()
-            if day > self.meta['maxDay']:
+            if isinstance(day, basestring):
+                try:
+                    if day not in self.meta['rangeTemplate']['days']:
+                        self.meta['maxDay'] = day
+                        recomputeTemplate = True
+                except KeyError:
+                    self.meta['maxDay'] = day
+                    recomputeTemplate = True
+
+            elif day > self.meta['maxDay']:
                 self.meta['maxDay'] = day
                 recomputeTemplate = True
+
             
         if hour not in self.data[day].keys():
             self.data[day][hour] = dict()
             self.hier[day][hour] = dict()
             self.hier[day][hour]['meta'] = self.getStandardHierDatum()
-            if hour > self.meta['maxHour']:
-                self.meta['maxHour'] = hour
+            if int(hour) > self.meta['maxHour']:
+                self.meta['maxHour'] = int(hour)
                 recomputeTemplate = True
             
         if minute not in self.data[day][hour].keys():
             self.data[day][hour][minute] = dict()
             self.hier[day][hour][minute] = dict()
             self.hier[day][hour][minute]['meta'] = self.getStandardHierDatum()
-            if minute > self.meta['maxMinute']:
-                self.meta['maxMinute'] = minute
+            if int(minute) > self.meta['maxMinute']:
+                self.meta['maxMinute'] = int(minute)
                 recomputeTemplate = True
 
         if recomputeTemplate:
@@ -1024,7 +1059,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
     def getStackFromStump(self, stump, timeKey):
         stack = []
         for k in sorted(self.meta['rangeTemplate'][timeKey]):
-            if k in stump.keys():
+            if str(k) in (str(x) for x in stump.keys()):
                 if stump[k]['meta']['stack'].shape[0] != self.meta['maxClass']:
                     tmp = np.zeros(self.meta['maxClass'])
                     tmp[:stump[k]['meta']['stack'].shape[0]] = \
@@ -1041,28 +1076,6 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
     def generatePlotDataFrames(self, day, hour, minute, frame,
                                frameResolution=1):
-
-        # if self.data == dict():
-        #     self.plotData['days'] = dict()
-        #     self.plotData['days']['data'] = [0]
-        #     self.plotData['days']['weight'] = [0]
-        #     self.plotData['days']['tick'] = [0]
-        #
-        #     self.plotData['hours'] = dict()
-        #     self.plotData['hours']['data'] = [0]
-        #     self.plotData['hours']['weight'] = [0]
-        #     self.plotData['hours']['tick'] = [0]
-        #
-        #     self.plotData['minutes'] = dict()
-        #     self.plotData['minutes']['data'] = [0]
-        #     self.plotData['minutes']['weight'] = [0]
-        #     self.plotData['minutes']['tick'] = [0]
-        #
-        #     self.plotData['frames'] = dict()
-        #     self.plotData['frames']['data'] = [0]
-        #     self.plotData['frames']['weight'] = [0]
-        #     self.plotData['frames']['tick'] = [0]
-        #     return
         cfg.log.info("{0}, {1}, {2}, {3}".format(day, hour, minute, frame))
         self.plotData['days'] = dict()
         stack = self.getStackFromStump(self.hier, 'days')

@@ -387,7 +387,35 @@ class videoExplorer(object):
         folders.reverse()
 
         return folders
-        
+
+    @staticmethod
+    def retrieveVideoLength(filename, initialStepSize=10000):
+        """
+        Finds video length by accessing it bruteforce
+
+        """
+        idx = 0
+        modi = initialStepSize
+        vE = videoExplorer()
+
+        while modi > 0:
+            while True:
+                try:
+                    vE.getFrame(filename, frameNo=idx, frameMode='RGB')
+                except StopIteration:
+                    break
+
+                idx += modi
+
+            idx -= modi
+
+            print modi, idx
+            modi /= 2
+
+
+        return idx + 1 # + 1 to make it the same behaviour as len()
+
+
     @staticmethod
     def findFileInList(lst, filename):
         """

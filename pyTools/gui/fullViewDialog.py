@@ -270,12 +270,13 @@ class FullViewDialog(QtGui.QMainWindow):
         self.playing = not self.playing
 
     def toggleFDV(self):
-        self.FDVOpen = not self.FDVOpen
-        if self.FDVOpen:
-            self.fdvButton.load(self.iconFolder + '/Bar_chart_font_awesome_invert.svg')
-            # self.fdvButton.clicked.connect(self.parent().openFDV)
-        else:
-            self.fdvButton.load(self.iconFolder + '/Bar_chart_font_awesome.svg')
+        # self.FDVOpen = not self.FDVOpen
+        self.fdvButton.clicked.connect(self.parent().openFDV)
+        # if self.FDVOpen:
+        #     self.fdvButton.load(self.iconFolder + '/Bar_chart_font_awesome_invert.svg')
+        #     self.fdvButton.clicked.connect(self.parent().openFDV)
+        # else:
+        #     self.fdvButton.load(self.iconFolder + '/Bar_chart_font_awesome.svg')
 
 
     def toggleEditModeCheckbox(self):
