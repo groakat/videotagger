@@ -3,7 +3,7 @@ import os
 import re
 import datetime as dt
 import random
-from ffvideo import VideoStream, SEEK_ANY
+from ffvideo import VideoStream
 import ffvideo
 
 class videoExplorer(object):
@@ -245,7 +245,7 @@ class videoExplorer(object):
         if self.verbose:
             print "processing frame {0} of video {1}".format(frameNo,  file)
 
-        self.vs = VideoStream(file, frame_mode=frameMode, exact_seek=True)
+        self.vs = VideoStream(file, frame_mode=frameMode)#, exact_seek=True)
 
         frame = self.vs.next().ndarray()
 
@@ -281,7 +281,7 @@ class videoExplorer(object):
         if self.verbose:
             print "processing frame {0} of video {1}".format(frameNo,  file)
 
-        self.vs = VideoStream(file, frame_mode=frameMode, exact_seek=True)
+        self.vs = VideoStream(file, frame_mode=frameMode)#, exact_seek=True)
         
         frame = self.vs.get_frame_no(frameNo).ndarray()
         
@@ -343,7 +343,7 @@ class videoExplorer(object):
         if self.verbose:
             print "processing frame {0} of video {1}".format(frameNo,  file)
         
-        self.vs = VideoStream(file, frame_mode=frameMode, exact_seek=True)
+        self.vs = VideoStream(file, frame_mode=frameMode)#, exact_seek=True)
         
     def __iter__(self):
         # rewind ffvideo thingy
@@ -409,7 +409,6 @@ class videoExplorer(object):
 
             idx -= modi
 
-            print modi, idx
             modi /= 2
 
 
