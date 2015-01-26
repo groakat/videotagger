@@ -188,7 +188,7 @@ class Annotation():
             behaviourPresent = False
             newVials = []
 
-            for vIdx in vials:
+            for vIdx, vial in enumerate(vials):
                 v = self.frameList[frameNo][vIdx]
                 
                 vNew = dict()

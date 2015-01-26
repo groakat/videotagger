@@ -273,7 +273,8 @@ class VideoTagger(QtGui.QMainWindow):
         
         self.filterList = []
 
-        self.fileListRel, self.bgListRel, self.posListRel=\
+        self.fileListRel, self.videoListFullResRel, \
+            self.bgListRel, self.posListRel = \
                         self.getFileList(path, self.getVideoExtension(),
                                          videoListPathRel)
 
@@ -441,27 +442,26 @@ class VideoTagger(QtGui.QMainWindow):
                 bgListRel = tmp['backgroundList']
                 posListRel = tmp['positionList']
 
+        videoListFullResRel = {}
+
         if len(videoListRel) == 1:
             # TODO reencode video
             pass
 
         elif len(videoListRel) == 3:
             core = '.'.join(sorted(videoListRel)[0].split('.')[:-1])
-            core = '.'.join(sorted(videoListRel)[0].split('.')[:-1])
             if core + '_full.' + videoExtension in videoListRel \
             and core + '_small.' + videoExtension in videoListRel \
             and core + '.' + videoExtension in videoListRel:
                 videoListRel = [core + '_small.' + videoExtension]
+                videoListFullResRel[videoListRel[0]] = core + '_full.' + \
+                                                       videoExtension
                 bgListRel = []
                 posListRel = []
                 self.startVideoPath = videoListRel[0]
-        #     else:
-        #         fileList = self.convertFileList(fileList, '.' + videoExtension)
-        # else:
-        #     fileList = self.convertFileList(fileList, '.' + videoExtension)
-        #         videoListRel = [x[len(rootPath)+1:] for x in fileList]
 
-        return videoListRel, bgListRel, posListRel
+
+        return videoListRel, videoListFullResRel, bgListRel, posListRel
 
     def getVideoExtension(self):
         if self.croppedVideo:
@@ -511,7 +511,8 @@ class VideoTagger(QtGui.QMainWindow):
             self.videoListPathRel = None
         self.croppedVideo = self.le_croppedVideo.isChecked()
         self.runningIndeces = self.le_filesRunningIdx.isChecked()
-        self.fileListRel, self.bgListRel, self.posListRel =\
+        self.fileListRel, self.videoListFullResRel, \
+            self.bgListRel, self.posListRel = \
                     self.getFileList(self.path, self.getVideoExtension(),
                                          self.videoListPathRel)
 
@@ -719,7 +720,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.tryToLoadConfig(self.le_videoPath.text())
 
     def populateFormWithInternalSettings(self):
-        self.fileListRel, self.bgListRel, self.posListRel =\
+        self.fileListRel, self.videoListFullResRel, \
+            self.bgListRel, self.posListRel =   \
                     self.getFileList(self.path, self.getVideoExtension(),
                                          self.videoListPathRel)
 
@@ -1738,7 +1740,7 @@ class VideoTagger(QtGui.QMainWindow):
                                     filt,
                                     exactMatch=False)
 
-            if tmpAnno.frameList[0][sv] == None:
+            if tmpAnno.frameList[0][0] == None:
                 continue
 
             # print tmpAnno.frameList[0][sv]
@@ -1776,7 +1778,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         for i in range(len(self.prevFrames)-1, -1, -1):
             frame = self.prevFrames[i]
-            self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
+            self.updateLabel(self.trajLabels[i][0], frame[0][0], None)
 
         self.vh.posCache.checkNeighboursRight(30)
 
@@ -3229,8 +3231,16 @@ class VideoTagger(QtGui.QMainWindow):
                                         annotators=[a['annot']],
                                         behaviours=[a['behav']])]
 
+        # videoExtension = self.getVideoExtension()
+        # if len(videoListRel) == 3:
+        #     core = '.'.join(sorted(videoListRel)[0].split('.')[:-1])
+        #     if core + '_full.' + videoExtension in videoListRel \
+        #     and core + '_small.' + videoExtension in videoListRel \
+        #     and core + '.' + videoExtension in videoListRel:
+
         videoData = P.VideoData(rootFolder=self.path,
                                 videoListRel=self.fileListRel,
+                                videoListFullResRel=self.videoListFullResRel,
                                 posListRel=self.posListRel,
                                 annotationFolder=self.bhvrFolder,
                                 featureFolder='feat',
