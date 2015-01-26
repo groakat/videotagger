@@ -9,6 +9,7 @@ MetaData = namedtuple('plugin_meta_data', ['name',
 
 VideoData = namedtuple('video_data', ["rootFolder",
                                       'videoListRel',
+                                      'videoListFullResRel',
                                       'posListRel',
                                       "annotationFolder",
                                       'featureFolder',
