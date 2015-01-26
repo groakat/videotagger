@@ -1720,15 +1720,15 @@ class VideoTagger(QtGui.QMainWindow):
                                     filt,
                                     exactMatch=False)
 
-            if tmpAnno.frameList[0][sv] == None:
+            if tmpAnno.frameList[0][0] == None:
                 continue
 
             # print tmpAnno.frameList[0][sv]
 
-            bb = Annotation.getPropertyFromFrameAnno(tmpAnno.frameList[0][sv],
+            bb = Annotation.getPropertyFromFrameAnno(tmpAnno.frameList[0][0],
                                                      "boundingBox")
             lbls = Annotation.getExactBehavioursFromFrameAnno(
-                                                    tmpAnno.frameList[0][sv])
+                                                    tmpAnno.frameList[0][0])
 
             for b, l in zip(bb, lbls):
                 # ensure that annotations without boundingbox do not mess up
@@ -1758,7 +1758,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         for i in range(len(self.prevFrames)-1, -1, -1):
             frame = self.prevFrames[i]
-            self.updateLabel(self.trajLabels[i][0], frame[0][sv], None)
+            self.updateLabel(self.trajLabels[i][0], frame[0][0], None)
 
         self.vh.posCache.checkNeighboursRight(30)
 

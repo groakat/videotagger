@@ -187,7 +187,7 @@ class Annotation():
             behaviourPresent = False
             newVials = []
             
-            for vIdx in vials:
+            for vIdx, vial in enumerate(vials):
                 v = self.frameList[frameNo][vIdx]
                 
                 vNew = dict()
@@ -248,9 +248,9 @@ class Annotation():
         """
         frames list of ints
         """
-        if vial == None:
-            # just use first index
-            vial = 0       
+        # if vial == None:
+        # just use first index
+        vial = 0
             
         if isinstance(metadata, (int, long, float, complex)):
             tmpVal = metadata     
@@ -285,9 +285,9 @@ class Annotation():
         """
         frames list of ints
         """
-        if vial == None:
-            # just use first index
-            vial = 0    
+        # if vial == None:
+        # just use first index
+        vial = 0
             
         self.hasChanged = True
         if len(self.frameList) < max(frames):
@@ -311,9 +311,9 @@ class Annotation():
 
     def renameAnnotation(self, vial, frames, annotatorOld, behaviourOld,
                          annotatorNew, behaviourNew):
-        if vial is None:
-            # just use first index
-            vial = 0
+        # if vial is None:
+        # just use first index
+        vial = 0
 
         self.hasChanged = True
         if len(self.frameList) < max(frames):
