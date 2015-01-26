@@ -26,22 +26,15 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
     def rel2absFile(self, relFile):
         return  os.path.join(self.rootFolder, relFile)
 
-    def generateFeatureSavePath(self, trajPath):
-        posFolder = os.path.dirname(trajPath)
-        currentRootFolder = posFolder[:-len(self.positionFolder)]
-        generalFeatFolder = os.path.join(currentRootFolder,
-                                         self.featureFolder)
-        trajFeatFolder = os.path.join(self.rootFolder,
-                                      generalFeatFolder,
-                                      'colorHistogram')
-        if not os.path.exists(trajFeatFolder):
-            os.makedirs(trajFeatFolder)
-
-        trajFeatFile = os.path.join(trajFeatFolder,
-                                    os.path.basename(trajPath))
-
-        trajFeatFile = trajFeatFile[:-len('.pos.npy')] + '.histogram.npy'
-        return trajFeatFile
+    def generateFeatureSavePath(self, vidFile):
+        bn = os.path.basename(vidFile)[:-4] + '.histogram.npy'
+        baseFolder = os.path.dirname(vidFile)[:-len(self.annotationFolder)]
+        featFile = os.path.join(self.rootFolder,
+                                baseFolder,
+                                self.featureFolder,
+                                'colorHistogram',
+                                bn)
+        return featFile
 
 
     def convertVideoToAnnoFilename(self, videoFile):
@@ -72,9 +65,9 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
         return featFile
 
     def computeHistogramFromFrame(self, frame):
-        frame.reshape((-1, 3))
-        H, edges = np.histogramdd(frame, bins = (8, 8, 8))
-        return H
+        flattenedFrame = frame.reshape((-1, 3))
+        H, edges = np.histogramdd(flattenedFrame, bins = (8, 8, 8))
+        return H.ravel()
 
     def extractFeatureFromFrame(self, frame, annotation):
         """
@@ -97,6 +90,13 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
 
         self.setStatus("extracting features..", progressSteps)
         for i, relVidFile in enumerate(self.videoListRel):
+            if os.path.exists(self.generateFeatureSavePath(relVidFile)):
+                # do not recompute features already computed
+                if len(self.videoListRel) > 1:
+                    self.incrementStatus()
+
+                continue
+
             feat = []
             vE = VE.videoExplorer()
             vE.setVideoStream(self.rel2absFile(relVidFile), frameMode='RGB')
@@ -104,12 +104,11 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
             anno = A.Annotation()
             anno.loadFromFile(self.rel2absFile(
                                 self.convertVideoToAnnoFilename(relVidFile)))
-            
-            anno.filterFrameLists(self.annotationFilters)
-            1/0
+
+            annotationList = anno.filterFrameLists(self.annotationFilters)
             for frame in vE:
                 feat += [self.extractFeatureFromFrame(frame,
-                                                      anno.frameList[i])]
+                                                      annotationList[i])]
                 if len(self.videoListRel) == 1:
                     self.incrementStatus()
 
@@ -232,11 +231,11 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
             negativeSelects[annoFile] = sorted(rngSet - selSet)
             self.incrementStatus()
 
-        negativeSelects = self.capNegativeSelects(negativeSelects, lastSelect)
-
-        negFeatureMatrix = self.sampleNegatives(negativeSelects, N)
-        classArray += [np.zeros((negFeatureMatrix.shape[0],))]
-        featureMatrix += [negFeatureMatrix]
+        # negativeSelects = self.capNegativeSelects(negativeSelects, lastSelect)
+        #
+        # negFeatureMatrix = self.sampleNegatives(negativeSelects, N)
+        # classArray += [np.zeros((negFeatureMatrix.shape[0],))]
+        # featureMatrix += [negFeatureMatrix]
 
         return np.hstack(classArray), np.vstack(featureMatrix)
 
