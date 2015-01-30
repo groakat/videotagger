@@ -3,8 +3,12 @@ __author__ = 'peter'
 
 from pyTools.gui.graphicsViewTest_auto import Ui_MainWindow
 import pyTools.misc.FrameDataVisualization2 as FDV
+import pyTools.gui.annotationSelecter as AS
+import pyTools.videoProc.annotation as A
+import pyTools.gui.fullViewDialog as FVD
 
 import sys
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -33,11 +37,11 @@ class Test(QtGui.QMainWindow):
 
         # self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v0.npy')
         c = [QtGui.QColor(0, 255, 0),
-            QtGui.QColor(0,  0, 255),
-            QtGui.QColor(255, 0, 0)]#,
+            QtGui.QColor(0,  0, 255)]#,
+            # QtGui.QColor(255, 0, 0)]#,
             # QtGui.QColor(0, 0, 0)]
         self.gvFDV.setColors(c)
-        self.gvFDV.loadSequence('/media/peter/Seagate Backup Plus Drive/tmp/stackFdvt.npy')
+        self.gvFDV.loadSequence('/media/peter/Seagate Backup Plus Drive1/tmp/stackFdvt.npy')
 
         self.show()
 
@@ -99,6 +103,7 @@ class GraphicsViewFDV(QtGui.QWidget):
                                       'frames':[]}
 
         self.fdvt = None
+        self.fdvts = []
 
         self.day = None
         self.hour = None
@@ -273,31 +278,154 @@ class GraphicsViewFDV(QtGui.QWidget):
                 geo.setHeight(0)
                 barLet.setRect(geo)
 
+    def filterListToString(self, fdvt):
+        s = ''
+        for filt in fdvt.meta['filtList']:
+            s += '{0}: {1}\n'.format(','.join(filt.annotators),
+                                     ','.join(filt.behaviours))
+
+        return s[:-1]
+
+
+    def addFDVTtoButtonList(self, fdvt):
+        descString = self.filterListToString(fdvt)
+        button = QtGui.QPushButton()
+        button.setText(descString)
+        button.setToolTip(descString)
+        fp = lambda : self.loadFDVT(fdvt)
+        button.clicked.connect(fp)
+
+
+        iconFolder = os.path.join(
+                            os.path.dirname(os.path.abspath(__file__)),
+                            os.path.pardir,
+                            'icon')
+
+        saveButton = FVD.SVGButton(self)
+        saveButton.load(iconFolder + '/Save_font_awesome.svg')
+        saveButton.setToolTip("Save all annotations [CTRL + S]")
+        saveButton.setFixedSize(20, 20)
+        fp = lambda : self.saveFDVT(fdvt)
+        saveButton.clicked.connect(fp)
+
+
+
+        layout = QtGui.QHBoxLayout()
+        layout.addWidget(button)
+        layout.addWidget(saveButton)
+
+
+        self.selectionLayout.insertLayout(self.selectionLayout.count() - 1,
+                                          layout)
+
+    def saveFDVT(self, fdvt):
+        fn = QtGui.QFileDialog.getSaveFileName(self,
+                                               "Save FDVT",
+                                               '.',
+                                               '*.npy')
+
+        fdvt.save(fn[0])
+
+    def addFDVT(self, fdvt):
+        self.fdvts += [fdvt]
+        self.addFDVTtoButtonList(fdvt)
 
     def loadFDVT(self, fdvt):
         self.initDataPlots()
         self.fdvt = fdvt
-        self.createFDVTTemplate()
         self.createLegend()
+        self.createFDVTTemplate()
         self.updateDisplay()
 
     def loadSequence(self, fdvtPath):
         # fdvt = FDV.FrameDataVisualizationTreeBehaviour()
         fdvt = FDV.loadFDVT(fdvtPath)
         self.loadFDVT(fdvt)
+        self.addFDVT(fdvt)
         # self.createFDVTTemplate()
         # self.updateDisplay()
 
     def setupUi(self):
-        self.layout = QtGui.QVBoxLayout()
+        self.layout = QtGui.QHBoxLayout()
+        self.centerLayout = QtGui.QVBoxLayout()
         self.gv_center = QtGui.QGraphicsView(self)
         # self.gv_center.setGeometry(QtCore.QRect(100, 60, 561, 150))
         self.gv_center.setObjectName("gv_center")
-        self.layout.addWidget(self.gv_center)
         self.gv_center.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.gv_center.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
+        self.centerLayout.addWidget(self.gv_center)
+
+        self.rightLayout = QtGui.QVBoxLayout()
+
+        self.selectionArea = QtGui.QScrollArea(self)
+        self.selectionListWidget = QtGui.QWidget(self)
+        self.selectionLayout = QtGui.QVBoxLayout(self)
+        self.selectionLayout.addStretch()
+
+        self.selectionListWidget.setLayout(self.selectionLayout)
+        self.selectionArea.setWidget(self.selectionListWidget)
+        self.selectionArea.setWidgetResizable(True)
+
+
+        self.buttonLayout = QtGui.QHBoxLayout()
+        self.pb_newFDVT = QtGui.QPushButton()
+        self.pb_newFDVT.setText("new from\n annotation")
+        self.pb_newFDVT.clicked.connect(self.createNewFDVT)
+
+        self.pb_loadFDVT = QtGui.QPushButton()
+        self.pb_loadFDVT.setText("load from\n file")
+        self.pb_loadFDVT.clicked.connect(self.loadNewFDVT)
+
+        self.buttonLayout.addWidget(self.pb_newFDVT)
+        self.buttonLayout.addWidget(self.pb_loadFDVT)
+
+        self.rightLayout.addWidget(self.selectionArea)
+        self.rightLayout.addLayout(self.buttonLayout)
+
+
+
+        splitter = QtGui.QSplitter(QtCore.Qt.Horizontal, self)
+        centerWidget = QtGui.QWidget()
+        rightWidget = QtGui.QWidget()
+
+        centerWidget.setLayout(self.centerLayout)
+        rightWidget.setLayout(self.rightLayout)
+        splitter.addWidget(centerWidget)
+        splitter.addWidget(rightWidget)
+
+        self.layout.addWidget(splitter)
+
+
+        # self.layout.addLayout(self.centerLayout)
+        # self.layout.addLayout(self.rightLayout)
+
         self.setLayout(self.layout)
 
+    def createNewFDVT(self):
+        anno = A.Annotation()
+        anno.loadFromFile('/media/peter/Seagate Backup Plus Drive1/peter_testCopy/WP609L_small.bhvr')
+        annotationFilters = AS.AnnotationSelecter.getAnnotationSelection(self,
+                                                                         anno)
+
+        filteredAnno = anno.filterFrameListMultiple(annotationFilters,
+                                                    exactMatch=False)
+
+        fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+        fdvt.importAnnotation(filteredAnno, annoFilters=annotationFilters)
+
+        self.addFDVT(fdvt)
+
+        print annotationFilters
+
+    def loadNewFDVT(self):
+        fn = QtGui.QFileDialog.getOpenFileName(self,
+                                               "Select FDVT",
+                                               '.',
+                                               '*.npy')
+
+        fdvt = FDV.loadFDVT(fn[0])
+        self.addFDVT(fdvt)
 
     def resizeEvent(self, event):
         super(GraphicsViewFDV, self).resizeEvent(event)
@@ -477,6 +605,7 @@ class GraphicsViewFDV(QtGui.QWidget):
             rectItem = QtGui.QGraphicsRectItem(rect, self.legend)
             rectItem.setBrush(brush)
             rectItem.setPen(pen)
+            self.brushes += [brush]
 
         self.legend.setPos(1.1, 0)
         self.legend.setZValue(2)
@@ -510,8 +639,9 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         font = QtGui.QFont()
         font.setPointSize(7)
-        text = QtGui.QGraphicsTextItem("Annotations by \n{0}".format(
-                                            filtList[0].annotators[0]), axes)
+        # text = QtGui.QGraphicsTextItem("Annotations by \n{0}".format(
+        #                                     filtList[0].annotators[0]), axes)
+        text = QtGui.QGraphicsTextItem("Annotations by", axes)
         text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
         text.setFont(font)
         text.setPos(-0.05, 2.4)
@@ -612,7 +742,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         sp = self.subPlot[rectKey]
         rects = []
         bar = QtGui.QGraphicsRectItem(sp)
-        for i, brush in enumerate(self.brushes):
+        for i, brush in enumerate(self.colormap):
             pen = QtGui.QPen(QtGui.QColor(0, 255, 0, 0))
             rect = QtCore.QRectF(0, i, 1, np.random.rand(1))
             rectItem = FDVBar(rect, bar)

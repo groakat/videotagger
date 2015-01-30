@@ -1110,7 +1110,7 @@ class VideoHandler(QtCore.QObject):
                     continue
 
                 for lbl in frame:
-                    if lbl is None:
+                    if not 'behaviour' in lbl:
                         continue
 
                     nMaxBehaviour = self.getHighestBehaviourNumber(

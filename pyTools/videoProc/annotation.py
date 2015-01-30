@@ -127,7 +127,8 @@ class Annotation():
 
 
 
-    def filterFrameList(self, filterTuple, frameRange=None, exactMatch=True): #vialNo=None, behaviourName=None, annotator=None):
+    def filterFrameList(self, filterTuple, frameRange=None,
+                        exactMatch=True, recycleAnno=None): #vialNo=None, behaviourName=None, annotator=None):
         """
         Returns a new annotation object that contains only annotations that 
         satisfy all filter criteria.
@@ -166,11 +167,18 @@ class Annotation():
         Returns:
             new annotator object satisfying the filter criteria
         """
-        
+        if frameRange is None:
+            frameRange = range(len(self.frameList))
+
+        if recycleAnno is None:
+            out = Annotation(frameNo=len(frameRange), vialNames=[''])
+        else:
+            out = recycleAnno
+
         vialNo = filterTuple.vials
         behaviourName = filterTuple.behaviours
         annotator = filterTuple.annotators
-        
+
         if vialNo is None\
         or vialNo == [None]:
             vials = range(len(self.frameList[0]))
@@ -180,9 +188,7 @@ class Annotation():
             # asuming vialNo to be a list
             vials = vialNo
 
-        if frameRange is None:
-            frameRange = range(len(self.frameList))
-            
+
         filteredList = []
         for frameNo in frameRange:
             behaviourPresent = False
@@ -190,17 +196,17 @@ class Annotation():
 
             for vIdx, vial in enumerate(vials):
                 v = self.frameList[frameNo][vIdx]
-                
+
                 vNew = dict()
-                
+
                 if "behaviour" in v:
                     bNew = dict()
-                    
+
                     if behaviourName == None:
                         bhvrList = v["behaviour"].keys()
                     else:
                         bhvrList = behaviourName
-                    
+
                     for bhvrName in bhvrList:
                         matchList = self.behaviourMatch(bhvrName, v["behaviour"].keys(),
                                                exactMatch=exactMatch)
@@ -209,40 +215,33 @@ class Annotation():
                         # if bhvrName in v["behaviour"]:
                             bhvr = v["behaviour"][bhvrMatch]
                             an = dict()
-                            
+
                             if annotator is None:
                                 anList = bhvr.keys()
                             else:
                                 anList = annotator
-                                
+
                             for anName in anList:
                                 if anName in bhvr:
-                                    an[anName] = bhvr[anName]
-                            
-                            if an:
-                                bNew[bhvrMatch] = an
-                                
-                    if bNew:
-                        if "name" in v:
-                            vNew['name'] = v['name']
-                            
-                        vNew['behaviour'] = bNew
-                        newVials += [vNew]
-                        behaviourPresent = True
-                    else:
-                        newVials += [None]  
-                else:
-                    newVials += [None]                            
-                        
-            if behaviourPresent:
-                filteredList += [newVials]
-            else:
-                filteredList += [[None for i in range(len(vials))]]
-        
-        out = Annotation()
-        out.setFrameList(filteredList)
-        # self.children += [out]
-        
+                                    newFrameNo = frameNo - frameRange[0]
+                                    out.addAnnotation(vIdx,
+                                                      [newFrameNo],
+                                                      anName,
+                                                      bhvrMatch,
+                                                      {newFrameNo: bhvr[anName]})
+
+
+        return out
+
+    def filterFrameListMultiple(self, filterTuples, frameRange=None,
+                        exactMatch=True, recycleAnno=None):
+
+        out = Annotation(frameNo=len(self.frameList), vialNames=[''])
+
+        for filterTuple in filterTuples:
+            out = self.filterFrameList(filterTuple, frameRange,
+                                       exactMatch, out)
+
         return out
 
     def mergeFrameLists(self, frameLists):
@@ -490,7 +489,7 @@ class Annotation():
                 match = self.filterFrameList(filterTuple,
                                              [endFrame],
                                              exactMatch).frameList
-                if match == [[None]]:
+                if not 'behaviour' in match[0][0]:
                     break
 
                 endFrame += 1
@@ -501,7 +500,7 @@ class Annotation():
                 match = self.filterFrameList(filterTuple,
                                              [startFrame],
                                              exactMatch).frameList
-                if match == [[None]]:
+                if not 'behaviour' in match[0][0]:
                     break
 
                 startFrame -= 1
@@ -519,6 +518,36 @@ class Annotation():
         for vial in vials:
             self.frameList[frame][vial]["behaviour"][behaviour]\
                             [annotator][metaKey] = newMetaValue
+
+
+
+    def extractAllFilterTuples(self, frameRange=None):
+        """
+        Returns all annotation filters that can be applied to the annotation
+        """
+        annotationFilterSet = set()
+
+        if frameRange is None:
+            frameRange = range(len(self.frameList))
+
+        for frameNo in frameRange:
+            for vIdx in range(len(self.frameList[0])):
+                v = self.frameList[frameNo][vIdx]
+
+                if "behaviour" in v:
+                    bhvrList = v["behaviour"].keys()
+
+                    for bhvrName in bhvrList:
+                        bhvr = v["behaviour"][bhvrName]
+                        anList = bhvr.keys()
+
+                        for anName in anList:
+                            annotationFilterSet |= {
+                                    AnnotationFilter(vials=(vIdx,),
+                                                     behaviours=(bhvrName,),
+                                                     annotators=(anName,))}
+
+        return annotationFilterSet
 
 
 def getExactBehavioursFromFrameAnno(a):

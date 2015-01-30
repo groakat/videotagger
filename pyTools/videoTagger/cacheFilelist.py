@@ -131,7 +131,7 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
         singleFileMode = True
 
     fdtv = FDV.FrameDataVisualizationTreeBehaviour()
-    fdtv.importAnnotations(bhvrList, videoList, annotations, selectedVial,
+    fdtv.importAnnotationsFromFile(bhvrList, videoList, annotations, selectedVial,
                            runningIndeces=runningIndeces,
                            singleFileMode=singleFileMode)
 

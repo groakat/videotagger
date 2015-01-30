@@ -181,6 +181,8 @@ class FrameDataVisualizationTreeBase(object):
                 hours = range(24)
                 minutes = range(60)
                 multipleDays = True
+            else:
+                days = [0]
         else:
             try:
                 if self.meta['rangeTemplate']['days'] == [0]:
@@ -809,7 +811,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                                                 exactMatch=False)
 
             for i in xrange(frameSlc.start, frameSlc.stop):
-                if filteredAnno.frameList[i][0] is not None:
+                if 'behaviour' in filteredAnno.frameList[i][0]:
                     try:
                         data[i - frameSlc.start][l] = \
                             len(filteredAnno.frameList[i][0].keys())
@@ -906,7 +908,11 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                                        'minutes': sorted(minutes),
                                        'frames': frames}
 
-    def importAnnotation(self, annotation, fps=30):
+    def importAnnotation(self, annotation, fps=30, annoFilters=None):
+        if annoFilters is not None:
+            for af in annoFilters:
+                self.addNewClass(af)
+
         day = 0
         hour = 0
         minute = 0
@@ -945,7 +951,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         self.importAnnotation(anno, fps)
 
 
-    def importAnnotations(self, bhvrList, videoList, annotations, vials,
+    def importAnnotationsFromFile(self, bhvrList, videoList, annotations, vials,
                           runningIndeces=False, fps=30, singleFileMode=None):
 
         filtList = []

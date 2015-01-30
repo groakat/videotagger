@@ -263,18 +263,26 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
         :return:
         """
         print("classifying!")
+        if len(self.videoListRel) == 1:
+            progressSteps = VE.videoExplorer.retrieveVideoLength(
+                            self.rel2absFile(self.videoListRel[0]),
+                            100000)
+            self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+            self.fdvt.meta['singleFileMode'] = True
+        else:
+            progressSteps = len(self.videoListRel)
+            self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+            self.fdvt.meta['singleFileMode'] = False
 
-        self.setStatus("classifying..", len(self.posListRel))
+        self.setStatus("classifying...", progressSteps)
 
         filters = []
-        self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
-        self.fdvt.meta['singleFileMode'] = False
 
-        filt = A.AnnotationFilter(annotators=["simpleFlyShowCase"],
-                                  behaviours=['negative'],
-                                  vials=self.annotationFilters[0].vials)
-        self.fdvt.addNewClass(filt)
-        filters += [filt]
+        # filt = A.AnnotationFilter(annotators=["simpleFlyShowCase"],
+        #                           behaviours=['negative'],
+        #                           vials=self.annotationFilters[0].vials)
+        # self.fdvt.addNewClass(filt)
+        # filters += [filt]
 
         for af in self.annotationFilters:
             filt = A.AnnotationFilter(annotators=["simpleFlyShowCase"],
@@ -283,18 +291,28 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
             self.fdvt.addNewClass(filt)
             filters += [filt]
 
-
-        for i, posPath in enumerate(self.posListRel):
-            feat = np.load(self.generateFeatureSavePath(posPath))
-            predictions = self.classifier.predict(feat)
+        for i, videoPathRel in enumerate(self.videoListRel):
+            feat = np.load(self.generateFeatureSavePath(videoPathRel))
             dv = []                 # deltaVector
-            for k, p in enumerate(predictions):
-                dv += [self.fdvt.getDeltaValue(posPath, k, filters[int(p)])]
+            for k in range(0, feat.shape[0], 100):
+                f = feat[k:k+100]
+                prediction = self.classifier.predict(f)
+                for i, p in enumerate(prediction) :
+                    # p-1 because tehre is no negative class!!!
+                    dv += [self.fdvt.getDeltaValue(videoPathRel, k + i,
+                                               filters[int(p-1)])]
+
+
+                if len(self.videoListRel) == 1:
+                    self.incrementStatus(100)
+
 
             self.fdvt.insertDeltaVector(dv)
-            self.incrementStatus()
 
-        self.fdvt.save("/media/peter/Seagate Backup Plus Drive/tmp/stackFdvt.npy")
+            if len(self.videoListRel) > 1:
+                self.incrementStatus()
+
+        self.fdvt.save("/media/peter/Seagate Backup Plus Drive1/tmp/stackFdvt.npy")
 
 
     def generateFDVT(self):

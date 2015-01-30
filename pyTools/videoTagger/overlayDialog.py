@@ -135,6 +135,61 @@ class OverlayDialogBase(QtGui.QWidget):
             return False
 
 
+class OverlayDialogWidgetBase(OverlayDialogBase):
+    def __init__(self, parent, widget, *args,
+                 **kwargs):
+
+        self.widget = widget
+        super(OverlayDialogWidgetBase, self).__init__(parent=parent, *args,
+                                                      **kwargs)
+
+        self.setupContent()
+        self.setupLayout()
+        self.connectSignals()
+
+    def setupContent(self):
+        self.content = QtGui.QWidget(self)
+        self.contentLayout  = QtGui.QVBoxLayout()
+
+        self.button = QtGui.QPushButton(self.content)
+        self.button.setText("OK")
+
+        self.contentLayout.addWidget(self.widget)
+        self.contentLayout.addWidget(self.button)
+
+        self.content.setLayout(self.contentLayout)
+
+
+    def setupLayout(self):
+        self.layout = QtGui.QVBoxLayout()
+
+        self.layout.insertSpacing(0, 30)
+        # self.layout.addWidget(self.messageLabel)
+        # self.layout.addWidget(self.content)
+        # self.layout.addWidget(self.button)
+        self.layout.addWidget(self.content)
+        self.layout.insertSpacing(-1, 30)
+
+        self.outerLayout = QtGui.QHBoxLayout(self)
+        self.outerLayout.insertSpacing(0, 30)
+        self.outerLayout.addLayout(self.layout)
+        self.outerLayout.insertSpacing(-1, 30)
+        self.setLayout(self.outerLayout)
+
+    def connectSignals(self):
+        self.button.clicked.connect(self.setReturnValue)
+
+    def _setReturnValue(self):
+        self.ret = True
+
+    @staticmethod
+    def getUserInput(parent, widget):
+        od = OverlayDialogWidgetBase(parent, widget)
+        od.exec_()
+        return od.ret
+
+
+
 class ClassSelectDialog(OverlayDialogBase):
     def __init__(self, parent, stringList=None, previews=None, *args, **kwargs):
         super(ClassSelectDialog, self).__init__(parent=parent, *args, **kwargs)

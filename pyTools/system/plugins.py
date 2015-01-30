@@ -127,12 +127,12 @@ class PluginBase(object):
         self.progressBar.setMaximum(maxProgressValue)
         self.widget.updateGeometry()
 
-    def incrementStatus(self):
+    def incrementStatus(self, increment=1):
         """
         Adds one to the value of the progress bar
         :return:
         """
-        self.progressBar.setValue(self.progressBar.value() + 1)
+        self.progressBar.setValue(self.progressBar.value() + increment)
 
     def updateStatus(self, progress):
         """

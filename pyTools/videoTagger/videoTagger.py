@@ -1099,8 +1099,27 @@ class VideoTagger(QtGui.QMainWindow):
         self.frameView.setColors(colors)
         
         if self.fdvtPath is not None:
-            cfg.log.info("before loading fdvt")
-            self.frameView.loadSequence(self.fdvtPath)
+            self.fdvt = FDV.loadFDVT(self.fdvtPath)
+
+            if self.fdvt.meta['not-initialized']:
+                self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+                self.fdvt.importAnnotationsFromFile(self.convertFileList(self.fileList,
+                                                                 '.bhvr'),
+                                            self.fileList,
+                                            self.annotations,
+                                            self.getSelectedVial())
+
+        if self.fdvtPath is None:
+            self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+            self.fdvt.importAnnotationsFromFile(self.convertFileList(self.fileList,
+                                                             '.bhvr'),
+                                        self.fileList,
+                                        self.annotations,
+                                        self.getSelectedVial())
+
+        cfg.log.info("before loading fdvt")
+        self.frameView.addFDVT(self.fdvt)
+        self.frameView.loadFDVT(self.fdvt)
 
         cfg.log.info("end")
         self.fdvt = self.frameView.fdvt
@@ -1188,7 +1207,7 @@ class VideoTagger(QtGui.QMainWindow):
     def convertFileList(self, fileList, videoEnding):
         fl = []
         for f in sorted(fileList):
-            if self.croppedVideo:
+            if not self.croppedVideo:
                 fl += [f.split('.')[0] + videoEnding]
             else:
                 fl += ['.'.join(f.split('.')[:2]) + videoEnding]
@@ -1212,7 +1231,7 @@ class VideoTagger(QtGui.QMainWindow):
                     self.fdvt.load(self.fdvtPath)
                 else:
                     print "importing annotations for display (may take a while)"
-                    self.fdvt.importAnnotations(self.convertFileList(self.fileList, 
+                    self.fdvt.importAnnotationsFromFile(self.convertFileList(self.fileList,
                                                                      '.bhvr'), 
                                                 self.annotations, 
                                                 self.getSelectedVial())
@@ -1740,7 +1759,7 @@ class VideoTagger(QtGui.QMainWindow):
                                     filt,
                                     exactMatch=False)
 
-            if tmpAnno.frameList[0][0] == None:
+            if not 'behaviour' in tmpAnno.frameList[0][0]:
                 continue
 
             # print tmpAnno.frameList[0][sv]
