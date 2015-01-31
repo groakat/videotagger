@@ -661,6 +661,8 @@ class fullFrameLabelView(QtGui.QWidget):
                             os.path.pardir,
                             'icon')
 
+        self.addingInProgress = False
+
         self.videoTagger = videoTagger
         self.fullViewDialog = fullViewDialog
 
@@ -671,6 +673,12 @@ class fullFrameLabelView(QtGui.QWidget):
         self.buttonWidget = QtGui.QWidget(self)
         self.buttonLayout = QtGui.QHBoxLayout(self.buttonWidget)
 
+        self.addButton = SVGButton(self.buttonWidget)
+        self.addButton.load(self.iconFolder + '/Plus_font_awesome.svg')
+        self.addButton.setToolTip("add new full-frame bookmark")
+        self.addButton.clicked.connect(self.addButtonClick)
+        self.addButton.setFixedSize(20, 20)
+
         self.removeButton = SVGButton(self.buttonWidget)
         self.removeButton.load(self.iconFolder + '/Minus_font_awesome.svg')
         self.removeButton.setToolTip("remove bookmark")
@@ -678,6 +686,7 @@ class fullFrameLabelView(QtGui.QWidget):
         self.removeButton.setFixedSize(20, 20)
 
 
+        self.buttonLayout.addWidget(self.addButton)
         self.buttonLayout.addStretch()
         self.buttonLayout.addWidget(self.removeButton)
         self.buttonWidget.setLayout(self.buttonLayout)
@@ -722,6 +731,14 @@ class fullFrameLabelView(QtGui.QWidget):
         self.videoTagger.registerLastLabelInteraction(behaviour)
         self.videoTagger.menu.exec_(QtGui.QCursor.pos())
 
+    def addButtonClick(self):
+        self.addingInProgress = not self.addingInProgress
+        if self.addingInProgress:
+            self.addButton.load(self.iconFolder + '/F0fe_font_awesome.svg')
+        else:
+            self.addButton.load(self.iconFolder + '/Plus_font_awesome.svg')
+
+        self.videoTagger.addTempAnno()
 
 
 
