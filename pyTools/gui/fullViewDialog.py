@@ -102,10 +102,7 @@ class FullViewDialog(QtGui.QMainWindow):
         self.controlWidget = QtGui.QWidget(self)
         layout = QtGui.QHBoxLayout(self.controlWidget)
 
-        self.iconFolder = os.path.join(
-                            os.path.dirname(os.path.abspath(__file__)),
-                            os.path.pardir,
-                            'icon')
+        self.iconFolder = SVGButton.getIconFolder()
 
         self.fdvButton = SVGButton(self.controlWidget)
         self.fdvButton.load(self.iconFolder + '/Bar_chart_font_awesome.svg')
@@ -378,6 +375,8 @@ class SVGButton(QtGui.QPushButton):
             self.icon.load(svgPath)
 
         self.layoutBase = QtGui.QHBoxLayout(self)
+        self.layoutBase.setSpacing(0)
+        self.layoutBase.setContentsMargins(0,0,0,0)
         self.layoutBase.addWidget(self.icon)
 
     def resizeEvent(self, event):
@@ -385,6 +384,15 @@ class SVGButton(QtGui.QPushButton):
 
         if self.icon is not None:
             self.icon.setFixedSize(self.size())
+
+    @staticmethod
+    def getIconFolder():
+        iconFolder = os.path.join(
+                            os.path.dirname(os.path.abspath(__file__)),
+                            os.path.pardir,
+                            'icon')
+
+        return iconFolder
 
 
 class BookmarkListModel(QtGui.QStandardItemModel):

@@ -309,8 +309,8 @@ class FDVShowDialog(OverlayDialogBase):
 
         self.content.setLayout(self.contentLayout)
 
-        self.content.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
-                                   QtGui.QSizePolicy.MinimumExpanding)
+        # self.content.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
+        #                            QtGui.QSizePolicy.MinimumExpanding)
 
     def setupLayout(self):
         self.layout = QtGui.QVBoxLayout()
@@ -327,7 +327,8 @@ class FDVShowDialog(OverlayDialogBase):
 
     @staticmethod
     def getSelection(parent, FDV):
-        od = FDVShowDialog(parent, FDV)
+        # od = FDVShowDialog(parent, FDV)
+        od = OverlayDialogWidgetBase(parent, FDV)
         od.exec_()
         return od.ret
 
