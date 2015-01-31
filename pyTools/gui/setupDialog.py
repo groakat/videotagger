@@ -127,16 +127,20 @@ class SetupDialog(QtGui.QWidget):
 
         self.loadWidget(self.expertSettingsWidget)
 
+    def swapCroppedVideoState(self, state):
+        self.deactivateCroppedButton()
+
+
     def connectSignals(self):
         self.files_button.clicked.connect(self.openFileWidget)
         self.annotations_button.clicked.connect(self.openAnnotationWidget)
         self.cropped_button.clicked.connect(self.openCroppedWidget)
         self.expert_button.clicked.connect(self.openExpertWidget)
 
-
         # self.le_videoPath.editingFinished.connect(self.tryToLoadConfig)
         # self.pb_videoPath.clicked.connect(self.selectVideoPathFolder)
         # self.btn_videoSelection.clicked.connect(self.cacheFileList)
+        self.cb_croppedVideo.stateChanged.connect(self.swapCroppedVideoState)
 
     def createFilesWidget(self):
         widget = QtGui.QWidget()
@@ -210,25 +214,47 @@ class SetupDialog(QtGui.QWidget):
 
         return lbl
 
-    def pushAnnotationLineUp(self, idx):
-        le_anno = self.annoLayout.itemAtPosition(idx, 0).widget()
-        le_bhvr = self.annoLayout.itemAtPosition(idx, 1).widget()
-        clr = self.annoLayout.itemAtPosition(idx, 2).widget()
-        pb_del = self.annoLayout.itemAtPosition(idx, 3).widget()
-        self.annoLayout.removeWidget(le_anno)
-        self.annoLayout.removeWidget(le_bhvr)
-        self.annoLayout.removeWidget(clr)
-        self.annoLayout.removeWidget(pb_del)
+    # def pushAnnotationLineUp(self, idx):
+    #     le_anno = self.annoLayout.itemAtPosition(idx, 0).widget()
+    #     le_bhvr = self.annoLayout.itemAtPosition(idx, 1).widget()
+    #     clr = self.annoLayout.itemAtPosition(idx, 2).widget()
+    #     pb_del = self.annoLayout.itemAtPosition(idx, 3).widget()
+    #     self.annoLayout.removeWidget(le_anno)
+    #     self.annoLayout.removeWidget(le_bhvr)
+    #     self.annoLayout.removeWidget(clr)
+    #     self.annoLayout.removeWidget(pb_del)
+    #
+    #     self.annoLayout.addWidget(le_anno, idx-1 , 0, 1, 1)
+    #     self.annoLayout.addWidget(le_bhvr, idx-1 , 1, 1, 1)
+    #     self.annoLayout.addWidget(clr, idx-1 , 2, 1, 1)
+    #     self.annoLayout.addWidget(pb_del, idx-1 , 3, 1, 1)
 
-        self.annoLayout.addWidget(le_anno, idx-1 , 0, 1, 1)
-        self.annoLayout.addWidget(le_bhvr, idx-1 , 1, 1, 1)
-        self.annoLayout.addWidget(clr, idx-1 , 2, 1, 1)
-        self.annoLayout.addWidget(pb_del, idx-1 , 3, 1, 1)
+    def populateNewAnnotationGrid(self, itemsToKeep):
+        gridLayout = QtGui.QGridLayout()
+
+        for i, widgets in enumerate(itemsToKeep):
+            for k, widget in enumerate(widgets):
+                if widget is not None:
+                    gridLayout.addWidget(widget, i, k)
+
+        self.annoLayout = gridLayout
+        self.annoSelector.setLayout(self.annoLayout)
+
 
     def deleteAnnotationLine(self, le_anno, le_bhvr, clr, pb_del):
-        for i in range(self.annoLayout.rowCount()-1):
+        delRow = 0
+        itemsToKeep = []
+        for i in range(self.annoLayout.rowCount() -1):
             if self.annoLayout.itemAtPosition(i, 0).widget() == le_anno:
-                break
+                delRow = i
+            else:
+                widgets = []
+                for k in range(4):
+                    widgets += [self.annoLayout.itemAtPosition(i, k).widget()]
+
+                itemsToKeep += [widgets]
+
+        itemsToKeep += [[None, None, None, self.pb_newAnnotationLine]]
 
         le_anno.hide()
         le_bhvr.hide()
@@ -239,8 +265,11 @@ class SetupDialog(QtGui.QWidget):
         self.annoLayout.removeWidget(clr)
         self.annoLayout.removeWidget(pb_del)
 
-        for k in range(i + 1, self.annoLayout.rowCount()-1):
-            self.pushAnnotationLineUp(k)
+        self.populateNewAnnotationGrid(itemsToKeep)
+
+        #
+        # for k in range(i + 1, self.annoLayout.rowCount()-1):
+        #     self.pushAnnotationLineUp(k)
 
 
 
