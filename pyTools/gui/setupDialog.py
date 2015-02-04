@@ -4,6 +4,7 @@ import pyTools.gui.fullViewDialog as FVD
 import sys
 import os
 import numpy as np
+import json
 
 
 class Test(QtGui.QMainWindow):
@@ -32,13 +33,27 @@ class MouseFilterObj(QtCore.QObject):
             self.callback()
 
 class SetupDialog(QtGui.QWidget):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, videoTagger=None, *args, **kwargs):
         super(SetupDialog, self).__init__(*args, **kwargs)
 
         self.classColor = dict()
         self.eventFilter = dict()
+        self.videoTagger = videoTagger
         self.setupWidget()
         self.show()
+
+
+    def connectSignals(self):
+        self.files_button.clicked.connect(self.openFileWidget)
+        self.annotations_button.clicked.connect(self.openAnnotationWidget)
+        self.cropped_button.clicked.connect(self.openCroppedWidget)
+        self.expert_button.clicked.connect(self.openExpertWidget)
+        self.run_button.clicked.connect(self.launchVideoTagger)
+
+        self.le_videoPath.editingFinished.connect(self.tryToLoadConfig)
+        self.pb_videoPath.clicked.connect(self.selectVideoPathFolder)
+        self.btn_videoSelection.clicked.connect(self.cacheFileList)
+        self.cb_croppedVideo.stateChanged.connect(self.swapCroppedVideoState)
 
     def activateFileWidgetButton(self):
         self.files_button.load(os.path.join(
@@ -130,18 +145,6 @@ class SetupDialog(QtGui.QWidget):
     def swapCroppedVideoState(self, state):
         self.deactivateCroppedButton()
 
-
-    def connectSignals(self):
-        self.files_button.clicked.connect(self.openFileWidget)
-        self.annotations_button.clicked.connect(self.openAnnotationWidget)
-        self.cropped_button.clicked.connect(self.openCroppedWidget)
-        self.expert_button.clicked.connect(self.openExpertWidget)
-
-        # self.le_videoPath.editingFinished.connect(self.tryToLoadConfig)
-        # self.pb_videoPath.clicked.connect(self.selectVideoPathFolder)
-        # self.btn_videoSelection.clicked.connect(self.cacheFileList)
-        self.cb_croppedVideo.stateChanged.connect(self.swapCroppedVideoState)
-
     def createFilesWidget(self):
         widget = QtGui.QWidget()
         layout = QtGui.QGridLayout()
@@ -171,6 +174,7 @@ class SetupDialog(QtGui.QWidget):
         self.lbl_startFrame.setText("Start Frame")
         self.le_startFrame = QtGui.QLineEdit()
         self.le_startFrame.setValidator(QtGui.QIntValidator())
+        self.le_startFrame.setText("0")
 
         layout.addWidget(self.lbl_startFrame, 2, 0)
         layout.addWidget(self.le_startFrame, 2, 1, 1, 2)
@@ -313,7 +317,7 @@ class SetupDialog(QtGui.QWidget):
         self.annoLayout.addWidget(self.pb_newAnnotationLine, cnt + 1, 3)
 
 
-    def createAnnotationSelector(self):
+    def createAnnotationSelector(self, annotationFilters=None):
         widget = QtGui.QWidget()
         scrollArea = QtGui.QScrollArea()
         scrollArea.setWidget(widget)
@@ -342,7 +346,9 @@ class SetupDialog(QtGui.QWidget):
         self.pb_newAnnotationLine.clicked.connect(self.createNewAnnotationLine)
 
 
-        self.createNewAnnotationLine()
+        # if annotationFilters is not None:
+        #     self.createNewAnnotationLine()
+
 
         widget.setLayout(self.annoLayout)
 
@@ -497,13 +503,21 @@ class SetupDialog(QtGui.QWidget):
         self.expert_button.setFixedSize(40, 40)
         self.expert_button.setToolTip("Expert Settings")
 
+
+        self.run_button = FVD.SVGButton(os.path.join(iconFolder,
+                                                       "chevron-circle-right_font_awesome.svg"))
+        self.run_button.setFixedSize(40, 40)
+        self.run_button.setToolTip("Run")
+
         layout = QtGui.QHBoxLayout()
         layout.addStretch()
+        layout.addSpacing(50)
         layout.addWidget(self.files_button)
         layout.addWidget(self.annotations_button)
         layout.addWidget(self.cropped_button)
         layout.addWidget(self.expert_button)
         layout.addStretch()
+        layout.addWidget(self.run_button)
 
         widget.setLayout(layout)
 
@@ -542,8 +556,104 @@ class SetupDialog(QtGui.QWidget):
         self.connectSignals()
 
 
+    def setFormValues(self,
+                             path,
+                             videoListPathRel,
+                             fileListRel,
+                             annotator,
+                             annotationFilters,
+                             bhvrFolder,
+                             selectedVial,
+                             patchesFolder,
+                             positionsFolder,
+                             fdvtPathRel,
+                             vialROI,
+                             bufferWidth,
+                             bufferLength,
+                             getCurrentKey_idx,
+                             croppedVideo
+                             ):
+
+        # TODO: put this in videoTagger
+        # self.fileListRel, self.videoListFullResRel, \
+        #     self.bgListRel, self.posListRel =   \
+        #             self.getFileList(path, videoExtension, videoListPathRel)
+        #
+        # self.fileList = self.getAbsolutePaths(fileListRel)
 
 
+        self.cb_videoSelection.clear()
+        print fileListRel
+        self.cb_videoSelection.addItems(fileListRel)
+
+        self.le_annotatorName.setText(annotator)
+        self.le_videoPath.setText(path)
+        self.le_bhvrFolder.setText(bhvrFolder)
+        self.le_bhvrCache.setText(videoListPathRel)
+        if selectedVial is None:
+            self.le_vial.setText(str(selectedVial))
+        else:
+            self.le_vial.setText(str(selectedVial[0]))
+        self.le_patchesFolder.setText(str(patchesFolder))
+        self.le_positionsFolder.setText(str(positionsFolder))
+        self.le_FDV.setText(fdvtPathRel)
+        self.le_vialROI.setText(str(vialROI))
+        self.le_bufferWidth.setText(str(bufferWidth))
+        self.le_bufferLength.setText(str(bufferLength))
+        self.le_startFrame.setText(str(getCurrentKey_idx[1]))
+        self.cb_croppedVideo.setChecked(croppedVideo)
+
+    def getFormValues(self):
+        path = self.le_videoPath.text()
+        annotator = self.le_annotatorName.text()
+        if self.le_vial.text().lower() != 'none':
+            selectedVial = [int(self.le_vial.text())]
+        else:
+            selectedVial = None
+
+        if self.le_vialROI.text().lower() != 'none':
+            vialROI = json.loads(self.le_vialROI.text())
+        else:
+            vialROI = None
+
+        croppedVideo = self.cb_croppedVideo.isChecked()
+        positionsFolder = self.le_positionsFolder.text()
+        bhvrFolder = self.le_bhvrFolder.text()
+        patchesFolder = self.le_patchesFolder.text()
+        # runningIndeces = self.le_filesRunningIdx.isChecked()
+        fdvtPath = self.le_FDV.text()
+        videoListPath = self.le_bhvrCache.text()
+        bufferWidth = int(self.le_bufferWidth.text())
+        bufferLength= int(self.le_bufferLength.text())
+        startVideoName = self.cb_videoSelection.currentText()
+        startFrame = int(self.le_startFrame.text())
+
+        return  path,               \
+                annotator,          \
+                selectedVial,       \
+                vialROI,            \
+                croppedVideo,       \
+                positionsFolder,    \
+                bhvrFolder,         \
+                patchesFolder,      \
+                fdvtPath,           \
+                videoListPath,      \
+                bufferWidth,        \
+                bufferLength,       \
+                startVideoName,     \
+                startFrame
+
+    def launchVideoTagger(self):
+        self.videoTagger.submitForm()
+
+    def tryToLoadConfig(self):
+        self.videoTagger.tryToLoadConfig(self.le_videoPath.text())
+
+    def selectVideoPathFolder(self):
+        self.videoTagger.selectVideoPathFolder()
+
+    def cacheFileList(self):
+        self.videoTagger.cacheFileList()
 
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
