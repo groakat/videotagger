@@ -56,7 +56,10 @@ class VideoLoader(QtCore.QObject):
     @cfg.logClassFunction
     def __init__(self, posPath, idxSlice, selectedVials=[1], 
                  thread=None, eofCallback=None):
-        super(VideoLoader, self).__init__(None)        
+        super(VideoLoader, self).__init__(None)
+
+        self.vE = VE.videoExplorer()
+
         self.init(posPath, idxSlice, selectedVials, thread)
         
     def init(self, posPath, idxSlice, selectedVials=[1], 
@@ -80,6 +83,7 @@ class VideoLoader(QtCore.QObject):
         self.endOfFile = [] 
         self.idxSlice = idxSlice
 
+
     def maxOfSelectedVials(self):
         return 0
 
@@ -97,7 +101,7 @@ class VideoLoader(QtCore.QObject):
 
         
         #@lbview.parallel(block=True)
-        def loadVideo(f, idxSlice, vialNo, imTransform=None):    
+        def loadVideo(vE, f, idxSlice, vialNo, imTransform=None):
 #             from qimage2ndarray import array2qimage
             import sys
             from pyTools.system.videoExplorer import videoExplorer
@@ -106,7 +110,7 @@ class VideoLoader(QtCore.QObject):
             from scipy.misc import imresize 
             
             
-            vE = videoExplorer()        
+            # vE = videoExplorer()
             
             if imTransform is None:
                 imTransform = lambda x: imresize(x, [64, 64])
@@ -151,13 +155,13 @@ class VideoLoader(QtCore.QObject):
         
         if self.selectedVials is None:
             f = self.posPath# self.posPath.split(self.videoEnding)[0] + self.videoEnding#.v{0}.{1}'.format(i, 'avi')
-            results = loadVideo(f, self.idxSlice, 0, self.imTransform)
+            results = loadVideo(self.vE, f, self.idxSlice, 0, self.imTransform)
             self.frameList = [copy.copy(results["qi"])] 
             self.endOfFile = [copy.copy(results['endOfFile'])]
             
         else:                
             f = self.posPath# self.posPath.split(self.videoEnding)[0] + self.videoEnding#.v{0}.{1}'.format(i, 'avi')
-            results = loadVideo(f, self.idxSlice, self.selectedVials[0], self.imTransform)
+            results = loadVideo(self.vE, f, self.idxSlice, self.selectedVials[0], self.imTransform)
             self.frameList = [copy.copy(results["qi"])] 
             self.endOfFile = [copy.copy(results['endOfFile'])]
             

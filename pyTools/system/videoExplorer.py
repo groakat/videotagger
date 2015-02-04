@@ -6,6 +6,9 @@ import random
 from ffvideo import VideoStream
 import ffvideo
 
+import time
+import pyTools.misc.config as cfg
+
 class videoExplorer(object):
     """
     Class for access of recorded video files
@@ -30,6 +33,7 @@ class videoExplorer(object):
         self.dayList = []
         self.verbose = verbose
         self.vs = None
+        self.frameMode = None
 
     def setTimeRange(self,  start,  end):
         """
@@ -246,6 +250,7 @@ class videoExplorer(object):
             print "processing frame {0} of video {1}".format(frameNo,  file)
 
         self.vs = VideoStream(file, frame_mode=frameMode)#, exact_seek=True)
+        self.frameMode = frameMode
 
         frame = self.vs.next().ndarray()
 
@@ -281,7 +286,13 @@ class videoExplorer(object):
         if self.verbose:
             print "processing frame {0} of video {1}".format(frameNo,  file)
 
-        self.vs = VideoStream(file, frame_mode=frameMode)#, exact_seek=True)
+        if not self.vs \
+        or (self.frameMode != frameMode
+            and self.vs.filename != file):
+
+            self.vs = VideoStream(file, frame_mode=frameMode)#, exact_seek=True)
+
+            self.frameMode = frameMode
         
         frame = self.vs.get_frame_no(frameNo).ndarray()
         
@@ -342,8 +353,9 @@ class videoExplorer(object):
         
         if self.verbose:
             print "processing frame {0} of video {1}".format(frameNo,  file)
-        
+
         self.vs = VideoStream(file, frame_mode=frameMode)#, exact_seek=True)
+        self.frameMode = frameMode
         
     def __iter__(self):
         # rewind ffvideo thingy
