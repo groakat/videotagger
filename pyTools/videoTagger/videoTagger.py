@@ -2015,7 +2015,11 @@ class VideoTagger(QtGui.QMainWindow):
             pixmap = QtGui.QPixmap()
             px = QtGui.QPixmap.fromImage(im)
 
-            
+        elif self.vialROI:
+            if self.selectedVial is not None:
+                h = self.vialROI[self.selectedVial[0]][1] - \
+                    self.vialROI[self.selectedVial[0]][0]
+                w = 1080
         else:
             h = 250
             w = 0            
