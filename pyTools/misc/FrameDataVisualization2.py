@@ -52,6 +52,9 @@ def loadFDVT(path):
     :param path:
     :return:
     """
+    if not os.path.exists(path):
+        return None
+
     FDVT = np.load(path).item()
     try:
         if FDVT['meta']['type'].split('.')[-1] == 'FrameDataVisualizationTreeBase':

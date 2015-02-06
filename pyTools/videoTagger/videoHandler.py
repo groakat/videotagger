@@ -74,9 +74,15 @@ class VideoHandler(QtCore.QObject):
         self.annoAltStart = None
         
         ## video loading
+        if len(self.videoPathList) == 1:
+            standardFile = self.videoPathList[0]
+        else:
+            standardFile = None
+
         self.vLL = DL.VideoLoaderLuncher(eofCallback=self.endOfFileNotice,
                                          bufferLength=bufferLength * 2 +
-                                                      self.bufferJut * 2 + 3)
+                                                      self.bufferJut * 2 + 3,
+                                         standardFile=standardFile)
 
         self.videoLoaderLuncherThread = DL.MyThread("videoLuncher")
         self.vLL.moveToThread(self.videoLoaderLuncherThread)
@@ -906,6 +912,8 @@ class VideoHandler(QtCore.QObject):
             if videokey in self.videoDict.keys() \
             and len(self.videoDict[videokey]) > 1:
                 self.ensureBuffering(nextKey, 0)
+
+        self.loadAnnotationBundle()
         
     @QtCore.Slot(list)
     def updateVideoLengthAndFetchLastBuffer(self, lst):
@@ -995,11 +1003,13 @@ class VideoHandler(QtCore.QObject):
 
         delList = []
 
+
         for i, annotationBundle in enumerate(self.annotationBundle):
             key = annotationBundle[0]
 #             path = annotationBundle[1]
             aL = annotationBundle[2]
             annotation = aL.annotation
+            cfg.log.info("{0}".format(annotation))
 
             if annotation is None:
                 # annotation not yet loaded
@@ -1031,6 +1041,7 @@ class VideoHandler(QtCore.QObject):
                                         for i,item in \
                                             enumerate(self.annotationBundle) \
                                             if i not in delList]
+
         
             
     @cfg.logClassFunction

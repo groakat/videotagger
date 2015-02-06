@@ -943,7 +943,7 @@ class VideoTagger(QtGui.QMainWindow):
         if self.fdvtPath is not None:
             self.fdvt = FDV.loadFDVT(self.fdvtPath)
 
-            if self.fdvt.meta['not-initialized']:
+            if  self.fdvt is None or self.fdvt.meta['not-initialized']:
                 self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
                 self.fdvt.importAnnotationsFromFile(self.convertFileList(self.fileList,
                                                                  '.bhvr'),
@@ -951,7 +951,7 @@ class VideoTagger(QtGui.QMainWindow):
                                             self.annotations,
                                             self.getSelectedVial())
 
-        if self.fdvtPath is None:
+        if self.fdvtPath is None or self.fdvt is None:
             self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
             self.fdvt.importAnnotationsFromFile(self.convertFileList(self.fileList,
                                                              '.bhvr'),

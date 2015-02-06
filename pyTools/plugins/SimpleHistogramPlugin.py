@@ -285,7 +285,7 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
         # filters += [filt]
 
         for af in self.annotationFilters:
-            filt = A.AnnotationFilter(annotators=["simpleFlyShowCase"],
+            filt = A.AnnotationFilter(annotators=["SimpleHistogramPlugin"],
                                       behaviours=af.behaviours,
                                       vials=af.vials)
             self.fdvt.addNewClass(filt)

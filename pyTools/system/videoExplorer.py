@@ -249,7 +249,7 @@ class videoExplorer(object):
         if self.verbose:
             print "processing frame {0} of video {1}".format(frameNo,  file)
 
-        self.vs = VideoStream(file, frame_mode=frameMode)#, exact_seek=True)
+        self.vs = VideoStream(file, frame_mode=frameMode, exact_seek=True)
         self.frameMode = frameMode
 
         frame = self.vs.next().ndarray()
@@ -289,8 +289,7 @@ class videoExplorer(object):
         if not self.vs \
         or (self.frameMode != frameMode
             and self.vs.filename != file):
-
-            self.vs = VideoStream(file, frame_mode=frameMode)#, exact_seek=True)
+            self.vs = VideoStream(file, frame_mode=frameMode, exact_seek=True)
 
             self.frameMode = frameMode
         
@@ -354,7 +353,7 @@ class videoExplorer(object):
         if self.verbose:
             print "processing frame {0} of video {1}".format(frameNo,  file)
 
-        self.vs = VideoStream(file, frame_mode=frameMode)#, exact_seek=True)
+        self.vs = VideoStream(file, frame_mode=frameMode, exact_seek=True)
         self.frameMode = frameMode
         
     def __iter__(self):

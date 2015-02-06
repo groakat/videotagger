@@ -36,8 +36,8 @@ class Test(QtGui.QMainWindow):
         self.gvFDV.registerButtonPressCallback('frames', self.exampleCallbackFunction)
 
         # self.gvFDV.loadSequence('/home/peter/phd/code/pyTools/pyTools/pyTools/videoTagger/bhvrTree_v0.npy')
-        c = [QtGui.QColor(0, 255, 0),
-            QtGui.QColor(0,  0, 255)]#,
+        c = [QtGui.QColor(0, 255, 0)]#,
+            #QtGui.QColor(0,  0, 255)]#,
             # QtGui.QColor(255, 0, 0)]#,
             # QtGui.QColor(0, 0, 0)]
         self.gvFDV.setColors(c)
@@ -404,7 +404,7 @@ class GraphicsViewFDV(QtGui.QWidget):
 
     def createNewFDVT(self):
         anno = A.Annotation()
-        anno.loadFromFile('/media/peter/Seagate Backup Plus Drive1/peter_testCopy/WP609L_small.bhvr')
+        anno.loadFromFile('/Volumes/Seagate Backup Plus Drive/peter_testCopy/WP609L_small.bhvr')
         annotationFilters = AS.AnnotationSelecter.getAnnotationSelection(self,
                                                                          anno)
 
@@ -773,7 +773,7 @@ class GraphicsViewFDV(QtGui.QWidget):
 
 
     def addElement(self, rectKey, y, stacked=True):
-        cfg.log.info("{0}, {1}".format(rectKey, y))
+        cfg.log.debug("{0}, {1}".format(rectKey, y))
         rects = self.rects[rectKey]
 
         if stacked:
@@ -788,7 +788,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         clickRects = self.clickRects[rectKey]
         if len(clickRects) < len(rects):
 
-            cfg.log.info("add clickrect {0}, {1}".format(rectKey, y))
+            cfg.log.debug("add clickrect {0}, {1}".format(rectKey, y))
             clickRects += [self.createClickBar(rectKey, len(clickRects))]
 
             for i, bar in enumerate(clickRects):
@@ -1087,7 +1087,6 @@ class GraphicsViewFDV(QtGui.QWidget):
             self.gv_center.scale(1, -1)
             pass
         else:
-
             # self.gv_center.scale(10, 10)
             pass
 

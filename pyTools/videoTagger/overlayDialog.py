@@ -132,7 +132,7 @@ class OverlayDialogBase(QtGui.QWidget):
                 if event.key() == QtCore.Qt.Key_Escape:
                     self.overlayDialog.close()
 
-            return False
+            return True
 
 
 class OverlayDialogWidgetBase(OverlayDialogBase):
@@ -330,7 +330,9 @@ class FDVShowDialog(OverlayDialogBase):
         # od = FDVShowDialog(parent, FDV)
         od = OverlayDialogWidgetBase(parent, FDV)
         od.exec_()
-        return od.ret
+
+
+        # return od.ret
 
 
 class ControlsSettingDialog(OverlayDialogBase):

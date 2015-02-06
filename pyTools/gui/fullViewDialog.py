@@ -43,8 +43,8 @@ class FullViewDialog(QtGui.QMainWindow):
     def setupUI(self):
         l = QtGui.QHBoxLayout(self.cw)
         self.hSplitter = QtGui.QSplitter(QtCore.Qt.Horizontal, self.cw)
-        self.hSplitter.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
-                                   QtGui.QSizePolicy.MinimumExpanding)
+        self.hSplitter.setSizePolicy(QtGui.QSizePolicy.Minimum,
+                                   QtGui.QSizePolicy.Minimum)
 
         self.splitter = QtGui.QSplitter(QtCore.Qt.Vertical, self.cw)
         self.splitter.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
@@ -174,7 +174,7 @@ class FullViewDialog(QtGui.QMainWindow):
         layout.addWidget(self.modeButton)
 
         layout.addStretch()
-        layout.addSpacing(60)
+        layout.addSpacing(90)
 
         self.saveButton = SVGButton(self.controlWidget)
         self.saveButton.load(self.iconFolder + '/Save_font_awesome.svg')
@@ -268,7 +268,7 @@ class FullViewDialog(QtGui.QMainWindow):
 
     def toggleFDV(self):
         # self.FDVOpen = not self.FDVOpen
-        self.fdvButton.clicked.connect(self.parent().openFDV)
+        self.parent().openFDV()
         # if self.FDVOpen:
         #     self.fdvButton.load(self.iconFolder + '/Bar_chart_font_awesome_invert.svg')
         #     self.fdvButton.clicked.connect(self.parent().openFDV)
@@ -343,10 +343,13 @@ class FullViewGraphicsView(QtGui.QGraphicsView):
     def resizeEvent(self, event):
         ret = super(FullViewGraphicsView, self).resizeEvent(event)
 
-        if self.scene():
-            bounds = self.scene().sceneRect()
-            self.fitInView(bounds, QtCore.Qt.KeepAspectRatio)
-            self.centerOn(0, 0)
+        diff = event.oldSize() - event.size()
+        # preventing slow resize drift
+        if abs(diff.height()) > 5 or abs(diff.width()) > 5:
+            if self.scene():
+                bounds = self.scene().sceneRect()
+                self.fitInView(bounds, QtCore.Qt.KeepAspectRatio)
+                self.centerOn(0, 0)
 
         return ret
 
@@ -695,6 +698,8 @@ class fullFrameLabelView(QtGui.QWidget):
         self.baseLayout.addWidget(self.headerLabel)
         self.baseLayout.addWidget(self.listView)
         self.baseLayout.addWidget(self.buttonWidget)
+
+        # self.setMaximumSize(300, 65000)
 
         # self.lm = QtGui.QStandardItemModel()
         # self.listView.setModel(self.lm)

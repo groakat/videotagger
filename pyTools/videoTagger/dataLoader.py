@@ -83,6 +83,10 @@ class VideoLoader(QtCore.QObject):
         self.endOfFile = [] 
         self.idxSlice = idxSlice
 
+        if posPath is not None:
+            self.vE.getFrame(posPath, self.idxSlice.start, info=False,
+                                    frameMode='RGB')
+
 
     def maxOfSelectedVials(self):
         return 0
@@ -146,7 +150,7 @@ class VideoLoader(QtCore.QObject):
             ret["qi"] = im
             ret['endOfFile'] = endOfFile
             
-            del vE
+            # del vE
             
             return ret     
             
@@ -268,7 +272,7 @@ class VideoLoaderLuncher(QtCore.QObject):
     loadVideos = QtCore.Signal() 
     
     @cfg.logClassFunction
-    def __init__(self, eofCallback, bufferLength):
+    def __init__(self, eofCallback, bufferLength, standardFile=None):
         """
         This object will exectute `func` with `args` in a
         separate thread. You can query ready() to check
@@ -288,13 +292,13 @@ class VideoLoaderLuncher(QtCore.QObject):
         self.eofCallback = eofCallback
         self.bufferLength = bufferLength
         while len(self.availableVLs) < self.bufferLength:
-            self.createNewVideoLuncher()
+            self.createNewVideoLuncher(standardFile)
 
-    def createNewVideoLuncher(self):
+    def createNewVideoLuncher(self, standardFile=None):
         videoLoaderThread = MyThread("videoLoader {0}".format(len(
                                                         self.threads.keys())))
 
-        vL = VideoLoader("", idxSlice=slice(0, 1),
+        vL = VideoLoader(standardFile, idxSlice=slice(0, 1),
                          thread=videoLoaderThread,
                          selectedVials=[0])
 
