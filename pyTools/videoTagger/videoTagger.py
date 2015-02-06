@@ -2128,6 +2128,7 @@ class VideoTagger(QtGui.QMainWindow):
         if self.frameView is None:
             self.setupFrameView()
 
+        self.frameView.loadFDVT(self.fdvt)
         OD.FDVShowDialog.getSelection(self.fullVideoDialog.centralWidget(),
                                       self.frameView)
 
