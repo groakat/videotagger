@@ -106,6 +106,7 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         self.fdvt = None
         self.fdvts = []
+        self.fdvtButtonDict = {}
 
         self.day = None
         self.hour = None
@@ -310,7 +311,7 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         saveButton = FVD.SVGButton(self)
         saveButton.load(iconFolder + '/Save_font_awesome.svg')
-        saveButton.setToolTip("Save all annotations [CTRL + S]")
+        saveButton.setToolTip("Save FDV to file")
         saveButton.setFixedSize(20, 20)
         fp = lambda : self.saveFDVT(fdvt)
         saveButton.clicked.connect(fp)
@@ -321,9 +322,16 @@ class GraphicsViewFDV(QtGui.QWidget):
         layout.addWidget(button)
         layout.addWidget(saveButton)
 
+        self.fdvtButtonDict[fdvt] = button
 
         self.selectionLayout.insertLayout(self.selectionLayout.count() - 1,
                                           layout)
+
+    def updateButtonLabels(self):
+        for fdvt, button in self.fdvtButtonDict.items():
+            descString = self.filterListToString(fdvt)
+            button.setText(descString)
+            button.setToolTip(descString)
 
     def saveFDVT(self, fdvt):
         fn = QtGui.QFileDialog.getSaveFileName(self,
@@ -1142,6 +1150,8 @@ class GraphicsViewFDV(QtGui.QWidget):
     def updateDisplay(self, useCurrentPos=False):
         if self.fdvt is None:
             return
+
+        self.updateButtonLabels()
 
         if not useCurrentPos:
             # if self.fdvt.addedNewData:
