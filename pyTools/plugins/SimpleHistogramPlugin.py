@@ -312,7 +312,7 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
             if len(self.videoListRel) > 1:
                 self.incrementStatus()
 
-        self.fdvt.save("/media/peter/Seagate Backup Plus Drive1/tmp/stackFdvt.npy")
+        self.fdvt.save("/Volumes/Seagate Backup Plus Drive/tmp/stackFdvt.npy")
 
 
     def generateFDVT(self):
@@ -339,5 +339,6 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
         self.extractFeatures()
         self.trainClassifier()
         self.classify()
+        self.hideStatus()
         # self.generateFDVT()
         # self.sendFDVT()

@@ -931,14 +931,19 @@ class VideoTagger(QtGui.QMainWindow):
     def setupFrameView(self):
         cfg.log.info("before init frameview")
         self.frameView = GFDV.GraphicsViewFDV(self)
+        cfg.log.info("1")
         self.frameView.setGeometry(QtCore.QRect(10, 10, 891, 221))
+        cfg.log.info("2")
         self.frameView.setObjectName("frameView")
+        cfg.log.info("3")
 
         self.frameView.registerButtonPressCallback('frames', self.selectVideoTime)
+        cfg.log.info("4")
         
         colors = [a['color'] for a in self.annotations]
         cfg.log.info("before setColors frameview")
         self.frameView.setColors(colors)
+        self.frameView.setVideoTagger(self)
         
         if self.fdvtPath is not None:
             self.fdvt = FDV.loadFDVT(self.fdvtPath)
@@ -2579,7 +2584,7 @@ class VideoTagger(QtGui.QMainWindow):
         if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
             cfg.log.info("delta vector: {0}".format(deltaVector))
             self.fdvt.insertDeltaVector(deltaVector)
-            self.frameView.updateDisplay(useCurrentPos=True)
+            # self.frameView.updateDisplay(useCurrentPos=True)
 
 
         if self.rpcIH:

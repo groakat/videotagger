@@ -126,6 +126,8 @@ class PluginBase(object):
         self.statusLabel.setText(message)
         self.progressBar.setMaximum(maxProgressValue)
         self.widget.updateGeometry()
+        self.widget.repaint()
+        QtGui.QApplication.processEvents(QtCore.QEventLoop.AllEvents)
 
     def incrementStatus(self, increment=1):
         """
@@ -133,6 +135,8 @@ class PluginBase(object):
         :return:
         """
         self.progressBar.setValue(self.progressBar.value() + increment)
+        self.widget.repaint()
+        QtGui.QApplication.processEvents(QtCore.QEventLoop.AllEvents)
 
     def updateStatus(self, progress):
         """
@@ -142,6 +146,8 @@ class PluginBase(object):
         :return:
         """
         self.progressBar.setValue(progress)
+        self.widget.repaint()
+        QtGui.QApplication.processEvents(QtCore.QEventLoop.AllEvents)
 
     def hideStatus(self):
         """

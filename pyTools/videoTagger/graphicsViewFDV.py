@@ -41,7 +41,7 @@ class Test(QtGui.QMainWindow):
             # QtGui.QColor(255, 0, 0)]#,
             # QtGui.QColor(0, 0, 0)]
         self.gvFDV.setColors(c)
-        self.gvFDV.loadSequence('/media/peter/Seagate Backup Plus Drive1/tmp/stackFdvt.npy')
+        self.gvFDV.loadSequence('/Volumes/Seagate Backup Plus Drive/peter_testCopy/behaviourTree.npy')
 
         self.show()
 
@@ -91,6 +91,8 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.frameResolution = 5
         self.debugCnt = 0
 
+        self.videoTagger = None
+
         self.overviewScene = None
         self.sceneRect = None
 
@@ -110,22 +112,27 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.minute = None
         self.frame = None
 
+        cfg.log.info("Half way")
 
         self.missingValueBrush = QtGui.QBrush(QtGui.QColor(150, 150, 150))
 
         self.polys = dict()
         # self.fdvt.load('/media/peter/8e632f24-2998-4bd2-8881-232779708cd0/xav/data/clfrFDVT-burgos_rf_200k_weight-v3.npy')
 
-
+        cfg.log.info("initDataPlots")
         self.initDataPlots()
+        cfg.log.info("setColors")
         self.setColors(reload=False)
-
+        cfg.log.info("clickBrushes")
         self.clickBrush = QtGui.QBrush(QtGui.QColor(0, 255, 0, 0))
         # self.setupGV()
-
+        cfg.log.info("show")
         self.show()
         # self.gv_center.fitInView(-0.1, -0.5, 1.1, 7,QtCore.Qt.IgnoreAspectRatio)
 
+
+    def setVideoTagger(self, videoTagger):
+        self.videoTagger = videoTagger
 
     def initDataPlots(self):
 
@@ -505,7 +512,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         line = QtGui.QGraphicsLineItem(x, -0.01, x, -0.05,  self.axes[rectKey])
         line.setPen(pen)
 
-        font = QtGui.QFont()
+        font = QtGui.QFont("Helvetica")
         font.setPointSize(5)
         text = QtGui.QGraphicsTextItem(str(t), self.axes[rectKey])
         text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
@@ -572,7 +579,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.axes[rectKey].setPos(0, self.axisY[rectKey])
 
     def createTitle(self, y, title):
-        font = QtGui.QFont()
+        font = QtGui.QFont("Helvetica")
         text = self.overviewScene.addText(str(title), font)
         text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
         # text.scale(0.002, -0.005)
@@ -584,17 +591,29 @@ class GraphicsViewFDV(QtGui.QWidget):
 
 
     def createStackLegend(self):
+        self.legend = QtGui.QGraphicsRectItem(None, self.overviewScene)
         filtList = self.fdvt.meta['filtList']
 
-        pair = plt.cm.get_cmap('hsv', len(filtList) + 1)
-        colors = pair(range(len(filtList))) * 255
+        colors = None
+        if self.videoTagger is not None:
+            if self.fdvt == self.videoTagger.fdvt:
+                colors = [a['color'] for a in self.videoTagger.annotations]
+                self.colormap = []
+                for i, c in enumerate(colors):
+                    if i < len(filtList):
+                        self.colormap += [QtGui.QBrush(c)]
 
-        self.legend = QtGui.QGraphicsRectItem(None, self.overviewScene)
-        self.colormap = []
-        for c in colors:
-            self.colormap += [QtGui.QBrush(QtGui.QColor(c[0],
-                                                        c[1],
-                                                        c[2]))]
+        cfg.log.info("after setting colormap")
+
+        if colors is None:
+            pair = plt.cm.get_cmap('hsv', len(filtList) + 1)
+            colors = pair(range(len(filtList))) * 255
+
+            self.colormap = []
+            for c in colors:
+                self.colormap += [QtGui.QBrush(QtGui.QColor(c[0],
+                                                            c[1],
+                                                            c[2]))]
 
             cfg.log.info("color {0}".format(c))
 
@@ -618,13 +637,14 @@ class GraphicsViewFDV(QtGui.QWidget):
         line.setPen(pen)
 
         for i, c in enumerate(self.colormap):
+
             lbl = filtList[i].behaviours[0]
 
-            x = (2.0 / len(self.colormap)) * i + 0.25
+            x = (2.0 / len(self.colormap)) * (i + 0.5)
             line = QtGui.QGraphicsLineItem(0, x, 0.01, x,  axes)
             line.setPen(pen)
 
-            font = QtGui.QFont()
+            font = QtGui.QFont("Helvetica")
             font.setPointSize(7)
             text = QtGui.QGraphicsTextItem(lbl, axes)
             text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
@@ -637,7 +657,7 @@ class GraphicsViewFDV(QtGui.QWidget):
             # x = i * spacing / l  - (pw / 2.0) + 1 / (2 *l)
             text.setPos(0.015, x + ph)
 
-        font = QtGui.QFont()
+        font = QtGui.QFont("Helvetica")
         font.setPointSize(7)
         # text = QtGui.QGraphicsTextItem("Annotations by \n{0}".format(
         #                                     filtList[0].annotators[0]), axes)
@@ -677,7 +697,7 @@ class GraphicsViewFDV(QtGui.QWidget):
             line = QtGui.QGraphicsLineItem(0, x, 0.01, x,  axes)
             line.setPen(pen)
 
-            font = QtGui.QFont()
+            font = QtGui.QFont("Helvetica")
             font.setPointSize(5)
             text = QtGui.QGraphicsTextItem(str(t), axes)
             text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
@@ -690,7 +710,7 @@ class GraphicsViewFDV(QtGui.QWidget):
             # x = i * spacing / l  - (pw / 2.0) + 1 / (2 *l)
             text.setPos(0.015, x + ph)
 
-        font = QtGui.QFont()
+        font = QtGui.QFont("Helvetica")
         font.setPointSize(5)
         text = QtGui.QGraphicsTextItem("Mean of items \nbelow bar", axes)
         text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
@@ -843,7 +863,8 @@ class GraphicsViewFDV(QtGui.QWidget):
         if accH != 0:
             height = 1.0 / accH
         else:
-            height = 0
+            # height cannot be 0, otherwise transformation matrix is invalid
+            height = 0.0000000000001
 
         trans = subplotItem.transform()
         trans.setMatrix(1,           trans.m12(), trans.m13(),
@@ -1138,7 +1159,10 @@ class GraphicsViewFDV(QtGui.QWidget):
         #     return
 
 
-        self.plotData(self.day, self.hour, self.minute, self.frame)
+        if self.debugCnt == 0:
+            # plot an extra time to quick fix issue with rendering
+            self.plotData(self.day, self.hour, self.minute, self.frame)
+
         self.plotData(self.day, self.hour, self.minute, self.frame)
 
 
