@@ -58,48 +58,48 @@ class SetupDialog(QtGui.QWidget):
     def activateFileWidgetButton(self):
         self.files_button.load(os.path.join(
                             FVD.SVGButton.getIconFolder(),
-                            "F_font_awesome_invert.svg"))
+                            "folder_font_awesome_invert.svg"))
 
     def deactivateFileWidgetButton(self):
         self.files_button.load(os.path.join(
                             FVD.SVGButton.getIconFolder(),
-                            "F_font_awesome.svg"))
+                            "folder_font_awesome.svg"))
 
     def activateAnnotationButton(self):
         self.annotations_button.load(os.path.join(
                             FVD.SVGButton.getIconFolder(),
-                            "A_font_awesome_invert.svg"))
+                            "users_font_awesome_invert.svg"))
 
     def deactivateAnnotationButton(self):
         self.annotations_button.load(os.path.join(
                             FVD.SVGButton.getIconFolder(),
-                            "A_font_awesome.svg"))
+                            "users_font_awesome.svg"))
 
     def activateCroppedButton(self):
         self.cropped_button.load(os.path.join(
                             FVD.SVGButton.getIconFolder(),
-                            "C_font_awesome_invert.svg"))
+                            "crop_font_awesome_invert.svg"))
 
     def deactivateCroppedButton(self):
         if self.cb_croppedVideo.isChecked():
             self.cropped_button.load(os.path.join(
                                 FVD.SVGButton.getIconFolder(),
-                                "C_font_awesome.svg"))
+                                "crop_font_awesome.svg"))
         else:
             self.cropped_button.load(os.path.join(
                                 FVD.SVGButton.getIconFolder(),
-                                "C_font_awesome_grey.svg"))
+                                "crop_font_awesome_grey.svg"))
 
 
     def activateExpertButton(self):
         self.expert_button.load(os.path.join(
                             FVD.SVGButton.getIconFolder(),
-                            "E_font_awesome_invert.svg"))
+                            "flask_font_awesome_invert.svg"))
 
     def deactivateExpertButton(self):
         self.expert_button.load(os.path.join(
                             FVD.SVGButton.getIconFolder(),
-                            "E_font_awesome.svg"))
+                            "flask_font_awesome.svg"))
 
     def loadWidget(self, widget):
         self.filesWidget.hide()
@@ -484,37 +484,40 @@ class SetupDialog(QtGui.QWidget):
         iconFolder = FVD.SVGButton.getIconFolder()
 
         self.files_button = FVD.SVGButton(os.path.join(iconFolder,
-                                            "F_font_awesome_invert.svg"))
-        self.files_button.setFixedSize(40, 40)
+                                            "folder_font_awesome_invert.svg"))
+        self.files_button.setFixedSize(20, 20)
         self.files_button.setToolTip("File Settings")
 
         self.annotations_button = FVD.SVGButton(os.path.join(iconFolder,
-                                                       "A_font_awesome.svg"))
-        self.annotations_button.setFixedSize(40, 40)
+                                                       "users_font_awesome.svg"))
+        self.annotations_button.setFixedSize(20, 20)
         self.annotations_button.setToolTip("Annotation Settings")
 
         self.cropped_button = FVD.SVGButton(os.path.join(iconFolder,
-                                            "C_font_awesome_grey.svg"))
-        self.cropped_button.setFixedSize(40, 40)
+                                            "crop_font_awesome_grey.svg"))
+        self.cropped_button.setFixedSize(20, 20)
         self.cropped_button.setToolTip("Cropped Video Settings")
 
         self.expert_button = FVD.SVGButton(os.path.join(iconFolder,
-                                                       "E_font_awesome.svg"))
-        self.expert_button.setFixedSize(40, 40)
+                                                       "flask_font_awesome.svg"))
+        self.expert_button.setFixedSize(20, 20)
         self.expert_button.setToolTip("Expert Settings")
 
 
         self.run_button = FVD.SVGButton(os.path.join(iconFolder,
                                                        "chevron-circle-right_font_awesome.svg"))
-        self.run_button.setFixedSize(40, 40)
+        self.run_button.setFixedSize(30, 30)
         self.run_button.setToolTip("Run")
 
         layout = QtGui.QHBoxLayout()
         layout.addStretch()
-        layout.addSpacing(50)
+        layout.addSpacing(40)
         layout.addWidget(self.files_button)
+        layout.addSpacing(10)
         layout.addWidget(self.annotations_button)
+        layout.addSpacing(10)
         layout.addWidget(self.cropped_button)
+        layout.addSpacing(10)
         layout.addWidget(self.expert_button)
         layout.addStretch()
         layout.addWidget(self.run_button)
