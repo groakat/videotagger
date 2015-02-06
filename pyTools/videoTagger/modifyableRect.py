@@ -205,8 +205,7 @@ class AutoCompleteComboBox(QtGui.QComboBox):
             self.setEditText(text)
             self.setCompleter(self.comp)
 
-        # return super(AutoCompleteComboBox, self).keyPressEvent(event)
-        return True
+        return super(AutoCompleteComboBox, self).keyPressEvent(event)
 
 
 class ContextLineEdit(QtGui.QWidget):
