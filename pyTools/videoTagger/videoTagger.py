@@ -48,6 +48,7 @@ import json
 import logging, logging.handlers
 import yaml
 
+from collections import OrderedDict
 
 def np2qimage(a):
     import numpy as np  
@@ -3020,28 +3021,29 @@ class VideoTagger(QtGui.QMainWindow):
 
         # KeyMap
         try:
-            keyMap = { "stop": cfgFile['KeyMap']['stop'],
-                    "step-f": cfgFile['KeyMap']['step-f'],
-                    "step-b": cfgFile['KeyMap']['step-b'],
-                    "fwd-1": cfgFile['KeyMap']['fwd-1'],
-                    "fwd-2": cfgFile['KeyMap']['fwd-2'],
-                    "fwd-3": cfgFile['KeyMap']['fwd-3'],
-                    "fwd-4": cfgFile['KeyMap']['fwd-4'],
-                    "fwd-5": cfgFile['KeyMap']['fwd-5'],
-                    "fwd-6": cfgFile['KeyMap']['fwd-6'],
-                    "bwd-1": cfgFile['KeyMap']['bwd-1'],
-                    "bwd-2": cfgFile['KeyMap']['bwd-2'],
-                    "bwd-3": cfgFile['KeyMap']['bwd-3'],
-                    "bwd-4": cfgFile['KeyMap']['bwd-4'],
-                    "bwd-5": cfgFile['KeyMap']['bwd-5'],
-                    "bwd-6": cfgFile['KeyMap']['bwd-6'],
-                    "escape": cfgFile['KeyMap']['escape'],
-                    "anno-1": cfgFile['KeyMap']['anno-1'],
-                    "anno-2": cfgFile['KeyMap']['anno-2'],
-                    "anno-3": cfgFile['KeyMap']['anno-3'],
-                    "anno-4": cfgFile['KeyMap']['anno-4'],
-                    "erase-anno": cfgFile['KeyMap']['erase-anno'],
-                    "info": cfgFile['KeyMap']['info']}
+            keyMap = OrderedDict()
+            keyMap["stop"] = cfgFile['KeyMap']['stop']
+            keyMap["step-f"] = cfgFile['KeyMap']['step-f']
+            keyMap["step-b"] = cfgFile['KeyMap']['step-b']
+            keyMap["fwd-1"] = cfgFile['KeyMap']['fwd-1']
+            keyMap["fwd-2"] = cfgFile['KeyMap']['fwd-2']
+            keyMap["fwd-3"] = cfgFile['KeyMap']['fwd-3']
+            keyMap["fwd-4"] = cfgFile['KeyMap']['fwd-4']
+            keyMap["fwd-5"] = cfgFile['KeyMap']['fwd-5']
+            keyMap["fwd-6"] = cfgFile['KeyMap']['fwd-6']
+            keyMap["bwd-1"] = cfgFile['KeyMap']['bwd-1']
+            keyMap["bwd-2"] = cfgFile['KeyMap']['bwd-2']
+            keyMap["bwd-3"] = cfgFile['KeyMap']['bwd-3']
+            keyMap["bwd-4"] = cfgFile['KeyMap']['bwd-4']
+            keyMap["bwd-5"] = cfgFile['KeyMap']['bwd-5']
+            keyMap["bwd-6"] = cfgFile['KeyMap']['bwd-6']
+            keyMap["escape"] = cfgFile['KeyMap']['escape']
+            keyMap["anno-1"] = cfgFile['KeyMap']['anno-1']
+            keyMap["anno-2"] = cfgFile['KeyMap']['anno-2']
+            keyMap["anno-3"] = cfgFile['KeyMap']['anno-3']
+            keyMap["anno-4"] = cfgFile['KeyMap']['anno-4']
+            keyMap["erase-anno"] = cfgFile['KeyMap']['erase-anno']
+            keyMap["info"] = cfgFile['KeyMap']['info']
 
             for key in keyMap:
                 keyMap[key] = QtGui.QKeySequence(str(keyMap[key]))#eval("Qt." + keyMap[key], {"Qt":QtCore.Qt})

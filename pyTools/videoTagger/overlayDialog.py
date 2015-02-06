@@ -3,6 +3,8 @@ import pyTools.videoTagger.modifyableRect as MR
 import warnings
 import qimage2ndarray as qim2np
 
+from collections import OrderedDict
+
 class OverlayDialogBase(QtGui.QWidget):
 
     def __init__(self, parent=None, *args, **kwargs):
@@ -365,28 +367,29 @@ class ControlsSettingDialog(OverlayDialogBase):
 
     def setSettings_(self, keyMap, stepSize):
         if keyMap is None:
-            self.keyMap = { "stop": QtGui.QKeySequence(QtCore.Qt.Key_F),
-                            "step-f": QtGui.QKeySequence(QtCore.Qt.Key_G),
-                            "step-b": QtGui.QKeySequence(QtCore.Qt.Key_D),
-                            "fwd-1": QtGui.QKeySequence(QtCore.Qt.Key_T),
-                            "fwd-2": QtGui.QKeySequence(QtCore.Qt.Key_V),
-                            "fwd-3": QtGui.QKeySequence(QtCore.Qt.Key_B),
-                            "fwd-4": QtGui.QKeySequence(QtCore.Qt.Key_N),
-                            "fwd-5": QtGui.QKeySequence(QtCore.Qt.Key_H),
-                            "fwd-6": QtGui.QKeySequence(QtCore.Qt.Key_J),
-                            "bwd-1": QtGui.QKeySequence(QtCore.Qt.Key_E),
-                            "bwd-2": QtGui.QKeySequence(QtCore.Qt.Key_X),
-                            "bwd-3": QtGui.QKeySequence(QtCore.Qt.Key_Z),
-                            "bwd-4": QtGui.QKeySequence(QtCore.Qt.Key_Backslash),
-                            "bwd-5": QtGui.QKeySequence(QtCore.Qt.Key_S),
-                            "bwd-6": QtGui.QKeySequence(QtCore.Qt.Key_A),
-                            "escape": QtGui.QKeySequence(QtCore.Qt.Key_Escape),
-                            "anno-1": QtGui.QKeySequence(QtCore.Qt.Key_1),
-                            "anno-2": QtGui.QKeySequence(QtCore.Qt.Key_2),
-                            "anno-3": QtGui.QKeySequence(QtCore.Qt.Key_3),
-                            "anno-4": QtGui.QKeySequence(QtCore.Qt.Key_3),
-                            "erase-anno": QtGui.QKeySequence(QtCore.Qt.Key_Q),
-                            "info": QtGui.QKeySequence(QtCore.Qt.Key_I)}
+            self.keyMap = OrderedDict()
+            self.keyMap["stop"] = QtGui.QKeySequence(QtCore.Qt.Key_F)
+            self.keyMap["step-f"] = QtGui.QKeySequence(QtCore.Qt.Key_G)
+            self.keyMap["step-b"] = QtGui.QKeySequence(QtCore.Qt.Key_D)
+            self.keyMap["fwd-1"] = QtGui.QKeySequence(QtCore.Qt.Key_T)
+            self.keyMap["fwd-2"] = QtGui.QKeySequence(QtCore.Qt.Key_V)
+            self.keyMap["fwd-3"] = QtGui.QKeySequence(QtCore.Qt.Key_B)
+            self.keyMap["fwd-4"] = QtGui.QKeySequence(QtCore.Qt.Key_N)
+            self.keyMap["fwd-5"] = QtGui.QKeySequence(QtCore.Qt.Key_H)
+            self.keyMap["fwd-6"] = QtGui.QKeySequence(QtCore.Qt.Key_J)
+            self.keyMap["bwd-1"] = QtGui.QKeySequence(QtCore.Qt.Key_E)
+            self.keyMap["bwd-2"] = QtGui.QKeySequence(QtCore.Qt.Key_X)
+            self.keyMap["bwd-3"] = QtGui.QKeySequence(QtCore.Qt.Key_Z)
+            self.keyMap["bwd-4"] = QtGui.QKeySequence(QtCore.Qt.Key_Backslash)
+            self.keyMap["bwd-5"] = QtGui.QKeySequence(QtCore.Qt.Key_S)
+            self.keyMap["bwd-6"] = QtGui.QKeySequence(QtCore.Qt.Key_A)
+            self.keyMap["escape"] = QtGui.QKeySequence(QtCore.Qt.Key_Escape)
+            self.keyMap["anno-1"] = QtGui.QKeySequence(QtCore.Qt.Key_1)
+            self.keyMap["anno-2"] = QtGui.QKeySequence(QtCore.Qt.Key_2)
+            self.keyMap["anno-3"] = QtGui.QKeySequence(QtCore.Qt.Key_3)
+            self.keyMap["anno-4"] = QtGui.QKeySequence(QtCore.Qt.Key_3)
+            self.keyMap["erase-anno"] = QtGui.QKeySequence(QtCore.Qt.Key_Q)
+            self.keyMap["info"] = QtGui.QKeySequence(QtCore.Qt.Key_I)
         else:
             self.keyMap = keyMap
 
