@@ -8,6 +8,11 @@ pyTools
 
 # Install
 
+## OSX
+1. Install anaconda from http://conda.pydata.org/miniconda.html
+2. Download and Run the installer:
+https://dl.dropboxusercontent.com/u/45267030/secretCode/Installvideotaggerviaconda.dmg
+
 ## Using conda (win64, OSX, linux only)
 This is the easiest way. Install anaconda from http://conda.pydata.org/miniconda.html . Then open a command window (Click the start button and type cmd) 
 In the command window type
