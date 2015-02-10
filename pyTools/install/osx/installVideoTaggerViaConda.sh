@@ -20,8 +20,8 @@ echo $(pwd)
 echo $(ls)
 
 unzip -o Videotagger.zip
-python installShortcut.py
+# python installShortcut.py
 
-cp -fR Videotagger.app /Applications/Videotagger.app
+sudo cp -fR Videotagger.app /Applications/
 
 echo "Done"
