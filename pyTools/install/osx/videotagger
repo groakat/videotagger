@@ -1,0 +1,2 @@
+#!/bin/bash
+python -c "import pyTools.videoTagger.videoTagger as VT; VT.main()"
