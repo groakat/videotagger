@@ -279,6 +279,7 @@ class AnnoView(QtGui.QWidget):
         """
         adds an annotation to a scene
         """
+        cfg.log.info("beginning")
         if self.vialNo is None:
             filt = Annotation.AnnotationFilter([0], self.annotator, 
                                                         self.behaviourName)
@@ -287,7 +288,8 @@ class AnnoView(QtGui.QWidget):
                                                         self.behaviourName)
 
         self.annotationDict[key] = annotation.filterFrameList(filt, exactMatch=False)
-        
+
+        cfg.log.info("end")
         
         return
 #         

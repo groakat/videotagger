@@ -328,9 +328,20 @@ class FDVShowDialog(OverlayDialogBase):
         self.setLayout(self.outerLayout)
 
     @staticmethod
-    def getSelection(parent, FDV):
+    def getSelection(parent, FDV, day=None, hour=None,
+                     minute=None, frame=None):
         # od = FDVShowDialog(parent, FDV)
         od = OverlayDialogWidgetBase(parent, FDV)
+
+
+        if day is not None          \
+        and hour is not None        \
+        and minute is not None      \
+        and frame is not None:
+            FDV.plotData(int(day), int(hour),
+                         int(minute), int(frame),
+                                debug=True)
+
         od.exec_()
 
 

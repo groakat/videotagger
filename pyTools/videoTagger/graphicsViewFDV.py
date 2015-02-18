@@ -86,8 +86,12 @@ class GraphicsViewFDV(QtGui.QWidget):
     def __init__(self, *args, **kwargs):
         super(GraphicsViewFDV, self).__init__(*args, **kwargs)
 
+
+        cfg.log.info("enter init")
         self.setupUi()
 
+
+        cfg.log.info("after setupUi")
         self.frameResolution = 5
         self.debugCnt = 0
 
@@ -350,7 +354,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.fdvt = fdvt
         self.createLegend()
         self.createFDVTTemplate()
-        self.updateDisplay()
+        self.updateDisplay(useCurrentPos=True)
 
     def loadSequence(self, fdvtPath):
         # fdvt = FDV.FrameDataVisualizationTreeBehaviour()
@@ -1074,7 +1078,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.createAxis('frames')
 
 
-    def plotData(self, day, hour, minute, frame):
+    def plotData(self, day, hour, minute, frame, debug=False):
         self.day = day
         self.hour = hour
         self.minute = minute
@@ -1122,6 +1126,10 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.debugCnt += 1
         self.overviewScene.update()
 
+        cfg.log.info("{0} {1} {2} {3} {4}".format(day, hour, minute, frame,
+                                                self.frameResolution))
+
+
 
     def mouseClickOnBar(self, level, instance):
         cfg.log.info("{0} {1}".format(level, instance))
@@ -1153,7 +1161,7 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         self.updateButtonLabels()
 
-        if not useCurrentPos:
+        if not useCurrentPos or self.day is None:
             # if self.fdvt.addedNewData:
             #     self.createFDVTTemplate()
 

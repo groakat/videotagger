@@ -1138,6 +1138,7 @@ class VideoHandler(QtCore.QObject):
         v = vial
         # refresh annotation in anno view
         for aV in self.annoViewList:
+            cfg.log.info("loop {0}".format(aV))
             if (aV.behaviourName == None) \
             or (behaviour == aV.behaviourName) \
             or (behaviour in aV.behaviourName):
@@ -1146,7 +1147,7 @@ class VideoHandler(QtCore.QObject):
                 or (annotator in aV.annotator):
                     if v == None and aV.vialNo == None \
                     or v in aV.vialNo:
-                        cfg.log.debug("refreshing annotation")
+                        cfg.log.info("refreshing annotation")
                         aV.addAnnotation(\
                                     self.annoDict[key].annotation,
                                          key)
@@ -1187,7 +1188,9 @@ class VideoHandler(QtCore.QObject):
 
             # refresh annotation in anno view
             self.addAnnotationToAnnoViews(v, annotator, behaviour, key)
-            
+
+            cfg.log.info("added view")
+
             cfg.logGUI.info(json.dumps({"vials":vials,
                                    "key-range":rngs,
                                    "annotator":annotator,

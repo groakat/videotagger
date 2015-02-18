@@ -22,6 +22,6 @@ echo $(ls)
 unzip -o Videotagger.zip
 # python installShortcut.py
 
-sudo cp -fR Videotagger.app /Applications/
+cp -fR Videotagger.app /Applications/
 
 echo "Done"

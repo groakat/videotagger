@@ -888,7 +888,7 @@ class VideoTagger(QtGui.QMainWindow):
 #
         # hack!!
         w.setFixedHeight(height + 10)
-        w.setFixedWidth(width + 100)
+        w.setFixedWidth(width + lbl.width() + 50)
         
         return w
         
@@ -925,7 +925,8 @@ class VideoTagger(QtGui.QMainWindow):
             cfg.log.debug("av: {aV}".format(aV=aV))
             
         
-        self.prevFramesWidget = self.createPrevFrames(xPos + 125, yPos - (self.prevSize + 20))
+        self.prevFramesWidget = self.createPrevFrames(xPos + 125,
+                                                      yPos - (self.prevSize + 20))
             
     
         
@@ -2135,8 +2136,29 @@ class VideoTagger(QtGui.QMainWindow):
             self.setupFrameView()
 
         self.frameView.loadFDVT(self.fdvt)
+
+
+        frameNo = float(self.vh.getCurrentFrameNo())
+
+        day = np.floor(frameNo / (30 * 60 * 60 * 24))
+        frameNo -= day * (30 * 60 * 60 * 24)
+        hour = np.floor(frameNo / (30 * 60 * 60))
+        frameNo -= hour * (30 * 60 * 60)
+        minute = np.floor(frameNo / (30 * 60))
+        frame = frameNo - minute * (30 * 60)
+
+        cfg.log.info("plotting {0} {1} {2} {3}".format(day,
+                                                       hour,
+                                                       minute,
+                                                       frame))
+
+
         OD.FDVShowDialog.getSelection(self.fullVideoDialog.centralWidget(),
-                                      self.frameView)
+                                      self.frameView,
+                                      day=day,
+                                      hour=hour,
+                                      minute=minute,
+                                      frame=frame)
 
     def openKeySettings(self):
         self.filterObjArgs = OD.ControlsSettingDialog.getSelection(self.fullVideoDialog.centralWidget(),
@@ -2715,9 +2737,12 @@ class VideoTagger(QtGui.QMainWindow):
         else:
             self.updateHUD(annotator="", behaviour="")
         
-        if labelledFrames != (None, None):
+        if not (labelledFrames == (None, None)
+                or labelledFrames[1].behaviours == [None]):
             if self.postLabelQuery:
                 newBehaviour = self.queryForLabel()
+                if not newBehaviour:
+                    return
                 newFilt = Annotation.AnnotationFilter(
                                 labelledFrames[1].vials,
                                 labelledFrames[1].annotators,
