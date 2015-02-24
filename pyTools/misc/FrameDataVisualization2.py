@@ -317,7 +317,7 @@ class FrameDataVisualizationTreeBase(object):
     def removeSample(self, day, hour, minute, frame):
         oldData = self.getValue(day, hour, minute, frame)
 
-        if oldData == self.hier[day][hour][minute]['meta']['max']:
+        if np.sum(oldData) == self.hier[day][hour][minute]['meta']['max']:
             newMax = np.max([self.data[day][hour][minute][k] \
                         for k in self.data[day][hour][minute].keys()])
             self.updateMax(day, hour, minute, newMax)
@@ -690,8 +690,9 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                            len(self.meta['rangeTemplate']['frames'])))
             # ar = np.zeros((self.meta['maxClass'], max(d.keys()) + 1))
             for k, frame in d.items():
-                for c, v in frame.items():
-                    ar[c, k] = v
+                ar[:, k] = frame
+                # for c, v in frame.items():
+                #     ar[c, k] = v
         else:
             ar = np.zeros((self.meta['maxClass'], 1))
 

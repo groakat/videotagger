@@ -41,7 +41,7 @@ class Test(QtGui.QMainWindow):
             # QtGui.QColor(255, 0, 0)]#,
             # QtGui.QColor(0, 0, 0)]
         self.gvFDV.setColors(c)
-        self.gvFDV.loadSequence('/Volumes/Seagate Backup Plus Drive/peter_testCopy/behaviourTree.npy')
+        self.gvFDV.loadSequence('/Users/peter/Desktop/newImportSave.npy')
 
         self.show()
 

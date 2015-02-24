@@ -3,7 +3,7 @@ import logging, logging.handlers
 import inspect
 from colorama import Fore, Back, Style
 from colorama import init
-init(autoreset=True)
+# init(autoreset=True)
     
 # set logger up
 logGUI = logging.getLogger("GUI")
