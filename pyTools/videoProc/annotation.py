@@ -549,6 +549,353 @@ class Annotation():
 
         return annotationFilterSet
 
+# pandas functions
+
+
+import itertools
+import pandas as pd
+
+def convertFrameListToDataframe(frameList):
+#     print frameList[:10]
+    dataList = []
+    for frame, bhvrDict in enumerate(frameList):
+        try:
+            for bhvr, annoDict in bhvrDict[0]['behaviour'].items():
+                if annoDict is not None:
+                    for annotator, meta in annoDict.items():
+                        bb = meta['boundingBox']
+                        conf = meta['confidence']
+                        dataList += [[frame, annotator, bhvr,
+                                      bb[0], bb[1], bb[2], bb[3], conf]]
+        except KeyError:
+            pass
+
+
+    # add one empty row to mark the length of the video
+    dataList += [[len(frameList), 'automcatic placeholder', 'video length',
+                  None, None, None, None, None]]
+
+    df = pd.DataFrame(data=dataList, columns=['frame', 'annotator', 'label',
+                                              'boundingbox x1',
+                                              'boundingbox y1',
+                                              'boundingbox x2',
+                                              'boundingbox y2',
+                                              'confidence'])
+
+    df.set_index(['frame', 'annotator', 'label'],
+                        inplace=True)
+    df.sortlevel(inplace=True)
+
+    return df
+
+def convertDataframeToFrameList(df):
+    ar = np.asarray(df)
+
+
+def getPropertiesFromDataframe(df, properties):
+    """
+    properties: single string or list of strings of the headers in the dataframe
+    """
+    return df[properties]
+
+def generateFramesIndexer(df, frames, indexer=None):
+    """
+    frames: single int or list of ints
+    """
+    if type(frames) == int:
+        frames = [frames]
+
+    if indexer is None:
+        indexer = [slice(None)]*len(df.index.names)
+
+    indexer[df.index.names.index('frame')] = frames
+    return indexer
+
+def generateAnnotatorIndexer(df, annotator, indexer=None):
+    if type(annotator) == str:
+        annotator = [annotator]
+
+    if indexer is None:
+        indexer = [slice(None)]*len(df.index.names)
+
+    indexer[df.index.names.index('annotator')] = annotator
+    return indexer
+
+def generateLabelIndexer(df, filterLabel, exact_match=True, indexer=None):
+    if type(filterLabel) == str:
+        filterLabel = [filterLabel]
+
+    if exact_match:
+        filt = filterLabel
+    else:
+        labels = df.index.levels[2]
+        filt = []
+        for l in labels:
+            for fl in filterLabel:
+                if l == fl \
+                or l.startswith(fl + "_"):
+                    filt += [l]
+
+    if indexer is None:
+        indexer = [slice(None)]*len(df.index.names)
+
+    indexer[df.index.names.index('label')] = filt
+    return indexer
+
+def filterFramesFromDataframe(df, frames, indexer=None):
+    """
+    frames: single int or list of ints
+    """
+    if type(frames) == int:
+        frames = [frames]
+
+    indexer = generateFramesIndexer(df, frames, indexer)
+    return df.loc[tuple(indexer),:]
+
+def filterAnnotatorFromDataframe(df, annotator, indexer=None):
+    if type(annotator) == str:
+        annotator = [annotator]
+
+    indexer = generateAnnotatorIndexer(df, annotator, indexer)
+    return df.loc[tuple(indexer),:]
+
+def filterLabelFromDataframe(df, filterLabel, exact_match=True, indexer=None):
+    if type(filterLabel) == str:
+        filterLabel = [filterLabel]
+
+    indexer = generateLabelIndexer(df, filterLabel, exact_match=True,
+                                   indexer=indexer)
+    return df.loc[tuple(indexer),:]
+
+
+def filterDataframe(df, frames=None, annotator=None, label=None,
+                    exact_match=True):
+    indexer = [slice(None)]*len(df.index.names)
+
+    if frames is not None:
+        indexer = generateFramesIndexer(df, frames, indexer=indexer)
+
+    if annotator is not None:
+        indexer = generateAnnotatorIndexer(df, annotator, indexer=indexer)
+
+    if label is not None:
+        indexer = generateLabelIndexer(df, label, exact_match, indexer=indexer)
+
+    return df.loc[tuple(indexer),:]
+
+def concatenateDataframes(dfs):
+    out = pd.concat([df[:-1] for df in dfs])
+    return out.append(dfs[0][-1:]).reset_index(drop=True)
+
+def addAnnotation(df, frames, annotator, label, metadata=None):
+    if metadata is None:
+        tmpVal = metadata
+        metadata = dict()
+        for frame in frames:
+            metadata[frame] = {u'boundingBox': [None, None, None, None],
+                               u'confidence': 1}
+
+    else:
+        testMeta = metadata.values()[0].keys()
+        if 'boundingBox' not in testMeta:
+            for frame, meta in metadata.items():
+                metadata[frame]['boundingBox'] = [None, None, None, None]
+
+        if 'confidence' not in testMeta:
+            for frame, meta in metadata.items():
+                metadata[frame]['confidence'] = 1.0
+
+
+    dataList = np.zeros((len(frames), 8), dtype=np.object)
+    dataList[:, 0] = np.asarray(frames)
+    dataList[:, 1:] = np.asarray([[annotator, label] + x['boundingBox'] +
+                                    [x['confidence']]
+                                      for x in metadata.values()])
+
+
+    newDf = pd.DataFrame(data=dataList, columns=['frame', 'annotator', 'label',
+                                                  'boundingbox x1',
+                                                  'boundingbox y1',
+                                                  'boundingbox x2',
+                                                  'boundingbox y2',
+                                                  'confidence'])
+
+    newDf.set_index(['frame', 'annotator', 'label'],
+                        inplace=True)
+
+    df = pd.concat((df, newDf))
+    df.sortlevel(inplace=True)
+
+    return df
+
+def removeAnnotation(df, frames, annotator, label):
+    """
+    frames: single int or list of ints
+
+    slowish but the best I could find
+    http://stackoverflow.com/a/12451149
+    """
+    selection = filterDataframe(df, frames, annotator, label)
+
+    return df.drop(selection.index)
+
+
+def renameAnnotation(df, frames, annotatorOld, labelOld, annotatorNew,
+                     labelNew):
+    """
+    not the fastest
+    http://stackoverflow.com/a/14110955/2156909
+    """
+    if type(frames) == int:
+        frames = [frames]
+
+    index = df.index
+    indexlst = index.tolist()
+
+    for i, item in enumerate(indexlst):
+        if item[0] in frames        \
+        and item[1] == annotatorOld \
+        and item[2] == labelOld:
+            indexlst[i] = (item[0], annotatorNew, labelNew)
+
+    df.index = pd.MultiIndex.from_tuples(indexlst, names = index.names)
+
+
+
+def copyAnnotation(df, frames, annotatorOld, labelOld, annotatorNew, labelNew):
+    selectedDf = filterDataframe(df, frames, annotatorOld, labelOld)
+
+    for idx in selectedDf.index.tolist():
+        df.loc[(idx[0], annotatorNew, labelNew), :] = selectedDf.loc[idx, :]
+
+
+def editMetadata(df, frames, annotator, label,
+                 metaKey, newMetaValue):
+    """
+    takes far too long
+    """
+    if type(frames) == int:
+        frames = [frames]
+
+    selectedDf = filterDataframe(df, frames, annotator, label)
+
+
+    if metaKey == 'confidence':
+        df.loc[selectedDf.index, 'confidence'] = newMetaValue
+    elif metaKey == 'boundingBox':
+        df.loc[selectedDf.index, 'boundingbox x1'] = newMetaValue[0]
+        df.loc[selectedDf.index, 'boundingbox y1'] = newMetaValue[1]
+        df.loc[selectedDf.index, 'boundingbox x2'] = newMetaValue[2]
+        df.loc[selectedDf.index, 'boundingbox y2'] = newMetaValue[3]
+
+    return df
+
+
+def getPropertyFromFrameAnno(a, metaKey):
+    if metaKey == 'confidence':
+        np.asarray(b['confidence'])
+    elif metaKey == 'boundingBox':
+        return np.asarray(b[['boundingbox x1', "boundingbox y1",
+                             'boundingbox x2', "boundingbox y2"]])
+
+
+def findConsequtiveAnnotationFrames(df, annotator, label, frameIdx,
+                                        exactMatch=True, direction='both'):
+    """
+    using
+    http://stackoverflow.com/a/7353335
+    and
+    http://stackoverflow.com/questions/7088625/what-is-the-most-efficient-way-to-check-if-a-value-exists-in-a-numpy-array
+    """
+
+    endFrame = frameIdx + 1
+    prefilteredDF = filterDataframe(df, annotator=annotator,
+                                    label=label, exact_match=exactMatch)
+
+    # split frames into continuous ranges
+    ar = np.sort(np.asarray(prefilteredDF.index.tolist())[:,0].astype(int))
+    ranges = np.array_split(ar, np.where(np.diff(ar)!=1)[0]+1)
+
+    # search in which range the frameIdx is locsted
+    for rng in ranges:
+        if frameIdx in rng:
+            return rng
+
+    return None
+
+def extractAllFilterTuples(df, frames=None):
+    if frames is not None:
+        df = filterDataframe(frames=frames)
+
+    idx = zip(*df.index.tolist())[1:]
+
+    return list(itertools.product(set(idx[0]), set(idx[1])))
+
+def splitDataframeIntoMinutes(df):
+    indices = np.asarray(df.index.levels[0])
+    lastS = 0
+    lastE = 0
+
+    lst = []
+
+    for i in range(180):
+        s = i * 1800
+        e = s + 1800
+
+        relIndices = indices[lastE:lastE + 1800]
+        corrS = np.searchsorted(relIndices, s)
+        if corrS >= len(relIndices):
+            # corrS > e
+            # happens if relIndices is len == 1
+            continue
+
+        if relIndices[corrS] > e:
+            continue
+
+        corrE = np.searchsorted(relIndices, e)
+        if corrE == len(relIndices):
+            corrE -= 1
+
+        if relIndices[corrE] > e:
+            corrE -= 1
+
+        lst += [[s,e, df.loc[relIndices[corrS]: relIndices[corrE]]]]
+
+        lastE += corrE
+
+    return lst
+
+def countAnnotationsPerFrame(df):
+    idc = zip(*df.index.tolist())[0]
+    cnt = np.bincount(idc)
+
+    return cnt
+
+def createFDVTInsertionArray(df, filterTuples):
+    maxFrame = df.index.levels[0][-1]
+    out = np.zeros((maxFrame, len(filterTuples)))
+
+    for i, ft in enumerate(filterTuples):
+        annotator = ft.annotators[0]
+        label = ft.behaviours[0]
+
+        tmpDF = filterDataframe(df, frames=None, annotator=annotator,
+                                label=label, exact_match=False)
+
+        cnt = countAnnotationsPerFrame(tmpDF)
+        out[:len(cnt), i] = cnt
+
+    return out
+
+
+
+
+
+
+# end pandas functions
+
+
+
 
 def getExactBehavioursFromFrameAnno(a):
     return sorted(a['behaviour'].keys())
