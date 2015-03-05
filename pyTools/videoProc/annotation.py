@@ -887,6 +887,40 @@ def createFDVTInsertionArray(df, filterTuples):
 
     return out
 
+def insertFrameArray(fdv, day, hour, minute, frames):
+    # super(FrameDataVisualizationTreeBehaviour, self).insertFrameArray(day, hour, minute, frames)
+
+    fdv.verifyStructureExists(day, hour, minute)
+
+    for i, f in enumerate(frames):
+        fdv.addSample(day, hour, minute, i, f)
+
+    fdv.addFrameArrayToStack(day, hour, minute, frames.T)
+    fdv.addedNewData = True
+
+
+def importDataframe(df, fdv, filterTuples, fps=30):
+    data = createFDVTInsertionArray(df, filterTuples)
+
+    fdv.resetAllSamples()
+
+    for ft in filterTuples:
+        fdv.addNewClass(ft)
+
+    i = 0
+
+    day = 0
+    hour = 0
+    minute = 0
+
+    for k in range(fps * 60, len(data), fps * 60):
+        print k, day, hour, minute
+        frameSlc = slice(i, k)
+#         data = self.convertFrameListToDatum(annotation, frameSlc,
+#                                             self.meta['filtList'])
+        insertFrameArray(fdv, day, hour, minute, data[i:k,:])
+        day, hour, minute = fdv.incrementTime(day, hour, minute)
+        i = k
 
 
 
