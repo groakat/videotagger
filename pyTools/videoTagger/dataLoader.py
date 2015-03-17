@@ -60,6 +60,8 @@ class VideoLoader(QtCore.QObject):
 
         self.vE = VE.videoExplorer()
 
+        self.posPath = None
+
         self.init(posPath, idxSlice, selectedVials, thread)
         
     def init(self, posPath, idxSlice, selectedVials=[1], 
@@ -68,6 +70,9 @@ class VideoLoader(QtCore.QObject):
         
         self.videoLength = -1
         self.frameList = []
+
+        self.idxSlice = idxSlice
+        prevPath = self.posPath
 
         self.posPath = copy.copy(posPath)      
         
@@ -80,10 +85,10 @@ class VideoLoader(QtCore.QObject):
         
         self.imTransform = lambda x: x
         
-        self.endOfFile = [] 
-        self.idxSlice = idxSlice
+        self.endOfFile = []
 
-        if posPath is not None:
+        if posPath is not None \
+        and prevPath != self.posPath:
             self.vE.getFrame(posPath, self.idxSlice.start, info=False,
                                     frameMode='RGB')
 

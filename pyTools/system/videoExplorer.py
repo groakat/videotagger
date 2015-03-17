@@ -287,8 +287,8 @@ class videoExplorer(object):
             print "processing frame {0} of video {1}".format(frameNo,  file)
 
         if not self.vs \
-        or (self.frameMode != frameMode
-            and self.vs.filename != file):
+        or self.frameMode != frameMode \
+        or self.vs.filename != file:
             self.vs = VideoStream(file, frame_mode=frameMode, exact_seek=True)
 
             self.frameMode = frameMode
