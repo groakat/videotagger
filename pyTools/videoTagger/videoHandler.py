@@ -413,6 +413,10 @@ class VideoHandler(QtCore.QObject):
         try:
             bufferIdx = self.idx / self.bufferWidth
             frame = self.videoDict[self.posPath][bufferIdx].getFrame(self.idx)
+
+            cfg.log.debug("retrieving path, bufferIdx, idx {0}, {1}, {2}".format(
+                                        self.posPath, bufferIdx, self.idx
+            ))
             
             if not frame:
                 frame = self.getCurrentFrameUnbuffered(doBufferCheck, 
@@ -676,7 +680,8 @@ class VideoHandler(QtCore.QObject):
         # extend right buffer to account for jut
         curKey = sorted(bufferedKeys.keys())[-1]
         curIdx = sorted(bufferedKeys[curKey])[-1]
-        for i in range(self.bufferJut):    
+        for i in range(self.bufferJut):
+            curIdx += 1
             curKey, curIdx = self.parseBuffersRight(curKey, curIdx)
             
             if curKey is None:
@@ -690,7 +695,8 @@ class VideoHandler(QtCore.QObject):
         # extend left buffer to account for jut
         curKey = sorted(bufferedKeys.keys())[0]
         curIdx = sorted(bufferedKeys[curKey])[0]
-        for i in range(self.bufferJut):    
+        for i in range(self.bufferJut):
+            curIdx -= 1
             curKey, curIdx = self.parseBuffersLeft(curKey, curIdx)
             
             if curKey is None:
@@ -716,6 +722,8 @@ class VideoHandler(QtCore.QObject):
 
         validKeys4Anno = []
         # check all buffers if lying within jut, unbuffer otherwise
+
+        cfg.log.info("keys within the jut: {0}".format(bufferedKeys))
         for key in self.videoDict.keys():
             if key in bufferedKeys.keys():
                 for idx in self.videoDict[key].keys():
