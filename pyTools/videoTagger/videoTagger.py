@@ -541,15 +541,15 @@ class VideoTagger(QtGui.QMainWindow):
         bufferLength, startFrame = VideoTagger.parseConfig(configPath)
 
 
-        videoPath = self.le_videoPath.text()
+        videoPath = self.setupDialog.le_videoPath.text()
         if self.setupDialog.le_vial.text().lower() != 'none':
             selectedVial = [int(self.setupDialog.le_vial.text())]
         else:
             selectedVial = None
 
-        croppedVideo = self.setupDialog.le_croppedVideo.isChecked()
+        croppedVideo = self.setupDialog.cb_croppedVideo.isChecked()
         videoExtension = 'avi'
-        runningIndeces = self.setupDialog.le_filesRunningIdx.isChecked()
+        runningIndeces = False #self.setupDialog.le_filesRunningIdx.isChecked()
         fdvtPathRel = self.setupDialog.le_FDV.text()
         videoListPath = self.setupDialog.le_bhvrCache.text()
         behaviourFolder = self.setupDialog.le_bhvrFolder.text()
