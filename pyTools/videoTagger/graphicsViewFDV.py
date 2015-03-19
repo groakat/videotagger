@@ -41,7 +41,7 @@ class Test(QtGui.QMainWindow):
             # QtGui.QColor(255, 0, 0)]#,
             # QtGui.QColor(0, 0, 0)]
         self.gvFDV.setColors(c)
-        self.gvFDV.loadSequence('/Users/peter/Desktop/newImportSave.npy')
+        # self.gvFDV.loadSequence('/Users/peter/Desktop/newImportSave.npy')
 
         self.show()
 
@@ -58,7 +58,7 @@ class Test(QtGui.QMainWindow):
         self.pb_debug = QtGui.QPushButton(self)
         self.pb_debug.setGeometry(QtCore.QRect(540, 500, 94, 24))
         self.pb_debug.setObjectName("pb_debug")
-        self.pb_debug.setText("push me")
+        self.pb_debug.setText("ok")
         self.layout.addWidget(self.pb_debug)
 
         self.centralwidget.setLayout(self.layout)
