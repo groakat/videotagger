@@ -297,7 +297,20 @@ class FrameDataVisualizationTreeBase(object):
 
 
     def addSample(self, day, hour, minute, frame, data):
+        """ Adds single sample (single frame)
+
+        :param day:
+        :param hour:
+        :param minute:
+        :param frame:
+        :param data: 0th axis: classes, 1st axis frames (max 1)
+        :return:
+        """
         self.verifyStructureExists(day, hour, minute)
+
+        if data.ndim == 1:
+            data = data.reshape(data[0].shape[0], 1)
+
         # using try, except because its much fast than looking up the keys
         try:
             self.replaceSample(day, hour, minute, frame, data)
@@ -690,9 +703,14 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                            len(self.meta['rangeTemplate']['frames'])))
             # ar = np.zeros((self.meta['maxClass'], max(d.keys()) + 1))
             for k, frame in d.items():
-                ar[:, k] = frame
-                # for c, v in frame.items():
-                #     ar[c, k] = v
+                if type(frame) != dict:
+                    # quick hack... sorry
+                    # first line needed for visualization (generate plot data)
+                    ar[:, k] = frame
+                else:
+                    # these are needed for insertDeltaValue
+                    for c, v in frame.items():
+                        ar[c, k] = v
         else:
             ar = np.zeros((self.meta['maxClass'], 1))
 
@@ -800,8 +818,15 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         self.addedNewData = True
 
     def calcStack(self, data):
-        if np.max(data) > self.meta['maxClass']:
-            self.meta['maxClass'] = int(np.max(data))
+        """  Calculates the stack from the data by summing its values.
+
+        IMPORTANT: data needs to have second dimension. Even if it is just
+        a vector otherwise ambiguity could arise
+        :param data:
+        :return:
+        """
+        if data.shape[1] > self.meta['maxClass']:
+            self.meta['maxClass'] = data.shape[1]
         # return bsc.countInt(data.astype(np.int),
         #                     minLength=self.meta['maxClass'] + 1)[1:,1]
         return np.sum(data, axis=1)
@@ -948,11 +973,11 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         # filtList = []
         # self.resetAllSamples()
 
+        if os.path.exists(bhvrFile):
+            anno = Annotation.Annotation()
+            anno.loadFromFile(bhvrFile)
 
-        anno = Annotation.Annotation()
-        anno.loadFromFile(bhvrFile)
-
-        self.importAnnotation(anno, fps)
+            self.importAnnotation(anno, fps)
 
 
     def importAnnotationsFromFile(self, bhvrList, videoList, annotations, vials,
@@ -1002,6 +1027,9 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             # raise ValueError("no annotations specified!")
 
         for f in bhvrList:
+            if not os.path.exists(f):
+                continue
+
             # load annotation and filter it #
             anno = Annotation.Annotation()
 
