@@ -879,7 +879,39 @@ class Vials(object):
             for filePath in glob.glob(baseName):
                 if os.path.isfile(filePath):
                     os.remove(filePath)
-    
+
+    @staticmethod
+    def extractPositionFromFrame(frame, f, cnt, vial, accPos, tmpBaseSaveDir,
+                                 viewer, bgModel, patchSize, patchPaths):
+
+        if cnt == 0:
+            # select correct background model
+            bgImg = bgModel.getBgImg(frame, debug=vial.verbose)
+            if bgImg is not vial.currentBgImg:
+                vial.setBackgroundImage(bgImg)
+
+        pos = vial.getFlyPositions(frame, None, img=frame, debug=False)
+        baseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4') + \
+                                                    '.v{0}.{1:05d}.tif'
+
+        print "position:", cnt, pos
+
+        for patchNo in range(len(pos)):
+            patch = viewer.extractPatch(frame, np.asarray(pos[patchNo]),
+                                        patchSize, ensureCorrectSize=True)
+            filename = baseName.format(patchNo, cnt)
+
+            tf.imsave(filename, patch)
+            patchPaths.append(filename)
+
+        #baseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4') + \
+                                                            #'.{0}{1}{2}'
+
+        cnt += 1
+        for k in range(len(pos)):
+            accPos[k] += [pos[k]]
+
+
     @staticmethod
     def extractPatchesFromList(fileList, baseSaveDir, bgModel, vial, fps=30, 
                                  tmpBaseSaveDir='/tmp/', delTmpImg=True,
@@ -930,35 +962,23 @@ class Vials(object):
             # extract patches around flies for each frame
             patchPaths = []
             accPos = [[] for i in range(len(vial.rois))]
+
+            currentVideoLength = vE.retrieveVideoLength(f)
             
             vial.currentFile = f
             vE.setVideoStream(f, info=True, frameMode='RGB')
             cnt = 0
-            for frame in vE:                 
-                if cnt == 0:
-                    # select correct background model
-                    bgImg = bgModel.getBgImg(frame, debug=vial.verbose)
-                    if bgImg is not vial.currentBgImg:
-                        vial.setBackgroundImage(bgImg)
-                  
-                pos = vial.getFlyPositions(frame, None, img=frame, debug=False)        
-                baseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4') + \
-                                                            '.v{0}.{1:05d}.tif'
-                
-                for patchNo in range(len(pos)):
-                    patch = viewer.extractPatch(frame, np.asarray(pos[patchNo]),
-                                                patchSize)
-                    filename = baseName.format(patchNo, cnt)
-                                         
-                    tf.imsave(filename, patch)
-                    patchPaths.append(filename)
-                                    
-                baseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4') + \
-                                                                    '.{0}{1}{2}'
-                
-                cnt += 1
-                for k in range(len(pos)):
-                    accPos[k] += [pos[k]]
+            for i, frame in enumerate(vE):
+                Vials.extractPositionFromFrame(frame, f, i, vial, accPos,
+                                               tmpBaseSaveDir, viewer, bgModel,
+                                               patchSize, patchPaths)
+
+            while i < (currentVideoLength - 1):
+                i += 1
+                frame = vE.getFrame(f, frameNo=i, info=False, frameMode='RGB')
+                Vials.extractPositionFromFrame(frame, f, i, vial, accPos,
+                                               tmpBaseSaveDir, viewer, bgModel,
+                                               patchSize, patchPaths)
             
             # at the last frame check if this background model is the same
             # as for the first frame. If not, probably a day/night switch 
@@ -979,7 +999,7 @@ class Vials(object):
             # ffmpeg -y -f image2 -r 29.97 -i /tmp/2013-02-19.00-01-00.v0.%05d.png -vcodec ffv1 -sameq /tmp/test.avi
             ffmpegCmd = '{ffmpeg} -y -f image2 -r {2} -i "{3}.v{1}.%05d.tif" -vcodec ffv1 -qscale 0 -r {2} "{0}.v{1}.avi"'
             
-            for patchNo in range(len(pos)):
+            for patchNo in range(len(accPos)):
                 p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName, ffmpeg=ffmpegpath),
                                     shell=True, stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT)
@@ -987,13 +1007,13 @@ class Vials(object):
                 print output
             
             # render images as mp4 for very fast playback
-            #ffmpeg -y -f image2 -r 29.97 -i 2013-02-19.00-00-00.v0.%05d.tif -c:v libx264 -preset faster -qp 0 test.mp4
-            # ffmpegCmd = '{ffmpeg} -y -i "{3}.v{1}.%05d.tif" -c:v libx264 -preset faster -qp 0 -r {2} "{0}.v{1}.mp4"'
-            # for patchNo in range(len(pos)):
-            #     p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName,ffmpeg=ffmpegpath),
-            #                         shell=True, stdout=subprocess.PIPE,
-            #                         stderr=subprocess.STDOUT)
-            #     output = p.communicate()[0]
+            #ffmpeg -y -f image2 -r 29.97 -i 2013-02-19.00-00-00.v0.%05d.tif -c:v libx264 -crf 18 -preset veryfast test.mp4
+            ffmpegCmd = '{ffmpeg} -y -i "{3}.v{1}.%05d.tif" -c:v libx264 -crf 18 -preset veryfast -r {2} "{0}.v{1}.mp4"'
+            for patchNo in range(len(accPos)):
+                p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName,ffmpeg=ffmpegpath),
+                                    shell=True, stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT)
+                output = p.communicate()[0]
                 
             # delete images of frames
             if delTmpImg:
@@ -1003,10 +1023,10 @@ class Vials(object):
             baseFolder =   constructSaveDir(baseSaveDir, f, ["feat", "pos"])
 
             for k in range(len(accPos)):
-                baseName = os.path.join(baseFolder, os.path.basename(f)[:-4] + ".v{v}.pos".format(v=k))
+                #baseName = os.path.join(baseFolder, os.path.basename(f)[:-4] + ".v{v}.pos".format(v=k))
 
-                with open(baseName, "w") as fl:
-                    fl.write('{0}'.format(accPos[k]))
+                #with open(baseName, "w") as fl:
+                    #fl.write('{0}'.format(accPos[k]))
 
 
                 baseName = os.path.join(baseFolder, os.path.basename(f)[:-4] + ".v{v}.pos.npy".format(v=k))
@@ -1129,7 +1149,7 @@ class Vials(object):
                 return initPos
 
         # return default position
-        return [33, 33]
+        return [-1, -1]
 
 def constructSaveDir(baseSaveDir, filename, appendix=""):
     folders = videoExplorer.splitFolders(filename)
