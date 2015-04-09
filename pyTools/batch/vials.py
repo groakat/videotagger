@@ -894,7 +894,7 @@ class Vials(object):
         baseName = tmpBaseSaveDir + os.path.basename(f).strip('.mp4') + \
                                                     '.v{0}.{1:05d}.tif'
 
-        print "position:", cnt, pos
+        # print "position:", cnt, pos
 
         for patchNo in range(len(pos)):
             patch = viewer.extractPatch(frame, np.asarray(pos[patchNo]),

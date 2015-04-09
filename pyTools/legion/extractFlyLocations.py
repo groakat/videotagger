@@ -54,7 +54,8 @@ class FlyExtractor(object):
         self.bgSampleSize = 10
         if rawFileListPath:
             with open(rawFileListPath, 'r') as f:
-                self.rawFileList = json.load(f, default=json_serial_to_datetime)
+                self.rawFileList = json.load(fp=f, encoding='utf-8',
+                                             cls=DateTimeAwareJSONDecoder)
         else:
             self.rawFileList = None
 
@@ -331,7 +332,7 @@ class FlyExtractor(object):
 
     def saveRawFileList(self, rawFileListPath):
         with open(rawFileListPath, 'w') as f:
-            json.dump(self.rawFileList, f, default=json_serial_from_datetime)
+            json.dump(self.rawFileList, f, cls=DateTimeAwareJSONEncoder)
 
     def generateConfig(self, cfgFilename, rawFileListPath, redoAll=False):
         self.generateRecordingRanges(self.videoFolder)
@@ -343,23 +344,62 @@ class FlyExtractor(object):
         self.saveRawFileList(rawFileListPath)
 
 
+class DateTimeAwareJSONEncoder(json.JSONEncoder):
+    """
+    Converts a python object, where datetime and timedelta objects are converted
+    into objects that can be decoded using the DateTimeAwareJSONDecoder.
 
-def json_serial_from_datetime(obj):
-    """JSON serializer for objects not serializable by default json code"""
+    taken from: http://taketwoprogramming.blogspot.co.uk/2009/06/subclassing-jsonencoder-and-jsondecoder.html
+    """
+    def default(self, obj):
+        if isinstance(obj, dt.datetime):
+            return {
+                '__type__' : 'datetime',
+                'year' : obj.year,
+                'month' : obj.month,
+                'day' : obj.day,
+                'hour' : obj.hour,
+                'minute' : obj.minute,
+                'second' : obj.second,
+                'microsecond' : obj.microsecond,
+            }
 
-    if isinstance(obj, dt.datetime):
-        serial = obj.isoformat()
-        return serial
+        elif isinstance(obj, dt.timedelta):
+            return {
+                '__type__' : 'timedelta',
+                'days' : obj.days,
+                'seconds' : obj.seconds,
+                'microseconds' : obj.microseconds,
+            }
 
-def json_serial_to_datetime(obj):
+        else:
+            return json.JSONEncoder.default(self, obj)
 
-    if isinstance(obj, basestring):
-        try:
-            date = dateutil.parser.parse(obj)
-            return date
+class DateTimeAwareJSONDecoder(json.JSONDecoder):
+    """
+    Converts a json string, where datetime and timedelta objects were converted
+    into objects using the DateTimeAwareJSONEncoder, back into a python object.
 
-        except ValueError:
-            pass
+    taken from: http://taketwoprogramming.blogspot.co.uk/2009/06/subclassing-jsonencoder-and-jsondecoder.html
+    """
+
+    def __init__(self, *args, **kwargs):
+            json.JSONDecoder.__init__(self, *args, object_hook=self.dict_to_object,
+                                      **kwargs)
+
+    def dict_to_object(self, d):
+        if '__type__' not in d:
+            return d
+
+        type = d.pop('__type__')
+        if type == 'datetime':
+            return dt.datetime(**d)
+        elif type == 'timedelta':
+            return dt.timedelta(**d)
+        else:
+            # Oops... better put this back together.
+            d['__type__'] = type
+            return d
 
 
 if __name__ == "__main__":
