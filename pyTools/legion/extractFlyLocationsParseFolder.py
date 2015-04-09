@@ -1,6 +1,5 @@
 __author__ = 'peter'
 
-
 if __name__ == "__main__":
     import argparse
 
@@ -40,4 +39,4 @@ if __name__ == "__main__":
     fe = FL.FlyExtractor(videoFolder, backgroundFolder, backgroundFolder, flyClassifierPath, noveltyClassfyPath,
                          recIdx=0, runIdx=0, minPerRun=minPerRun)
 
-    fe.generateConfig(cfgSavePath, rawFileListPath)
+    fe.generateRecordingRanges(videoFolder)

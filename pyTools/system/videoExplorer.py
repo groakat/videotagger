@@ -59,7 +59,7 @@ class videoExplorer(object):
         """
         self.rootPath = root
 
-    def parseFiles(self):
+    def parseFiles(self, rawFileList=None):
         """
         parses files in the main path and returns list of all files fitting
         the start - end criteria
@@ -76,21 +76,27 @@ class videoExplorer(object):
         if self.start == 0 or self.end == 0:
             raise ValueError("start or end value not set properly")
 
+        if not rawFileList:
+            rawFileList = []
+
+            for root,  dirs,  files in os.walk(self.rootPath):
+                for fn in files:
+                    ################################################################ TODO: sort files by file name
+                    fileDT = self.fileName2DateTime(fn)
+
+                    rawFileList.append([fileDT, os.path.join(root, fn)])
+
+
         self.fileList = []
+        for fileDT, fn in rawFileList:
+            if fileDT == -1:
+                ## file is no mp4 file of interest
+                continue
+            ################################################################ TODO: add option to load files without filter
 
-        for root,  dirs,  files in os.walk(self.rootPath):
-            for fn in files:
-                ################################################################ TODO: sort files by file name
-                fileDT = self.fileName2DateTime(fn)
-
-                if fileDT == -1:
-                    ## file is no mp4 file of interest
-                    continue
-                ################################################################ TODO: add option to load files without filter
-
-                if self.start <= fileDT and self.end >= fileDT:
-                    ## if timestamp is within the given range, add to list
-                    self.fileList.append([fileDT, root + r'/' + fn])
+            if self.start <= fileDT and self.end >= fileDT:
+                ## if timestamp is within the given range, add to list
+                self.fileList.append([fileDT, fn])
 
         self.filterDayVideos()
         self.filterNightVideos()

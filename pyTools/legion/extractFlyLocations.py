@@ -1,5 +1,7 @@
 
 import numpy as np
+import json
+import dateutil.parser
 import pyTools.system.videoExplorer as VE
 import pyTools.videoProc.backgroundModel as BG
 import pyTools.imgProc.imgViewer as IV
@@ -24,7 +26,7 @@ import skimage.transform
 class FlyExtractor(object):
 
     def __init__(self, videoFolder, backgroundFolder, patchFolder, flyClassifierPath, noveltyClassfyPath,
-                 recIdx, runIdx, minPerRun=20, ffmpegpath=None):
+                 recIdx, runIdx, minPerRun=20, ffmpegpath=None, rawFileListPath=None):
 
         self.flyClassifierPath = flyClassifierPath
         self.noveltyClassfyPath = noveltyClassfyPath
@@ -50,6 +52,12 @@ class FlyExtractor(object):
         self.minPerRun = minPerRun
         self.runIdx = runIdx
         self.bgSampleSize = 10
+        if rawFileListPath:
+            with open(rawFileListPath, 'r') as f:
+                self.rawFileList = json.load(f, default=json_serial_to_datetime)
+        else:
+            self.rawFileList = None
+
 
 
     def computeHog(self, patch):
@@ -87,8 +95,10 @@ class FlyExtractor(object):
 
 
     def generateRecordingRanges(self, folder):
-        fileList = self.parseVideofiles(folder)
-        recRngs = self.vE.findInteruptions(fileList)
+        if self.rawFileList is None:
+            self.rawFileList = self.parseVideofiles(folder)
+
+        recRngs = self.vE.findInteruptions(self.rawFileList)
         self.recRngs = recRngs
         return recRngs
 
@@ -99,7 +109,7 @@ class FlyExtractor(object):
         self.vE.setRootPath(self.videoFolder)
         self.vE.setTimeRange(self.startDate,  self.endDate)
 
-        self.vE.parseFiles()
+        self.vE.parseFiles(self.rawFileList)
 
         self.fileList = self.vE.getPathsOfList(self.vE.dayList)
         self.fileList += self.vE.getPathsOfList(self.vE.nightList)
@@ -296,8 +306,8 @@ class FlyExtractor(object):
         return recCfgList
 
 
-    def generateScriptConfigString(self, recCfgList,redoAll):
-        baseString = '{i} "{vf}" "{bf}" "{pf}" "{fcp}" "{ncp}" {recIdx} {runIdx} {mpr}\n'
+    def generateScriptConfigString(self, recCfgList, rawFileListPath, redoAll):
+        baseString = '{i} "{vf}" "{bf}" "{pf}" "{fcp}" "{ncp}" {recIdx} {runIdx} {mpr} {rlp}\n'
         cfgString = ""
         cnt = 0
         for recIdx, runIdx in recCfgList:
@@ -313,19 +323,43 @@ class FlyExtractor(object):
                                            ncp=self.noveltyClassfyPath,
                                            recIdx=recIdx,
                                            runIdx=runIdx,
-                                           mpr=self.minPerRun)
+                                           mpr=self.minPerRun,
+                                           rlp=rawFileListPath)
             cnt += 1
 
         return cfgString
 
-    def generateConfig(self, filename, redoAll=False):
+    def saveRawFileList(self, rawFileListPath):
+        with open(rawFileListPath, 'w') as f:
+            json.dump(self.rawFileList, f, default=json_serial_from_datetime)
+
+    def generateConfig(self, cfgFilename, rawFileListPath, redoAll=False):
         self.generateRecordingRanges(self.videoFolder)
         recCfgList = self.retrieveScriptList()
-        cfgString = self.generateScriptConfigString(recCfgList, redoAll)
-        with open(filename, "w") as f:
+        cfgString = self.generateScriptConfigString(recCfgList, rawFileListPath, redoAll)
+        with open(cfgFilename, "w") as f:
             f.write(cfgString)
 
+        self.saveRawFileList(rawFileListPath)
 
+
+
+def json_serial_from_datetime(obj):
+    """JSON serializer for objects not serializable by default json code"""
+
+    if isinstance(obj, dt.datetime):
+        serial = obj.isoformat()
+        return serial
+
+def json_serial_to_datetime(obj):
+
+    if isinstance(obj, basestring):
+        try:
+            date = dateutil.parser.parse(obj)
+            return date
+
+        except ValueError:
+            pass
 
 
 if __name__ == "__main__":
@@ -349,6 +383,8 @@ if __name__ == "__main__":
                        help='index of the batch within the recording batch the script is to run on')
     parser.add_argument('minPerRun', metavar='m', type=int,
                        help='coverage of each run')
+    parser.add_argument('rawFileListPath', metavar='l',
+                       help='path to json with paths to files')
 
     args = parser.parse_args()
 
@@ -360,8 +396,10 @@ if __name__ == "__main__":
     recIdx = args.recIdx
     runIdx = args.runIdx
     minPerRun = args.minPerRun
+    rawFileListPath = args.rawFileListPath
 
 
     fe = FlyExtractor(videoFolder, backgroundFolder, backgroundFolder, flyClassifierPath, noveltyClassfyPath,
-                      recIdx=recIdx, runIdx=runIdx, minPerRun=minPerRun, ffmpegpath='ffmpeg')
+                      recIdx=recIdx, runIdx=runIdx, minPerRun=minPerRun, ffmpegpath='ffmpeg',
+                      rawFileListPath=rawFileListPath)
     fe.extractPatches()
