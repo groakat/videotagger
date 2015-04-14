@@ -428,15 +428,15 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    videoFolder = args.videoFolder
-    backgroundFolder = args.backgroundFolder
-    patchFolder = args.patchFolder
-    flyClassifierPath = args.flyClassifierPath
-    noveltyClassfyPath = args.noveltyClassfyPath
+    videoFolder = args.videoFolder.strip('"')
+    backgroundFolder = args.backgroundFolder.strip('"')
+    patchFolder = args.patchFolder.strip('"')
+    flyClassifierPath = args.flyClassifierPath.strip('"')
+    noveltyClassfyPath = args.noveltyClassfyPath.strip('"')
     recIdx = args.recIdx
     runIdx = args.runIdx
     minPerRun = args.minPerRun
-    rawFileListPath = args.rawFileListPath
+    rawFileListPath = args.rawFileListPath.strip('"')
 
 
     fe = FlyExtractor(videoFolder, backgroundFolder, backgroundFolder, flyClassifierPath, noveltyClassfyPath,
