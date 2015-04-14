@@ -914,7 +914,7 @@ class Vials(object):
 
     @staticmethod
     def extractPatchesFromList(fileList, baseSaveDir, bgModel, vial, fps=30, 
-                                 tmpBaseSaveDir='/tmp/', delTmpImg=True,
+                                 tmpBaseSaveDir=None, delTmpImg=False,
                                  patchSize=[64, 64], ffmpegpath=None):
         """
         extracts patches from a given list of files and encodes the patches
@@ -948,9 +948,9 @@ class Vials(object):
         """
 
 
-        # if tmpBaseSaveDir is None:
-        #     tmpBaseSaveDir = os.environ.get('TMPDIR','/tmp') + '/'
-        #     # tmpBaseSaveDir = '/tmp/'
+        if tmpBaseSaveDir is None:
+            tmpBaseSaveDir = os.environ.get('TMPDIR','/tmp') + '/'
+            # tmpBaseSaveDir = '/tmp/'
 
         if ffmpegpath is None:
             ffmpegpath = 'ffmpeg'
@@ -997,6 +997,7 @@ class Vials(object):
             # render images as avi for complete losslessness
             
             # ffmpeg -y -f image2 -r 29.97 -i /tmp/2013-02-19.00-01-00.v0.%05d.png -vcodec ffv1 -sameq /tmp/test.avi
+            # ffmpeg -y -f image2 -r 29.97 -i /tmp/2013-02-19.00-01-00.v0.%05d.png -vcodec ffv1 -qscale 0 -r 30 /tmp/test.avi
             ffmpegCmd = '{ffmpeg} -y -f image2 -r {2} -i "{3}.v{1}.%05d.tif" -vcodec ffv1 -qscale 0 -r {2} "{0}.v{1}.avi"'
             
             for patchNo in range(len(accPos)):
@@ -1008,19 +1009,19 @@ class Vials(object):
             
             # render images as mp4 for very fast playback
             #ffmpeg -y -f image2 -r 29.97 -i 2013-02-19.00-00-00.v0.%05d.tif -c:v libx264 -crf 18 -preset veryfast test.mp4
-            ffmpegCmd = '{ffmpeg} -y -i "{3}.v{1}.%05d.tif" -c:v libx264 -crf 18 -preset veryfast -r {2} "{0}.v{1}.mp4"'
-            for patchNo in range(len(accPos)):
-                p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName,ffmpeg=ffmpegpath),
-                                    shell=True, stdout=subprocess.PIPE,
-                                    stderr=subprocess.STDOUT)
-                output = p.communicate()[0]
+            # ffmpegCmd = '{ffmpeg} -y -i "{3}.v{1}.%05d.tif" -c:v libx264 -crf 18 -preset veryfast -r {2} "{0}.v{1}.mp4"'
+            # for patchNo in range(len(accPos)):
+            #     p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName,ffmpeg=ffmpegpath),
+            #                         shell=True, stdout=subprocess.PIPE,
+            #                         stderr=subprocess.STDOUT)
+            #     output = p.communicate()[0]
                 
             # delete images of frames
             if delTmpImg:
                 for filePath in patchPaths:
                     os.remove(filePath)                    
 
-            baseFolder =   constructSaveDir(baseSaveDir, f, ["feat", "pos"])
+            baseFolder = constructSaveDir(baseSaveDir, f, ["feat", "pos"])
 
             for k in range(len(accPos)):
                 #baseName = os.path.join(baseFolder, os.path.basename(f)[:-4] + ".v{v}.pos".format(v=k))
