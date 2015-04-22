@@ -208,7 +208,6 @@ class AutoCompleteComboBox(QtGui.QComboBox):
         return super(AutoCompleteComboBox, self).keyPressEvent(event)
 
 
-
 class ContextLineEdit(QtGui.QWidget):
     def __init__(self, action, *args, **kwargs):
         super(ContextLineEdit, self).__init__(*args, **kwargs)

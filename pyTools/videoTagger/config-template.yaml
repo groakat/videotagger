@@ -49,7 +49,7 @@ Video:
   bufferWidth: 300
   cropped-video: false
   files-running-indices: true
-  frame-data-visualization-path: 'framedataVis.npy'
+  frame-data-visualization-path: 'framedataVis'
   rewind-on-click: false
   vial: null
   vialROI: null

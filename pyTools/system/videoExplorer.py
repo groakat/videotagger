@@ -3,8 +3,11 @@ import os
 import re
 import datetime as dt
 import random
-from ffvideo import VideoStream, SEEK_ANY
+from ffvideo import VideoStream
 import ffvideo
+
+import time
+import pyTools.misc.config as cfg
 
 class videoExplorer(object):
     """
@@ -30,6 +33,7 @@ class videoExplorer(object):
         self.dayList = []
         self.verbose = verbose
         self.vs = None
+        self.frameMode = None
 
     def setTimeRange(self,  start,  end):
         """
@@ -246,6 +250,7 @@ class videoExplorer(object):
             print "processing frame {0} of video {1}".format(frameNo,  file)
 
         self.vs = VideoStream(file, frame_mode=frameMode, exact_seek=True)
+        self.frameMode = frameMode
 
         frame = self.vs.next().ndarray()
 
@@ -281,7 +286,12 @@ class videoExplorer(object):
         if self.verbose:
             print "processing frame {0} of video {1}".format(frameNo,  file)
 
-        self.vs = VideoStream(file, frame_mode=frameMode, exact_seek=True)
+        if not self.vs \
+        or self.frameMode != frameMode \
+        or self.vs.filename != file:
+            self.vs = VideoStream(file, frame_mode=frameMode, exact_seek=True)
+
+            self.frameMode = frameMode
         
         frame = self.vs.get_frame_no(frameNo).ndarray()
         
@@ -342,8 +352,9 @@ class videoExplorer(object):
         
         if self.verbose:
             print "processing frame {0} of video {1}".format(frameNo,  file)
-        
+
         self.vs = VideoStream(file, frame_mode=frameMode, exact_seek=True)
+        self.frameMode = frameMode
         
     def __iter__(self):
         # rewind ffvideo thingy
@@ -387,7 +398,34 @@ class videoExplorer(object):
         folders.reverse()
 
         return folders
-        
+
+    @staticmethod
+    def retrieveVideoLength(filename, initialStepSize=10000):
+        """
+        Finds video length by accessing it bruteforce
+
+        """
+        idx = 0
+        modi = initialStepSize
+        vE = videoExplorer()
+
+        while modi > 0:
+            while True:
+                try:
+                    vE.getFrame(filename, frameNo=idx, frameMode='RGB')
+                except StopIteration:
+                    break
+
+                idx += modi
+
+            idx -= modi
+
+            modi /= 2
+
+
+        return idx + 1 # + 1 to make it the same behaviour as len()
+
+
     @staticmethod
     def findFileInList(lst, filename):
         """

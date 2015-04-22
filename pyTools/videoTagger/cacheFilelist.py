@@ -37,12 +37,12 @@ def generateVideoListPath(videoPath, videoListPathRel):
 
 def generateFDVTPath(videoPath, fdvtPathRel):
     if not fdvtPathRel:
-        fdvtPathRel = 'framedataVis.npy'
+        fdvtPathRel = 'framedataVis'
         fdvtPath = os.path.join(getPathDirname(videoPath),
                                 fdvtPathRel)
         i = 1
         while os.path.exists(fdvtPathRel):
-            fdvtPathRel = 'framedataVis{0}.npy'.format(i)
+            fdvtPathRel = 'framedataVis{0}'.format(i)
             fdvtPath = os.path.join(getPathDirname(videoPath),
                                     fdvtPathRel)
             i += 1
@@ -83,30 +83,37 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
         else:
             sv = selectedVial
 
-        extension = ".v{0}.{1}".format(sv, videoExtension)
+        videoExtension = ".v{0}.{1}".format(sv, videoExtension)
+        posExtension = ".v{0}.pos.npy".format(sv)
     else:
-        extension = ".{0}".format(videoExtension)
+        videoExtension = ".{0}".format(videoExtension)
+        posExtension = ".pos.npy"
 
-    videoList = systemMisc.providePosList(videoPath, ending=extension)
+    videoList = systemMisc.providePosList(videoPath, ending=videoExtension)
     backgroundList = systemMisc.providePosList(videoPath, ending='png')
+    posList = systemMisc.providePosList(videoPath, ending=posExtension)
 
     if len(videoList) == 3:
         core = '.'.join(sorted(videoList)[0].split('.')[:-1])
-        if core + '_full' + extension in videoList \
-        and core + '_small' + extension in videoList \
-        and core + extension in videoList:
-            videoList = [core + '_small' + extension]
+        if core + '_full' + videoExtension in videoList \
+        and core + '_small' + videoExtension in videoList \
+        and core + videoExtension in videoList:
+            videoList = [core + '_small' + videoExtension]
 
     videoListPath, videoListPathRel = generateVideoListPath(videoPath,
                                                            videoListPath)
+
+
 
     fdvtPathRel, fdvtPath = generateFDVTPath(videoPath, fdvtPathRel)
 
     rootPath = getPathDirname(videoPath)
     videoListRel = [x[len(rootPath)+1:] for x in videoList]
     bgListRel = [x[len(rootPath)+1:] for x in backgroundList]
+    posListRel = [x[len(rootPath)+1:] for x in posList]
     data = {'videoList': videoListRel,
-            'backgroundList': bgListRel}
+            'backgroundList': bgListRel,
+            'positionList': posListRel}
     with open(videoListPath, "w") as f:
         json.dump(data, f)
 
@@ -125,14 +132,14 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
     else:
         singleFileMode = True
 
-    fdtv = FDV.FrameDataVisualizationTreeBehaviour()
-    fdtv.importAnnotations(bhvrList, videoList, annotations, selectedVial,
+    fdtv = FDV.FrameDataVisualizationTreeBehaviour(fdvtPath)
+    fdtv.importAnnotationsFromFile(bhvrList, videoList, annotations, selectedVial,
                            runningIndeces=runningIndeces,
                            singleFileMode=singleFileMode)
 
     print fdvtPath, fdvtPathRel
 
-    fdtv.save(fdvtPath)
+    fdtv.save()
 
     return videoListPathRel, fdvtPathRel
 

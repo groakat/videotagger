@@ -56,7 +56,12 @@ class VideoLoader(QtCore.QObject):
     @cfg.logClassFunction
     def __init__(self, posPath, idxSlice, selectedVials=[1], 
                  thread=None, eofCallback=None):
-        super(VideoLoader, self).__init__(None)        
+        super(VideoLoader, self).__init__(None)
+
+        self.vE = VE.videoExplorer()
+
+        self.posPath = None
+
         self.init(posPath, idxSlice, selectedVials, thread)
         
     def init(self, posPath, idxSlice, selectedVials=[1], 
@@ -65,6 +70,9 @@ class VideoLoader(QtCore.QObject):
         
         self.videoLength = -1
         self.frameList = []
+
+        self.idxSlice = idxSlice
+        prevPath = self.posPath
 
         self.posPath = copy.copy(posPath)      
         
@@ -77,8 +85,13 @@ class VideoLoader(QtCore.QObject):
         
         self.imTransform = lambda x: x
         
-        self.endOfFile = [] 
-        self.idxSlice = idxSlice
+        self.endOfFile = []
+
+        if posPath is not None \
+        and prevPath != self.posPath:
+            self.vE.getFrame(posPath, self.idxSlice.start, info=False,
+                                    frameMode='RGB')
+
 
     def maxOfSelectedVials(self):
         return 0
@@ -97,7 +110,7 @@ class VideoLoader(QtCore.QObject):
 
         
         #@lbview.parallel(block=True)
-        def loadVideo(f, idxSlice, vialNo, imTransform=None):    
+        def loadVideo(vE, f, idxSlice, vialNo, imTransform=None):
 #             from qimage2ndarray import array2qimage
             import sys
             from pyTools.system.videoExplorer import videoExplorer
@@ -106,7 +119,7 @@ class VideoLoader(QtCore.QObject):
             from scipy.misc import imresize 
             
             
-            vE = videoExplorer()        
+            # vE = videoExplorer()
             
             if imTransform is None:
                 imTransform = lambda x: imresize(x, [64, 64])
@@ -142,7 +155,7 @@ class VideoLoader(QtCore.QObject):
             ret["qi"] = im
             ret['endOfFile'] = endOfFile
             
-            del vE
+            # del vE
             
             return ret     
             
@@ -151,13 +164,13 @@ class VideoLoader(QtCore.QObject):
         
         if self.selectedVials is None:
             f = self.posPath# self.posPath.split(self.videoEnding)[0] + self.videoEnding#.v{0}.{1}'.format(i, 'avi')
-            results = loadVideo(f, self.idxSlice, 0, self.imTransform)
+            results = loadVideo(self.vE, f, self.idxSlice, 0, self.imTransform)
             self.frameList = [copy.copy(results["qi"])] 
             self.endOfFile = [copy.copy(results['endOfFile'])]
             
         else:                
             f = self.posPath# self.posPath.split(self.videoEnding)[0] + self.videoEnding#.v{0}.{1}'.format(i, 'avi')
-            results = loadVideo(f, self.idxSlice, self.selectedVials[0], self.imTransform)
+            results = loadVideo(self.vE, f, self.idxSlice, self.selectedVials[0], self.imTransform)
             self.frameList = [copy.copy(results["qi"])] 
             self.endOfFile = [copy.copy(results['endOfFile'])]
             
@@ -264,7 +277,7 @@ class VideoLoaderLuncher(QtCore.QObject):
     loadVideos = QtCore.Signal() 
     
     @cfg.logClassFunction
-    def __init__(self, eofCallback, bufferLength):
+    def __init__(self, eofCallback, bufferLength, standardFile=None):
         """
         This object will exectute `func` with `args` in a
         separate thread. You can query ready() to check
@@ -284,13 +297,13 @@ class VideoLoaderLuncher(QtCore.QObject):
         self.eofCallback = eofCallback
         self.bufferLength = bufferLength
         while len(self.availableVLs) < self.bufferLength:
-            self.createNewVideoLuncher()
+            self.createNewVideoLuncher(standardFile)
 
-    def createNewVideoLuncher(self):
+    def createNewVideoLuncher(self, standardFile=None):
         videoLoaderThread = MyThread("videoLoader {0}".format(len(
                                                         self.threads.keys())))
 
-        vL = VideoLoader("", idxSlice=slice(0, 1),
+        vL = VideoLoader(standardFile, idxSlice=slice(0, 1),
                          thread=videoLoaderThread,
                          selectedVials=[0])
 
@@ -567,13 +580,13 @@ class AnnotationLoader(QtCore.QObject):
                 cfg.log.warning("load annotation of "+f+" failed, reset annotaions")
                 if videoLength is None:
                     videoLength = self.retrieveVideoLength(self.bhvrPath)
-                out = Annotation.Annotation(frameNo=videoLength, vialNames=self.vialNames)
+                out = Annotation.Annotation(frameNo=videoLength)#, vialNames=self.vialNames)
         else:
             cfg.log.warning("AnnotationLoader: f does NOT exist create empty Annotation at {0}".format(self.bhvrPath))
             if videoLength is None:
                 videoLength = self.retrieveVideoLength(self.videoPath)
 
-            out = Annotation.Annotation(frameNo=videoLength, vialNames=self.vialNames)
+            out = Annotation.Annotation(frameNo=videoLength)#, vialNames=self.vialNames)
             cfg.log.info("new annotation with length {0}".format(videoLength))
 
         if out is None:
@@ -583,7 +596,7 @@ class AnnotationLoader(QtCore.QObject):
 #         self.loadedAnnotation.emit([self, self.path])
 
         cfg.log.debug("finished loading annotation {0}".format(self.bhvrPath))
-        self.loadedAnnotation.emit([self.key, len(self.annotation.frameList)])
+        self.loadedAnnotation.emit([self.key, self.annotation.getLength()])
         self.loading = False
         
         

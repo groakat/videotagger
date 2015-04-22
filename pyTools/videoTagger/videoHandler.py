@@ -32,7 +32,7 @@ class VideoHandler(QtCore.QObject):
     changedFile = QtCore.Signal(str)
     
     @cfg.logClassFunction
-    def __init__(self, videoPathList, backgroundPathList,
+    def __init__(self, videoPathList, backgroundPathList, positionPathList,
                  fileChangeCb, selectedVials=[0], startIdx=0,
                  videoExtension='.avi', bufferWidth=300, bufferLength=4,
                  patchesFolder='', positionsFolder='', behaviourFolder='',
@@ -66,6 +66,7 @@ class VideoHandler(QtCore.QObject):
         
         self.videoPathList = sorted(videoPathList)
         self.bgPathList = sorted(backgroundPathList)
+        self.posList = sorted(positionPathList)
         self.posPath = videoPathList[startIdx]
         self.bgNeighboursLUT = dict()
         
@@ -73,9 +74,15 @@ class VideoHandler(QtCore.QObject):
         self.annoAltStart = None
         
         ## video loading
+        if len(self.videoPathList) == 1:
+            standardFile = self.videoPathList[0]
+        else:
+            standardFile = None
+
         self.vLL = DL.VideoLoaderLuncher(eofCallback=self.endOfFileNotice,
                                          bufferLength=bufferLength * 2 +
-                                                      self.bufferJut * 2 + 3)
+                                                      self.bufferJut * 2 + 3,
+                                         standardFile=standardFile)
 
         self.videoLoaderLuncherThread = DL.MyThread("videoLuncher")
         self.vLL.moveToThread(self.videoLoaderLuncherThread)
@@ -115,13 +122,16 @@ class VideoHandler(QtCore.QObject):
         self.newAnnotationLoader.connect(self.aLL.lunchAnnotationLoader)
         self.deleteAnnotationLoader.connect(self.aLL.deleteAnnotationLoader)
 
-        positionList = sorted([self.getPositionPath(x) for x in self.videoPathList])
+        # positionList = sorted([self.getPositionPath(x) for x in self.videoPathList])
 
-        self.posCache = Cache.PosFileCache(sortedFileList=positionList,
+        self.posCache = Cache.PosFileCache(sortedFileList=self.posList,
                                            size=2000)
 
-        self.posCache.getItem(self.getPositionPath(self.posPath),
+        try:
+            self.posCache.getItem(self.getPositionPath(self.posPath),
                               checkNeighbours=True)
+        except IOError:
+            pass
 
 
         if self.bgPathList:
@@ -345,6 +355,7 @@ class VideoHandler(QtCore.QObject):
             frame = self.getCurrentFrameNull()
         except RuntimeError:
             cfg.log.warning("something went wrong during the fetching procedure")
+            frame = self.getCurrentFrameNull()
                 
         self.idx = idx
         self.posPath = path
@@ -363,14 +374,17 @@ class VideoHandler(QtCore.QObject):
     def getCurrentAnnotation(self):
         if self.posPath in self.annoDict.keys():
             if self.annoDict[self.posPath] is not None:
-                annotation = self.annoDict[self.posPath].annotation.frameList[
-                                                                    self.idx]
+                # annotation = self.annoDict[self.posPath].annotation.frameList[
+                #                                                     self.idx]
+                annotation = self.annoDict[self.posPath].annotation.getFrame(self.idx)
             else:
-                annotation = [[{'confidence': 0}]
-                                for i in range(self.maxOfSelectedVials() + 1)]
+                annotation = None
+                # [[{'confidence': 0}]
+                #                 for i in range(self.maxOfSelectedVials() + 1)]
         else:
-            annotation = [[{'confidence': 0}]
-                                for i in range(self.maxOfSelectedVials() + 1)]
+            annotation = None
+            # [[{'confidence': 0}]
+            #                     for i in range(self.maxOfSelectedVials() + 1)]
 
         return annotation
 
@@ -403,6 +417,10 @@ class VideoHandler(QtCore.QObject):
         try:
             bufferIdx = self.idx / self.bufferWidth
             frame = self.videoDict[self.posPath][bufferIdx].getFrame(self.idx)
+
+            cfg.log.debug("retrieving path, bufferIdx, idx {0}, {1}, {2}".format(
+                                        self.posPath, bufferIdx, self.idx
+            ))
             
             if not frame:
                 frame = self.getCurrentFrameUnbuffered(doBufferCheck, 
@@ -516,7 +534,7 @@ class VideoHandler(QtCore.QObject):
 
         try:
             pos = self.posCache.getItem(posKey)
-        except:
+        except IOError:
             pos = None
             
         return pos
@@ -666,7 +684,8 @@ class VideoHandler(QtCore.QObject):
         # extend right buffer to account for jut
         curKey = sorted(bufferedKeys.keys())[-1]
         curIdx = sorted(bufferedKeys[curKey])[-1]
-        for i in range(self.bufferJut):    
+        for i in range(self.bufferJut):
+            curIdx += 1
             curKey, curIdx = self.parseBuffersRight(curKey, curIdx)
             
             if curKey is None:
@@ -680,7 +699,8 @@ class VideoHandler(QtCore.QObject):
         # extend left buffer to account for jut
         curKey = sorted(bufferedKeys.keys())[0]
         curIdx = sorted(bufferedKeys[curKey])[0]
-        for i in range(self.bufferJut):    
+        for i in range(self.bufferJut):
+            curIdx -= 1
             curKey, curIdx = self.parseBuffersLeft(curKey, curIdx)
             
             if curKey is None:
@@ -706,6 +726,7 @@ class VideoHandler(QtCore.QObject):
 
         validKeys4Anno = []
         # check all buffers if lying within jut, unbuffer otherwise
+
         for key in self.videoDict.keys():
             if key in bufferedKeys.keys():
                 for idx in self.videoDict[key].keys():
@@ -875,7 +896,7 @@ class VideoHandler(QtCore.QObject):
             
         self.annoDict[videoPath] = None
         
-        path = videoPath.split(self.videoEnding)[0] + '.bhvr'
+        path = videoPath.split(self.videoEnding)[0] + '.csv'
         cfg.log.info("fetching {0}, {1}".format(videoPath, path))
         self.newAnnotationLoader.emit([videoPath, path,
                                   self.getVideoLength(videoPath)])
@@ -902,6 +923,8 @@ class VideoHandler(QtCore.QObject):
             if videokey in self.videoDict.keys() \
             and len(self.videoDict[videokey]) > 1:
                 self.ensureBuffering(nextKey, 0)
+
+        self.loadAnnotationBundle()
         
     @QtCore.Slot(list)
     def updateVideoLengthAndFetchLastBuffer(self, lst):
@@ -970,8 +993,9 @@ class VideoHandler(QtCore.QObject):
             self.loadingFinished = False
             self.loadAnnotationBundle()
 
+
         for aV in self.annoViewList:
-            aV.setPosition(self.posPath, self.idx, 
+            aV.setPosition(self.posPath, self.idx,
                            tempPositionOnly= updateOnlyTempPosition,
                            metadata=self.curMetadata)
 
@@ -991,11 +1015,13 @@ class VideoHandler(QtCore.QObject):
 
         delList = []
 
+
         for i, annotationBundle in enumerate(self.annotationBundle):
             key = annotationBundle[0]
 #             path = annotationBundle[1]
             aL = annotationBundle[2]
             annotation = aL.annotation
+            cfg.log.info("{0}".format(annotation))
 
             if annotation is None:
                 # annotation not yet loaded
@@ -1009,7 +1035,7 @@ class VideoHandler(QtCore.QObject):
             self.annoDict[key] = aL
             # save pathlength and bufferEnding if requested earlier
 
-            self.videoLengths[key] = len(aL.annotation.frameList)
+            self.videoLengths[key] = aL.annotation.getLength()
             # if annotation is not None:
             #     self.videoLengths[key] = len(annotation.frameList)
             # else:
@@ -1027,6 +1053,7 @@ class VideoHandler(QtCore.QObject):
                                         for i,item in \
                                             enumerate(self.annotationBundle) \
                                             if i not in delList]
+
         
             
     @cfg.logClassFunction
@@ -1056,7 +1083,7 @@ class VideoHandler(QtCore.QObject):
             return
                 
         curAnnoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx) 
-        lenFunc = lambda x: len(x.annotation.frameList)#[0])                
+        lenFunc = lambda x: x.annotation.getLength()
         
         newRng = bsc.generateRangeValuesFromKeys(self.annoEnd, 
                                                  curAnnoEnd,
@@ -1072,6 +1099,10 @@ class VideoHandler(QtCore.QObject):
         self.annoEnd = curAnnoEnd
 
     def getHighestBehaviourNumber(self, bhvrs):
+        if bhvrs == []:
+            return -1
+
+
         maxN = 0
 
         for bhvr in bhvrs:
@@ -1101,18 +1132,12 @@ class VideoHandler(QtCore.QObject):
 
         maxCounter = -1
         for anno in annos:
-            for frame in anno.frameList:
-                if frame is None:
-                    continue
+            labels = anno.getExactBehaviours()
 
-                for lbl in frame:
-                    if lbl is None:
-                        continue
+            nMaxBehaviour = self.getHighestBehaviourNumber(labels)
 
-                    nMaxBehaviour = self.getHighestBehaviourNumber(
-                                            lbl['behaviour'].keys())
-                    if maxCounter < nMaxBehaviour:
-                        maxCounter = nMaxBehaviour
+            if maxCounter < nMaxBehaviour:
+                maxCounter = nMaxBehaviour
 
         if maxCounter > -1:
             return "{bvhr}_{no}".format(bvhr=behaviour, no=maxCounter + 1)
@@ -1123,6 +1148,7 @@ class VideoHandler(QtCore.QObject):
         v = vial
         # refresh annotation in anno view
         for aV in self.annoViewList:
+            cfg.log.info("loop {0}".format(aV))
             if (aV.behaviourName == None) \
             or (behaviour == aV.behaviourName) \
             or (behaviour in aV.behaviourName):
@@ -1131,7 +1157,7 @@ class VideoHandler(QtCore.QObject):
                 or (annotator in aV.annotator):
                     if v == None and aV.vialNo == None \
                     or v in aV.vialNo:
-                        cfg.log.debug("refreshing annotation")
+                        cfg.log.info("refreshing annotation")
                         aV.addAnnotation(\
                                     self.annoDict[key].annotation,
                                          key)
@@ -1172,7 +1198,9 @@ class VideoHandler(QtCore.QObject):
 
             # refresh annotation in anno view
             self.addAnnotationToAnnoViews(v, annotator, behaviour, key)
-            
+
+            cfg.log.info("added view")
+
             cfg.logGUI.info(json.dumps({"vials":vials,
                                    "key-range":rngs,
                                    "annotator":annotator,
@@ -1237,7 +1265,7 @@ class VideoHandler(QtCore.QObject):
                 annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)    
                 
                 ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  : make that [0] dynamic
-                lenFunc = lambda x: len(x.annotation.frameList)#[0])
+                lenFunc = lambda x: x.annotation.getLength()
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                 behaviour = self.disambiguateDoubleBehaviourNames(vials, annotator, behaviour, rng)
@@ -1310,7 +1338,7 @@ class VideoHandler(QtCore.QObject):
                 annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)
                 
                 ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  : make that [0] dynamic
-                lenFunc = lambda x: len(x.annotation.frameList)#[0])
+                lenFunc = lambda x: x.annotation.getLength()
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                 self.annoAltStart = None
@@ -1361,7 +1389,7 @@ class VideoHandler(QtCore.QObject):
         curKey = posKey
         if direction == 'both' or direction == 'right':
             while rngs[curKey][-1] == \
-                    len(self.annoDict[curKey].annotation.frameList):
+                    self.annoDict[curKey].annotation.getLength():
                 curKey = sorted(self.annoDict.keys()).index(curKey) + 1
                 if curKey >= len(self.annoDict.keys()):
                     break
@@ -1370,7 +1398,7 @@ class VideoHandler(QtCore.QObject):
                                                             filterTuple,
                                                             [0],
                                                             exactMatch=True)
-                if a.frameList:
+                if a.getLength():
                     rngs[curKey] = self.annoDict[curKey].annotation.\
                          findConsequtiveAnnotationFrames(filterTuple,
                                                          0,
@@ -1387,12 +1415,12 @@ class VideoHandler(QtCore.QObject):
                 if curKey < 0:
                     break
 
-                l = len(self.annoDict[curKey].annotation.frameList)
+                l = self.annoDict[curKey].annotation.getLength()
                 a = self.annoDict[curKey].annotation.filterFrameList(
                                                             filterTuple,
                                                             [l],
                                                             exactMatch=True)
-                if a.frameList:
+                if a.getLength():
                     rngs[curKey] = self.annoDict[curKey].annotation.\
                          findConsequtiveAnnotationFrames(filterTuple, 0)
                 else:
@@ -1479,7 +1507,7 @@ class VideoHandler(QtCore.QObject):
                                         self.bhvrFolder)
             
             basename = '.'.join(os.path.basename(key).split(".")[:-1]) + \
-                       ".bhvr"
+                       ".csv"
             tmpFilename = os.path.join(dirname, basename)
             print "saving behaviour files to", tmpFilename
             self.annoDict[key].annotation.saveToFile(tmpFilename)

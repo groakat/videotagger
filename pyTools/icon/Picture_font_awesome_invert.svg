@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   viewBox="0 -256 1930 1930"
+   id="svg3037"
+   version="1.1"
+   inkscape:version="0.48.4 r9939"
+   width="100%"
+   height="100%"
+   sodipodi:docname="Picture_font_awesome_invert.svg">
+  <metadata
+     id="metadata3047">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs3045" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1455"
+     inkscape:window-height="833"
+     id="namedview3043"
+     showgrid="false"
+     inkscape:zoom="0.18624687"
+     inkscape:cx="362.88834"
+     inkscape:cy="1031.3393"
+     inkscape:window-x="0"
+     inkscape:window-y="25"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg3037" />
+  <rect
+     style="fill:#000000;fill-opacity:1;stroke:none"
+     id="rect3772"
+     width="2158.4255"
+     height="2061.7795"
+     x="-64.430611"
+     y="-56.610523"
+     transform="translate(0,-256)"
+     rx="59.976261"
+     ry="63.74815" />
+  <g
+     transform="matrix(1,0,0,-1,7.59322,1362.678)"
+     id="g3039"
+     style="fill:#ffffff;fill-opacity:1">
+    <path
+       d="m 640,960 q 0,-80 -56,-136 -56,-56 -136,-56 -80,0 -136,56 -56,56 -56,136 0,80 56,136 56,56 136,56 80,0 136,-56 56,-56 56,-136 z M 1664,576 V 128 H 256 v 192 l 320,320 160,-160 512,512 z m 96,704 H 160 q -13,0 -22.5,-9.5 Q 128,1261 128,1248 V 32 Q 128,19 137.5,9.5 147,0 160,0 h 1600 q 13,0 22.5,9.5 9.5,9.5 9.5,22.5 v 1216 q 0,13 -9.5,22.5 -9.5,9.5 -22.5,9.5 z m 160,-32 V 32 q 0,-66 -47,-113 -47,-47 -113,-47 H 160 Q 94,-128 47,-81 0,-34 0,32 v 1216 q 0,66 47,113 47,47 113,47 h 1600 q 66,0 113,-47 47,-47 47,-113 z"
+       id="path3041"
+       inkscape:connector-curvature="0"
+       style="fill:#ffffff;fill-opacity:1" />
+  </g>
+</svg>

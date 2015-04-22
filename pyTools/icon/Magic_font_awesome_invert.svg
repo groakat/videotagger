@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   viewBox="0 -256 1792 1792"
+   id="svg3001"
+   version="1.1"
+   inkscape:version="0.48.4 r9939"
+   width="100%"
+   height="100%"
+   sodipodi:docname="Magic_font_awesome_invert.svg">
+  <metadata
+     id="metadata3011">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs3009" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="861"
+     inkscape:window-height="652"
+     id="namedview3007"
+     showgrid="false"
+     inkscape:zoom="0.13169643"
+     inkscape:cx="896.00001"
+     inkscape:cy="896.00001"
+     inkscape:window-x="503"
+     inkscape:window-y="160"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg3001" />
+  <rect
+     style="fill:#1a1a1a;fill-opacity:1;stroke:#000000;stroke-width:8.4756403;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:8.47564029, 8.47564029;stroke-dashoffset:0"
+     id="rect2983"
+     width="1821.8972"
+     height="1814.304"
+     x="7.8310409"
+     y="-248.16896"
+     ry="6.0894713" />
+  <path
+     style="fill:#ffffff;fill-opacity:1"
+     inkscape:connector-curvature="0"
+     id="path3005"
+     d="m 1235.5593,391.1695 293,-293 -107,-107 -293,293 z m 447,-293 q 0,27 -18,45 l -1285.99998,1286 q -18,18 -45,18 -27,0 -45,-18 l -197.999998,-198 q -18,-18 -18,-45 0,-27 18,-45 l 1285.999978,-1286 q 18,-18 45,-18 27,0 45,18 l 198,198 q 18,18 18,45 z m -1350.99998,-190 98,30 -98,30 -30,98 -30,-98 -98,-30 98,-30 30,-98 z m 350,162 196,60 -196,60 -60,196 -60,-196 -196,-60 196,-60 60,-196 z m 929.99998,478 98,30 -98,30 -30,98 -30,-98 -98,-30 98,-30 30,-98 z m -639.99998,-640 97.99998,30 -97.99998,30 -30,98 -30,-98 -98,-30 98,-30 30,-98 z" />
+</svg>

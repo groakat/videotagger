@@ -7,6 +7,9 @@ import pyTools.videoTagger.overlayDialog as OD
 import json
 import os
 
+import pyTools.system.plugins as P
+from pluginManager import PluginParser as PP
+
 class FullViewDialog(QtGui.QMainWindow):
     def __init__(self, parent, previewWidget=None):
         super(FullViewDialog, self).__init__(parent)
@@ -26,10 +29,12 @@ class FullViewDialog(QtGui.QMainWindow):
         self.setupControlWidget()
         self.playing = False
         self.editing = True
+        self.FDVOpen = False
         self.bookmarksOpen = False
         self.labelsOpen = False
         self.trajectoryEnabled = False
         self.annoViewOpen = False
+        self.pluginsOpen = False
         self.avY = 0
         self.mouseFilter = MouseFilterObj(self)
         self.installEventFilter(self.mouseFilter)
@@ -38,8 +43,8 @@ class FullViewDialog(QtGui.QMainWindow):
     def setupUI(self):
         l = QtGui.QHBoxLayout(self.cw)
         self.hSplitter = QtGui.QSplitter(QtCore.Qt.Horizontal, self.cw)
-        self.hSplitter.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
-                                   QtGui.QSizePolicy.MinimumExpanding)
+        self.hSplitter.setSizePolicy(QtGui.QSizePolicy.Minimum,
+                                   QtGui.QSizePolicy.Minimum)
 
         self.splitter = QtGui.QSplitter(QtCore.Qt.Vertical, self.cw)
         self.splitter.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
@@ -49,10 +54,13 @@ class FullViewDialog(QtGui.QMainWindow):
         self.hSplitter.addWidget(self.splitter)
         self.bmView = bookmarkView(self, self.parent())
         self.lblView = fullFrameLabelView(self, self.parent())
+        self.pluginView = PluginView(self, self.parent(), P.PluginBase)
         self.hSplitter.addWidget(self.bmView)
         self.hSplitter.addWidget(self.lblView)
+        self.hSplitter.addWidget(self.pluginView)
         self.bmView.hide()
         self.lblView.hide()
+        self.pluginView.hide()
 
         self.cw.setLayout(l)
 
@@ -94,16 +102,13 @@ class FullViewDialog(QtGui.QMainWindow):
         self.controlWidget = QtGui.QWidget(self)
         layout = QtGui.QHBoxLayout(self.controlWidget)
 
-        self.iconFolder = os.path.join(
-                            os.path.dirname(os.path.abspath(__file__)),
-                            os.path.pardir,
-                            'icon')
+        self.iconFolder = SVGButton.getIconFolder()
 
         self.fdvButton = SVGButton(self.controlWidget)
         self.fdvButton.load(self.iconFolder + '/Bar_chart_font_awesome.svg')
         self.fdvButton.setToolTip("Open hierarchical view of labels")
         self.fdvButton.setFixedSize(20, 20)
-        self.fdvButton.clicked.connect(self.parent().openFDV)
+        self.fdvButton.clicked.connect(self.toggleFDV)
         layout.addWidget(self.fdvButton)
 
         self.timelineButton = SVGButton(self.controlWidget)
@@ -134,6 +139,13 @@ class FullViewDialog(QtGui.QMainWindow):
         self.trajectoryButton.clicked.connect(self.toggleTrajectory)
         layout.addWidget(self.trajectoryButton)
 
+        self.pluginButton = SVGButton(self.controlWidget)
+        self.pluginButton.load(self.iconFolder + '/Magic_font_awesome.svg')
+        self.pluginButton.setToolTip("Open machine learning pane")
+        self.pluginButton.setFixedSize(20, 20)
+        self.pluginButton.clicked.connect(self.togglePlugins)
+        layout.addWidget(self.pluginButton)
+
         layout.addStretch()
 
         self.fullResButton = SVGButton(self.controlWidget)
@@ -162,7 +174,7 @@ class FullViewDialog(QtGui.QMainWindow):
         layout.addWidget(self.modeButton)
 
         layout.addStretch()
-        layout.addSpacing(60)
+        layout.addSpacing(90)
 
         self.saveButton = SVGButton(self.controlWidget)
         self.saveButton.load(self.iconFolder + '/Save_font_awesome.svg')
@@ -254,6 +266,16 @@ class FullViewDialog(QtGui.QMainWindow):
 
         self.playing = not self.playing
 
+    def toggleFDV(self):
+        # self.FDVOpen = not self.FDVOpen
+        self.parent().openFDV()
+        # if self.FDVOpen:
+        #     self.fdvButton.load(self.iconFolder + '/Bar_chart_font_awesome_invert.svg')
+        #     self.fdvButton.clicked.connect(self.parent().openFDV)
+        # else:
+        #     self.fdvButton.load(self.iconFolder + '/Bar_chart_font_awesome.svg')
+
+
     def toggleEditModeCheckbox(self):
         self.editing = not self.editing
 
@@ -270,10 +292,10 @@ class FullViewDialog(QtGui.QMainWindow):
         self.labelsOpen = not self.labelsOpen
         if self.labelsOpen:
             self.lblView.show()
-            # self.bookmarkButton.load(self.iconFolder + '/Bookmark_empty_font_awesome.svg')
+            self.fullFrameLabelButton.load(self.iconFolder + '/Picture_font_awesome_invert.svg')
         else:
             self.lblView.hide()
-            # self.bookmarkButton.load(self.iconFolder + '/Bookmark_font_awesome.svg')
+            self.fullFrameLabelButton.load(self.iconFolder + '/Picture_font_awesome.svg')
 
     def toggleBookmarks(self):
         self.bookmarksOpen = not self.bookmarksOpen
@@ -297,8 +319,20 @@ class FullViewDialog(QtGui.QMainWindow):
         self.annoViewOpen = not self.annoViewOpen
         if self.annoViewOpen:
             self.annoViewWidget.show()
+            self.timelineButton.load(self.iconFolder + '/Align_justify_font_awesome_invert.svg')
         else:
             self.annoViewWidget.hide()
+            self.timelineButton.load(self.iconFolder + '/Align_justify_font_awesome.svg')
+
+    def togglePlugins(self):
+        self.pluginsOpen = not self.pluginsOpen
+        if self.pluginsOpen:
+            self.pluginView.show()
+            self.pluginButton.load(self.iconFolder + '/Magic_font_awesome_invert.svg')
+        else:
+            self.pluginView.hide()
+            self.pluginButton.load(self.iconFolder + '/Magic_font_awesome.svg')
+
 
 class FullViewGraphicsView(QtGui.QGraphicsView):
 
@@ -309,10 +343,13 @@ class FullViewGraphicsView(QtGui.QGraphicsView):
     def resizeEvent(self, event):
         ret = super(FullViewGraphicsView, self).resizeEvent(event)
 
-        if self.scene():
-            bounds = self.scene().sceneRect()
-            self.fitInView(bounds, QtCore.Qt.KeepAspectRatio)
-            self.centerOn(0, 0)
+        diff = event.oldSize() - event.size()
+        # preventing slow resize drift
+        if abs(diff.height()) > 5 or abs(diff.width()) > 5:
+            if self.scene():
+                bounds = self.scene().sceneRect()
+                self.fitInView(bounds, QtCore.Qt.KeepAspectRatio)
+                self.centerOn(0, 0)
 
         return ret
 
@@ -341,6 +378,8 @@ class SVGButton(QtGui.QPushButton):
             self.icon.load(svgPath)
 
         self.layoutBase = QtGui.QHBoxLayout(self)
+        self.layoutBase.setSpacing(0)
+        self.layoutBase.setContentsMargins(0,0,0,0)
         self.layoutBase.addWidget(self.icon)
 
     def resizeEvent(self, event):
@@ -348,6 +387,15 @@ class SVGButton(QtGui.QPushButton):
 
         if self.icon is not None:
             self.icon.setFixedSize(self.size())
+
+    @staticmethod
+    def getIconFolder():
+        iconFolder = os.path.join(
+                            os.path.dirname(os.path.abspath(__file__)),
+                            os.path.pardir,
+                            'icon')
+
+        return iconFolder
 
 
 class BookmarkListModel(QtGui.QStandardItemModel):
@@ -450,6 +498,79 @@ class BookmarkListModel(QtGui.QStandardItemModel):
             for str, key, idx in zip(*raw):
                 self.addItem(str, key, idx)
 
+class PluginView(QtGui.QWidget):
+    def __init__(self, fullViewDialog, videoTagger, baseClass, *args, **kwargs):
+        super(PluginView, self).__init__(*args, **kwargs)
+
+        self.iconFolder = os.path.join(
+                            os.path.dirname(os.path.abspath(__file__)),
+                            os.path.pardir,
+                            'icon')
+
+        self.fullViewDialog = fullViewDialog
+        self.videoTagger = videoTagger
+        self.baseClass = baseClass
+        self.plugins = []
+
+        self.baseLayout = QtGui.QVBoxLayout(self)
+        self.baseLayout.setContentsMargins(0,0,0,0)
+        self.headerLabel = QtGui.QLabel(self)
+        self.headerLabel.setText("Machine Learning Plugins")
+        self.buttonWidget = QtGui.QWidget(self)
+        self.buttonLayout = QtGui.QHBoxLayout(self.buttonWidget)
+
+        self.addButton = SVGButton(self.buttonWidget)
+        self.addButton.load(self.iconFolder + '/Plus_font_awesome.svg')
+        self.addButton.setToolTip("add bookmark")
+        self.addButton.clicked.connect(self.openFolder)
+        self.addButton.setFixedSize(20, 20)
+        self.buttonLayout.addWidget(self.addButton)
+
+        self.pluginListView = QtGui.QScrollArea(self)
+        self.pluginListWidget = QtGui.QWidget(self)
+        self.pluginLayout = QtGui.QVBoxLayout(self)
+        self.pluginLayout.addStretch(100)
+
+        self.pluginListWidget.setLayout(self.pluginLayout)
+        self.pluginListView.setWidget(self.pluginListWidget)
+        self.pluginListView.setWidgetResizable(True)
+
+        self.baseLayout.addWidget(self.headerLabel)
+        self.baseLayout.addWidget(self.pluginListView)
+        self.baseLayout.addWidget(self.buttonWidget)
+
+
+    def loadFileList(self):
+        with open("/media/peter/Seagate Backup Plus Drive/backgroundEstimation4Matt/videoCache.json", 'r') as f:
+            fl = json.load(f)
+
+        videoData = P.VideoData(posList=fl['positionList'],
+                              videoList=fl['videoList'],
+                              annotationList=[],
+                              featureFolder='')
+
+        return videoData
+
+    def updateFDVT(self, *args):
+        pass
+
+    def openFolder(self):
+        folder = QtGui.QFileDialog.getExistingDirectory(self,
+                                         "Open directory with plugins")
+        plugins = PP.PluginParser.retrievePlugins(folder, P.PluginBase)
+
+        # videoData = self.loadFileList()
+
+        videoData = self.videoTagger.getVideoDataForPlugin()
+
+        for p in plugins:
+            plugin = p(videoData, self.videoTagger.updateFDVT)
+            print plugin.meta
+            self.plugins += [plugin]
+            w = plugin.getWidget()
+            self.pluginLayout.insertWidget(self.pluginLayout.count() - 1, w)
+            w.show()
+
 
 class bookmarkView(QtGui.QWidget):
     def __init__(self, fullViewDialog, videoTagger, *args, **kwargs):
@@ -543,6 +664,8 @@ class fullFrameLabelView(QtGui.QWidget):
                             os.path.pardir,
                             'icon')
 
+        self.addingInProgress = False
+
         self.videoTagger = videoTagger
         self.fullViewDialog = fullViewDialog
 
@@ -553,6 +676,12 @@ class fullFrameLabelView(QtGui.QWidget):
         self.buttonWidget = QtGui.QWidget(self)
         self.buttonLayout = QtGui.QHBoxLayout(self.buttonWidget)
 
+        self.addButton = SVGButton(self.buttonWidget)
+        self.addButton.load(self.iconFolder + '/Plus_font_awesome.svg')
+        self.addButton.setToolTip("add new full-frame bookmark")
+        self.addButton.clicked.connect(self.addButtonClick)
+        self.addButton.setFixedSize(20, 20)
+
         self.removeButton = SVGButton(self.buttonWidget)
         self.removeButton.load(self.iconFolder + '/Minus_font_awesome.svg')
         self.removeButton.setToolTip("remove bookmark")
@@ -560,6 +689,7 @@ class fullFrameLabelView(QtGui.QWidget):
         self.removeButton.setFixedSize(20, 20)
 
 
+        self.buttonLayout.addWidget(self.addButton)
         self.buttonLayout.addStretch()
         self.buttonLayout.addWidget(self.removeButton)
         self.buttonWidget.setLayout(self.buttonLayout)
@@ -568,6 +698,8 @@ class fullFrameLabelView(QtGui.QWidget):
         self.baseLayout.addWidget(self.headerLabel)
         self.baseLayout.addWidget(self.listView)
         self.baseLayout.addWidget(self.buttonWidget)
+
+        # self.setMaximumSize(300, 65000)
 
         # self.lm = QtGui.QStandardItemModel()
         # self.listView.setModel(self.lm)
@@ -604,6 +736,14 @@ class fullFrameLabelView(QtGui.QWidget):
         self.videoTagger.registerLastLabelInteraction(behaviour)
         self.videoTagger.menu.exec_(QtGui.QCursor.pos())
 
+    def addButtonClick(self):
+        self.addingInProgress = not self.addingInProgress
+        if self.addingInProgress:
+            self.addButton.load(self.iconFolder + '/F0fe_font_awesome.svg')
+        else:
+            self.addButton.load(self.iconFolder + '/Plus_font_awesome.svg')
+
+        self.videoTagger.addTempAnno()
 
 
 
