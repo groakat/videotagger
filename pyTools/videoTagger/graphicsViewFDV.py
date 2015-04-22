@@ -905,7 +905,8 @@ class GraphicsViewFDV(QtGui.QWidget):
         data = plotData['data']
         rects = self.rects[rectKey]
         maxHeight = 0
-        maxCum = np.max(np.sum(data, axis=1))
+        print data
+        maxCum = np.max(np.sum(data))#, axis=1))
         minBarHeight =  maxCum * 0.05
 
         for i, d in enumerate(data):

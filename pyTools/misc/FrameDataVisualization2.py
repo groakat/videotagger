@@ -55,12 +55,13 @@ def provideFileList(baseFolder, featFolder, vial, ending='.pos.npy'):
     print("scaning files done")
     return fileList
 
-def loadFDVT(path):
+def loadFDVT(folder):
     """
     Dynamically determines the type of the FDVT and returns the correct type
     :param path:
     :return:
     """
+    path = os.path.join(folder, 'fdvt.npy')
     if not os.path.exists(path):
         return None
 
@@ -153,6 +154,9 @@ class FrameDataVisualizationTreeBase(object):
 
 
     def save(self):
+        if not os.path.exists(self.root):
+            os.makedirs(self.root)
+
         np.save(os.path.join(self.root,
                              'fdvt.npy'), np.asarray(self.FDVT))
 
@@ -1214,7 +1218,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
 
     # @profile
-    def importAnnotationsFromSingleFile(self, bhvrFile, annotations,
+    def importAnnotationsFromSingleFile(self, bhvrFile,
                                         vials, runningIndeces=False, fps=30):
         # filtList = []
         # self.resetAllSamples()
@@ -1257,7 +1261,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
         if len(videoList) == 1:
             self.importAnnotationsFromSingleFile(bhvrList[0],
-                                                 annotations, vials,
+                                                 vials,
                                                  runningIndeces=False, fps=30)
             return
 

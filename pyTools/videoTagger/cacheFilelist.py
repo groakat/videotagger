@@ -37,12 +37,12 @@ def generateVideoListPath(videoPath, videoListPathRel):
 
 def generateFDVTPath(videoPath, fdvtPathRel):
     if not fdvtPathRel:
-        fdvtPathRel = 'framedataVis.npy'
+        fdvtPathRel = 'framedataVis'
         fdvtPath = os.path.join(getPathDirname(videoPath),
                                 fdvtPathRel)
         i = 1
         while os.path.exists(fdvtPathRel):
-            fdvtPathRel = 'framedataVis{0}.npy'.format(i)
+            fdvtPathRel = 'framedataVis{0}'.format(i)
             fdvtPath = os.path.join(getPathDirname(videoPath),
                                     fdvtPathRel)
             i += 1
@@ -102,6 +102,8 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
 
     videoListPath, videoListPathRel = generateVideoListPath(videoPath,
                                                            videoListPath)
+
+
 
     fdvtPathRel, fdvtPath = generateFDVTPath(videoPath, fdvtPathRel)
 

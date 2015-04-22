@@ -530,15 +530,15 @@ class VideoTagger(QtGui.QMainWindow):
         configPath = os.path.join(path, 'videoTaggerConfig.yaml')		
         self.registerFormValues()
         
-        if not os.path.exists(configPath):
-            self.exportSettings()
-
-        videoPath, annotations, annotator, backgroundPath, selectedVial,\
-        vialROI, \
-        videoExtension, filterObjArgs, startVideo, rewindOnClick,\
-        croppedVideo, patchesFolder, positionFolder, behaviourFolder,\
-        runningIndeces, fdvtPathRel, videoListPath, bufferWidth, \
-        bufferLength, startFrame = VideoTagger.parseConfig(configPath)
+        # if not os.path.exists(configPath):
+        #     self.exportSettings()
+        #
+        # videoPath, annotations, annotator, backgroundPath, selectedVial,\
+        # vialROI, \
+        # videoExtension, filterObjArgs, startVideo, rewindOnClick,\
+        # croppedVideo, patchesFolder, positionFolder, behaviourFolder,\
+        # runningIndeces, fdvtPathRel, videoListPath, bufferWidth, \
+        # bufferLength, startFrame = VideoTagger.parseConfig(configPath)
 
 
         videoPath = self.setupDialog.le_videoPath.text()
@@ -558,7 +558,7 @@ class VideoTagger(QtGui.QMainWindow):
         if len(self.fileList) == 1 and not croppedVideo:
             config = PFFVP.prepareFolder(path,
                                          alwaysGenerateSmallVideo=True)
-            self.tryToLoadConfig(config)
+            self.tryToLoadConfig(os.path.dirname(config))
         else:
             self.videoListPathRel, self.fdvtPathRel = \
                             CFL.cacheFilelist(videoPath,
@@ -2634,7 +2634,10 @@ class VideoTagger(QtGui.QMainWindow):
         if self.annotator:
             return self.annotator
         else:
-            return self.annotations[0]['annot']
+            try:
+                return self.annotations[0]['annot']
+            except IndexError:
+                return None
 
     def getSelectedVial(self):
         if self.croppedVideo:
@@ -2841,7 +2844,7 @@ class VideoTagger(QtGui.QMainWindow):
                                                         self.fdvtPathRel
         except AttributeError:
             cfgDict['Video']['frame-data-visualization-path'] = \
-                                                     "framedataVis.npy"
+                                                     "framedataVis"
             cfg.log.info("no path for FDVT set. Export standard.")
 
         cfgDict['Video']['rewind-on-click'] = self.rewindOnClick
@@ -2917,6 +2920,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         configPath = os.path.join(path, 'videoTaggerConfig.yaml')
         if os.path.exists(configPath):
+            print "yeaaaaaaaaaaaaaaaaaaaaaaaahhhhhhhhhhhhhhhhhhhhhhhhhh"
             videoPath, annotations, annotator, backgroundPath, selectedVial,\
             vialROI, \
             videoExtension, filterObjArgs, startVideo, rewindOnClick,\
@@ -2952,6 +2956,8 @@ class VideoTagger(QtGui.QMainWindow):
             self.bufferLength = bufferLength
             self.frameIdx = startFrame
             self.populateFormWithInternalSettings()
+        else:
+            print "noooooooooo", configPath
 
     @staticmethod
     def parseConfig(path):
