@@ -514,19 +514,22 @@ class FrameDataVisualizationTreeBase(object):
 
             if self.hier[day][hour]['meta']['max'] == old_max:
                 new_max = max([self.hier[day][hour][m]['meta']['max']
-                                    for m in self.hier[day][hour].keys()])
+                                    for m in self.hier[day][hour].keys()
+                                        if m != 'meta'])
 
                 self.hier[day][hour]['meta']['max'] = new_max
 
                 if self.hier[day]['meta']['max'] == old_max:
                     new_max = max([self.hier[day][h]['meta']['max']
-                                        for h in self.hier[day].keys()])
+                                        for h in self.hier[day].keys()
+                                            if h != 'meta'])
 
                     self.hier[day]['meta']['max'] = new_max
 
                     if self.hier['meta']['max'] == old_max:
                         new_max = max([self.hier[d]['meta']['max']
-                                            for d in self.hier.keys()])
+                                            for d in self.hier.keys()
+                                                if d != 'meta'])
 
                         self.hier['meta']['max'] = new_max
 
@@ -1372,7 +1375,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         except KeyError:
             stump = None
 
-        if stump is not None:
+        if not stump.empty:
             self.createStackData(self.plotData['frames'],
                                  stump,
                                  frameResolution)
@@ -1408,11 +1411,11 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         plotData['tick'] = []
 
 
-        if self.data == dict():
-            plotData['data'] += [0]
-            plotData['weight'] += [0]
-            plotData['tick'] += [0]
-            return
+        # if self.data == dict():
+        #     plotData['data'] += [0]
+        #     plotData['weight'] += [0]
+        #     plotData['tick'] += [0]
+        #     return
 
         data = self.df2minuteArray(inData)
 

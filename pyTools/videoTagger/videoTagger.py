@@ -931,8 +931,8 @@ class VideoTagger(QtGui.QMainWindow):
 
     def getAnnotationFilters(self):
         af = [Annotation.AnnotationFilter(None,
-                                          x['annot'],
-                                          x['behav'])
+                                          [x['annot']],
+                                          [x['behav']])
               for x in self.annotations]
 
         return af
