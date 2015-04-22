@@ -128,6 +128,8 @@ class PosFileCache(CachePrefetchBase):
     def loadDatum(self, key):
         return np.load(key)
 
+
+
 class BackgroundFileCache(CachePrefetchBase):
     def __init__(self, vialROI, sortedFileList, size=100):
         super(BackgroundFileCache, self).__init__(

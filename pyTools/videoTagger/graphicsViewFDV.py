@@ -388,6 +388,10 @@ class GraphicsViewFDV(QtGui.QWidget):
 
 
         self.buttonLayout = QtGui.QHBoxLayout()
+        self.pb_savePlot = QtGui.QPushButton()
+        self.pb_savePlot.setText("save plot")
+        self.pb_savePlot.clicked.connect(lambda : self.exportToPDF(r'/Volumes/Seagate Backup Plus Drive/tmp/test.pdf'))
+
         self.pb_newFDVT = QtGui.QPushButton()
         self.pb_newFDVT.setText("new from\n annotation")
         self.pb_newFDVT.clicked.connect(self.createNewFDVT)
@@ -396,6 +400,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.pb_loadFDVT.setText("load from\n file")
         self.pb_loadFDVT.clicked.connect(self.loadNewFDVT)
 
+        self.buttonLayout.addWidget(self.pb_savePlot)
         self.buttonLayout.addWidget(self.pb_newFDVT)
         self.buttonLayout.addWidget(self.pb_loadFDVT)
 
@@ -1183,6 +1188,23 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         self.plotData(self.day, self.hour, self.minute, self.frame)
 
+    def exportToPDF(self, filename):
+        printer = QtGui.QPrinter(QtGui.QPrinter.HighResolution)
+        # printer.setPageSize(QtGui.QPrinter.A4)
+        # printer.setOrientation(QtGui.QPrinter.Portrait)
+        printer.setOutputFormat(QtGui.QPrinter.PdfFormat)
+        printer.setOutputFileName(filename)
+
+        painter = QtGui.QPainter(printer)
+        # painter.begin()
+        # painter.translate(0, -1500)
+        painter.scale(40, -10)
+        painter.translate(0, -1450)
+        font = painter.font()
+        font.setPointSize(font.pointSize() * 10)
+        painter.setFont(font)
+        self.overviewScene.render(painter, soure=self.overviewScene.sceneRect())
+        painter.end()
 
 
 class FDVBar(QtGui.QGraphicsRectItem):

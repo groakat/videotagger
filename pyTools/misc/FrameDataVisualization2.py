@@ -2,8 +2,10 @@ import numpy as np
 import os
 import warnings
 import pyTools.misc.basic as bsc
+import pandas as pd
 import pyTools.videoProc.annotation as Annotation
 import pyTools.videoTagger.dataLoader as DL
+import pyTools.misc.Cache as C
 
 import pyTools.misc.config as cfg
 
@@ -16,11 +18,18 @@ def filename2Time(f):
 
 
 def filename2TimeRunningIndeces(f):
-    timestamp = f.split('/')[-1].split('.')[0]
-    rawMinutes = timestamp.split('_')[-1]
-    day, hour, minute, second = minutes2Time(int(rawMinutes))
+    # timestamp = f.split('/')[-1].split('.')[0]
+    # rawMinutes = timestamp.split('_')[-1]
+    # day, hour, minute, second = minutes2Time(int(rawMinutes))
+    #
+    # return day, int(hour), int(minute), int(second)
 
-    return day, int(hour), int(minute), int(second)
+    timestamp = f.split('.')[0]
+
+    day, hour, minute = [int(x) for x in timestamp.split('/')[-3:]]
+
+    return day, hour, minute, 0
+
 
 def minutes2Time(rawMinutes):
     days = rawMinutes // (60 * 24)
@@ -56,14 +65,15 @@ def loadFDVT(path):
         return None
 
     FDVT = np.load(path).item()
+    root = os.path.dirname(path)
     try:
         if FDVT['meta']['type'].split('.')[-1] == 'FrameDataVisualizationTreeBase':
-            fdv = FrameDataVisualizationTreeBase()
+            fdv = FrameDataVisualizationTreeBase(root)
         elif FDVT['meta']['type'].split('.')[-1] == 'FrameDataVisualizationTreeBehaviour':
-            fdv = FrameDataVisualizationTreeBehaviour()
+            fdv = FrameDataVisualizationTreeBehaviour(root)
     except KeyError:
         # fallback
-        fdv = FrameDataVisualizationTreeBehaviour()
+        fdv = FrameDataVisualizationTreeBehaviour(root)
 
     fdv.FDVT = FDVT
     fdv.data = FDVT['data']
@@ -72,9 +82,30 @@ def loadFDVT(path):
 
     return fdv
 
+
+class FDVFileCache(C.CachePrefetchBase):
+    def loadDatum(self, path):
+        if os.path.exists(path):
+            df = pd.read_pickle(path)
+        else:
+            df = pd.DataFrame(columns=('frames', 'classID', 'amount'))
+            df.set_index(['frames', 'classID'], inplace=True)
+            df.sortlevel(inplace=True)
+
+        return df
+
+    def save(self, path):
+        df = self.cache[path]
+        df.to_pickle(path)
+
+        del self.cache[path]
+
+    def updateValue(self, path, df):
+        self.cache[path] = df
+
 class FrameDataVisualizationTreeBase(object):
 
-    def __init__(self):
+    def __init__(self, root):
         self.data = dict()          # tree of data
         self.hier = dict()          # summarized information
                                     # max, mean, sampleN
@@ -83,6 +114,9 @@ class FrameDataVisualizationTreeBase(object):
         self.FDVT = {'data': self.data,
                      'hier': self.hier,
                      'meta': self.meta}
+
+        self.root = root
+        self.cache = FDVFileCache([])
 
         self.resetAllSamples()
 
@@ -118,14 +152,21 @@ class FrameDataVisualizationTreeBase(object):
         # self.ranges = dict()
 
 
-    def save(self, filename):
-        np.save(filename, np.asarray(self.FDVT))
+    def save(self):
+        np.save(os.path.join(self.root,
+                             'fdvt.npy'), np.asarray(self.FDVT))
 
-    def load(self, filename):
-        self.FDVT = np.load(filename).item()
+    def load(self, folder):
+        """ Load from FOLDER
+        :param folder: folder
+        :return:
+        """
+        self.FDVT = np.load(os.path.join(folder,
+                                         'fdvt.npy')).item()
         self.data = self.FDVT['data']
         self.hier = self.FDVT['hier']
         self.meta = self.FDVT['meta']
+        self.root = folder
 
     def getStandardHierDatum(self):
         return {'max': -np.Inf,
@@ -151,11 +192,31 @@ class FrameDataVisualizationTreeBase(object):
 
         return res
 
-    def getValue(self, day, hour, minute, frame):
-        return self.data[day][hour][minute][frame]
+    def updateValues(self, day, hour, minute, df):
+        path = self.getFramesFilename(day, hour, minute)
+        self.cache.updateValue(path, df)
 
-    def getValueFilename(self, filename, frame):
-        return self.getValue(*filename2Time(filename)[:3], frame=frame)
+    def saveValues(self, day, hour, minute):
+        path = self.getFramesFilename(day, hour, minute)
+        if not os.path.exists(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path))
+        self.cache.save(path)
+
+
+    def getValues(self, day, hour, minute):
+        path = self.getFramesFilename(day, hour, minute)
+        return self.cache.getItem(path)
+        # if os.path.exists(path):
+        #     df = pd.load(path)
+        # else:
+        #     df = pd.DataFrame(columns=('frames', 'classID', 'amount'))
+        #     df.set_index(['frames', 'classID'], inplace=True)
+        #     df.sortlevel(inplace=True)
+        #
+        # return df
+
+    # def getValueFilename(self, filename, frame):
+    #     return self.getValues(*filename2Time(filename)[:3], frame=frame)
 
 
     def generateRandomSequence(self, dayRng, hourRng, minuteRng, frameRng):
@@ -269,97 +330,201 @@ class FrameDataVisualizationTreeBase(object):
         if recomputeTemplate:
             self.computeTemplateRange()
 
-    def incrementMean(self, prevMean, data, n):
-        return prevMean + (1.0/n) * (data - prevMean)
+    def incrementMean(self, prevMean, prevN, mean, n):
+        # return prevMean + (1.0/n) * (data - prevMean)
+        return (1.0 / (prevN + n)) * (prevMean * prevN + mean * n)
 
 
-    def addSampleToStumpMean(self, stump, data, n=1):
+    def addSampleToStumpMean(self, stump, mean, n=1):
         """
 
         :param key: (day) or (day, hour) or (day, hour, minute)
-        :param data:
+        :param mean:
         :return:
         """
         if stump['meta']['sampleN'] + n == 0:
             stump['meta']['mean'] = 0
         else:
             stump['meta']['mean'] = self.incrementMean(stump['meta']['mean'],
-                                                   data,
-                                                   stump['meta']['sampleN'] +n)
+                                                       stump['meta']['sampleN'],
+                                                        mean,
+                                                        n)
         stump['meta']['sampleN'] += n
 
 
-    def addSampleToMean(self, day, hour, minute, data, n=1):
-        self.addSampleToStumpMean(self.hier[day][hour][minute], data, n)
-        self.addSampleToStumpMean(self.hier[day][hour], data, n)
-        self.addSampleToStumpMean(self.hier[day], data, n)
-        self.addSampleToStumpMean(self.hier, data, n)
+    def updateMean(self, day, hour, minute):
+        # remove previous mean
+        old_mean = self.hier[day][hour][minute]['meta']['mean']
+        old_n = self.hier[day][hour][minute]['meta']['sampleN']
+        self.addSampleToStumpMean(self.hier[day][hour], old_mean, -old_n)
+        self.addSampleToStumpMean(self.hier[day], old_mean, -old_n)
+        self.addSampleToStumpMean(self.hier, old_mean, -old_n)
+
+        # calculate and add new mean
+        df = self.getValues(day, hour, minute)
+        if df.empty:
+            mean = 0
+            n = 0
+        else:
+            mean = np.mean(np.asarray(df))
+            n = len(df)
+
+        self.hier[day][hour][minute]['meta']['mean'] = mean
+        self.hier[day][hour][minute]['meta']['sampleN'] = n
+        self.addSampleToStumpMean(self.hier[day][hour], mean, n)
+        self.addSampleToStumpMean(self.hier[day], mean, n)
+        self.addSampleToStumpMean(self.hier, mean, n)
 
 
-    def addSample(self, day, hour, minute, frame, data):
-        """ Adds single sample (single frame)
+    def getFramesFilename(self, day, hour, minute):
+        if not isinstance(day, basestring):
+            day = "{0:03d}".format(day)
+
+        if not isinstance(hour, basestring):
+            hour = "{0:02d}".format(hour)
+
+        if not isinstance(minute, basestring):
+            minute = "{0:02d}".format(minute)
+
+        return os.path.join(self.root,
+                            day,
+                            hour,
+                            minute + ".pkl")
+
+    #
+    # def addSample(self, day, hour, minute, df):
+    #     """ Adds single sample (single frame)
+    #
+    #     :param day:
+    #     :param hour:
+    #     :param minute:
+    #     :return:
+    #     """
+    #     self.verifyStructureExists(day, hour, minute)
+    #
+    #     # using try, except because its much fast than looking up the keys
+    #     try:
+    #         self.replaceSample(day, hour, minute, df)
+    #     except KeyError:
+    #         self.insertSample(day, hour, minute, df)
+    #
+    #     self.addedNewData = True
+
+    def insertSample(self, day, hour, minute, new_df, dontSave=False):
+        self.verifyStructureExists(day, hour, minute)
+
+        df = self.getValues(day, hour, minute)
+
+        oldFrameAmount = len(df.index.levels[0])
+        df = df.add(new_df, fill_value=0)
+        # remove negative values that could arise with negative increments in
+        # new_df
+        df = df.drop(df[df['amount'] <= 0].index)
+        self.updateValues(day, hour, minute, df)
+
+        frameAmountInc = len(df.index.levels[0]) - oldFrameAmount
+        self.meta['totalNoFrames'] += frameAmountInc
+
+        if self.meta['isCategoric']:
+            self.updateMax(day, hour, minute)
+            self.updateMean(day, hour, minute)
+
+        self.addedNewData = True
+
+        if not dontSave:
+            self.saveValues(day, hour, minute)
+
+    def getIndexFromFramesAndClass(self, day, hour, minute, frames, classID):
+        df = self.cache.getItem(self.getFramesFilename(day, hour, minute))
+
+        if type(frames) != list:
+            frames = [frames]
+
+        cID = [classID] * len(frames)
+        tuples = zip(*[frames, cID])
+        idx = pd.MultiIndex.from_tuples(tuples,
+                                         names=['frames', 'classID'])
+
+        return idx.intersection(df.index)
+
+
+
+    def removeSample(self, day, hour, minute, index, dontSave=False):
+        """
 
         :param day:
         :param hour:
         :param minute:
-        :param frame:
-        :param data: 0th axis: classes, 1st axis frames (max 1)
+        :param index: MultiIndex from Dataframe or generated by :func:`getIndexFromFramesAndClass`
+        :param dontSave:
         :return:
         """
-        self.verifyStructureExists(day, hour, minute)
+        oldData = self.getValues(day, hour, minute)
+        oldFrameAmount = len(oldData.index.levels[0])
 
-        if data.ndim == 1:
-            data = data.reshape(data[0].shape[0], 1)
-
-        # using try, except because its much fast than looking up the keys
         try:
-            self.replaceSample(day, hour, minute, frame, data)
+            oldData.drop(index, inplace=True)
         except KeyError:
-            self.insertSample(day, hour, minute, frame, data)
+            # nothing there, so nothing to remove
+            pass
 
+        if self.meta['isCategoric']:
+            self.updateMax(day, hour, minute)
+            self.updateMean(day, hour, minute)
+
+        frameAmountInc = len(oldData.index.levels[0]) - oldFrameAmount
+        self.meta['totalNoFrames'] += frameAmountInc
         self.addedNewData = True
 
-    def insertSample(self, day, hour, minute, frame, data):
-        self.data[day][hour][minute][frame] = data
-        self.updateMax(day, hour, minute, data)
-        self.addSampleToMean(day, hour, minute, data)
-        self.meta['totalNoFrames'] += 1
+        if not dontSave:
+            self.saveValues(day, hour, minute)
 
-        self.addedNewData = True
 
-    def removeSample(self, day, hour, minute, frame):
-        oldData = self.getValue(day, hour, minute, frame)
-
-        if np.sum(oldData) == self.hier[day][hour][minute]['meta']['max']:
-            newMax = np.max([self.data[day][hour][minute][k] \
-                        for k in self.data[day][hour][minute].keys()])
-            self.updateMax(day, hour, minute, newMax)
-
-        self.addSampleToMean(day, hour, minute, -oldData, -1)
-        self.meta['totalNoFrames'] -= 1
+    def replaceSample(self, day, hour, minute, df):
+        self.removeSample(day, hour, minute, df.index, dontSave=True)
+        self.insertSample(day, hour, minute, df)
         self.addedNewData = True
 
 
-    def replaceSample(self, day, hour, minute, frame, data):
-        self.removeSample(day, hour, minute, frame)
-        self.insertSample(day, hour, minute, frame, data)
-        self.addedNewData = True
+    def updateMax(self, day, hour, minute):
+        df = self.getValues(day, hour, minute)
+        if df.empty:
+            new_max = 0
+        else:
+            new_max = np.max(np.asarray(df))
 
+        if self.hier[day][hour][minute]['meta']['max'] < new_max:
+            self.hier[day][hour][minute]['meta']['max'] = new_max
 
+            if self.hier[day][hour]['meta']['max'] < new_max:
+                self.hier[day][hour]['meta']['max'] = new_max
 
+                if  self.hier[day]['meta']['max'] < new_max:
+                    self.hier[day]['meta']['max'] = new_max
 
-    def updateMax(self, day, hour, minute, data):
-        if self.hier[day][hour][minute]['meta']['max'] < data:
-            self.hier[day][hour][minute]['meta']['max'] = data
+                    if self.hier['meta']['max'] < new_max:
+                        self.hier['meta']['max'] = new_max
+        else:
+            old_max = self.hier[day][hour][minute]['meta']['max']
+            self.hier[day][hour][minute]['meta']['max'] = new_max
 
-            if self.hier[day][hour]['meta']['max'] < data:
-                self.hier[day][hour]['meta']['max'] = data
+            if self.hier[day][hour]['meta']['max'] == old_max:
+                new_max = max([self.hier[day][hour][m]['meta']['max']
+                                    for m in self.hier[day][hour].keys()])
 
-                if  self.hier[day]['meta']['max'] < data:
-                    self.hier[day]['meta']['max'] = data
+                self.hier[day][hour]['meta']['max'] = new_max
 
-                    if self.hier['meta']['max'] < data:
-                        self.hier['meta']['max'] = data
+                if self.hier[day]['meta']['max'] == old_max:
+                    new_max = max([self.hier[day][h]['meta']['max']
+                                        for h in self.hier[day].keys()])
+
+                    self.hier[day]['meta']['max'] = new_max
+
+                    if self.hier['meta']['max'] == old_max:
+                        new_max = max([self.hier[d]['meta']['max']
+                                            for d in self.hier.keys()])
+
+                        self.hier['meta']['max'] = new_max
 
     def generateConfidencePlotData(self, day, hour, minute, frame, frameResolution=1):
         self.plotData = dict()
@@ -540,25 +705,25 @@ class FrameDataVisualizationTreeBase(object):
 
 ########### formerly in arrayBase
 
-    def insertFrameArray(self, day, hour, minute, frames):
-        self.addedNewData = True
-        self.verifyStructureExists(day, hour, minute)
-        for i, frame in enumerate(frames):
-            self.data[day][hour][minute][i] = frame
-
-        self.addFrameArrayToMean(day, hour, minute, frames)
-        self.updateMax(day, hour, minute, np.max(frames))
-        self.meta['totalNoFrames'] += frames.shape[0]
-        self.addedNewData = True
-
-
-    def insertDeltaValue(self, deltaValue):
-        idx = deltaValue[0]
-        data = deltaValue[1]
-        self.updateValue(*self.idx2key(idx), data=data)
-        self.addedNewData = True
+    # def insertFrameArray(self, day, hour, minute, frames):
+    #     self.addedNewData = True
+    #     self.verifyStructureExists(day, hour, minute)
+    #     for i, frame in enumerate(frames):
+    #         self.data[day][hour][minute][i] = frame
+    #
+    #     self.addFrameArrayToMean(day, hour, minute, frames)
+    #     self.updateMax(day, hour, minute, np.max(frames))
+    #     self.meta['totalNoFrames'] += frames.shape[0]
+    #     self.addedNewData = True
 
 
+    # def insertDeltaValue(self, deltaValue):
+    #     idx = deltaValue[0]
+    #     data = deltaValue[1]
+    #     self.updateValue(*self.idx2key(idx), data=data)
+    #     self.addedNewData = True
+    #
+    #
     def insertDeltaVector(self, deltaVector):
         """
         Args:
@@ -568,42 +733,42 @@ class FrameDataVisualizationTreeBase(object):
         for deltaValue in deltaVector:
             self.insertDeltaValue(deltaValue)
 
-
-    def updateValue(self, day, hour, minute, frame, data):
-        pMean =self.hier[day][hour][minute]['mean']
-        N = len(self.data[day][hour][minute].keys())
-        self.propagateMean(day, hour, minute, pMean, -N)
-
-        self.data[day][hour][minute][frame] = data
-
-        mean = np.mean(self.tree[day][hour][minute]['data'])
-        self.propagateMean(day, hour, minute, mean, N)
-        self.addedNewData = True
-        # self.addSampleToMean(day, hour, minute, data)
-
-
-    def addFrameArrayToMean(self, day, hour, minute, frames):
-        mean = np.mean(frames)
-        N = frames.shape[0]
-        self.propagateMean(day, hour, minute, mean, N)
-
-
-    def propagateMean(self, day, hour, minute, mean, N):
-        self.addFrameArrayToStumpMean(self.hier[day][hour][minute], mean, N)
-        self.addFrameArrayToStumpMean(self.hier[day][hour], mean, N)
-        self.addFrameArrayToStumpMean(self.hier[day], mean, N)
-        self.addFrameArrayToStumpMean(self.hier, mean, N)
-
-
-    def addFrameArrayToStumpMean(self, stump, mean, N):
-        M = stump['meta']['sampleN']
-        if M+N == 0:
-            newMean = 0
-        else:
-            newMean = (stump['meta']['mean'] * M + mean * N) / np.float(M+N)
-
-        stump['meta']['mean'] = newMean
-        stump['meta']['sampleN'] += N
+    #
+    # def updateValue(self, day, hour, minute, frame, data):
+    #     pMean =self.hier[day][hour][minute]['mean']
+    #     N = len(self.data[day][hour][minute].keys())
+    #     self.propagateMean(day, hour, minute, pMean, -N)
+    #
+    #     self.data[day][hour][minute][frame] = data
+    #
+    #     mean = np.mean(self.tree[day][hour][minute]['data'])
+    #     self.propagateMean(day, hour, minute, mean, N)
+    #     self.addedNewData = True
+    #     # self.addSampleToMean(day, hour, minute, data)
+    #
+    #
+    # def addFrameArrayToMean(self, day, hour, minute, frames):
+    #     mean = np.mean(frames)
+    #     N = frames.shape[0]
+    #     self.propagateMean(day, hour, minute, mean, N)
+    #
+    #
+    # def propagateMean(self, day, hour, minute, mean, N):
+    #     self.addFrameArrayToStumpMean(self.hier[day][hour][minute], mean, N)
+    #     self.addFrameArrayToStumpMean(self.hier[day][hour], mean, N)
+    #     self.addFrameArrayToStumpMean(self.hier[day], mean, N)
+    #     self.addFrameArrayToStumpMean(self.hier, mean, N)
+    #
+    #
+    # def addFrameArrayToStumpMean(self, stump, mean, N):
+    #     M = stump['meta']['sampleN']
+    #     if M+N == 0:
+    #         newMean = 0
+    #     else:
+    #         newMean = (stump['meta']['mean'] * M + mean * N) / np.float(M+N)
+    #
+    #     stump['meta']['mean'] = newMean
+    #     stump['meta']['sampleN'] += N
 
 
     def generateRandomArraySequence(self, dayRng, hourRng, minuteRng, frameRng):
@@ -668,8 +833,8 @@ class FrameDataVisualizationTreeBase(object):
 
 
 class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
-    def __init__(self):
-        super(FrameDataVisualizationTreeBehaviour, self).__init__()
+    def __init__(self, root):
+        super(FrameDataVisualizationTreeBehaviour, self).__init__(root)
         self.resetAllSamples()
 
     def resetAllSamples(self):
@@ -697,63 +862,29 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             self.hier[day][hour][minute]['meta']['stack'] = np.zeros(self.meta['maxClass'])
 
 
-    def dict2array(self, d):
-        if d:
-            ar = np.zeros((self.meta['maxClass'],
-                           len(self.meta['rangeTemplate']['frames'])))
-            # ar = np.zeros((self.meta['maxClass'], max(d.keys()) + 1))
-            for k, frame in d.items():
-                if type(frame) != dict:
-                    # quick hack... sorry
-                    # first line needed for visualization (generate plot data)
-                    ar[:, k] = frame
-                else:
-                    # these are needed for insertDeltaValue
-                    for c, v in frame.items():
-                        ar[c, k] = v
-        else:
-            ar = np.zeros((self.meta['maxClass'], 1))
+    # def dict2array(self, d):
+    #     if d:
+    #         ar = np.zeros((self.meta['maxClass'],
+    #                        len(self.meta['rangeTemplate']['frames'])))
+    #         # ar = np.zeros((self.meta['maxClass'], max(d.keys()) + 1))
+    #         for k, frame in d.items():
+    #             if type(frame) != dict:
+    #                 # quick hack... sorry
+    #                 # first line needed for visualization (generate plot data)
+    #                 ar[:, k] = frame
+    #             else:
+    #                 # these are needed for insertDeltaValue
+    #                 for c, v in frame.items():
+    #                     ar[c, k] = v
+    #     else:
+    #         ar = np.zeros((self.meta['maxClass'], 1))
+    #
+    #     return ar
 
-        return ar
-
-    def insertDeltaValue(self, deltaValue):
-        key = deltaValue[0]
-        data = deltaValue[1]
-        increment = deltaValue[2]
-
-
-        self.verifyStructureExists(key[0], key[1], key[2])
-        self.insertSampleIncrement(*key, dataKey=data, dataInc=increment)
-        frameArray = self.dict2array({key[3]:{data: increment}})
-        self.addFrameArrayToStack(key[0], key[1], key[2], frameArray)
+    def addNewClass(self, filt):
+        self.meta['filtList'] += [filt]
+        self.meta['maxClass'] = len(self.meta['filtList'])
         self.addedNewData = True
-
-    def insertFrameArray(self, day, hour, minute, frames):
-        # super(FrameDataVisualizationTreeBehaviour, self).insertFrameArray(day, hour, minute, frames)
-
-        self.verifyStructureExists(day, hour, minute)
-
-        for k, i in frames.items():
-            self.addSample(day, hour, minute, k, i)
-
-        # frameList = [i for k, i in frames.items()]
-        if frames.items():
-            frameArray = self.dict2array(frames)
-            self.addFrameArrayToStack(day, hour, minute, frameArray)
-        self.addedNewData = True
-
-
-    def addFrameArrayToStack(self, day, hour, minute, frames):
-        stack = self.calcStack(frames)
-        self.propagateStack(day, hour, minute, stack)
-
-
-    def propagateStack(self, day, hour, minute, stack):
-        self.addFrameArrayToStumpStack(self.hier[day][hour][minute], stack)
-        self.addFrameArrayToStumpStack(self.hier[day][hour], stack)
-        self.addFrameArrayToStumpStack(self.hier[day], stack)
-        self.addFrameArrayToStumpStack(self.hier, stack)
-
 
     def addFrameArrayToStumpStack(self, stump, stack):
         if stump['meta']['stack'].shape[0] != self.meta['maxClass']:
@@ -763,59 +894,147 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
         stump['meta']['stack'] += stack
 
+    def propagateStack(self, day, hour, minute, stack):
+        self.addFrameArrayToStumpStack(self.hier[day][hour][minute], stack)
+        self.addFrameArrayToStumpStack(self.hier[day][hour], stack)
+        self.addFrameArrayToStumpStack(self.hier[day], stack)
+        self.addFrameArrayToStumpStack(self.hier, stack)
 
-    def updateValue(self, day, hour, minute, frame, data):
-        stack = self.calcStack(self.data[day][hour][minute])
-        self.propagateStack(day, hour, minute, -stack)
+    def filterClass(self, df, classID):
+        try:
+            r = df.loc[(slice(None, None), classID), :]
+        except KeyError:
+            r = 0
 
-        super(FrameDataVisualizationTreeBehaviour, self).updateValue(day, hour,
-                                                                     minute,
-                                                                     frame,
-                                                                     data)
+        return r
 
-        stack = self.calcStack(self.data[day][hour][minute])
+    def updateStack(self, day, hour, minute):
+        df = self.getValues(day, hour, minute)
+
+        stackSum = lambda c: np.sum(np.asarray(self.filterClass(df, c)))
+        stack = np.asarray([stackSum(c)
+                                for c in range(self.meta['maxClass'])])
+
+        oldStack = self.hier[day][hour][minute]['meta']['stack']
+        self.propagateStack(day, hour, minute, -oldStack)
         self.propagateStack(day, hour, minute, stack)
 
+    def insertSample(self, day, hour, minute, new_df):
+        super(FrameDataVisualizationTreeBehaviour, self).insertSample(day,
+                                                                      hour,
+                                                                      minute,
+                                                                      new_df)
+        self.updateStack(day, hour, minute)
+
+    def removeSample(self, day, hour, minute, index, dontSave=False):
+        super(FrameDataVisualizationTreeBehaviour, self).removeSample(day,
+                                                                      hour,
+                                                                      minute,
+                                                                      index,
+                                                                      dontSave)
+        self.updateStack(day, hour, minute)
+
+    def insertDeltaValue(self, deltaValue):
+        day, hour, minute, frame = deltaValue[0]
+        classID = deltaValue[1]
+        increment = deltaValue[2]
+
+        df = pd.DataFrame([[frame, classID, increment]], columns=('frames', 'classID', 'amount'))
+        df.set_index(['frames', 'classID'], inplace=True)
+        df.sortlevel(inplace=True)
+
+        self.insertSample(day, hour, minute, df)
+        # increment = deltaValue[2]
+        #
+        #
+        # self.verifyStructureExists(key[0], key[1], key[2])
+        # self.insertSampleIncrement(*key, dataKey=data, dataInc=increment)
+        # frameArray = self.dict2array({key[3]:{data: increment}})
+        # self.addFrameArrayToStack(key[0], key[1], key[2], frameArray)
+        # self.addedNewData = True
+
+    # def insertFrameArray(self, day, hour, minute, frames):
+    #     # super(FrameDataVisualizationTreeBehaviour, self).insertFrameArray(day, hour, minute, frames)
+    #
+    #     self.verifyStructureExists(day, hour, minute)
+    #
+    #     for k, i in frames.items():
+    #         self.addSample(day, hour, minute, k, i)
+    #
+    #     # frameList = [i for k, i in frames.items()]
+    #     if frames.items():
+    #         frameArray = self.dict2array(frames)
+    #         self.addFrameArrayToStack(day, hour, minute, frameArray)
+    #     self.addedNewData = True
+
+
+    # def addFrameArrayToStack(self, day, hour, minute, frames):
+    #     stack = self.calcStack(frames)
+    #     self.propagateStack(day, hour, minute, stack)
+    #
+    #
+    # def propagateStack(self, day, hour, minute, stack):
+    #     self.addFrameArrayToStumpStack(self.hier[day][hour][minute], stack)
+    #     self.addFrameArrayToStumpStack(self.hier[day][hour], stack)
+    #     self.addFrameArrayToStumpStack(self.hier[day], stack)
+    #     self.addFrameArrayToStumpStack(self.hier, stack)
+    #
+    #
+    # def addFrameArrayToStumpStack(self, stump, stack):
+    #     if stump['meta']['stack'].shape[0] != self.meta['maxClass']:
+    #         tmp = np.zeros(self.meta['maxClass'])
+    #         tmp[:stump['meta']['stack'].shape[0]] = stump['meta']['stack']
+    #         stump['meta']['stack'] = tmp
+    #
+    #     stump['meta']['stack'] += stack
+
+    #
+    # def updateValue(self, day, hour, minute, frame, data):
+    #     stack = self.calcStack(self.data[day][hour][minute])
+    #     self.propagateStack(day, hour, minute, -stack)
+    #
+    #     super(FrameDataVisualizationTreeBehaviour, self).updateValue(day, hour,
+    #                                                                  minute,
+    #                                                                  frame,
+    #                                                                  data)
+    #
+    #     stack = self.calcStack(self.data[day][hour][minute])
+    #     self.propagateStack(day, hour, minute, stack)
 
 
 
-    def updateMax(self, day, hour, minute, data):
-        m = np.sum(data)
-        super(FrameDataVisualizationTreeBehaviour, self).updateMax(day,
-                                                                   hour,
-                                                                   minute,
-                                                                   m)
 
-    def insertSampleIncrement(self, day, hour, minute, frame, dataKey, dataInc):
-        try:
-            if dataInc < 0:
-                oldData = self.data[day][hour][minute][frame][dataKey]
-                if oldData == self.hier[day][hour][minute]['meta']['max']:
-                    newMax = np.max([np.sum(self.data[day][hour][minute][k]) \
-                                for k in self.data[day][hour][minute].keys()])
-                    self.updateMax(day, hour, minute, newMax)
+    # def updateMax(self, day, hour, minute, data):
+    #     m = np.sum(data)
+    #     super(FrameDataVisualizationTreeBehaviour, self).updateMax(day,
+    #                                                                hour,
+    #                                                                minute,
+    #                                                                m)
+    #
+    # def insertSampleIncrement(self, day, hour, minute, frame, dataKey, dataInc):
+    #     try:
+    #         if dataInc < 0:
+    #             oldData = self.data[day][hour][minute][frame][dataKey]
+    #             if oldData == self.hier[day][hour][minute]['meta']['max']:
+    #                 newMax = np.max([np.sum(self.data[day][hour][minute][k]) \
+    #                             for k in self.data[day][hour][minute].keys()])
+    #                 self.updateMax(day, hour, minute, newMax)
+    #
+    #         self.data[day][hour][minute][frame][dataKey] += dataInc
+    #     except KeyError:
+    #         try:
+    #             self.data[day][hour][minute][frame][dataKey] = dataInc
+    #         except KeyError:
+    #             self.data[day][hour][minute][frame] = {dataKey:dataInc}
+    #
+    #     if self.data[day][hour][minute][frame][dataKey] <= 0:
+    #         del self.data[day][hour][minute][frame][dataKey]
+    #
+    #     data = self.data[day][hour][minute][frame]
+    #     self.updateMax(day, hour, minute, data)
+    #     # self.addSampleToMean(day, hour, minute, data)
+    #     self.meta['totalNoFrames'] += dataInc
 
-            self.data[day][hour][minute][frame][dataKey] += dataInc
-        except KeyError:
-            try:
-                self.data[day][hour][minute][frame][dataKey] = dataInc
-            except KeyError:
-                self.data[day][hour][minute][frame] = {dataKey:dataInc}
-
-        if self.data[day][hour][minute][frame][dataKey] <= 0:
-            del self.data[day][hour][minute][frame][dataKey]
-
-        data = self.data[day][hour][minute][frame]
-        self.updateMax(day, hour, minute, data)
-        # self.addSampleToMean(day, hour, minute, data)
-        self.meta['totalNoFrames'] += dataInc
-
-    def insertSample(self, day, hour, minute, frame, data):
-        self.data[day][hour][minute][frame] = data
-        self.updateMax(day, hour, minute, data)
-        # self.addSampleToMean(day, hour, minute, data)
-        self.meta['totalNoFrames'] += 1
-        self.addedNewData = True
 
     def calcStack(self, data):
         """  Calculates the stack from the data by summing its values.
@@ -832,32 +1051,63 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         return np.sum(data, axis=1)
 
     # @profile
-    def convertFrameListToDatum(self, anno, frameSlc, filtList):
-        # data = np.zeros((len(anno.frameList[frameSlc])))
-        data = dict()
-        for l in xrange(len(filtList)):
-            filteredAnno = anno.filterFrameList(filtList[l],
-                                                exactMatch=False)
+    def convertFrameListToDataframe(self, anno, frameSlc, filtList):
+        data = []
+        if frameSlc.start is not None:
+            frameOffset = frameSlc.start
+        else:
+            frameOffset = 0
 
-            for i in xrange(frameSlc.start, frameSlc.stop):
-                if 'behaviour' in filteredAnno.frameList[i][0]:
-                    try:
-                        data[i - frameSlc.start][l] = \
-                            len(filteredAnno.frameList[i][0].keys())
-                    except KeyError:
-                        # data[i - frameSlc.start] = \
-                        #     np.zeros((self.meta['maxClass'], 1))
-                        # data[i - frameSlc.start][l] = \
-                        #     len(filteredAnno.frameList[i][0].keys())
+        for filterTuple in filtList:
+            filtAnno = anno.filterFrameList(filterTuple,
+                                            frameRange=frameSlc)
 
-                        data[i - frameSlc.start] = \
-                            {l: len(filteredAnno.frameList[i][0].keys())}
+            # make sure that every minute starts with frame 0
+            filtAnno.dataFrame.set_index(
+                filtAnno.dataFrame.index.set_levels(
+                    np.asarray(filtAnno.dataFrame.index.levels[0]) - frameOffset,
+                    level=0), inplace=True)
 
-                    # if filtList[l].behaviours == ['test']:
-                    #     1/0
-                    # data[i - frameSlc.start] = l + 1
+            classID = self.getAnnotationFilterCode(filterTuple)
+            cnt = filtAnno.countAnnotationsPerFrame()
 
-        return data
+            data += zip(range(len(cnt)), [classID] * len(cnt), cnt)
+
+        if data != []:
+            df = pd.DataFrame(data, columns=('frames', 'classID', 'amount'))
+        else:
+            df = pd.DataFrame(columns=('frames', 'classID', 'amount'))
+
+        df.set_index(['frames', 'classID'], inplace=True)
+        df.sortlevel(inplace=True)
+
+        return df
+
+        # # data = np.zeros((len(anno.frameList[frameSlc])))
+        # data = dict()
+        # for l in xrange(len(filtList)):
+        #     filteredAnno = anno.filterFrameList(filtList[l],
+        #                                         exactMatch=False)
+        #
+        #     for i in xrange(frameSlc.start, frameSlc.stop):
+        #         if 'behaviour' in filteredAnno.frameList[i][0]:
+        #             try:
+        #                 data[i - frameSlc.start][l] = \
+        #                     len(filteredAnno.frameList[i][0].keys())
+        #             except KeyError:
+        #                 # data[i - frameSlc.start] = \
+        #                 #     np.zeros((self.meta['maxClass'], 1))
+        #                 # data[i - frameSlc.start][l] = \
+        #                 #     len(filteredAnno.frameList[i][0].keys())
+        #
+        #                 data[i - frameSlc.start] = \
+        #                     {l: len(filteredAnno.frameList[i][0].keys())}
+        #
+        #             # if filtList[l].behaviours == ['test']:
+        #             #     1/0
+        #             # data[i - frameSlc.start] = l + 1
+        #
+        # return data
 
     def incrementTime(self, day, hour, minute):
         minute += 1
@@ -869,11 +1119,6 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                 day += 1
 
         return day, hour, minute
-
-    def addNewClass(self, filt):
-        self.meta['filtList'] += [filt]
-        self.meta['maxClass'] = len(self.meta['filtList'])
-        self.addedNewData = True
 
 
 
@@ -946,21 +1191,22 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         hour = 0
         minute = 0
 
-        if len(annotation.frameList) <= fps * 60:
-            frameSlc = slice(0, len(annotation.frameList))
-            data = self.convertFrameListToDatum(annotation, frameSlc,
+        if annotation.getLength() <= fps * 60:
+            frameSlc = slice(0, annotation.getLength())
+            df = self.convertFrameListToDataframe(annotation, frameSlc,
                                                 self.meta['filtList'])
-            self.insertFrameArray(day, hour, minute, data)
+
+            self.insertSample(day, hour, minute, df)
             self.meta['not-initialized'] = False
             return
 
         i = 0
-        for k in xrange(fps * 60, len(annotation.frameList), fps * 60):
+        for k in xrange(fps * 60, annotation.getLength(), fps * 60):
             print k, day, hour, minute
             frameSlc = slice(i, k)
-            data = self.convertFrameListToDatum(annotation, frameSlc,
+            df = self.convertFrameListToDataframe(annotation, frameSlc,
                                                 self.meta['filtList'])
-            self.insertFrameArray(day, hour, minute, data)
+            self.insertSample(day, hour, minute, df)
             day, hour, minute = self.incrementTime(day, hour, minute)
             i = k
 
@@ -980,10 +1226,10 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             self.importAnnotation(anno, fps)
 
 
-    def importAnnotationsFromFile(self, bhvrList, videoList, annotations, vials,
+    def importAnnotationsFromFile(self, bhvrList, videoList, annoFilters=None, vials=None,
                           runningIndeces=False, fps=30, singleFileMode=None):
 
-        filtList = []
+        # filtList = []
         self.resetAllSamples()
 
         if len(videoList) == 1:
@@ -993,13 +1239,18 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             self.createFDVTTemplateFromVideoList(videoList, runningIndeces)
             self.meta['singleFileMode'] = False
 
+        #
+        # for i in range(len(annotations)):
+        #     annotator = annotations[i]["annot"]
+        #     behaviour = annotations[i]["behav"]
+        #     self.addNewClass(Annotation.AnnotationFilter(vials,
+        #                                                 [annotator],
+        #                                                 [behaviour]))
 
-        for i in range(len(annotations)):
-            annotator = annotations[i]["annot"]
-            behaviour = annotations[i]["behav"]
-            self.addNewClass(Annotation.AnnotationFilter(vials,
-                                                        [annotator],
-                                                        [behaviour]))
+
+        if annoFilters is not None:
+            for af in annoFilters:
+                self.addNewClass(af)
 
         if len(bhvrList) == 0:
             return
@@ -1010,20 +1261,8 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                                                  runningIndeces=False, fps=30)
             return
 
-#
-#         for i in range(len(annotations)):
-#             annotator = annotations[i]["annot"]
-#             behaviour = annotations[i]["behav"]
-#             filtList += [Annotation.AnnotationFilter(vials,
-#                                                           [annotator],
-#                                                           [behaviour])]
-#
-# #         self.meta['maxClass'] = len(filtList)
-#         self.meta['filtList'] = filtList
-#         self.meta['maxClass'] = len(filtList)
-
-        if len(filtList) == 0:
-            return
+        # if len(filtList) == 0:
+        #     return
             # raise ValueError("no annotations specified!")
 
         for f in bhvrList:
@@ -1040,38 +1279,14 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             else:
                 day, hour, minute, second = filename2TimeRunningIndeces(f)
 
-            frameSlc = slice(0, len(anno.frameList))
-            data = self.convertFrameListToDatum(anno, frameSlc,
+            frameSlc = slice(0, anno.getLength())
+            df = self.convertFrameListToDataframe(anno, frameSlc,
                                                 self.meta['filtList'])
 
-            if data != {}:
-                self.insertFrameArray(day, hour, minute, data)
+            if not df.empty:
+                self.insertSample(day, hour, minute, df)
                 self.meta['not-initialized'] = False
 
-
-            # self.meta['not-initialized'] = False
-
-            # for l in range(len(filtList)):
-            #
-            #     filteredAnno = anno.filterFrameList(filtList[l])
-            #
-            #     if not runningIndeces:
-            #         day, hour, minute, second = filename2Time(f)
-            #     else:
-            #         day, hour, minute, second = filename2TimeRunningIndeces(f)
-
-
-                # for i in range(len(filteredAnno.frameList)):
-                #     if filteredAnno.frameList[i][0] is not None:
-
-                        # self.addSample(day, hour, minute,
-                        #                       filteredAnno.frameList[i][0])
-            #             if data[i] != 0:
-            #                 warnings.warn("Ambigous label of frame {f} in {d}".format(f=i, d=f))
-            #             data[i] = l + 1
-            #
-            # else:
-            #     self.insertFrameArray(day, hour, minute, data)
 
 
 
@@ -1149,7 +1364,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
         self.plotData['frames'] = dict()
         try:
-            stump = self.data[day][hour][minute]
+            stump = self.getValues(day, hour, minute)#self.data[day][hour][minute]
         except KeyError:
             stump = None
 
@@ -1163,6 +1378,24 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                                     frameResolution,
                                     self.meta['maxClass']))
 
+    def df2minuteArray(self, df, frames_per_minute=1800):
+        maxClass = self.meta['maxClass']
+
+        ar = np.zeros((frames_per_minute, maxClass))
+
+        for c in range(maxClass):
+            try:
+                df2 = df.loc[(slice(None, None), c), :]
+            except KeyError:
+                continue
+
+            df3 = df2.reset_index()
+            df3.set_index(['frames', 'classID'], inplace=True)
+            frames = np.asarray(df3.index.levels[0])
+            counts = np.asarray(df3)
+            ar[frames, c] = counts.reshape(counts.shape[0],)
+
+        return ar
 
     def createStackData(self, plotData, inData, frameResolution):
 #         plotData = dict()
@@ -1177,9 +1410,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             plotData['tick'] += [0]
             return
 
-        data = self.dict2array(inData).T#np.asarray([int(x) for k, x in inData.items()])
-        # data = data.astype(np.int) #self.tree[day][hour][minute]['data'].astype(np.int)
-        # 1/0
+        data = self.df2minuteArray(inData)
 
         res = np.zeros((np.ceil(data.shape[0] / np.float(frameResolution)),
                         self.meta['maxClass']))
@@ -1196,6 +1427,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
 
     def getClassOccurances(self, classNo):
+        1/0
         occurranceList = []
 
         isSame = True

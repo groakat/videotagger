@@ -9,109 +9,93 @@ AnnotationFilter = \
 
 class Annotation():
     
-    def __init__(self, frameNo=0, vialNames=['','','','']):
-        
-        self.frameList = []
-        self.annotators = []
-        self.behaviours = []
-        self.children = []
-        self.hasChanged = True # will be a new one until
-        
-        for frame in range(frameNo):
-            v = []
-            for vial in range(len(vialNames)):
-                d = dict()
-                d["name"] = vialNames[vial]
-                v += [d]
-                
-            self.frameList += [v]
-            
-        self.setFrameList(self.frameList)
+    def __init__(self, frameNo=0, vialNames=['','','',''], empty=False):
+
+        if empty:
+            self.dataFrame = None
+        else:
+            self.dataFrame = pd.DataFrame(data=[[frameNo,
+                                                 'automcatic placeholder',
+                                                 'video length',
+                                                 None, None, None, None,
+                                                 None]],
+                                          columns=['frame', 'annotator',
+                                                   'label',
+                                                      'boundingbox x1',
+                                                      'boundingbox y1',
+                                                      'boundingbox x2',
+                                                      'boundingbox y2',
+                                                      'confidence'])
+
+
+            self.dataFrame.set_index(['frame', 'annotator', 'label'],
+                                inplace=True)
+            self.dataFrame.sortlevel(inplace=True)
+
+        # self.annotators = []
+        # self.behaviours = []
+        # self.children = []
+        self.hasChanged = True
+
+
+    def setDataframe(self, df):
+        self.hasChanged = True
+        self.dataFrame = df
+
+    def getPureDataframe(self):
+        return self.dataFrame.drop(self.dataFrame.index[-1])
             
     def setFrameList(self, frameList):
         """
         Sets frameList and updates internal lists of annotators and behaviours
         """
         self.hasChanged = True
-        self.frameList = frameList
-        annotators = set()
-        behaviours = set()
-        
-        # TODO: also create list of annotators per behaviour and behaviours per annotator        
-        for fN in range(len(frameList)):
-            if frameList[fN] is None:
-                continue
-                
-            for vN in [i for i in range(len(frameList[fN])) if frameList[fN][i] is not None]:
-                if "behaviour" in frameList[fN][vN]:
-                    bhvr = frameList[fN][vN]["behaviour"].keys()
-                    behaviours = behaviours.union(bhvr)
-                    for bhvrName in bhvr:
-                        anno = frameList[fN][vN]["behaviour"][bhvrName].keys()
-                        annotators = annotators.union(anno)
-                        
-        self.annotators = list(annotators)
-        self.behaviours = list(behaviours)
+        self.dataFrame = convertFrameListToDataframe(frameList)
             
     def getFrame(self, frameNo):
-        return self.frameList[frameNo]
-    
-    def getVialAt(self, frameNo, vialNo):
-        return self.frameList[frameNo][vialNo]
-        
+        # return filterDataframe(self.dataFrame, frames=[frameNo])
+        # out = Annotation(frameNo=self.getLength())
+        try:
+            out = self.dataFrame.xs(frameNo, drop_level=False)#.reset_index()
+            # out.set_index(['frame', 'annotator', 'label'],
+            #             inplace=True)
+            if out.empty:
+                out = None
+        except KeyError:
+            out = None
+
+        return out
+
+    def getLength(self):
+        return self.dataFrame.iloc[-1].name[0]
+
     def saveToFile(self, filename):
         if not os.path.exists(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
 
-        s = json.dumps(self.frameList, sort_keys=True,indent=4, separators=(',', ': '))
-        with open(filename, 'w') as f:
-            f.write(s)
-
+        saveAnnotation(self.dataFrame, filename)
         self.hasChanged = False
         
     def saveToTmpFile(self, filename):
         if not os.path.exists(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
 
-        f = open(filename, 'w')
-        json.dump(self.frameList, f, sort_keys=True,indent=4, separators=(',', ': '))
-        f.close()
+        saveAnnotation(self.dataFrame, filename)
         
     def loadFromFile(self, filename):
-        f = open(filename, 'r')
-        self.setFrameList(json.load(f))
+        self.dataFrame = loadAnnotation(filename)
         self.hasChanged = False
-        f.close()
     
-    def getFramesWithBehaviour(self, behaviourName, vialNo=None):
+    def getFramesWithBehaviour(self, behaviourName):
         """
         Returns index of all frames that were labelled with
         the string *behaviourName*
         """
         
-        if vialNo is None:
-            vials = range(len(self.frameList[0]))
-        elif type(vialNo) == int:
-            vials = [vialNo]
-        else:
-            # asuming vialNo to be a list
-            vials = vialNo
-            
-        frames = []
-        for frameNo in range(len(self.frameList)):
-            behaviourPresent = False
-            for vN in vials:
-                v = self.frameList[frameNo][vN]
-                if "behaviour" in v:
-                    if behaviourName in v["behaviour"]:
-                        behaviourPresent = True
-                        
-            if behaviourPresent:
-                frames += [frameNo]
-        
-        return frames
+        return filterDataframe(self.dataFrame, label=behaviourName)
 
     def behaviourMatch(self, bhvrName, bhvrList, exactMatch=True):
+        1/0
         if exactMatch:
             if bhvrName in bhvrList:
                 return [bhvrName]
@@ -128,7 +112,7 @@ class Annotation():
 
 
     def filterFrameList(self, filterTuple, frameRange=None,
-                        exactMatch=True, recycleAnno=None): #vialNo=None, behaviourName=None, annotator=None):
+                        exactMatch=True):
         """
         Returns a new annotation object that contains only annotations that 
         satisfy all filter criteria.
@@ -167,102 +151,73 @@ class Annotation():
         Returns:
             new annotator object satisfying the filter criteria
         """
-        if frameRange is None:
-            frameRange = range(len(self.frameList))
-
-        if recycleAnno is None:
-            out = Annotation(frameNo=len(frameRange), vialNames=[''])
-        else:
-            out = recycleAnno
-
-        vialNo = filterTuple.vials
-        behaviourName = filterTuple.behaviours
-        annotator = filterTuple.annotators
-
-        if vialNo is None\
-        or vialNo == [None]:
-            vials = range(len(self.frameList[0]))
-        elif type(vialNo) == int:
-            vials = [vialNo]
-        else:
-            # asuming vialNo to be a list
-            vials = vialNo
-
-
-        filteredList = []
-        for frameNo in frameRange:
-            behaviourPresent = False
-            newVials = []
-
-            for vIdx, vial in enumerate(vials):
-                v = self.frameList[frameNo][vIdx]
-
-                vNew = dict()
-
-                if "behaviour" in v:
-                    bNew = dict()
-
-                    if behaviourName == None:
-                        bhvrList = v["behaviour"].keys()
-                    else:
-                        bhvrList = behaviourName
-
-                    for bhvrName in bhvrList:
-                        matchList = self.behaviourMatch(bhvrName, v["behaviour"].keys(),
-                                               exactMatch=exactMatch)
-
-                        for bhvrMatch in matchList:
-                        # if bhvrName in v["behaviour"]:
-                            bhvr = v["behaviour"][bhvrMatch]
-                            an = dict()
-
-                            if annotator is None:
-                                anList = bhvr.keys()
-                            else:
-                                anList = annotator
-
-                            for anName in anList:
-                                if anName in bhvr:
-                                    newFrameNo = frameNo - frameRange[0]
-                                    out.addAnnotation(vIdx,
-                                                      [newFrameNo],
-                                                      anName,
-                                                      bhvrMatch,
-                                                      {newFrameNo: bhvr[anName]})
-
+        try:
+            out = Annotation(empty=True)
+            df = filterDataframe(self.dataFrame,
+                                   frames=frameRange,
+                                   annotator=[filterTuple.annotators[0],
+                                              "automcatic placeholder"],
+                                   label=[filterTuple.behaviours[0],
+                                          'video length'],
+                                   exact_match=exactMatch)
+            out.setDataframe(df)
+        except ValueError:
+            out = Annotation(frameNo=self.getLength())
+        except KeyError:
+            out = Annotation(frameNo=self.getLength())
+        except TypeError:
+            out = Annotation(frameNo=self.getLength())
 
         return out
 
     def filterFrameListMultiple(self, filterTuples, frameRange=None,
-                        exactMatch=True, recycleAnno=None):
+                        exactMatch=True):
 
-        out = Annotation(frameNo=len(self.frameList), vialNames=[''])
-
-        for filterTuple in filterTuples:
-            out = self.filterFrameList(filterTuple, frameRange,
-                                       exactMatch, out)
+        try:
+            out = Annotation(frameNo=self.getLength(), empty=True)
+            df = filterDataframe(self.dataFrame,
+                               frames=frameRange,
+                               annotator=[ft.annotators[0]
+                                          for ft in filterTuples] +
+                                             ["automcatic placeholder"],
+                               label=[ft.behaviours[0] for ft in filterTuples] +
+                                     ['video length'],
+                               exact_match=exactMatch)
+            out.setDataframe(df)
+        except ValueError:
+            out = Annotation(frameNo=self.getLength())
+        except KeyError:
+            out = Annotation(frameNo=self.getLength())
 
         return out
 
-    def mergeFrameLists(self, frameLists):
-        mergedList = []
-        for frameList in frameLists:
-            mergedList += zip(*frameList)
+    def mergeFrameLists(self, dfs):
+        totalLength = 0
+        for df in dfs:
+            totalLength += df.iloc[-1].name[0]
 
-        return zip(*mergedList)
+        out = concatenateDataframes(dfs)
+        out = changeLength(out, totalLength)
+
+        return out
 
 
     def filterFrameLists(self, filterTuples, frameRange=None, exactMatch=True):
-        frameLists = []
-        for filterTuple in filterTuples:
-            anno = self.filterFrameList(filterTuple, frameRange, exactMatch)
-            frameLists += [anno.frameList]
+        try:
+            out = filterDataframe(self.dataFrame,
+                               frames=frameRange,
+                               annotator=[ft.annotators[0]
+                                          for ft in filterTuples] +
+                                             ["automcatic placeholder"],
+                               label=[ft.behaviours[0] for ft in filterTuples] +
+                                             ["automcatic placeholder"],
+                               exact_match=exactMatch)
+        except ValueError:
+            out = Annotation(frameNo=self.getLength())
+        except KeyError:
+            out = Annotation(frameNo=self.getLength())
 
-        frameList = self.mergeFrameLists(frameLists)
-
-        return frameList
-
-
+        return out
 
     def filterFrameListBool(self, filterTuple, frameRange=None, exactMatch=True): #vialNo=None, behaviourName=None, annotator=None):
         """
@@ -303,6 +258,7 @@ class Annotation():
         Returns:
             new annotator object satisfying the filter criteria
         """
+        1/0
 
         vialNo = filterTuple.vials
         behaviourName = filterTuple.behaviours
@@ -378,99 +334,33 @@ class Annotation():
 
         return filteredList
 
-    def addAnnotation(self, vial, frames, annotator,behaviour, metadata=1.0):
+    def addAnnotation(self, vial, frames, annotator, behaviour, metadata=None):
         """
         frames list of ints
         """
-        if vial == None:
-            # just use first index
-            vial = 0
-            
-        if isinstance(metadata, (int, long, float, complex)):
-            tmpVal = metadata     
-            metadata = dict()
-            for frame in frames:
-                metadata[frame] = tmpVal
-        
-        self.hasChanged = True
-        if len(self.frameList) < max(frames):
-            raise ValueError("Trying to add annotation to frame that" +
-                             " exceeds length of existing annotation")
-        
-        for frame in frames:
-            if self.frameList[frame][vial] is None:
-                self.frameList[frame][vial] = dict()
-            
-            if not ("behaviour" in self.frameList[frame][vial]):
-                self.frameList[frame][vial]["behaviour"] = dict()
-                
-            if not (behaviour in self.frameList[frame][vial]["behaviour"]):
-                a = dict()
-                self.frameList[frame][vial]["behaviour"][behaviour] = a
-                
-            self.frameList[frame][vial]["behaviour"][behaviour][annotator] = \
-                                                                    metadata[frame]
-        
-        #~ for child in self.children:
-            #~ child.addAnnotation(vial, frames, behaviour, annotator, 
-                                                                    #~ confidence)
+        self.dataFrame = addAnnotation(self.dataFrame,
+                                       frames=frames,
+                                       annotator=annotator,
+                                       label=behaviour,
+                                       metadata=metadata)
                                                                     
     def removeAnnotation(self, vial, frames, annotator, behaviour):
         """
         frames list of ints
         """
-        if vial == None:
-            # just use first index
-            vial = 0    
-            
-        self.hasChanged = True
-        if len(self.frameList) < max(frames):
-            raise ValueError("Trying to remove annotation to frame that" +
-                             " exceeds length of existing annotation")
-        
-        v = vial
-        b = behaviour
-        a = annotator
-        
-        for frame in frames:
-            if "behaviour" in self.frameList[frame][vial]:
-                if b in self.frameList[frame][v]["behaviour"]:
-                    if a in self.frameList[frame][v]["behaviour"][b]:
-                        del self.frameList[frame][v]["behaviour"][b][a]
-                        if self.frameList[frame][v]["behaviour"][b] == {}:
-                            del self.frameList[frame][v]["behaviour"][b]
-        
-        #~ for child in self.children:
-            #~ child.removeAnnotation(v, frames, b, a)
+        self.dataFrame = removeAnnotation(self.dataFrame,
+                                          frames=frames,
+                                          annotator=annotator,
+                                          label=behaviour)
 
     def renameAnnotation(self, vial, frames, annotatorOld, behaviourOld,
                          annotatorNew, behaviourNew):
-        if vial is None:
-            # just use first index
-            vial = 0
-
-        self.hasChanged = True
-        if len(self.frameList) < max(frames):
-            raise ValueError("Trying to add annotation to frame that" +
-                             " exceeds length of existing annotation")
-
-        for frame in frames:
-            if self.frameList[frame][vial] is None:
-                self.frameList[frame][vial] = dict()
-
-            if not ("behaviour" in self.frameList[frame][vial]):
-                self.frameList[frame][vial]["behaviour"] = dict()
-
-            if not (behaviourNew in self.frameList[frame][vial]["behaviour"]):
-                a = dict()
-                self.frameList[frame][vial]["behaviour"][behaviourNew] = a
-
-            print frame
-            print self.frameList[frame][vial]
-            self.frameList[frame][vial]["behaviour"][behaviourNew][annotatorNew] = \
-                copy.copy(self.frameList[frame][vial]["behaviour"][behaviourOld][annotatorOld])
-
-        self.removeAnnotation(vial, frames, annotatorOld, behaviourOld)
+        renameAnnotation(self.dataFrame,
+                         frames=frames,
+                         annotatorOld=annotatorOld,
+                         annotatorNew=annotatorNew,
+                         labelOld=behaviourOld,
+                         labelNew=behaviourNew)
 
     def findConsequtiveAnnotationFrames(self, filterTuple, frameIdx,
                                         exactMatch=True, direction='both'):
@@ -483,77 +373,73 @@ class Annotation():
                                 'left'
 
         """
-        endFrame = frameIdx + 1
-        if direction == "both" or direction == "right":
-            while endFrame < len(self.frameList):
-                match = self.filterFrameList(filterTuple,
-                                             [endFrame],
-                                             exactMatch).frameList
-                if not 'behaviour' in match[0][0]:
-                    break
+        return findConsequtiveAnnotationFrames(
+                                        self.dataFrame,
+                                        annotator=filterTuple.annotators[0],
+                                        label=filterTuple.behaviours[0],
+                                        frameIdx=frameIdx,
+                                        exactMatch=exactMatch,
+                                        direction=direction)
 
-                endFrame += 1
-
-        startFrame = frameIdx - 1
-        if direction == "both" or direction == "left":
-            while startFrame >= 0:
-                match = self.filterFrameList(filterTuple,
-                                             [startFrame],
-                                             exactMatch).frameList
-                if not 'behaviour' in match[0][0]:
-                    break
-
-                startFrame -= 1
-
-        startFrame += 1
-
-        return range(startFrame, endFrame)
 
     def editMetadata(self, vials, frame, annotator, behaviour,
                      metaKey, newMetaValue):
-        if vials is None:
-            # just use first index
-            vials = [0]
+        self.dataFrame = editMetadata(self.dataFrame,
+                                      frames=frame,
+                                      annotator=annotator,
+                                      label=behaviour,
+                                      metaKey=metaKey,
+                                      newMetaValue=newMetaValue)
 
-        for vial in vials:
-            self.frameList[frame][vial]["behaviour"][behaviour]\
-                            [annotator][metaKey] = newMetaValue
-
-
+    def getPropertyFromFrameAnno(self, metaKey):
+        return getPropertyFromFrameAnno(self.dataFrame[:-1], metaKey)
 
     def extractAllFilterTuples(self, frameRange=None):
         """
         Returns all annotation filters that can be applied to the annotation
         """
-        annotationFilterSet = set()
+        return extractAllFilterTuples(self.dataFrame,
+                                      frames=frameRange)
 
-        if frameRange is None:
-            frameRange = range(len(self.frameList))
+    def getExactBehaviours(self):
+        labels = getExactBehavioursFromFrameAnno(self.dataFrame)
 
-        for frameNo in frameRange:
-            for vIdx in range(len(self.frameList[0])):
-                v = self.frameList[frameNo][vIdx]
+        out = set(labels) - {'video length'}
 
-                if "behaviour" in v:
-                    bhvrList = v["behaviour"].keys()
+        return list(out)
 
-                    for bhvrName in bhvrList:
-                        bhvr = v["behaviour"][bhvrName]
-                        anList = bhvr.keys()
+    def getAnnotatedFrames(self):
+        return getFramesFromFrameAnno(self.dataFrame)[:-1]
 
-                        for anName in anList:
-                            annotationFilterSet |= {
-                                    AnnotationFilter(vials=(vIdx,),
-                                                     behaviours=(bhvrName,),
-                                                     annotators=(anName,))}
 
-        return annotationFilterSet
+    def countAnnotationsPerFrame(self):
+        try:
+            cnt = countAnnotationsPerFrame(self.dataFrame)[:-1]
+        except ValueError:
+            cnt = []
+
+        return cnt
+
 
 # pandas functions
 
 
 import itertools
 import pandas as pd
+
+def saveAnnotation(df, filename):
+    df.to_csv(filename)
+
+
+def loadAnnotation(filename):
+    df = pd.DataFrame.from_csv(filename, parse_dates=False)
+    df = df.reset_index()
+    df.set_index(['frame', 'annotator', 'label'],
+                        inplace=True)
+    df.sortlevel(inplace=True)
+
+    return df
+
 
 def convertFrameListToDataframe(frameList):
 #     print frameList[:10]
@@ -587,6 +473,7 @@ def convertFrameListToDataframe(frameList):
     df.sortlevel(inplace=True)
 
     return df
+
 
 def convertDataframeToFrameList(df):
     ar = np.asarray(df)
@@ -685,7 +572,7 @@ def filterDataframe(df, frames=None, annotator=None, label=None,
 
 def concatenateDataframes(dfs):
     out = pd.concat([df[:-1] for df in dfs])
-    return out.append(dfs[0][-1:]).reset_index(drop=True)
+    return out.append(dfs[0][-1:])#.reset_index(drop=True)
 
 def addAnnotation(df, frames, annotator, label, metadata=None):
     if metadata is None:
@@ -791,12 +678,12 @@ def editMetadata(df, frames, annotator, label,
     return df
 
 
-def getPropertyFromFrameAnno(a, metaKey):
+def getPropertyFromFrameAnno(df, metaKey):
     if metaKey == 'confidence':
-        np.asarray(b['confidence'])
+        return np.asarray(df['confidence'], dtype=np.float)
     elif metaKey == 'boundingBox':
-        return np.asarray(b[['boundingbox x1', "boundingbox y1",
-                             'boundingbox x2', "boundingbox y2"]])
+        return np.asarray(df[['boundingbox x1', "boundingbox y1",
+                             'boundingbox x2', "boundingbox y2"]], dtype=np.float)
 
 
 def findConsequtiveAnnotationFrames(df, annotator, label, frameIdx,
@@ -866,7 +753,11 @@ def splitDataframeIntoMinutes(df):
     return lst
 
 def countAnnotationsPerFrame(df):
-    idc = zip(*df.index.tolist())[0]
+    idxLst = df.index.tolist()
+    if idxLst == []:
+        raise ValueError("Dataframe is empty")
+
+    idc = zip(*idxLst)[0]
     cnt = np.bincount(idc)
 
     return cnt
@@ -886,6 +777,13 @@ def createFDVTInsertionArray(df, filterTuples):
         out[:len(cnt), i] = cnt
 
     return out
+
+def changeLength(df, length):
+    idx = np.asarray(df.index.levels[0])
+    idx[-1] = length
+    df.set_index(df.index.set_levels(idx, level=0))
+
+    return df
 
 def insertFrameArray(fdv, day, hour, minute, frames):
     # super(FrameDataVisualizationTreeBehaviour, self).insertFrameArray(day, hour, minute, frames)
@@ -924,6 +822,18 @@ def importDataframe(df, fdv, filterTuples, fps=30):
 
 
 
+def getExactBehavioursFromFrameAnno(df):
+    return df.index.levels[2]
+
+def getFramesFromFrameAnno(df):
+    return df.index.levels[0]
+
+def empty_multiindex(names):
+    """
+    Creates empty MultiIndex from a list of level names.
+    taken from http://stackoverflow.com/q/28289440/2156909
+    """
+    return pd.MultiIndex.from_tuples(tuples=[(None,) * len(names)], names=names)
 
 
 # end pandas functions
@@ -931,37 +841,37 @@ def importDataframe(df, fdv, filterTuples, fps=30):
 
 
 
-def getExactBehavioursFromFrameAnno(a):
-    return sorted(a['behaviour'].keys())
+# def getExactBehavioursFromFrameAnno(a):
+#     return sorted(a['behaviour'].keys())
 
             
-def getPropertyFromFrameAnno(a, prop):
-    """
-    Returns the requested property from a filtered frame annotation.
-    
-    If the filtered frame has multiple entries with the same property,
-    all of them are returned.
-    
-    Args:
-        a (frame from annotation.frameList)
-        
-        prop (String)
-        
-    Returns:
-        List containing values of the properties
-    """
-    out = []
-    for bk in sorted(a):
-        if bk != 'name':
-            for bnk in sorted(a[bk]):
-                for ak in sorted(a[bk][bnk]):
-                    if type(a[bk][bnk][ak]) == int:
-                        if prop == "confidence":
-                            out += [a[bk][bnk][ak]]
-                    elif prop in a[bk][bnk][ak].keys():
-                        out += [a[bk][bnk][ak][prop]]
-                        
-    return out
+# def getPropertyFromFrameAnno(a, prop):
+#     """
+#     Returns the requested property from a filtered frame annotation.
+#
+#     If the filtered frame has multiple entries with the same property,
+#     all of them are returned.
+#
+#     Args:
+#         a (frame from annotation.frameList)
+#
+#         prop (String)
+#
+#     Returns:
+#         List containing values of the properties
+#     """
+#     out = []
+#     for bk in sorted(a):
+#         if bk != 'name':
+#             for bnk in sorted(a[bk]):
+#                 for ak in sorted(a[bk][bnk]):
+#                     if type(a[bk][bnk][ak]) == int:
+#                         if prop == "confidence":
+#                             out += [a[bk][bnk][ak]]
+#                     elif prop in a[bk][bnk][ak].keys():
+#                         out += [a[bk][bnk][ak][prop]]
+#
+#     return out
 
 if __name__ == "__main__":
     vid = []

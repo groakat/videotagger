@@ -259,7 +259,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         self.annotator = annotator
         self.annotations = annotations 
-        self.tmpAnnotation = Annotation.Annotation(0, [''])
+        self.tmpAnnotation = Annotation.Annotation()#0, [''])
         self.annotationRoiLabels = []
         self.annoIsOpen = False
         self.metadata = []
@@ -928,7 +928,15 @@ class VideoTagger(QtGui.QMainWindow):
         self.prevFramesWidget = self.createPrevFrames(xPos + 125,
                                                       yPos - (self.prevSize + 20))
             
-    
+
+    def getAnnotationFilters(self):
+        af = [Annotation.AnnotationFilter(None,
+                                          x['annot'],
+                                          x['behav'])
+              for x in self.annotations]
+
+        return af
+
         
     def setupFrameView(self):
         cfg.log.info("before init frameview")
@@ -951,19 +959,22 @@ class VideoTagger(QtGui.QMainWindow):
             self.fdvt = FDV.loadFDVT(self.fdvtPath)
 
             if  self.fdvt is None or self.fdvt.meta['not-initialized']:
-                self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+                self.fdvt = FDV.FrameDataVisualizationTreeBehaviour(self.fdvtPath)
                 self.fdvt.importAnnotationsFromFile(self.convertFileList(self.fileList,
-                                                                 '.bhvr'),
+                                                                 '.csv'),
                                             self.fileList,
-                                            self.annotations,
+                                            self.getAnnotationFilters(),
                                             self.getSelectedVial())
 
         if self.fdvtPath is None or self.fdvt is None:
-            self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+            if self.fdvtPath is None:
+                raise ValueError("we need to make the user specify a FDVT path in the setup dialog. Because there is no way of launching a FDVT without saving path")
+
+            self.fdvt = FDV.FrameDataVisualizationTreeBehaviour(self.fdvtPath)
             self.fdvt.importAnnotationsFromFile(self.convertFileList(self.fileList,
-                                                             '.bhvr'),
+                                                             '.csv'),
                                         self.fileList,
-                                        self.annotations,
+                                        self.getAnnotationFilters(),
                                         self.getSelectedVial())
 
         cfg.log.info("before loading fdvt")
@@ -1592,43 +1603,47 @@ class VideoTagger(QtGui.QMainWindow):
         self.fullVideoDialog.setFullFrameAnnotation(color)
 
 
-    def displayAnnotationROIs(self, anno, selectedVial):
+    def displayAnnotationROIs(self, annoDf, selectedVial):
         # place annotation roi
         sv = selectedVial
-        self.tmpAnnotation.setFrameList([anno])
 
         self.resetFullFrameAnnotationDisplay()
 
-        rois = []
-        for i in range(len(self.annotations)):
-            filt = Annotation.AnnotationFilter(None,
-                                            [self.annotations[i]["annot"]],
-                                            [self.annotations[i]["behav"]])
-            tmpAnno  = self.tmpAnnotation.filterFrameList(
-                                    filt,
-                                    exactMatch=False)
+        if annoDf is None:
+            self.positionAnnotationRoi([])
+        else:
+            self.tmpAnnotation.setDataframe(annoDf)
 
-            if not 'behaviour' in tmpAnno.frameList[0][0]:
-                continue
 
-            # print tmpAnno.frameList[0][sv]
+            rois = []
+            for i in range(len(self.annotations)):
+                filt = Annotation.AnnotationFilter(None,
+                                                [self.annotations[i]["annot"]],
+                                                [self.annotations[i]["behav"]])
+                tmpAnno  = self.tmpAnnotation.filterFrameList(
+                                        filt,
+                                        exactMatch=False)
 
-            bb = Annotation.getPropertyFromFrameAnno(tmpAnno.frameList[0][sv],
-                                                     "boundingBox")
-            lbls = Annotation.getExactBehavioursFromFrameAnno(
-                                                    tmpAnno.frameList[0][sv])
-
-            for b, l in zip(bb, lbls):
-                # ensure that annotations without boundingbox do not mess up
-                # anything
-                if None in b:
-                    color = self.annotations[i]['color']
-                    self.addFullFrameAnnotationToDisplay(l, color)
+                if tmpAnno.dataFrame.empty:
                     continue
 
-                rois += [[b, self.annotations[i], l]]
+                # print tmpAnno.frameList[0][sv]
 
-        self.positionAnnotationRoi(rois)
+                bb = Annotation.getPropertyFromFrameAnno(tmpAnno.dataFrame,
+                                                         "boundingBox")
+                lbls = tmpAnno.getExactBehaviours()
+
+                for b, l in zip(bb, lbls):
+                    # ensure that annotations without boundingbox do not mess up
+                    # anything
+                    if True in np.isnan(b):
+                        color = self.annotations[i]['color']
+                        self.addFullFrameAnnotationToDisplay(l, color)
+                        continue
+
+                    rois += [[b, self.annotations[i], l]]
+
+            self.positionAnnotationRoi(rois)
 
 
     def displayTrajectory(self, increment, selectedVial, offset=5):

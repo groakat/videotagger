@@ -580,13 +580,13 @@ class AnnotationLoader(QtCore.QObject):
                 cfg.log.warning("load annotation of "+f+" failed, reset annotaions")
                 if videoLength is None:
                     videoLength = self.retrieveVideoLength(self.bhvrPath)
-                out = Annotation.Annotation(frameNo=videoLength, vialNames=self.vialNames)
+                out = Annotation.Annotation(frameNo=videoLength)#, vialNames=self.vialNames)
         else:
             cfg.log.warning("AnnotationLoader: f does NOT exist create empty Annotation at {0}".format(self.bhvrPath))
             if videoLength is None:
                 videoLength = self.retrieveVideoLength(self.videoPath)
 
-            out = Annotation.Annotation(frameNo=videoLength, vialNames=self.vialNames)
+            out = Annotation.Annotation(frameNo=videoLength)#, vialNames=self.vialNames)
             cfg.log.info("new annotation with length {0}".format(videoLength))
 
         if out is None:
@@ -596,7 +596,7 @@ class AnnotationLoader(QtCore.QObject):
 #         self.loadedAnnotation.emit([self, self.path])
 
         cfg.log.debug("finished loading annotation {0}".format(self.bhvrPath))
-        self.loadedAnnotation.emit([self.key, len(self.annotation.frameList)])
+        self.loadedAnnotation.emit([self.key, self.annotation.getLength()])
         self.loading = False
         
         

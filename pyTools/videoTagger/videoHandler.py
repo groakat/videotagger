@@ -355,6 +355,7 @@ class VideoHandler(QtCore.QObject):
             frame = self.getCurrentFrameNull()
         except RuntimeError:
             cfg.log.warning("something went wrong during the fetching procedure")
+            frame = self.getCurrentFrameNull()
                 
         self.idx = idx
         self.posPath = path
@@ -373,14 +374,17 @@ class VideoHandler(QtCore.QObject):
     def getCurrentAnnotation(self):
         if self.posPath in self.annoDict.keys():
             if self.annoDict[self.posPath] is not None:
-                annotation = self.annoDict[self.posPath].annotation.frameList[
-                                                                    self.idx]
+                # annotation = self.annoDict[self.posPath].annotation.frameList[
+                #                                                     self.idx]
+                annotation = self.annoDict[self.posPath].annotation.getFrame(self.idx)
             else:
-                annotation = [[{'confidence': 0}]
-                                for i in range(self.maxOfSelectedVials() + 1)]
+                annotation = None
+                # [[{'confidence': 0}]
+                #                 for i in range(self.maxOfSelectedVials() + 1)]
         else:
-            annotation = [[{'confidence': 0}]
-                                for i in range(self.maxOfSelectedVials() + 1)]
+            annotation = None
+            # [[{'confidence': 0}]
+            #                     for i in range(self.maxOfSelectedVials() + 1)]
 
         return annotation
 
@@ -723,7 +727,6 @@ class VideoHandler(QtCore.QObject):
         validKeys4Anno = []
         # check all buffers if lying within jut, unbuffer otherwise
 
-        cfg.log.info("keys within the jut: {0}".format(bufferedKeys))
         for key in self.videoDict.keys():
             if key in bufferedKeys.keys():
                 for idx in self.videoDict[key].keys():
@@ -893,7 +896,7 @@ class VideoHandler(QtCore.QObject):
             
         self.annoDict[videoPath] = None
         
-        path = videoPath.split(self.videoEnding)[0] + '.bhvr'
+        path = videoPath.split(self.videoEnding)[0] + '.csv'
         cfg.log.info("fetching {0}, {1}".format(videoPath, path))
         self.newAnnotationLoader.emit([videoPath, path,
                                   self.getVideoLength(videoPath)])
@@ -990,8 +993,9 @@ class VideoHandler(QtCore.QObject):
             self.loadingFinished = False
             self.loadAnnotationBundle()
 
+
         for aV in self.annoViewList:
-            aV.setPosition(self.posPath, self.idx, 
+            aV.setPosition(self.posPath, self.idx,
                            tempPositionOnly= updateOnlyTempPosition,
                            metadata=self.curMetadata)
 
@@ -1031,7 +1035,7 @@ class VideoHandler(QtCore.QObject):
             self.annoDict[key] = aL
             # save pathlength and bufferEnding if requested earlier
 
-            self.videoLengths[key] = len(aL.annotation.frameList)
+            self.videoLengths[key] = aL.annotation.getLength()
             # if annotation is not None:
             #     self.videoLengths[key] = len(annotation.frameList)
             # else:
@@ -1079,7 +1083,7 @@ class VideoHandler(QtCore.QObject):
             return
                 
         curAnnoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx) 
-        lenFunc = lambda x: len(x.annotation.frameList)#[0])                
+        lenFunc = lambda x: x.annotation.getLength()
         
         newRng = bsc.generateRangeValuesFromKeys(self.annoEnd, 
                                                  curAnnoEnd,
@@ -1095,6 +1099,10 @@ class VideoHandler(QtCore.QObject):
         self.annoEnd = curAnnoEnd
 
     def getHighestBehaviourNumber(self, bhvrs):
+        if bhvrs == []:
+            return -1
+
+
         maxN = 0
 
         for bhvr in bhvrs:
@@ -1124,18 +1132,12 @@ class VideoHandler(QtCore.QObject):
 
         maxCounter = -1
         for anno in annos:
-            for frame in anno.frameList:
-                if frame is None:
-                    continue
+            labels = anno.getExactBehaviours()
 
-                for lbl in frame:
-                    if not 'behaviour' in lbl:
-                        continue
+            nMaxBehaviour = self.getHighestBehaviourNumber(labels)
 
-                    nMaxBehaviour = self.getHighestBehaviourNumber(
-                                            lbl['behaviour'].keys())
-                    if maxCounter < nMaxBehaviour:
-                        maxCounter = nMaxBehaviour
+            if maxCounter < nMaxBehaviour:
+                maxCounter = nMaxBehaviour
 
         if maxCounter > -1:
             return "{bvhr}_{no}".format(bvhr=behaviour, no=maxCounter + 1)
@@ -1263,7 +1265,7 @@ class VideoHandler(QtCore.QObject):
                 annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)    
                 
                 ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  : make that [0] dynamic
-                lenFunc = lambda x: len(x.annotation.frameList)#[0])
+                lenFunc = lambda x: x.annotation.getLength()
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                 behaviour = self.disambiguateDoubleBehaviourNames(vials, annotator, behaviour, rng)
@@ -1336,7 +1338,7 @@ class VideoHandler(QtCore.QObject):
                 annoEnd = bsc.FramePosition(self.annoDict, self.posPath, self.idx)
                 
                 ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  ## TODO ## TODO  : make that [0] dynamic
-                lenFunc = lambda x: len(x.annotation.frameList)#[0])
+                lenFunc = lambda x: x.annotation.getLength()
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                 self.annoAltStart = None
@@ -1387,7 +1389,7 @@ class VideoHandler(QtCore.QObject):
         curKey = posKey
         if direction == 'both' or direction == 'right':
             while rngs[curKey][-1] == \
-                    len(self.annoDict[curKey].annotation.frameList):
+                    self.annoDict[curKey].annotation.getLength():
                 curKey = sorted(self.annoDict.keys()).index(curKey) + 1
                 if curKey >= len(self.annoDict.keys()):
                     break
@@ -1396,7 +1398,7 @@ class VideoHandler(QtCore.QObject):
                                                             filterTuple,
                                                             [0],
                                                             exactMatch=True)
-                if a.frameList:
+                if a.getLength():
                     rngs[curKey] = self.annoDict[curKey].annotation.\
                          findConsequtiveAnnotationFrames(filterTuple,
                                                          0,
@@ -1413,12 +1415,12 @@ class VideoHandler(QtCore.QObject):
                 if curKey < 0:
                     break
 
-                l = len(self.annoDict[curKey].annotation.frameList)
+                l = self.annoDict[curKey].annotation.getLength()
                 a = self.annoDict[curKey].annotation.filterFrameList(
                                                             filterTuple,
                                                             [l],
                                                             exactMatch=True)
-                if a.frameList:
+                if a.getLength():
                     rngs[curKey] = self.annoDict[curKey].annotation.\
                          findConsequtiveAnnotationFrames(filterTuple, 0)
                 else:
@@ -1505,7 +1507,7 @@ class VideoHandler(QtCore.QObject):
                                         self.bhvrFolder)
             
             basename = '.'.join(os.path.basename(key).split(".")[:-1]) + \
-                       ".bhvr"
+                       ".csv"
             tmpFilename = os.path.join(dirname, basename)
             print "saving behaviour files to", tmpFilename
             self.annoDict[key].annotation.saveToFile(tmpFilename)

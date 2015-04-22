@@ -262,7 +262,7 @@ class AnnoView(QtGui.QWidget):
                 else:                  
                     key = self.confidenceList[i].key
                     idx = self.confidenceList[i].idx  
-                    if self.annotationDict[key].frameList[idx] is not None:
+                    if self.annotationDict[key].getFrame(idx) is not None:
                         self.parentVP.eraseAnno(annotator=self.annotator[0], 
                                               behaviour=self.behaviourName[0])
                     else: 
@@ -314,9 +314,17 @@ class AnnoView(QtGui.QWidget):
             self.idx = idx
 
         self.addTempAnno(key, idx, metadata)
+
+        # t0 = time.time()
         self.updateConfidenceList()
+        # t1 = time.time()
         self.updateGraphicView()
-        
+        # t2 = time.time()
+
+        # cfg.log.info("setting AnnoView positions in \n t1: {0} sec\n t2: {1} sec\n ex0: {2} sec\n ex1: {3} sec".format(
+        #     t1 - t0, t2 - t1, 0, 0))
+
+
     @cfg.logClassFunction
     def setFilter(self, vialNo=None, behaviourName=None, annotator=None):
         self.vialNo = vialNo
@@ -353,7 +361,7 @@ class AnnoView(QtGui.QWidget):
             key = self.selKey
         if idx is None:
             idx = self.idx
-        
+
         cfg.log.debug("updateConfidenceList {0} \n [{1}]".format(key, idx))
         self.confidenceList = []
         # for first frame annotation within the range        
@@ -370,7 +378,7 @@ class AnnoView(QtGui.QWidget):
             for i in range(self.frameAmount):
                 self.confidenceList += [KeyIdxPair(None, None, [None])]
             return
-            
+
         startIdx = None
         startKey = None
         while dist2first > 0:
@@ -387,12 +395,12 @@ class AnnoView(QtGui.QWidget):
                     break
                 else:
                     remainingFrames = \
-                         len(self.annotationDict[keyList[curKeyPos]].frameList)
+                         self.annotationDict[keyList[curKeyPos]].getLength()
             else:
                 startIdx = remainingFrames - (dist2first + 1) 
                 startKey = keyList[curKeyPos]
                 break
-        
+
         # fill confidence list
         curIdx = startIdx
         curKey = startKey
@@ -400,45 +408,138 @@ class AnnoView(QtGui.QWidget):
         tempKeys = self.tempRng.keys()
         if self.addingAnno:
             cfg.log.info("{0}".format(self.tempRng))
-        
+
+
+        ex0 = 0
+        ex1 = 0
+
+        t0 = time.time()
+
+        # prebuffer lengths as queries would sum up immensely inside the loop
+        annoLengths = dict()
+        for k, anno in self.annotationDict.items():
+            annoLengths[k] = anno.getLength()
+
+        # prebuffer all needed key/index pairs so that they can be querried
+        # in one go
+        rng = {curKey: []}
         for i in range(self.frameAmount - len(self.confidenceList)):
-            if curIdx >= len(self.annotationDict[curKey].frameList):
+            if curIdx >= annoLengths[curKey]:
                 if (curKeyPos + 1) >= len(keyList):
                     # end of file list
-                    self.confidenceList += [KeyIdxPair(None, None, [None])]
-                    continue                  
-                    
+                    # self.confidenceList += [KeyIdxPair(None, None, [None])]
+                    continue
+
                 curKeyPos += 1
                 curKey = keyList[curKeyPos]
                 curIdx = 0
-                            
-            if (self.addingAnno 
-                            and (curKey in tempKeys) 
-                            and (curIdx in self.tempRng[curKey])):
-                conf = [self.tempValue[curKey][curIdx]["confidence"]]
-            elif (self.erasingAnno 
-                            and (curKey in tempKeys) 
-                            and (curIdx in self.tempRng[curKey])):
-                conf = [None]
+                rng[curKey] = []
+
+            rng[curKey].append(curIdx)
+            curIdx += 1
+
+        # t1 = time.time()
+        # s0 = 0
+        # s1 = 0
+
+        for curKey, indeces in sorted(rng.items()):
+            slc = slice(min(indeces), max(indeces) + 1)
+            # t11 = time.time()
+            df = self.annotationDict[curKey].getFrame(slc)
+            # t12 = time.time()
+
+            if df is not None:
+                d = dict(df.transpose())
+                labelledFrameIdces = set(zip(*d.keys())[0])
             else:
-#                 if type(self.annotationDict[curKey].frameList[curIdx]) == dict:
-#                     conf = self.annotationDict[curKey].frameList[curIdx]['confidence']                    
-#                 else:
-#                     conf = self.annotationDict[curKey].frameList[curIdx]
-                if self.annotationDict[curKey].frameList[curIdx] == [None]:
+                labelledFrameIdces = []
+            for curIdx in indeces:
+                if (self.addingAnno
+                                and (curKey in tempKeys)
+                                and (curIdx in self.tempRng[curKey])):
+                    conf = [self.tempValue[curKey][curIdx]["confidence"]]
+                elif (self.erasingAnno
+                                and (curKey in tempKeys)
+                                and (curIdx in self.tempRng[curKey])):
                     conf = [None]
                 else:
-                    if self.vialNo == None:
-                        conf = Annotation.getPropertyFromFrameAnno(
-                               self.annotationDict[curKey].frameList[curIdx][0],
-                                "confidence")
-                    else:                        
-                        conf = Annotation.getPropertyFromFrameAnno(
-                            self.annotationDict[curKey].frameList[curIdx][0],
-                                "confidence")
-                                  
-            self.confidenceList += [KeyIdxPair(curKey, curIdx, conf)]            
-            curIdx += 1     
+                    if curIdx in labelledFrameIdces:
+                        conf = [1]
+                    else:
+                        conf = [None]
+
+                self.confidenceList += [KeyIdxPair(curKey, curIdx, conf)]
+
+        #     t13 = time.time()
+        #     s0 += t12 - t11
+        #     s1 += t13 - t12
+        #
+        # t2 = time.time()
+        # cfg.log.info("setting AnnoView positions in \n t1: {0} sec\n t2: {1} sec\n ex0: {2} sec\n ex1: {3} sec".format(
+        #     t1 - t0, t2- t1, s0, s1))
+
+#
+#         for i in range(self.frameAmount - len(self.confidenceList)):
+#             t0 = time.time()
+#             length = annoLengths[curKey]
+#             # length = self.annotationDict[curKey].getLength()
+#             et1 = time.time()
+#             if curIdx >= length:
+#                 if (curKeyPos + 1) >= len(keyList):
+#                     # end of file list
+#                     self.confidenceList += [KeyIdxPair(None, None, [None])]
+#                     continue
+#
+#                 curKeyPos += 1
+#                 curKey = keyList[curKeyPos]
+#                 curIdx = 0
+#
+#             t1 = time.time()
+#             if (self.addingAnno
+#                             and (curKey in tempKeys)
+#                             and (curIdx in self.tempRng[curKey])):
+#                 conf = [self.tempValue[curKey][curIdx]["confidence"]]
+#             elif (self.erasingAnno
+#                             and (curKey in tempKeys)
+#                             and (curIdx in self.tempRng[curKey])):
+#                 conf = [None]
+#             else:
+#                 1/0
+# #                 if type(self.annotationDict[curKey].frameList[curIdx]) == dict:
+# #                     conf = self.annotationDict[curKey].frameList[curIdx]['confidence']
+# #                 else:
+# #                     conf = self.annotationDict[curKey].frameList[curIdx]
+#                 et2 = time.time()
+#                 df = self.annotationDict[curKey].getFrame(curIdx)
+#                 et3 = time.time()
+#                 if df is None:
+#                     conf = [None]
+#                 else:
+#                     # if self.vialNo == None:
+#                     conf = Annotation.getPropertyFromFrameAnno(
+#                            df,
+#                             "confidence")
+#                     # else:
+#                     #     conf = [Annotation.getPropertyFromFrameAnno(
+#                     #         self.annotationDict[curKey].getFrame(curIdx),
+#                     #             "confidence")]
+#                     #
+#             t2 = time.time()
+#
+#             s0 += t1 - t0
+#             s1 += t2 - t1
+#
+#             ex0 += et1 - t0
+#             # ex1 += et3 - et2
+#
+#             self.confidenceList += [KeyIdxPair(curKey, curIdx, conf)]
+#             curIdx += 1
+#
+#
+#
+#         t3 = time.time()
+#         cfg.log.info("setting AnnoView positions in \n t1: {0} sec\n t2: {1} sec\n ex0: {2} sec\n ex1: {3} sec".format(
+#             s0, s1, ex0, ex1))
 
     @cfg.logClassFunction
     def updateGraphicView(self):
