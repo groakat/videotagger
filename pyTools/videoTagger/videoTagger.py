@@ -2456,7 +2456,7 @@ class VideoTagger(QtGui.QMainWindow):
         cfg.logGUI.info('""')
         self.vh.saveAll()
         if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
-            self.fdvt.save(self.fdvtPath)
+            self.fdvt.save()
 
         self.exportSettings()
 
