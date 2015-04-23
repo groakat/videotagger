@@ -66,7 +66,10 @@ setup(
     license = "--",
     keywords = "video",
     url = "https://github.com/groakat/pyTools",
-    packages=["pyTools", 'pyTools/batch', 'pyTools/features', "pyTools/gui", "pyTools/imgProc", "pyTools/misc", "pyTools/qtGUI", "pyTools/sandbox", "pyTools/system", "pyTools/videoTagger", "pyTools/videoProc", "pyTools/icon", "pyTools/install/osx"],
+    packages=["pyTools", 'pyTools/batch', 'pyTools/features', "pyTools/gui",
+              "pyTools/imgProc", "pyTools/misc", "pyTools/qtGUI", "pyTools/sandbox",
+              "pyTools/system", "pyTools/videoTagger", "pyTools/videoProc", "pyTools/icon",
+              "pyTools/install/osx", "pyTools/install/win"],
     long_description=read('README.md'),
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -81,7 +84,7 @@ setup(
         ]
     },
     package_data = {
-        '': ['*.svg', '*.yaml', '*.zip']
+        '': ['*.svg', '*.yaml', '*.zip', '*.ico', '*.bat']
     }
 )
 #cmdclass = {'install_scripts': my_install_scripts}
