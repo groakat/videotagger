@@ -66,7 +66,7 @@ setup(
     license = "--",
     keywords = "video",
     url = "https://github.com/groakat/pyTools",
-    packages=["pyTools", 'pyTools/batch', 'pyTools/features', "pyTools/gui",
+    packages=["pyTools", 'pyTools/batch', 'pyTools/features','pyTools/features/trajectory', "pyTools/gui",
               "pyTools/imgProc", "pyTools/misc", "pyTools/qtGUI", "pyTools/sandbox",
               "pyTools/system", "pyTools/videoTagger", "pyTools/videoProc", "pyTools/icon",
               "pyTools/install/osx", "pyTools/install/win"],
