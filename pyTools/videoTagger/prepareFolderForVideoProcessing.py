@@ -37,8 +37,8 @@ def generateSmallVideo(videoPath, ext='avi'):
     targetBasename = basename_wo_ext + "_small" + os.path.extsep + ext
     targetPath = os.path.join(folder, targetBasename)
 
-    ffmpegStr = ('ffmpeg -i "{orgPath}" -y -c:v mjpeg -vf scale=320:-1 ' + \
-                '-qscale 0 "{targetPath}"').format(orgPath=videoPath,
+    ffmpegStr = ('ffmpeg -i "{orgPath}" -y -c:v ffv1 -vf scale=320:-1 ' + \
+                '-qscale 0 -r 30 "{targetPath}"').format(orgPath=videoPath,
                                                  targetPath=targetPath)
 
     print ffmpegStr
@@ -52,7 +52,7 @@ def generateSmallVideo(videoPath, ext='avi'):
     targetFullPath = os.path.join(folder, targetFullBasename)
 
     ffmpegStr = ('ffmpeg -i "{orgPath}" -y -an ' +\
-                '-qscale 0 -c:v mjpeg "{targetPath}"').format(orgPath=videoPath,
+                '-qscale 0 -c:v ffv1 -r 30 "{targetPath}"').format(orgPath=videoPath,
                                                       targetPath=targetFullPath)
 
     p = subprocess.Popen(ffmpegStr, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

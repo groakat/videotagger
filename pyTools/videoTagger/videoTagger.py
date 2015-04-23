@@ -554,7 +554,7 @@ class VideoTagger(QtGui.QMainWindow):
         videoListPath = self.setupDialog.le_bhvrCache.text()
         behaviourFolder = self.setupDialog.le_bhvrFolder.text()
         patchesFolder = self.setupDialog.le_patchesFolder.text()
-        
+
         if len(self.fileList) == 1 and not croppedVideo:
             config = PFFVP.prepareFolder(path,
                                          alwaysGenerateSmallVideo=True)
