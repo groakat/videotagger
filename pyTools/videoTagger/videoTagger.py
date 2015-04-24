@@ -2193,7 +2193,7 @@ class VideoTagger(QtGui.QMainWindow):
                                                        minute,
                                                        frame))
 
-
+        self.dialogShortCutFilter.deactivateShortcuts()
         OD.FDVShowDialog.getSelection(self.fullVideoDialog.centralWidget(),
                                       self.frameView,
                                       day=day,
@@ -2201,7 +2201,10 @@ class VideoTagger(QtGui.QMainWindow):
                                       minute=minute,
                                       frame=frame)
 
+        self.dialogShortCutFilter.activateShortcuts()
+
     def openKeySettings(self):
+        self.dialogShortCutFilter.deactivateShortcuts()
         self.filterObjArgs = OD.ControlsSettingDialog.getSelection(self.fullVideoDialog.centralWidget(),
                                               self.dialogShortCutFilter.keyMap,
                                               self.dialogShortCutFilter.stepSize)
@@ -2209,6 +2212,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.dialogShortCutFilter.setKeyMap(self.filterObjArgs['keyMap'])
         self.dialogShortCutFilter.setStepSize(self.filterObjArgs['stepSize'])
         self.exportSettings()
+
+        self.dialogShortCutFilter.activateShortcuts()
 
 
     @QtCore.Slot()
