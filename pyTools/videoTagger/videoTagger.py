@@ -820,9 +820,11 @@ class VideoTagger(QtGui.QMainWindow):
     @QtCore.Slot()
     def playback(self):
         self.increment = 1
-        
-        if not self.play:
-            self.play = True
+        if self.stop:
+            self.startVideo()
+
+        # if not self.play:
+        #     self.play = True
             
     @QtCore.Slot()
     def stopPlayback(self):
@@ -2117,10 +2119,34 @@ class VideoTagger(QtGui.QMainWindow):
             self.fullVideoDialog.setAnnotator("")
             self.fullVideoDialog.setBehaviour("")
 
+    def getHumanTime(self, frame, fps=30):
+        minutes = frame / (60 * fps)
+
+        sec = (frame - (minutes * 60 * fps)) / fps
+        days, hours, minutes, second = FDV.minutes2Time(minutes)
+
+        s = ""
+
+        # if days:
+        s += "{:02d}d:".format(days)
+
+        # if hours or s:
+        s += "{:02d}h:".format(hours)
+
+        # if minutes or s:
+        s += "{:02d}m:".format(minutes)
+
+        s += "{:02d}s".format(sec)
+
+        return s
+
+
+
     def updateHUD(self, annotator=None, behaviour=None):
         if self.fullVideoDialog:
             frameNo = self.vh.getCurrentFrameNo()
-            self.fullVideoDialog.setFrame(str(frameNo))
+            human_time = self.getHumanTime(frameNo)
+            self.fullVideoDialog.setFrame("{} ({})".format(human_time, frameNo))
             filename = self.vh.posPath
             self.fullVideoDialog.setFile(filename)
 
@@ -2752,8 +2778,18 @@ class VideoTagger(QtGui.QMainWindow):
 
         if self.annoIsOpen:
             self.updateHUD(annotator=annotator, behaviour=behaviour)
+
+            penCol = QtGui.QColor()
+            penCol.setHsv(50, 255, 255, 255)
+            self.cropRect.setPen(QtGui.QPen(penCol, 2, QtCore.Qt.DotLine))
+            # line->setPen(QPen(black,2,DashLine))
+
         else:
             self.updateHUD(annotator="", behaviour="")
+
+            penCol = QtGui.QColor()
+            penCol.setHsv(50, 255, 255, 255)
+            self.cropRect.setPen(QtGui.QPen(penCol, 1, QtCore.Qt.SolidLine))
         
         if not (labelledFrames == (None, None)
                 or labelledFrames[1].behaviours == [None]):
