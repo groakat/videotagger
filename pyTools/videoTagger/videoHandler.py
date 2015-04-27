@@ -1368,7 +1368,7 @@ class VideoHandler(QtCore.QObject):
         return rng, curFilter
 
     def findRangeOfAnnotation(self, frameIdx, posKey, filterTuple,
-                              direction='both'):
+                              direction='both', excess=0):
         """
         direction (string):
                 direction in which the annotation is traced.
@@ -1406,6 +1406,20 @@ class VideoHandler(QtCore.QObject):
                 else:
                     break
 
+            excess_copy = excess
+            while excess_copy > 0:
+                if (rngs[curKey][-1] + 1) == \
+                        self.annoDict[curKey].annotation.getLength():
+                    curKey = sorted(self.annoDict.keys()).index(curKey) + 1
+                    if curKey >= len(self.annoDict.keys()):
+                        break
+                    else:
+                        rngs[curKey] = [0]
+                else:
+                    rngs[curKey] = np.append(rngs[curKey], rngs[curKey][-1] + 1)
+
+                excess_copy -= 1
+
         # check whether the range extends over the left edge of the current
         # annotation file
         curKey = posKey
@@ -1426,6 +1440,21 @@ class VideoHandler(QtCore.QObject):
                 else:
                     break
 
+
+            excess_copy = excess
+            while excess_copy > 0:
+                if rngs[curKey][0] == 0:
+                    curKey = sorted(self.annoDict.keys()).index(curKey) - 1
+                    if curKey < 0:
+                        break
+                    else:
+                        rngs[curKey] = [self.annoDict[curKey].annotation.getLength() - 1]
+                else:
+                    rngs[curKey] = np.append(rngs[curKey][0] - 1, rngs[curKey])
+
+                excess_copy -= 1
+
+
         return rngs
 
     def editAnnotationMetaCurrentFrame(self, selectedVial, annotator,
@@ -1440,15 +1469,21 @@ class VideoHandler(QtCore.QObject):
         filtOld = Annotation.AnnotationFilter(vial, [annotatorOld],
                                               [behaviourOld])
 
-        rngs = self.findRangeOfAnnotation(self.idx, self.posPath, filtOld)
+        rngs = self.findRangeOfAnnotation(self.idx, self.posPath, filtOld,
+                                          excess=1)
         if vial is None:
             vial = [None]
+
+        cfg.log.info("checking annotation in range {} {} {}".format(rngs, behaviourOld, behaviourNew))
 
         behaviourNew = self.disambiguateDoubleBehaviourNames(vial, annotatorNew,
                                                              behaviourNew, rngs)
 
         vial = vial[0]
-        print "editAnnotationLabel", rngs, behaviourOld, behaviourNew
+
+        rngs = self.findRangeOfAnnotation(self.idx, self.posPath, filtOld,
+                                          excess=0)
+        cfg.log.info("editing annotation in range {} {} {}".format(rngs, behaviourOld, behaviourNew))
 
         for k, rng in rngs.items():
             self.annoDict[k].annotation.renameAnnotation(
