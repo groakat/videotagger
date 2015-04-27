@@ -596,8 +596,9 @@ def addAnnotation(df, frames, annotator, label, metadata=None):
     dataList = np.zeros((len(frames), 8), dtype=np.object)
     dataList[:, 0] = np.asarray(frames)
     dataList[:, 1:] = np.asarray([[annotator, label] + x['boundingBox'] +
-                                    [x['confidence']]
-                                      for x in metadata.values()])
+                                  [x['confidence']]
+                                  for f, x in metadata.items()
+                                  if f in frames])
 
 
     newDf = pd.DataFrame(data=dataList, columns=['frame', 'annotator', 'label',
