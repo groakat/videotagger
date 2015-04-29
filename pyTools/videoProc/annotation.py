@@ -112,7 +112,8 @@ class Annotation():
 
 
     def filterFrameList(self, filterTuple, frameRange=None,
-                        exactMatch=True):
+                        exactMatch=True,
+                        update_behaviour_indeces=True):
         """
         Returns a new annotation object that contains only annotations that 
         satisfy all filter criteria.
@@ -159,7 +160,8 @@ class Annotation():
                                               "automcatic placeholder"],
                                    label=[filterTuple.behaviours[0],
                                           'video length'],
-                                   exact_match=exactMatch)
+                                   exact_match=exactMatch,
+                                   update_behaviour_indeces=update_behaviour_indeces)
             out.setDataframe(df)
         except ValueError:
             out = Annotation(frameNo=self.getLength())
@@ -496,7 +498,7 @@ def generateFramesIndexer(df, frames, indexer=None):
         indexer = [slice(None)]*len(df.index.names)
 
     indexer[df.index.names.index('frame')] = frames
-    return indexer
+    return indexer, frames
 
 def generateAnnotatorIndexer(df, annotator, indexer=None):
     if type(annotator) == str:
@@ -506,7 +508,7 @@ def generateAnnotatorIndexer(df, annotator, indexer=None):
         indexer = [slice(None)]*len(df.index.names)
 
     indexer[df.index.names.index('annotator')] = annotator
-    return indexer
+    return indexer, annotator
 
 def generateLabelIndexer(df, filterLabel, exact_match=True, indexer=None):
     if type(filterLabel) == str:
@@ -527,7 +529,8 @@ def generateLabelIndexer(df, filterLabel, exact_match=True, indexer=None):
         indexer = [slice(None)]*len(df.index.names)
 
     indexer[df.index.names.index('label')] = filt
-    return indexer
+
+    return indexer, filt
 
 def filterFramesFromDataframe(df, frames, indexer=None):
     """
@@ -556,19 +559,41 @@ def filterLabelFromDataframe(df, filterLabel, exact_match=True, indexer=None):
 
 
 def filterDataframe(df, frames=None, annotator=None, label=None,
-                    exact_match=True):
+                    exact_match=True, update_behaviour_indeces=True):
     indexer = [slice(None)]*len(df.index.names)
 
+    idx_lvls = list(df.index.levels)
+
     if frames is not None:
-        indexer = generateFramesIndexer(df, frames, indexer=indexer)
+        indexer, frames = generateFramesIndexer(df, frames, indexer=indexer)
+        if update_behaviour_indeces:
+            idx_lvls[0] = frames
 
     if annotator is not None:
-        indexer = generateAnnotatorIndexer(df, annotator, indexer=indexer)
+        indexer, annotator = generateAnnotatorIndexer(df, annotator,
+                                                      indexer=indexer)
+
+        if update_behaviour_indeces:
+            idx_lvls[1] = annotator
 
     if label is not None:
-        indexer = generateLabelIndexer(df, label, exact_match, indexer=indexer)
+        indexer, labels = generateLabelIndexer(df, label, exact_match,
+                                               indexer=indexer)
 
-    return df.loc[tuple(indexer),:]
+        if update_behaviour_indeces:
+            idx_lvls[2] = labels
+
+    out = df.loc[tuple(indexer),:]
+
+    if update_behaviour_indeces:
+        # out.index.set_levels(idx_lvls, inplace=True)
+        out.reset_index(inplace=True)
+        out.set_index(['frame', 'annotator', 'label'],
+                                inplace=True)
+        out.sortlevel(inplace=True)
+
+
+    return out
 
 def concatenateDataframes(dfs):
     out = pd.concat([df[:-1] for df in dfs])

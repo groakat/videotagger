@@ -1125,14 +1125,18 @@ class VideoHandler(QtCore.QObject):
 
         annos = []
         for key in rng:
-            annos += [self.annoDict[key].annotation.filterFrameList(
+            anno = self.annoDict[key].annotation.filterFrameList(
                                                             filt,
                                                             rng[key],
-                                                            exactMatch=False)]
+                                                            exactMatch=False)
+
+            annos += [anno]
 
         maxCounter = -1
         for anno in annos:
             labels = anno.getExactBehaviours()
+
+            cfg.log.info("labels: {}".format(labels))
 
             nMaxBehaviour = self.getHighestBehaviourNumber(labels)
 
