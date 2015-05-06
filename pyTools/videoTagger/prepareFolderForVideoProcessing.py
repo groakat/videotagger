@@ -63,8 +63,10 @@ def generateSmallVideo(videoPath, ext='avi'):
 
     return folder, targetPath, ext
 
-def generateStandardYaml(rootFolder, videoPath, videoExtension, backgroundImg=None):
+def generateStandardYaml(rootFolder, videoPath, videoExtension, backgroundImg=None,
+                         projectCFGPath=None):
     templateFolder = os.path.dirname(os.path.realpath(__file__))
+
     with open(os.path.join(templateFolder,
                            'config-template.yaml'), 'r') as f:
         templateStr = f.readlines()
@@ -73,7 +75,8 @@ def generateStandardYaml(rootFolder, videoPath, videoExtension, backgroundImg=No
                                          backgroundImg=backgroundImg,
                                          videoExt=videoExtension,
                                          patches='""',
-                                         positions='""')
+                                         positions='""',
+                                         project_path=projectCFGPath)
 
     yamlPath = os.path.join(rootFolder, 'videoTaggerConfig.yaml')
     with open(yamlPath, 'w') as f:
@@ -87,12 +90,14 @@ def checkForConfig(folder):
     else:
         return False
 
-def prepareFolder(folder, alwaysGenerateSmallVideo=False):
+def prepareFolder(folder, alwaysGenerateSmallVideo=False,
+                  projectCFGPath=None):
     yamlPath = checkForConfig(folder)
     if not yamlPath or alwaysGenerateSmallVideo:
         filename = checkForCleanFolder(folder)
         folder, videoPath, videoExtension = generateSmallVideo(filename)
-        yamlPath = generateStandardYaml(folder, videoPath,videoExtension)
+        yamlPath = generateStandardYaml(folder, videoPath, videoExtension,
+                                        projectCFGPath=projectCFGPath)
 
         CF.cacheFilelistFromConfig(yamlPath)
 

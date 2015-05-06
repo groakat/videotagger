@@ -57,3 +57,6 @@ Video:
   videoExtension: {videoExt}
   patches-folder: {patches}
   position-folder: {positions}
+  maxAnnotationSpeed: 1
+Project:
+  project_path: {project_path}

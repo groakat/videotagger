@@ -153,7 +153,7 @@ def cacheFilelistFromConfig(config_file):
     videoPath, annotations, annotator, backgroundPath, selectedVial, vialROI, \
     videoExtension, filterObjArgs, startVideo, rewindOnClick, croppedVideo, \
     patchesFolder, positionFolder, behaviourFolder, runningIndeces, fdvtPathRel,\
-    videoListPathRel, bufferWidth, bufferLength, startFrame = \
+    videoListPathRel, bufferWidth, bufferLength, startFrame, maxSpeed = \
                                     VideoTagger.parseConfig(config_file)
 
     cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,

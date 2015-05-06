@@ -76,9 +76,9 @@ setup(
         "Topic :: Utilities",
     ],
     entry_points={
-        #'console_scripts': [
-            #'videotagger = pyTools.videoTagger.videoTagger:main',
-        #],
+        'console_scripts': [
+            'videotagger_batch = pyTools.videoTagger.batch:main',
+        ],
         'gui_scripts': [
             'videotagger = pyTools.videoTagger.videoTagger:main',
         ]
