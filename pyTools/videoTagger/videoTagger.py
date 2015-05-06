@@ -2874,7 +2874,7 @@ class VideoTagger(QtGui.QMainWindow):
         folder = self.getPathDirname()
         annotator = self.getAnnotator()
         filename = os.path.join(folder,
-                                "{anno}.bookmarks.json".format(anno=annotator))
+                                "{anno}.bookmarks.yaml".format(anno=annotator))
 
         return filename
 

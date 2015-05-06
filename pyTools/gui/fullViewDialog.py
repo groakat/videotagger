@@ -5,6 +5,7 @@ import pyTools.videoTagger.hud as HUD
 import pyTools.videoTagger.overlayDialog as OD
 
 import json
+import yaml
 import os
 
 import pyTools.system.plugins as P
@@ -473,10 +474,33 @@ class BookmarkListModel(QtGui.QStandardItemModel):
         else:
             raise ValueError("Neither filename given, nor self.filenameFunction set. Cannot save bookmarks")
 
+        lst = [dict(zip(['name', 'key', 'idx'], x)) for x in zip(self.strList,
+                                                                 self.keyList,
+                                                                 self.idxList)]
+
+        yamlString = \
+"""# Bookmark file. Each bookmark starts with a '-' and has three identifiers:
+# idx: frame number
+# key: position of video file in videoCache.json (for a single file project, set it to 0)
+# name: string with the name of the bookmark that is displayed to the user in VideoTagger
+#
+# Example of two bookmarks:
+#
+# - idx: 0
+#   key: 0
+#   name: 'very first frame'
+# - idx: 24
+#   key: 0
+#   name: '24th frame of the first video file'
+####################################################
+"""
+        yamlString += yaml.dump(lst, default_flow_style=False)
+
         with open(fn, 'w') as f:
-            json.dump([self.strList,
-                       self.keyList,
-                       self.idxList], f)
+            f.writelines(yamlString)
+            # json.dump([self.strList,
+            #            self.keyList,
+            #            self.idxList], f)
 
     def load(self, filename=None):
         if filename is not None:
@@ -490,13 +514,13 @@ class BookmarkListModel(QtGui.QStandardItemModel):
 
         if os.path.exists(fn):
             with open(fn, 'r') as f:
-                raw = json.load(f)
+                raw = yaml.load(f)
 
             while self.strList:
                 self.removeItem(0)
 
-            for str, key, idx in zip(*raw):
-                self.addItem(str, key, idx)
+            for d in raw:
+                self.addItem(d['name'], d['key'], d['idx'])
 
 class PluginView(QtGui.QWidget):
     def __init__(self, fullViewDialog, videoTagger, baseClass, *args, **kwargs):
