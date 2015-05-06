@@ -466,11 +466,18 @@ class SetupDialog(QtGui.QWidget):
         layout.addWidget(self.lbl_bhvrCache, 2, 0)
         layout.addWidget(self.le_bhvrCache, 2, 1)
 
+        self.lbl_maxAnnotationSpeed = QtGui.QLabel()
+        self.lbl_maxAnnotationSpeed.setText("Maximum speed while annotation is open")
+        self.le_maxAnnotationSpeed = QtGui.QLineEdit()
+
+        layout.addWidget(self.lbl_maxAnnotationSpeed, 3, 0)
+        layout.addWidget(self.le_maxAnnotationSpeed, 3, 1)
+
         spacer = QtGui.QLabel()
         spacer.setSizePolicy(QtGui.QSizePolicy.Ignored,
                                  QtGui.QSizePolicy.MinimumExpanding)
 
-        layout.addWidget(spacer, 3, 0, 1, 2)
+        layout.addWidget(spacer, 4, 0, 1, 2)
         layout.setRowStretch(4, 10)
 
         widget.setLayout(layout)
@@ -574,7 +581,8 @@ class SetupDialog(QtGui.QWidget):
                              bufferWidth,
                              bufferLength,
                              getCurrentKey_idx,
-                             croppedVideo
+                             croppedVideo,
+                             maxAnnotationSpeed
                              ):
 
         # TODO: put this in videoTagger
@@ -605,6 +613,7 @@ class SetupDialog(QtGui.QWidget):
         self.le_bufferLength.setText(str(bufferLength))
         self.le_startFrame.setText(str(getCurrentKey_idx[1]))
         self.cb_croppedVideo.setChecked(croppedVideo)
+        self.le_maxAnnotationSpeed.setText(str(maxAnnotationSpeed))
 
     def getFormValues(self):
         path = self.le_videoPath.text()
@@ -630,6 +639,7 @@ class SetupDialog(QtGui.QWidget):
         bufferLength= int(self.le_bufferLength.text())
         startVideoName = self.cb_videoSelection.currentText()
         startFrame = int(self.le_startFrame.text())
+        maxAnnotationSpeed = int(self.le_maxAnnotationSpeed.text())
 
         return  path,               \
                 annotator,          \
@@ -644,7 +654,8 @@ class SetupDialog(QtGui.QWidget):
                 bufferWidth,        \
                 bufferLength,       \
                 startVideoName,     \
-                startFrame
+                startFrame,         \
+                maxAnnotationSpeed
 
     def launchVideoTagger(self):
         self.videoTagger.submitForm()

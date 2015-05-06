@@ -135,7 +135,9 @@ class VideoTagger(QtGui.QMainWindow):
                     serverAddress="tcp://127.0.0.1:4242",
                     bufferWidth=300,
                     bufferLength=4,
-                    startFrame=0):
+                    startFrame=0,
+                    maxAnnotationSpeed=1):
+
         # Set up the user interface from Designer.
         # self.ui = Ui_Form()
         # self.ui.setupUi(self)
@@ -178,6 +180,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.videoListPathRel = videoListPathRel
         self.bufferWidth = bufferWidth
         self.bufferLength = bufferLength
+        self.maxAnnotationSpeed = maxAnnotationSpeed
 
         # self.mainShortCutFilter = EF.shortcutHandler(self, self, **self.filterObjArgs)
         self.dialogShortCutFilter = None
@@ -608,7 +611,8 @@ class VideoTagger(QtGui.QMainWindow):
                              bufferWidth=200,
                              bufferLength=5,
                              getCurrentKey_idx=[0,0],
-                             croppedVideo=False)
+                             croppedVideo=False,
+                             maxAnnotationSpeed=1)
 
 
         self.show()
@@ -636,7 +640,8 @@ class VideoTagger(QtGui.QMainWindow):
                                          self.bufferWidth,
                                          self.bufferLength,
                                          self.getCurrentKey_idx(),
-                                         self.croppedVideo
+                                         self.croppedVideo,
+                                         maxAnnotationSpeed=self.maxAnnotationSpeed
                                          )
 
     def registerFormValues(self):
@@ -653,7 +658,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.bufferWidth,        \
         self.bufferLength,       \
         self.startVideoName,     \
-        self.startFrame = self.setupDialog.getFormValues()
+        self.startFrame,         \
+        self.maxAnnotationSpeed = self.setupDialog.getFormValues()
 
         if not self.videoListPath:
             self.videoListPath = None
@@ -713,7 +719,9 @@ class VideoTagger(QtGui.QMainWindow):
                     serverAddress=self.serverAddress,
                     bufferWidth=self.bufferWidth,
                     bufferLength=self.bufferLength,
-                    startFrame=self.startFrame)
+                    startFrame=self.startFrame,
+                    maxAnnotationSpeed=self.maxAnnotationSpeed
+                )
         
     def transferElementsInCollapseContainer(self):
         self.createVideoDisplayWidget()
@@ -1701,12 +1709,14 @@ class VideoTagger(QtGui.QMainWindow):
         self.displayingFullResolution = False
 
         if self.annoIsOpen:
-            if np.abs(increment) > 1:
+            if np.abs(increment) > self.maxAnnotationSpeed:
                 # set increment to either 1 or -1
-                increment /= int(np.abs(increment))
+                increment /= int(np.abs(increment)) * self.maxAnnotationSpeed
         
         if increment is None:
             increment = self.increment
+        else:
+            self.increment = increment
             
             
         self.rewindIncrement()
@@ -1762,7 +1772,7 @@ class VideoTagger(QtGui.QMainWindow):
         frameNo = self.vh.getCurrentFrameNo()
         # self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
 
-        self.updateHUD()
+        self.updateHUD(increment)
         if self.fullVideoDialog is not None:
             self.fullVideoDialog.graphicsView.viewport().update()
 
@@ -2142,7 +2152,7 @@ class VideoTagger(QtGui.QMainWindow):
 
 
 
-    def updateHUD(self, annotator=None, behaviour=None):
+    def updateHUD(self, increment, annotator=None, behaviour=None):
         if self.fullVideoDialog:
             frameNo = self.vh.getCurrentFrameNo()
             human_time = self.getHumanTime(frameNo)
@@ -2150,7 +2160,7 @@ class VideoTagger(QtGui.QMainWindow):
             filename = self.vh.posPath
             self.fullVideoDialog.setFile(filename)
 
-            self.fullVideoDialog.setSpeed(self.increment)
+            self.fullVideoDialog.setSpeed(increment)
 
             if annotator is not None:
                 if annotator == "":
@@ -2902,6 +2912,8 @@ class VideoTagger(QtGui.QMainWindow):
             cfgDict['Video']['vialROI'] = str(self.vialROI)
         cfgDict['Video']['videoPath'] = self.path
 
+        cfgDict['Video']['maxAnnotationSpeed'] = self.maxAnnotationSpeed
+
         try:
             if self.filterObjArgs['stepSize']:
                 cfgDict['StepSize'] = self.filterObjArgs['stepSize']
@@ -2961,13 +2973,13 @@ class VideoTagger(QtGui.QMainWindow):
 
         configPath = os.path.join(path, 'videoTaggerConfig.yaml')
         if os.path.exists(configPath):
-            print "yeaaaaaaaaaaaaaaaaaaaaaaaahhhhhhhhhhhhhhhhhhhhhhhhhh"
             videoPath, annotations, annotator, backgroundPath, selectedVial,\
             vialROI, \
             videoExtension, filterObjArgs, startVideo, rewindOnClick,\
             croppedVideo, patchesFolder, positionFolder, behaviourFolder,\
             runningIndeces, fdvtPathRel, videoListPathRel, bufferWidth, \
-            bufferLength, startFrame = VideoTagger.parseConfig(configPath)
+            bufferLength, startFrame, maxAnnotationSpeed = \
+                                                    VideoTagger.parseConfig(configPath)
 
             self.path = path
             self.annotations = annotations
@@ -2996,9 +3008,8 @@ class VideoTagger(QtGui.QMainWindow):
             self.bufferWidth = bufferWidth
             self.bufferLength = bufferLength
             self.frameIdx = startFrame
+            self.maxAnnotationSpeed = maxAnnotationSpeed
             self.populateFormWithInternalSettings()
-        else:
-            print "noooooooooo", configPath
 
     @staticmethod
     def parseConfig(path):
@@ -3096,6 +3107,11 @@ class VideoTagger(QtGui.QMainWindow):
         else:
             rewindOnClick = False
 
+        if 'maxAnnotationSpeed' in cfgFile['Video'].keys():
+            maxAnnotationSpeed = cfgFile['Video']['maxAnnotationSpeed']
+        else:
+            maxAnnotationSpeed = 1
+
         #Active Learning
         if 'ActiveLearning' in cfgFile.keys():
             if 'remote-request-server' in cfgFile['ActiveLearning'].keys():
@@ -3180,7 +3196,7 @@ class VideoTagger(QtGui.QMainWindow):
                 videoExtension, filterObjArgs, startVideo, rewindOnClick,\
                 croppedVideo, patchesFolder, positionFolder, behaviourFolder,\
                 runningIndeces, fdvtPathRel, videoListPathRel, bufferWidth, \
-                bufferLength, startFrame
+                bufferLength, startFrame, maxAnnotationSpeed
 
     def getVideoDataForPlugin(self):
         annotationFilters = []
