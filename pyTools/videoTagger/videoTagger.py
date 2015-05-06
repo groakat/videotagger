@@ -1703,8 +1703,7 @@ class VideoTagger(QtGui.QMainWindow):
     
     @cfg.logClassFunction
     def showNextFrame(self, increment=None, checkBuffer=True):
-        # logGUI.debug(json.dumps({"increment":increment,
-        #                          ~ "checkBuffer":checkBuffer}))
+        cfg.log.debug("---------------- increment {}".format(increment))
 
         self.displayingFullResolution = False
 
@@ -1772,7 +1771,7 @@ class VideoTagger(QtGui.QMainWindow):
         frameNo = self.vh.getCurrentFrameNo()
         # self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
 
-        self.updateHUD(increment)
+        self.updateHUD()
         if self.fullVideoDialog is not None:
             self.fullVideoDialog.graphicsView.viewport().update()
 
@@ -2152,7 +2151,7 @@ class VideoTagger(QtGui.QMainWindow):
 
 
 
-    def updateHUD(self, increment, annotator=None, behaviour=None):
+    def updateHUD(self, annotator=None, behaviour=None):
         if self.fullVideoDialog:
             frameNo = self.vh.getCurrentFrameNo()
             human_time = self.getHumanTime(frameNo)
@@ -2160,7 +2159,7 @@ class VideoTagger(QtGui.QMainWindow):
             filename = self.vh.posPath
             self.fullVideoDialog.setFile(filename)
 
-            self.fullVideoDialog.setSpeed(increment)
+            self.fullVideoDialog.setSpeed(self.increment)
 
             if annotator is not None:
                 if annotator == "":
@@ -2569,7 +2568,8 @@ class VideoTagger(QtGui.QMainWindow):
         if self.addingAnnotations:
             self.addAnno(annotator, behaviour, confidence, oneClickAnnotation)
         else:
-            self.eraseAnno(annotator, behaviour)           
+            self.eraseAnno(annotator, behaviour)
+
             
     def getMetadata(self):        
         if self.prevXCrop.start is not None:
@@ -2821,6 +2821,8 @@ class VideoTagger(QtGui.QMainWindow):
                 labelledFrames = (labelledFrames[0], labelledFrames[1], 1)
 
             self.convertLabelListAndReply(labelledFrames)
+
+        self.showNextFrame(0)
 
 
     def addTempAnno(self):
