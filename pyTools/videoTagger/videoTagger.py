@@ -1964,7 +1964,7 @@ class VideoTagger(QtGui.QMainWindow):
                                          QtGui.QColor(255, 50, 50))
             self.fullVideoDialog.graphicsView.setCursor(QtCore.Qt.ArrowCursor)
 
-        self.stopVideo()
+        # self.stopVideo()
 
     def deactivateEditMode(self):
         self.deactivateAllLabelRects()
