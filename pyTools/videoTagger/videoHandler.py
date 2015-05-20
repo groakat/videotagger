@@ -1346,7 +1346,7 @@ class VideoHandler(QtCore.QObject):
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
                 self.annoAltStart = None
-                
+
                 self.eraseAnnotationRange(rng, vials, annotator, behaviour)
                                     
                 cfg.logGUI.info(json.dumps({"vials":vials,
@@ -1383,10 +1383,10 @@ class VideoHandler(QtCore.QObject):
 
         """
         rngs = dict()
-        rngs[posKey] = self.annoDict[posKey].annotation.\
+        rngs[posKey] = list(self.annoDict[posKey].annotation.\
                      findConsequtiveAnnotationFrames(filterTuple,
                                                      frameIdx,
-                                                     direction=direction)
+                                                     direction=direction))
 
         # check whether the range extends over the right edge of the current
         # annotation file
@@ -1403,10 +1403,10 @@ class VideoHandler(QtCore.QObject):
                                                             [0],
                                                             exactMatch=True)
                 if a.getLength():
-                    rngs[curKey] = self.annoDict[curKey].annotation.\
+                    rngs[curKey] = list(self.annoDict[curKey].annotation.\
                          findConsequtiveAnnotationFrames(filterTuple,
                                                          0,
-                                                         direction=direction)
+                                                         direction=direction))
                 else:
                     break
 
@@ -1420,7 +1420,8 @@ class VideoHandler(QtCore.QObject):
                     else:
                         rngs[curKey] = [0]
                 else:
-                    rngs[curKey] = np.append(rngs[curKey], rngs[curKey][-1] + 1)
+                    rngs[curKey] = list(np.append(rngs[curKey],
+                                                  rngs[curKey][-1] + 1))
 
                 excess_copy -= 1
 
@@ -1439,8 +1440,8 @@ class VideoHandler(QtCore.QObject):
                                                             [l],
                                                             exactMatch=True)
                 if a.getLength():
-                    rngs[curKey] = self.annoDict[curKey].annotation.\
-                         findConsequtiveAnnotationFrames(filterTuple, 0)
+                    rngs[curKey] = list(self.annoDict[curKey].annotation.\
+                         findConsequtiveAnnotationFrames(filterTuple, 0))
                 else:
                     break
 
@@ -1454,10 +1455,9 @@ class VideoHandler(QtCore.QObject):
                     else:
                         rngs[curKey] = [self.annoDict[curKey].annotation.getLength() - 1]
                 else:
-                    rngs[curKey] = np.append(rngs[curKey][0] - 1, rngs[curKey])
+                    rngs[curKey] = list(np.append(rngs[curKey][0] - 1, rngs[curKey]))
 
                 excess_copy -= 1
-
 
         return rngs
 

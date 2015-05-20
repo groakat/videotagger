@@ -732,7 +732,12 @@ def findConsequtiveAnnotationFrames(df, annotator, label, frameIdx,
     # search in which range the frameIdx is locsted
     for rng in ranges:
         if frameIdx in rng:
-            return rng
+            if direction == 'both':
+                return rng
+            elif direction == 'right':
+                return rng[rng >= frameIdx]
+            else:
+                return rng[rng <= frameIdx]
 
     return None
 

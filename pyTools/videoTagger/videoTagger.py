@@ -47,6 +47,7 @@ import qimage2ndarray as qim2np
 import json
 import logging, logging.handlers
 import yaml
+import re
 
 from collections import OrderedDict
 
@@ -1805,11 +1806,20 @@ class VideoTagger(QtGui.QMainWindow):
         
         return img
 
+    def getRealBehaviourFromRect(self, behaviour):
+        # res = re.search('_[0-9]+$', behaviour)
+        #
+        # if res:
+        #     return behaviour
+        # else:
+        #     return behaviour + '_1'
+        return behaviour
 
     ##### MOVEABLE RECT
     def deleteLeftLabels(self):
         annotator = self.lastLabelRectContext['anno']
         behaviour = self.lastLabelRectContext['bhvr']
+        behaviour = self.getRealBehaviourFromRect(behaviour)
         labelledFrames = self.vh.eraseAnnotationSequence(self.getSelectedVial(),
                                                          annotator,
                                                          behaviour,
@@ -1817,10 +1827,12 @@ class VideoTagger(QtGui.QMainWindow):
 
         labelledFrames = (labelledFrames[0], labelledFrames[1], -1)
         self.convertLabelListAndReply(labelledFrames)
+        self.showNextFrame(0)
 
     def deleteRightLabels(self):
         annotator = self.lastLabelRectContext['anno']
         behaviour = self.lastLabelRectContext['bhvr']
+        behaviour = self.getRealBehaviourFromRect(behaviour)
         labelledFrames = self.vh.eraseAnnotationSequence(self.getSelectedVial(),
                                                          annotator,
                                                          behaviour,
@@ -1828,10 +1840,12 @@ class VideoTagger(QtGui.QMainWindow):
 
         labelledFrames = (labelledFrames[0], labelledFrames[1], -1)
         self.convertLabelListAndReply(labelledFrames)
+        self.showNextFrame(0)
 
     def deleteAllLabels(self):
         annotator = self.lastLabelRectContext['anno']
         behaviour = self.lastLabelRectContext['bhvr']
+        behaviour = self.getRealBehaviourFromRect(behaviour)
         labelledFrames = self.vh.eraseAnnotationSequence(self.getSelectedVial(),
                                                          annotator,
                                                          behaviour,
@@ -1839,16 +1853,19 @@ class VideoTagger(QtGui.QMainWindow):
 
         labelledFrames = (labelledFrames[0], labelledFrames[1], -1)
         self.convertLabelListAndReply(labelledFrames)
+        self.showNextFrame(0)
 
     def deleteLabel(self):
         annotator = self.lastLabelRectContext['anno']
         behaviour = self.lastLabelRectContext['bhvr']
+        behaviour = self.getRealBehaviourFromRect(behaviour)
         labelledFrames = self.vh.eraseAnnotationCurrentFrame(self.getSelectedVial(),
                                                              annotator,
                                                              behaviour)
 
         labelledFrames = (labelledFrames[0], labelledFrames[1], -1)
         self.convertLabelListAndReply(labelledFrames)
+        self.showNextFrame(0)
 
 
     def lineEditChanged(self):
@@ -1856,6 +1873,7 @@ class VideoTagger(QtGui.QMainWindow):
         behaviourNew = self.cle.text()
 
         behaviourOld = self.lastLabelRectContext['bhvr']
+        behaviour = self.getRealBehaviourFromRect(behaviourOld)
         annotatorOld = self.lastLabelRectContext['anno']
 
         self.editAnnoLabel(annotatorOld, behaviourOld,
