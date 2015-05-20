@@ -301,6 +301,7 @@ class AnnoView(QtGui.QWidget):
     @cfg.logClassFunction
     def setPosition(self, key=None, idx=None, tempPositionOnly=False, 
                     metadata = None):
+        ts = time.time()
         if key is None:
             key = self.selKey
         if idx is None:
@@ -321,8 +322,9 @@ class AnnoView(QtGui.QWidget):
         self.updateGraphicView()
         # t2 = time.time()
 
-        # cfg.log.info("setting AnnoView positions in \n t1: {0} sec\n t2: {1} sec\n ex0: {2} sec\n ex1: {3} sec".format(
-        #     t1 - t0, t2 - t1, 0, 0))
+        # te = time.time()
+        # cfg.log.info("setting AnnoView positions in \n t1: {0} sec\n t2: {1} sec\n total: {2} sec\n ex1: {3} sec".format(
+        #     t1 - t0, t2 - t1, te-ts, 0))
 
 
     @cfg.logClassFunction
@@ -362,6 +364,8 @@ class AnnoView(QtGui.QWidget):
         if idx is None:
             idx = self.idx
 
+        # ts = time.time()
+
         cfg.log.debug("updateConfidenceList {0} \n [{1}]".format(key, idx))
         self.confidenceList = []
         # for first frame annotation within the range        
@@ -378,6 +382,8 @@ class AnnoView(QtGui.QWidget):
             for i in range(self.frameAmount):
                 self.confidenceList += [KeyIdxPair(None, None, [None])]
             return
+
+        # t0 = time.time()
 
         startIdx = None
         startKey = None
@@ -413,7 +419,7 @@ class AnnoView(QtGui.QWidget):
         ex0 = 0
         ex1 = 0
 
-        t0 = time.time()
+        # t1 = time.time()
 
         # prebuffer lengths as queries would sum up immensely inside the loop
         annoLengths = dict()
@@ -438,21 +444,25 @@ class AnnoView(QtGui.QWidget):
             rng[curKey].append(curIdx)
             curIdx += 1
 
-        # t1 = time.time()
+        # t2 = time.time()
         # s0 = 0
         # s1 = 0
+        # s2 = 0
 
         for curKey, indeces in sorted(rng.items()):
             slc = slice(min(indeces), max(indeces) + 1)
             # t11 = time.time()
             df = self.annotationDict[curKey].getFrame(slc)
+
             # t12 = time.time()
 
             if df is not None:
-                d = dict(df.transpose())
-                labelledFrameIdces = set(zip(*d.keys())[0])
+                labelledFrameIdces = df.index.levels[0]
             else:
                 labelledFrameIdces = []
+
+            # t13 = time.time()
+
             for curIdx in indeces:
                 if (self.addingAnno
                                 and (curKey in tempKeys)
@@ -470,13 +480,14 @@ class AnnoView(QtGui.QWidget):
 
                 self.confidenceList += [KeyIdxPair(curKey, curIdx, conf)]
 
-        #     t13 = time.time()
-        #     s0 += t12 - t11
-        #     s1 += t13 - t12
+            # t14 = time.time()
+            # s0 += t12 - t11
+            # s1 += t13 - t12
+            # s2 += t14 - t13
         #
-        # t2 = time.time()
-        # cfg.log.info("setting AnnoView positions in \n t1: {0} sec\n t2: {1} sec\n ex0: {2} sec\n ex1: {3} sec".format(
-        #     t1 - t0, t2- t1, s0, s1))
+        # t3 = time.time()
+        # cfg.log.info("setting AnnoView positions in \n t1: {0} sec\n t2: {1} sec\n ex0: {2} sec\n ex1: {3} sec\n ex2: {4} sec".format(
+        #     t2 - ts, t3 - t2, s0, s1, s2))
 
 #
 #         for i in range(self.frameAmount - len(self.confidenceList)):
