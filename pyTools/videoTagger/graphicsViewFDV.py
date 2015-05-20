@@ -448,7 +448,7 @@ class GraphicsViewFDV(QtGui.QWidget):
                                                '.',
                                                '*.npy')
 
-        fdvt = FDV.loadFDVT(fn[0])
+        fdvt = FDV.loadFDVT(os.path.dirname(fn[0]))
         self.addFDVT(fdvt)
 
     def resizeEvent(self, event):
