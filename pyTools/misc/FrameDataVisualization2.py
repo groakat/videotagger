@@ -1069,11 +1069,13 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             filtAnno = anno.filterFrameList(filterTuple,
                                             frameRange=frameSlc)
 
-            # make sure that every minute starts with frame 0
-            filtAnno.dataFrame.set_index(
-                filtAnno.dataFrame.index.set_levels(
-                    np.asarray(filtAnno.dataFrame.index.levels[0]) - frameOffset,
-                    level=0), inplace=True)
+            if not filtAnno.dataFrame.empty:
+                # make sure that every minute starts with frame 0
+                filtAnno.dataFrame.set_index(
+                    filtAnno.dataFrame.index.set_levels(
+                        np.asarray(filtAnno.dataFrame.index.levels[0]) -
+                        frameOffset,
+                        level=0), inplace=True)
 
             classID = self.getAnnotationFilterCode(filterTuple)
             cnt = filtAnno.countAnnotationsPerFrame()

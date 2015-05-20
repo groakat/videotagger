@@ -2187,6 +2187,8 @@ class VideoTagger(QtGui.QMainWindow):
 
         self.frameView.loadFDVT(self.fdvt)
 
+        self.frameView.show()
+
 
         frameNo = float(self.vh.getCurrentFrameNo())
 
