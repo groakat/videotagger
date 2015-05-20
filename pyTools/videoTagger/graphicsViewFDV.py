@@ -427,15 +427,22 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.setLayout(self.layout)
 
     def createNewFDVT(self):
+        fn = QtGui.QFileDialog.getOpenFileName(self,
+                                               "Select FDVT",
+                                               '.',
+                                               '*.csv')
         anno = A.Annotation()
-        anno.loadFromFile('/Volumes/Seagate Backup Plus Drive/peter_testCopy/WP609L_small.bhvr')
+        anno.loadFromFile(fn[0])
         annotationFilters = AS.AnnotationSelecter.getAnnotationSelection(self,
                                                                          anno)
 
         filteredAnno = anno.filterFrameListMultiple(annotationFilters,
                                                     exactMatch=False)
 
-        fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+        import tempfile
+        tmpDir = tempfile.mkdtemp()
+
+        fdvt = FDV.FrameDataVisualizationTreeBehaviour(tmpDir)
         fdvt.importAnnotation(filteredAnno, annoFilters=annotationFilters)
 
         self.addFDVT(fdvt)

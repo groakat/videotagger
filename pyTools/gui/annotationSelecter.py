@@ -1,6 +1,7 @@
 __author__ = 'peter'
 
 import pyTools.videoTagger.overlayDialog as OD
+import pyTools.videoProc.annotation as A
 
 from PySide import QtCore, QtGui
 import sys
@@ -136,7 +137,10 @@ class AnnotationSelecter(QtGui.QWidget):
         self.AnnotationFilterCheckboxes = []
         for af in self.filterTuples:
             alw = AnnotationFilterCheckbox()
-            alw.setAnnotationFilter(af)
+            annoFilter = A.AnnotationFilter(vials=None,
+                                            annotators=[af[0]],
+                                            behaviours=[af[1]])
+            alw.setAnnotationFilter(annoFilter)
             self.AnnotationFilterCheckboxes += [alw]
 
             self.annotationLayout.addWidget(alw)
