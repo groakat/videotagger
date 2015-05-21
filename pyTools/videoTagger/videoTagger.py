@@ -1623,38 +1623,51 @@ class VideoTagger(QtGui.QMainWindow):
         if annoDf is None:
             self.positionAnnotationRoi([])
         else:
-            self.tmpAnnotation.setDataframe(annoDf)
-
-
             rois = []
-            for i in range(len(self.annotations)):
-                filt = Annotation.AnnotationFilter(None,
-                                                [self.annotations[i]["annot"]],
-                                                [self.annotations[i]["behav"]])
-                tmpAnno  = self.tmpAnnotation.filterFrameList(
-                                        filt,
-                                        exactMatch=False)
 
-                if tmpAnno.dataFrame.empty:
+            # it is far faster to operate on a dictionary than to
+            # use pandas functions to retrieve the data, because
+            # annoDf is only a single frame and the pandas overhead is
+            # incredibly large
+            d = dict(annoDf.transpose())
+
+            for (frame, name, label), data in d.items():
+                search_successful = False
+                # mimic behaviour of self.tmpAnnotation.filterFrameList
+                # search for name
+                for i, anno in enumerate(self.annotations):
+                    if label == anno["behav"]:
+                        search_successful = True
+                        break
+                    elif label.startswith(anno['behav'] + '_'):
+                        search_successful = True
+                        break
+
+                if not search_successful:
+                    # happens straight after adding a new class?!
                     continue
 
-                # print tmpAnno.frameList[0][sv]
+                # data is a pandas DataSeries
+                data_dict = dict(data)
 
-                bb = Annotation.getPropertyFromFrameAnno(tmpAnno.dataFrame,
-                                                         "boundingBox")
-                lbls = tmpAnno.getExactBehaviours()
+                # doing the same as Annotation.getPropertyFromFrameAnno(tmpAnno.dataFrame,
+                #                                                       "boundingBox")
+                b = np.asarray([data_dict['boundingbox x1'],
+                                data_dict["boundingbox y1"],
+                                data_dict['boundingbox x2'],
+                                data_dict["boundingbox y2"]], dtype=np.float)
 
-                for b, l in zip(bb, lbls):
-                    # ensure that annotations without boundingbox do not mess up
-                    # anything
-                    if True in np.isnan(b):
-                        color = self.annotations[i]['color']
-                        self.addFullFrameAnnotationToDisplay(l, color)
-                        continue
+                # ensure that annotations without boundingbox do not mess up
+                # anything
+                if True in np.isnan(b):
+                    color = self.annotations[i]['color']
+                    self.addFullFrameAnnotationToDisplay(label, color)
+                    continue
 
-                    rois += [[b, self.annotations[i], l]]
+                rois += [[b, self.annotations[i], label]]
 
             self.positionAnnotationRoi(rois)
+
 
 
     def displayTrajectory(self, increment, selectedVial, offset=5):
@@ -1705,6 +1718,7 @@ class VideoTagger(QtGui.QMainWindow):
     @cfg.logClassFunction
     def showNextFrame(self, increment=None, checkBuffer=True):
         cfg.log.debug("---------------- increment {}".format(increment))
+        ts = time.time()
 
         self.displayingFullResolution = False
 
@@ -1731,6 +1745,8 @@ class VideoTagger(QtGui.QMainWindow):
         
         cfg.log.debug("increment: {0}, checkBuffer: {1}".format(increment, checkBuffer))
 
+        t0 = time.time()
+
         if increment >= 0:
             self.frames += [self.vh.getNextFrame(increment, doBufferCheck=checkBuffer,
                                                  unbuffered=False)]
@@ -1751,6 +1767,7 @@ class VideoTagger(QtGui.QMainWindow):
                 self.videoSizeSmallToFullMult = 1
                 self.videoSizeSmallToFullMultInit = True
 
+        t1 = time.time()
 
         frame = self.frames[0]
         anno = frame[2]
@@ -1758,10 +1775,15 @@ class VideoTagger(QtGui.QMainWindow):
 
         self.displayFrame(frame, sv)
 
+        t2 = time.time()
+
         if np.abs(increment) <= 10:
             self.displayAnnotationROIs(anno, sv)
 
+        t3 = time.time()
+
         self.displayTrajectory(increment, sv, offset)
+
 
         # showing previews #
         if np.abs(increment) <= 10:
@@ -1772,12 +1794,21 @@ class VideoTagger(QtGui.QMainWindow):
         frameNo = self.vh.getCurrentFrameNo()
         # self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
 
+
         self.updateHUD()
         if self.fullVideoDialog is not None:
             self.fullVideoDialog.graphicsView.viewport().update()
 
         if background is not None:
             self.updateBackground(background)
+
+
+        te = time.time()
+        cfg.log.debug("total time: {}\nt1: {}\nt2: {} \nt3: {} \nt4: {}".format(te - ts,
+                                                                       t1 - t0,
+                                                                       t2 - t1,
+                                                                       t3 - t2,
+                                                                       te - t3))
 
 
         
