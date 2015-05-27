@@ -622,7 +622,7 @@ def addAnnotation(df, frames, annotator, label, metadata=None):
     dataList[:, 0] = np.asarray(frames)
     dataList[:, 1:] = np.asarray([[annotator, label] + x['boundingBox'] +
                                   [x['confidence']]
-                                  for f, x in metadata.items()
+                                  for f, x in sorted(metadata.items())
                                   if f in frames])
 
 
