@@ -378,6 +378,8 @@ class VideoTagger(QtGui.QMainWindow):
 
         self.firstLoop = True
 
+        self.unsavedChanges = False
+
 
         self.exportSettings()
 
@@ -1795,6 +1797,8 @@ class VideoTagger(QtGui.QMainWindow):
         # self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
 
 
+        t4 = time.time()
+
         self.updateHUD()
         if self.fullVideoDialog is not None:
             self.fullVideoDialog.graphicsView.viewport().update()
@@ -2551,6 +2555,8 @@ class VideoTagger(QtGui.QMainWindow):
 
         self.exportSettings()
 
+        self.unsavedChanges = False
+
 
         
     def testFunction(self):
@@ -2829,6 +2835,8 @@ class VideoTagger(QtGui.QMainWindow):
                                 "behaviour": behaviour,
                                 "confidence": confidence}))
 
+        self.unsavedChanges = True
+
         if not self.annoIsOpen:
             self.confidence = confidence
             self.queryPreviews = []
@@ -2885,16 +2893,21 @@ class VideoTagger(QtGui.QMainWindow):
     def eraseAnno(self, annotator="peter", behaviour="just testing"):      
         cfg.logGUI.info(json.dumps({"annotator": annotator,
                                 "behaviour": behaviour}))
+
+        self.unsavedChanges = True
         self.vh.eraseAnnotation(self.getSelectedVial(), annotator, behaviour)
 
     def editAnnoROI(self, annotator, behaviour, newROI):
+        self.unsavedChanges = True
         self.editAnnoMeta(annotator, behaviour, "boundingBox", newROI)
 
     def editAnnoMeta(self, annotator, behaviour, newMetaKey, newMetaValue):
+        self.unsavedChanges = True
         self.vh.editAnnotationMetaCurrentFrame(self.getSelectedVial(), annotator,
                                     behaviour, newMetaKey, newMetaValue)
 
     def editAnnoLabel(self, annotatorOld, behaviourOld, annotatorNew, behaviourNew):
+        self.unsavedChanges = True
 
         cfg.log.info("--------- edit label ------------")
         self.vh.editAnnotationLabel(self.getSelectedVial(), annotatorOld,

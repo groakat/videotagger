@@ -334,6 +334,16 @@ class FullViewDialog(QtGui.QMainWindow):
             self.pluginView.hide()
             self.pluginButton.load(self.iconFolder + '/Magic_font_awesome.svg')
 
+    def closeEvent(self, event):
+        if self.parent().unsavedChanges:
+            ret = QtGui.QMessageBox.question(self, "Unsaved Changes", "Do you want to quit and loose unsaved changes?",
+                                QtGui.QMessageBox.Yes|QtGui.QMessageBox.No)
+            if ret:
+                event.accept()
+            else:
+                event.ignore
+        else:
+            event.accept()
 
 class FullViewGraphicsView(QtGui.QGraphicsView):
 
@@ -521,6 +531,7 @@ class BookmarkListModel(QtGui.QStandardItemModel):
 
             for d in raw:
                 self.addItem(d['name'], d['key'], d['idx'])
+
 
 class PluginView(QtGui.QWidget):
     def __init__(self, fullViewDialog, videoTagger, baseClass, *args, **kwargs):
