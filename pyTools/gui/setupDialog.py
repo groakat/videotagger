@@ -5,6 +5,9 @@ import sys
 import os
 import numpy as np
 import json
+import pyTools.misc.config as cfg
+import pyTools.videoTagger.modifyableRect as MR
+import pyTools.videoProc.annotation as A
 
 
 class Test(QtGui.QMainWindow):
@@ -32,12 +35,255 @@ class MouseFilterObj(QtCore.QObject):
         if event.type() == QtCore.QEvent.Type.MouseButtonRelease:
             self.callback()
 
+        return False
+
+
+class AnnotationSelector(QtGui.QScrollArea):
+    def __init__(self, scanLabelFileCb,
+                 annotator=None,
+                 anno=None,
+                 annotationSettingsList=None, *args, **kwargs):
+        super(AnnotationSelector, self).__init__(*args, **kwargs)
+
+        self.anno = anno
+        self.annotators = []
+        self.labels = []
+        self.scanLabelFileCb = scanLabelFileCb
+        self.classColor = dict()
+        self.eventFilters = dict()
+
+        self.annoLayout = QtGui.QGridLayout()
+
+        self.setAnnotator(annotator)
+        self.createAnnotationSelector(annotationSettingsList)
+
+    def getUserSelection(self):
+        selections = []
+        for i in range(1, self.annoLayout.rowCount() - 1):
+            anno = self.annoLayout.itemAtPosition(i, 0).widget().text()
+            lbl = self.annoLayout.itemAtPosition(i, 1).widget().text()
+            clr = self.classColor[self.annoLayout.itemAtPosition(i, 2)
+                                                 .widget()]
+
+            selections += [[anno, lbl, clr]]
+
+        return selections
+
+
+    def setAnnotationLabelSelection(self, annotators, labels):
+        for i in range(1, self.annoLayout.rowCount() - 1):
+            self.annoLayout.itemAtPosition(i, 0).widget().setModel(annotators)
+            self.annoLayout.itemAtPosition(i, 1).widget().setModel(labels)
+
+    def scanLabelFile(self):
+        if self.anno is not None:
+            annotationFilters = self.anno.extractAllFilterTuples()
+            self.annotators = sorted(set(zip(*annotationFilters)[0]) - \
+                         {'automatic placeholder'} | \
+                         {self.annotator})
+            self.labels = sorted(set(zip(*annotationFilters)[1]))
+        else:
+            self.annotators = [self.annotator]
+            self.labels = []
+
+        self.setAnnotationLabelSelection(self.annotators, self.labels)
+
+    def setAnnotationFile(self, filename):
+        try:
+            self.anno = A.Annotation()
+            self.anno.loadFromFile(filename)
+        except IOError:
+            self.anno = None
+
+    def setAnnotator(self, annotator=None):
+        if annotator is None:
+            annotator = ''
+
+        self.annotator = annotator
+
+        self.annotators = sorted(set(self.annotators) | {annotator})
+        self.setAnnotationLabelSelection(self.annotators, self.labels)
+
+
+    def getColorFromUser(self, lbl):
+        color = QtGui.QColorDialog.getColor()
+        self.setLabelColor(lbl, color)
+
+    def setLabelColor(self, label, color):
+        colourStyle = "background-color: {0}".format(color.name())
+        label.setStyleSheet(colourStyle)
+        self.classColor[label] = color
+
+    def createColorSelector(self, color):
+        lbl = QtGui.QLabel()
+        lbl.setText("        ")
+        self.setLabelColor(lbl, color)
+
+        fp = lambda : self.getColorFromUser(lbl)
+
+        self.eventFilters[lbl] = MouseFilterObj(fp)
+        lbl.installEventFilter(self.eventFilters[lbl])
+
+        return lbl
+
+    def populateNewAnnotationGrid(self, itemsToKeep):
+        cfg.log.info("itemsToKeep: {}".format(itemsToKeep))
+        gridLayout = QtGui.QGridLayout()
+
+        for i, widgets in enumerate(itemsToKeep):
+            for k, widget in enumerate(widgets):
+                if widget is not None:
+                    gridLayout.addWidget(widget, i, k)
+
+        # self.annoLayout.deleteLater()
+        self.annoLayout = gridLayout
+        self.annoSelector.setLayout(self.annoLayout)
+
+        return True
+
+
+    def deleteAnnotationLine(self, le_anno, le_bhvr, clr, pb_del):
+        delRow = 0
+        itemsToKeep = []
+        for i in range(1, self.annoLayout.rowCount() - 1):
+            if self.annoLayout.itemAtPosition(i, 0).widget() == le_anno:
+                delRow = i
+            else:
+                widgets = []
+                for k in range(4):
+                    w = self.annoLayout.itemAtPosition(i, k).widget()
+                    self.annoLayout.removeWidget(w)
+                    if k == 0:
+                        widgets += [w.text()]
+                    if k == 1:
+                        widgets += [w.text()]
+                    if k == 2:
+                        widgets += [self.classColor[w]]
+
+
+                itemsToKeep += [widgets]
+
+        self.annoLayout.removeWidget(self.annoLayout.itemAtPosition(self.annoLayout.rowCount()-1,
+                                                                    3).widget())
+
+        self.annoLayout.removeWidget(le_anno)
+        self.annoLayout.removeWidget(le_bhvr)
+        self.annoLayout.removeWidget(clr)
+        self.annoLayout.removeWidget(pb_del)
+
+        le_anno.deleteLater()
+        le_bhvr.deleteLater()
+        clr.deleteLater()
+        pb_del.deleteLater()
+
+        self.annoLayout.deleteLater()
+        self.takeWidget()
+
+        self.createAnnotationSelector(annotationSettingsList=itemsToKeep)
+
+        return True
+
+
+
+    def createNewAnnotationLine(self, annotator=None,
+                                behaviour=None,
+                                color=None):
+        if annotator is None:
+            annotator = self.annotator
+
+        if behaviour is None:
+            behaviour = ''
+
+        if color is None:
+            c = QtGui.QColor(np.random.randint(0, 256),
+                             np.random.randint(0, 256),
+                             np.random.randint(0, 256))
+        else:
+            c = QtGui.QColor(color)
+
+        le_anno = MR.AutoCompleteComboBox(self)
+        le_anno.setModel(self.annotators)
+        le_anno.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
+                              QtGui.QSizePolicy.Minimum)
+        # le_anno.setText(annotator)
+        le_bhvr = MR.AutoCompleteComboBox(self)
+        # le_bhvr.setText(behaviour)
+        le_bhvr.setModel(self.labels)
+        le_bhvr.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
+                              QtGui.QSizePolicy.Minimum)
+        clr = self.createColorSelector(c)
+        pb_del = QtGui.QPushButton()
+        pb_del.setText("remove")
+        fp = lambda: self.deleteAnnotationLine(le_anno,
+                                                le_bhvr,
+                                                clr,
+                                                pb_del)
+        pb_del.clicked.connect(fp)
+
+
+        cnt = self.annoLayout.rowCount() - 1
+        self.annoLayout.removeWidget(self.pb_newAnnotationLine)
+        self.annoLayout.addWidget(le_anno, cnt , 0, 1, 1)
+        self.annoLayout.addWidget(le_bhvr, cnt , 1, 1, 1)
+        self.annoLayout.addWidget(clr, cnt , 2, 1, 1)
+        self.annoLayout.addWidget(pb_del, cnt , 3, 1, 1)
+
+        self.annoLayout.addWidget(self.pb_newAnnotationLine, cnt + 1, 3)
+
+        return True
+
+
+    def createAnnotationSelector(self, annotationSettingsList=None):
+        widget = QtGui.QWidget()
+
+        self.setWidget(widget)
+        self.setWidgetResizable(True)
+
+        self.annoLayout = QtGui.QGridLayout()
+
+        annoTitle =  QtGui.QLabel()
+        annoTitle.setText("Annotator")
+        bhvrTitle =  QtGui.QLabel()
+        bhvrTitle.setText("Class")
+        colorTitle = QtGui.QLabel()
+        colorTitle.setText("Color")
+        pb_scan = QtGui.QPushButton()
+        pb_scan.setText("Scan")
+
+        pb_scan.clicked.connect(self.scanLabelFile)
+
+        self.annoLayout.addWidget(annoTitle, 0, 0)
+        self.annoLayout.addWidget(bhvrTitle, 0, 1)
+        self.annoLayout.addWidget(colorTitle, 0, 2)
+        self.annoLayout.addWidget(pb_scan, 0, 3)
+
+        self.pb_newAnnotationLine = QtGui.QPushButton()
+        self.pb_newAnnotationLine.setText("+")
+
+        self.annoLayout.addWidget(self.pb_newAnnotationLine, 1, 3)
+        self.pb_newAnnotationLine.clicked.connect(self.createNewAnnotationLine)
+
+
+        if annotationSettingsList is not None:
+            for annotator, behaviour, color in annotationSettingsList:
+                self.createNewAnnotationLine(annotator, behaviour, color)
+
+
+        widget.setLayout(self.annoLayout)
+
+        self.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
+                                 QtGui.QSizePolicy.MinimumExpanding)
+
+        return self
+
+
+
 class SetupDialog(QtGui.QWidget):
     def __init__(self, videoTagger=None, *args, **kwargs):
         super(SetupDialog, self).__init__(*args, **kwargs)
-
-        self.classColor = dict()
-        self.eventFilter = dict()
+        #
+        # self.classColor = dict()
+        # self.eventFilter = dict()
         self.videoTagger = videoTagger
         self.setupWidget()
         self.show()
@@ -118,6 +364,7 @@ class SetupDialog(QtGui.QWidget):
         self.loadWidget(self.filesWidget)
 
     def openAnnotationWidget(self):
+        self.updateAnnotationSelector()
         self.deactivateFileWidgetButton()
         self.activateAnnotationButton()
         self.deactivateCroppedButton()
@@ -197,168 +444,6 @@ class SetupDialog(QtGui.QWidget):
 
         return widget
 
-    def getColorFromUser(self, lbl):
-        color = QtGui.QColorDialog.getColor()
-        self.setLabelColor(lbl, color)
-
-    def setLabelColor(self, label, color):
-        colourStyle = "background-color: {0}".format(color.name())
-        label.setStyleSheet(colourStyle)
-        self.classColor[label] = color
-
-    def createColorSelector(self, color):
-        lbl = QtGui.QLabel()
-        lbl.setText("        ")
-        self.setLabelColor(lbl, color)
-
-        fp = lambda : self.getColorFromUser(lbl)
-
-        self.eventFilter[lbl] = MouseFilterObj(fp)
-        lbl.installEventFilter(self.eventFilter[lbl])
-
-        return lbl
-
-    # def pushAnnotationLineUp(self, idx):
-    #     le_anno = self.annoLayout.itemAtPosition(idx, 0).widget()
-    #     le_bhvr = self.annoLayout.itemAtPosition(idx, 1).widget()
-    #     clr = self.annoLayout.itemAtPosition(idx, 2).widget()
-    #     pb_del = self.annoLayout.itemAtPosition(idx, 3).widget()
-    #     self.annoLayout.removeWidget(le_anno)
-    #     self.annoLayout.removeWidget(le_bhvr)
-    #     self.annoLayout.removeWidget(clr)
-    #     self.annoLayout.removeWidget(pb_del)
-    #
-    #     self.annoLayout.addWidget(le_anno, idx-1 , 0, 1, 1)
-    #     self.annoLayout.addWidget(le_bhvr, idx-1 , 1, 1, 1)
-    #     self.annoLayout.addWidget(clr, idx-1 , 2, 1, 1)
-    #     self.annoLayout.addWidget(pb_del, idx-1 , 3, 1, 1)
-
-    def populateNewAnnotationGrid(self, itemsToKeep):
-        gridLayout = QtGui.QGridLayout()
-
-        for i, widgets in enumerate(itemsToKeep):
-            for k, widget in enumerate(widgets):
-                if widget is not None:
-                    gridLayout.addWidget(widget, i, k)
-
-        self.annoLayout = gridLayout
-        self.annoSelector.setLayout(self.annoLayout)
-
-
-    def deleteAnnotationLine(self, le_anno, le_bhvr, clr, pb_del):
-        delRow = 0
-        itemsToKeep = []
-        for i in range(self.annoLayout.rowCount() -1):
-            if self.annoLayout.itemAtPosition(i, 0).widget() == le_anno:
-                delRow = i
-            else:
-                widgets = []
-                for k in range(4):
-                    widgets += [self.annoLayout.itemAtPosition(i, k).widget()]
-
-                itemsToKeep += [widgets]
-
-        itemsToKeep += [[None, None, None, self.pb_newAnnotationLine]]
-
-        le_anno.hide()
-        le_bhvr.hide()
-        clr.hide()
-        pb_del.hide()
-        self.annoLayout.removeWidget(le_anno)
-        self.annoLayout.removeWidget(le_bhvr)
-        self.annoLayout.removeWidget(clr)
-        self.annoLayout.removeWidget(pb_del)
-
-        self.populateNewAnnotationGrid(itemsToKeep)
-
-        #
-        # for k in range(i + 1, self.annoLayout.rowCount()-1):
-        #     self.pushAnnotationLineUp(k)
-
-
-
-    def createNewAnnotationLine(self, annotator=None,
-                                behaviour=None,
-                                color=None):
-        if annotator is None:
-            annotator = self.le_annotatorName.text()
-
-        if behaviour is None:
-            behaviour = ''
-
-        if color is None:
-            c = QtGui.QColor(np.random.randint(0, 256),
-                             np.random.randint(0, 256),
-                             np.random.randint(0, 256))
-        else:
-            c = QtGui.QColor(color)
-
-        le_anno = QtGui.QLineEdit()
-        le_anno.setText(annotator)
-        le_bhvr = QtGui.QLineEdit()
-        le_bhvr.setText(behaviour)
-        clr = self.createColorSelector(c)
-        pb_del = QtGui.QPushButton()
-        pb_del.setText("remove")
-        fp = lambda : self.deleteAnnotationLine(le_anno,
-                                                le_bhvr,
-                                                clr,
-                                                pb_del)
-        pb_del.clicked.connect(fp)
-
-
-        cnt = self.annoLayout.rowCount() - 1
-        self.annoLayout.removeWidget(self.pb_newAnnotationLine)
-        self.annoLayout.addWidget(le_anno, cnt , 0, 1, 1)
-        self.annoLayout.addWidget(le_bhvr, cnt , 1, 1, 1)
-        self.annoLayout.addWidget(clr, cnt , 2, 1, 1)
-        self.annoLayout.addWidget(pb_del, cnt , 3, 1, 1)
-
-        self.annoLayout.addWidget(self.pb_newAnnotationLine, cnt + 1, 3)
-
-
-    def createAnnotationSelector(self, annotationFilters=None):
-        widget = QtGui.QWidget()
-        scrollArea = QtGui.QScrollArea()
-        scrollArea.setWidget(widget)
-        scrollArea.setWidgetResizable(True)
-
-        self.annoLayout = QtGui.QGridLayout()
-
-        annoTitle = QtGui.QLabel()
-        annoTitle.setText("Annotator")
-        bhvrTitle = QtGui.QLabel()
-        bhvrTitle.setText("Class")
-        colorTitle = QtGui.QLabel()
-        colorTitle.setText("Color")
-        pb_scan = QtGui.QPushButton()
-        pb_scan.setText("Scan")
-
-        self.annoLayout.addWidget(annoTitle, 0, 0)
-        self.annoLayout.addWidget(bhvrTitle, 0, 1)
-        self.annoLayout.addWidget(colorTitle, 0, 2)
-        self.annoLayout.addWidget(pb_scan, 0, 3)
-
-        self.pb_newAnnotationLine = QtGui.QPushButton()
-        self.pb_newAnnotationLine.setText("+")
-
-        self.annoLayout.addWidget(self.pb_newAnnotationLine, 1, 3)
-        self.pb_newAnnotationLine.clicked.connect(self.createNewAnnotationLine)
-
-
-        # if annotationFilters is not None:
-        #     self.createNewAnnotationLine()
-
-
-        widget.setLayout(self.annoLayout)
-
-        scrollArea.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
-                                 QtGui.QSizePolicy.MinimumExpanding)
-
-        return scrollArea
-
-
-
     def createAnnotationWidget(self):
         widget = QtGui.QWidget()
         outerLayout = QtGui.QGridLayout()
@@ -370,7 +455,7 @@ class SetupDialog(QtGui.QWidget):
         outerLayout.addWidget(self.lbl_annotatorName, 0, 0)
         outerLayout.addWidget(self.le_annotatorName, 0, 1)
 
-        self.annoSelector = self.createAnnotationSelector()
+        self.annoSelector = AnnotationSelector(self.le_annotatorName.text())
         outerLayout.addWidget(self.annoSelector, 1, 0, 1, 2)
 
         self.lbl_FDV = QtGui.QLabel()
@@ -565,6 +650,15 @@ class SetupDialog(QtGui.QWidget):
 
         self.connectSignals()
 
+    def updateAnnotationSelector(self):
+        self.annoSelector.setAnnotator(self.le_annotatorName.text())
+        annotationFilename = os.path.join(self.le_videoPath.text(),
+                                          '.'.join(self.cb_videoSelection
+                                                       .currentText()
+                                                       .split('.')[:-1])) \
+                             + '.csv'
+
+        self.annoSelector.setAnnotationFile(annotationFilename)
 
     def setFormValues(self,
                              path,
@@ -598,6 +692,7 @@ class SetupDialog(QtGui.QWidget):
         self.cb_videoSelection.addItems(fileListRel)
 
         self.le_annotatorName.setText(annotator)
+        self.annoSelector.setAnnotator(annotator)
         self.le_videoPath.setText(path)
         self.le_bhvrFolder.setText(bhvrFolder)
         self.le_bhvrCache.setText(videoListPathRel)
@@ -614,6 +709,8 @@ class SetupDialog(QtGui.QWidget):
         self.le_startFrame.setText(str(getCurrentKey_idx[1]))
         self.cb_croppedVideo.setChecked(croppedVideo)
         self.le_maxAnnotationSpeed.setText(str(maxAnnotationSpeed))
+
+        self.updateAnnotationSelector()
 
     def getFormValues(self):
         path = self.le_videoPath.text()

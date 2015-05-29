@@ -33,7 +33,7 @@ class Test(QtGui.QMainWindow):
 
 
         self.le = AutoCompleteComboBox(self.centralwidget)
-        self.le.setGeometry(QtCore.QRect(100, 500, 94, 69))
+        self.le.setGeometry(QtCore.QRect(100, 500, 150, 20))
         self.le.setModel(['ok', 'computer', 'mutter', 'nothin'])
 
 
@@ -189,7 +189,7 @@ class AutoCompleteComboBox(QtGui.QComboBox):
         self.comp.setModel(self.model())
 
     def focusInEvent(self, event):
-        self.clearEditText()
+        # self.clearEditText()
         super(AutoCompleteComboBox, self).focusInEvent(event)
 
     def keyPressEvent(self, event):

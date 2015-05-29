@@ -11,6 +11,10 @@ class MouseFilterObj(QtCore.QObject):
         
     @cfg.logClassFunction
     def eventFilter(self, obj, event):
+        if not isinstance(event, QtCore.QEvent):
+            cfg.log.warn("event is not actually an event!!!".format(event))
+            return True
+
         cfg.log.debug("mouse event!!!!!!!!!!!!!! {0}".format(event.type()))
         if event.type() == QtCore.QEvent.Type.GraphicsSceneMousePress:
             if event.button() == QtCore.Qt.RightButton:

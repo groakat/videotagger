@@ -15,7 +15,7 @@ class Annotation():
             self.dataFrame = None
         else:
             self.dataFrame = pd.DataFrame(data=[[frameNo,
-                                                 'automcatic placeholder',
+                                                 'automatic placeholder',
                                                  'video length',
                                                  None, None, None, None,
                                                  None]],
@@ -157,7 +157,7 @@ class Annotation():
             df = filterDataframe(self.dataFrame,
                                    frames=frameRange,
                                    annotator=[filterTuple.annotators[0],
-                                              "automcatic placeholder"],
+                                              "automatic placeholder"],
                                    label=[filterTuple.behaviours[0],
                                           'video length'],
                                    exact_match=exactMatch,
@@ -181,7 +181,7 @@ class Annotation():
                                frames=frameRange,
                                annotator=[ft.annotators[0]
                                           for ft in filterTuples] +
-                                             ["automcatic placeholder"],
+                                             ["automatic placeholder"],
                                label=[ft.behaviours[0] for ft in filterTuples] +
                                      ['video length'],
                                exact_match=exactMatch)
@@ -210,9 +210,9 @@ class Annotation():
                                frames=frameRange,
                                annotator=[ft.annotators[0]
                                           for ft in filterTuples] +
-                                             ["automcatic placeholder"],
+                                             ["automatic placeholder"],
                                label=[ft.behaviours[0] for ft in filterTuples] +
-                                             ["automcatic placeholder"],
+                                             ["automatic placeholder"],
                                exact_match=exactMatch)
         except ValueError:
             out = Annotation(frameNo=self.getLength())
@@ -460,7 +460,7 @@ def convertFrameListToDataframe(frameList):
 
 
     # add one empty row to mark the length of the video
-    dataList += [[len(frameList), 'automcatic placeholder', 'video length',
+    dataList += [[len(frameList), 'automatic placeholder', 'video length',
                   None, None, None, None, None]]
 
     df = pd.DataFrame(data=dataList, columns=['frame', 'annotator', 'label',
