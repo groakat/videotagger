@@ -599,12 +599,18 @@ class VideoTagger(QtGui.QMainWindow):
         self.setupDialog = SD.SetupDialog(videoTagger=self)
         self.setCentralWidget(self.setupDialog)
 
+        try:
+            annotationSelection = [[x['annot'], x['behav'], x['color']]
+                                   for x in self.annotations]
+        except AttributeError:
+            annotationSelection = []
+
         self.setupDialog.setFormValues(
                              path=self.path,
                              videoListPathRel='',
                              fileListRel=[],
                              annotator='',
-                             annotationFilters=[],
+                             annotationFilters=annotationSelection,
                              bhvrFolder="bhvr",
                              selectedVial=None,
                              patchesFolder="patches",
@@ -629,11 +635,17 @@ class VideoTagger(QtGui.QMainWindow):
 
         self.fileList = self.getAbsolutePaths(self.fileListRel)
 
+        try:
+            annotationSelection = [[x['annot'], x['behav'], x['color']]
+                                   for x in self.annotations]
+        except AttributeError:
+            annotationSelection = []
+
         self.setupDialog.setFormValues(self.path,
                                          self.videoListPathRel,
                                          self.fileListRel,
                                          self.annotator,
-                                         [],#self.annotationFilters,
+                                         annotationSelection,
                                          self.bhvrFolder,
                                          self.selectedVial,
                                          self.patchesFolder,
@@ -662,7 +674,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.bufferLength,       \
         self.startVideoName,     \
         self.startFrame,         \
-        self.maxAnnotationSpeed = self.setupDialog.getFormValues()
+        self.maxAnnotationSpeed, \
+        annotationSelections = self.setupDialog.getFormValues()
 
         if not self.videoListPath:
             self.videoListPath = None
@@ -690,10 +703,17 @@ class VideoTagger(QtGui.QMainWindow):
         except AttributeError:
             self.serverAddress = "tcp://127.0.0.1:4242"
 
-        try:
-            self.annotations = self.annotations
-        except AttributeError:
+        # try:
             self.annotations = []
+
+            for annot, behav, color in annotationSelections:
+                self.annotations += [{"annot": annot,
+                                      "behav": behav,
+                                      "color": color}]
+
+            # self.annotations
+        # except AttributeError:
+        #     self.annotations = []
 			
         if self.setupDialog.cb_videoSelection.count() == 0:
             self.loadVideoList()
@@ -866,9 +886,9 @@ class VideoTagger(QtGui.QMainWindow):
         
         # AnnoView
         av = AV.AnnoView(self, w, vialNo=self.getSelectedVial(), 
-                                       annotator=[self.annotations[idx]["annot"]], 
-                                       behaviourName=[self.annotations[idx]["behav"]], 
-                                       color = self.annotations[idx]["color"], 
+                                       annotator=[self.annotations[idx]["annot"]],
+                                       behaviourName=[self.annotations[idx]["behav"]],
+                                       color = self.annotations[idx]["color"],
                                        geo=QtCore.QRect(10, 5, width, 
                                                        height))        
         av.show()

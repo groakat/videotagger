@@ -36,6 +36,8 @@ class Test(QtGui.QMainWindow):
         self.le.setGeometry(QtCore.QRect(100, 500, 150, 20))
         self.le.setModel(['ok', 'computer', 'mutter', 'nothin'])
 
+        self.le.setCurrentText('something completely different')
+
 
 
 
@@ -175,6 +177,7 @@ class AutoCompleteComboBox(QtGui.QComboBox):
     def __init__(self, *args, **kwargs):
         super(AutoCompleteComboBox, self).__init__(*args, **kwargs)
 
+        self.stringList = []
         self.setEditable(True)
         self.setInsertPolicy(self.NoInsert)
 
@@ -185,8 +188,17 @@ class AutoCompleteComboBox(QtGui.QComboBox):
 
     def setModel(self, strList):
         self.clear()
+        self.stringList = strList
         self.insertItems(0, strList)
         self.comp.setModel(self.model())
+
+    def setCurrentText(self, s):
+        idx = self.findText(s)
+        if idx == -1:
+            self.setModel(self.stringList + [s])
+            idx = self.findText(s)
+
+        self.setCurrentIndex(idx)
 
     def focusInEvent(self, event):
         # self.clearEditText()

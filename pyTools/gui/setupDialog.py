@@ -42,7 +42,8 @@ class AnnotationSelector(QtGui.QScrollArea):
     def __init__(self, scanLabelFileCb,
                  annotator=None,
                  anno=None,
-                 annotationSettingsList=None, *args, **kwargs):
+                 annotationSettingsList=None,
+                 *args, **kwargs):
         super(AnnotationSelector, self).__init__(*args, **kwargs)
 
         self.anno = anno
@@ -60,14 +61,21 @@ class AnnotationSelector(QtGui.QScrollArea):
     def getUserSelection(self):
         selections = []
         for i in range(1, self.annoLayout.rowCount() - 1):
-            anno = self.annoLayout.itemAtPosition(i, 0).widget().text()
-            lbl = self.annoLayout.itemAtPosition(i, 1).widget().text()
+            anno = self.annoLayout.itemAtPosition(i, 0).widget().currentText()
+            lbl = self.annoLayout.itemAtPosition(i, 1).widget().currentText()
             clr = self.classColor[self.annoLayout.itemAtPosition(i, 2)
                                                  .widget()]
 
             selections += [[anno, lbl, clr]]
 
         return selections
+
+    def setUserSelection(self, selections):
+        # self.deleteAllAnnotationLines()
+        #
+        # for anno, lbl, color in selections:
+        #     self.createNewAnnotationLine(anno, lbl, color)
+        self.createAnnotationSelector(annotationSettingsList=selections)
 
 
     def setAnnotationLabelSelection(self, annotators, labels):
@@ -141,6 +149,14 @@ class AnnotationSelector(QtGui.QScrollArea):
 
         return True
 
+    # def deleteAllAnnotationLines(self):
+    #     for i in range(self.annoLayout.rowCount() - 1, 0, -1):
+    #         self.deleteAnnotationLine(
+    #             self.annoLayout.itemAtPosition(i, 0).widget(),
+    #             self.annoLayout.itemAtPosition(i, 1).widget(),
+    #             self.annoLayout.itemAtPosition(i, 2).widget(),
+    #             self.annoLayout.itemAtPosition(i, 3).widget())
+
 
     def deleteAnnotationLine(self, le_anno, le_bhvr, clr, pb_del):
         delRow = 0
@@ -154,9 +170,9 @@ class AnnotationSelector(QtGui.QScrollArea):
                     w = self.annoLayout.itemAtPosition(i, k).widget()
                     self.annoLayout.removeWidget(w)
                     if k == 0:
-                        widgets += [w.text()]
+                        widgets += [w.currentText()]
                     if k == 1:
-                        widgets += [w.text()]
+                        widgets += [w.currentText()]
                     if k == 2:
                         widgets += [self.classColor[w]]
 
@@ -205,10 +221,10 @@ class AnnotationSelector(QtGui.QScrollArea):
         le_anno.setModel(self.annotators)
         le_anno.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
                               QtGui.QSizePolicy.Minimum)
-        # le_anno.setText(annotator)
+        le_anno.setCurrentText(annotator)
         le_bhvr = MR.AutoCompleteComboBox(self)
-        # le_bhvr.setText(behaviour)
         le_bhvr.setModel(self.labels)
+        le_bhvr.setCurrentText(behaviour)
         le_bhvr.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
                               QtGui.QSizePolicy.Minimum)
         clr = self.createColorSelector(c)
@@ -650,7 +666,7 @@ class SetupDialog(QtGui.QWidget):
 
         self.connectSignals()
 
-    def updateAnnotationSelector(self):
+    def updateAnnotationSelector(self, annotationFilters=None):
         self.annoSelector.setAnnotator(self.le_annotatorName.text())
         annotationFilename = os.path.join(self.le_videoPath.text(),
                                           '.'.join(self.cb_videoSelection
@@ -659,6 +675,9 @@ class SetupDialog(QtGui.QWidget):
                              + '.csv'
 
         self.annoSelector.setAnnotationFile(annotationFilename)
+
+        if annotationFilters is not None:
+            self.annoSelector.setUserSelection(annotationFilters)
 
     def setFormValues(self,
                              path,
@@ -710,7 +729,7 @@ class SetupDialog(QtGui.QWidget):
         self.cb_croppedVideo.setChecked(croppedVideo)
         self.le_maxAnnotationSpeed.setText(str(maxAnnotationSpeed))
 
-        self.updateAnnotationSelector()
+        self.updateAnnotationSelector(annotationFilters)
 
     def getFormValues(self):
         path = self.le_videoPath.text()
@@ -738,6 +757,8 @@ class SetupDialog(QtGui.QWidget):
         startFrame = int(self.le_startFrame.text())
         maxAnnotationSpeed = int(self.le_maxAnnotationSpeed.text())
 
+        annotationsSelections = self.annoSelector.getUserSelection()
+
         return  path,               \
                 annotator,          \
                 selectedVial,       \
@@ -752,7 +773,8 @@ class SetupDialog(QtGui.QWidget):
                 bufferLength,       \
                 startVideoName,     \
                 startFrame,         \
-                maxAnnotationSpeed
+                maxAnnotationSpeed, \
+                annotationsSelections
 
     def launchVideoTagger(self):
         self.videoTagger.submitForm()
