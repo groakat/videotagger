@@ -6,6 +6,8 @@ import pyTools.misc.FrameDataVisualization2 as FDV
 import pyTools.gui.annotationSelecter as AS
 import pyTools.videoProc.annotation as A
 import pyTools.gui.fullViewDialog as FVD
+import pyTools.gui.setupDialog as SD
+import pyTools.videoTagger.overlayDialog as OD
 
 import sys
 import os
@@ -110,6 +112,7 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         self.fdvt = None
         self.fdvts = []
+        self.colors = []
         self.fdvtButtonDict = {}
 
         self.day = None
@@ -210,7 +213,7 @@ class GraphicsViewFDV(QtGui.QWidget):
                             QtGui.QBrush(QtGui.QColor(0, 0, 0))]
             # self.colors  = ['r', 'y', 'b', 'g', 'orange', 'black']
         else:
-            # self.colors = colors
+            self.colors = colors
             self.brushes = []
             for c in colors:
                 print c, '-------------------------------------------'
@@ -299,12 +302,12 @@ class GraphicsViewFDV(QtGui.QWidget):
         return s[:-1]
 
 
-    def addFDVTtoButtonList(self, fdvt):
+    def addFDVTtoButtonList(self, fdvt, colors=None):
         descString = self.filterListToString(fdvt)
         button = QtGui.QPushButton()
         button.setText(descString)
         button.setToolTip(descString)
-        fp = lambda : self.loadFDVT(fdvt)
+        fp = lambda : self.loadFDVT(fdvt, list(colors))
         button.clicked.connect(fp)
 
 
@@ -345,16 +348,34 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         fdvt.save(fn[0])
 
-    def addFDVT(self, fdvt):
+    def addFDVT(self, fdvt, colors=None):
         self.fdvts += [fdvt]
-        self.addFDVTtoButtonList(fdvt)
+        self.colors += [colors]
+        self.addFDVTtoButtonList(fdvt, colors)
 
-    def loadFDVT(self, fdvt):
+    def loadFDVT(self, fdvt, colors=None):
+        ts = time.time()
         self.initDataPlots()
+        t1 = time.time()
         self.fdvt = fdvt
-        self.createLegend()
+        t2 = time.time()
         self.createFDVTTemplate()
+        t3 = time.time()
+        self.setColors(colors, reload=False)
+        t4 = time.time()
+        self.createLegend()
+        t5 = time.time()
         self.updateDisplay(useCurrentPos=True)
+        te = time.time()
+        cfg.log.info('t1: {}\nt2: {}\nt3: {}\nt4: {}\nt5: {}\nt6: {}\ntotal: {}\n'.format(
+                t1 - ts,
+                t2 - t1,
+                t3 - t2,
+                t4 - t3,
+                t5 - t4,
+                te - t5,
+                te - ts
+        ))
 
     def loadSequence(self, fdvtPath):
         # fdvt = FDV.FrameDataVisualizationTreeBehaviour()
@@ -388,15 +409,15 @@ class GraphicsViewFDV(QtGui.QWidget):
 
 
         self.buttonLayout = QtGui.QHBoxLayout()
-        self.pb_savePlot = QtGui.QPushButton()
-        self.pb_savePlot.setText("save plot")
+        self.pb_savePlot = QtGui.QPushButton(self)
+        self.pb_savePlot.setText("save\n plot")
         self.pb_savePlot.clicked.connect(lambda : self.exportToPDF(r'/Volumes/Seagate Backup Plus Drive/tmp/test.pdf'))
 
-        self.pb_newFDVT = QtGui.QPushButton()
+        self.pb_newFDVT = QtGui.QPushButton(self)
         self.pb_newFDVT.setText("new from\n annotation")
         self.pb_newFDVT.clicked.connect(self.createNewFDVT)
 
-        self.pb_loadFDVT = QtGui.QPushButton()
+        self.pb_loadFDVT = QtGui.QPushButton(self)
         self.pb_loadFDVT.setText("load from\n file")
         self.pb_loadFDVT.clicked.connect(self.loadNewFDVT)
 
@@ -433,8 +454,24 @@ class GraphicsViewFDV(QtGui.QWidget):
                                                '*.csv')
         anno = A.Annotation()
         anno.loadFromFile(fn[0])
-        annotationFilters = AS.AnnotationSelecter.getAnnotationSelection(self,
-                                                                         anno)
+        # filterTuples = anno.extractAllFilterTuples()
+
+        annotationSelector = SD.AnnotationSelector()
+        annotationSelector.setAnnotationFile(fn[0])
+        OD.OverlayDialogWidgetBase.getUserInput(self, annotationSelector)
+
+
+        # annotationFilters = AS.AnnotationSelecter.getAnnotationSelection(self,
+        #                                                                  anno)
+
+        annotationSelection = annotationSelector.getUserSelection()
+        annotationFilters = []
+        colors = []
+        for a, b, c in annotationSelection:
+            annotationFilters += [A.AnnotationFilter(None,
+                                                     [a],
+                                                     [b])]
+            colors += [c]
 
         filteredAnno = anno.filterFrameListMultiple(annotationFilters,
                                                     exactMatch=False)
@@ -445,7 +482,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         fdvt = FDV.FrameDataVisualizationTreeBehaviour(tmpDir)
         fdvt.importAnnotation(filteredAnno, annoFilters=annotationFilters)
 
-        self.addFDVT(fdvt)
+        self.addFDVT(fdvt, colors)
 
         print annotationFilters
 
@@ -618,37 +655,47 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.legend = QtGui.QGraphicsRectItem(None, self.overviewScene)
         filtList = self.fdvt.meta['filtList']
 
-        colors = None
+        # colors = None
         if self.videoTagger is not None:
             if self.fdvt == self.videoTagger.fdvt:
-                colors = [a['color'] for a in self.videoTagger.annotations]
+                self.colors = [a['color'] for a in self.videoTagger.annotations]
                 self.colormap = []
-                for i, c in enumerate(colors):
+                for i, c in enumerate(self.colors):
                     if i < len(filtList):
                         self.colormap += [QtGui.QBrush(c)]
 
         cfg.log.info("after setting colormap")
 
-        if colors is None:
+        if self.colors is None:
             pair = plt.cm.get_cmap('hsv', len(filtList) + 1)
-            colors = pair(range(len(filtList))) * 255
+            self.colors = pair(range(len(filtList))) * 255
 
             self.colormap = []
-            for c in colors:
+            for c in self.colors:
                 self.colormap += [QtGui.QBrush(QtGui.QColor(c[0],
                                                             c[1],
                                                             c[2]))]
 
             cfg.log.info("color {0}".format(c))
+        else:
+            # pair = plt.cm.get_cmap('hsv', len(filtList) + 1)
+            # self.colors = pair(range(len(filtList))) * 255
 
-        self.brushes = []
-        for i, brush in enumerate(self.colormap):
-            pen = QtGui.QPen(QtGui.QColor(0, 255, 0, 0))
-            rect = QtCore.QRectF(0, i, 0.02, 1)
-            rectItem = QtGui.QGraphicsRectItem(rect, self.legend)
-            rectItem.setBrush(brush)
-            rectItem.setPen(pen)
-            self.brushes += [brush]
+            self.colormap = []
+            for c in self.colors:
+                self.colormap += [QtGui.QBrush(c)]
+
+            cfg.log.info("color {0}".format(c))
+
+        self.setColors(self.colors, reload=False)
+        # self.brushes = []
+        # for i, brush in enumerate(self.colormap):
+        #     pen = QtGui.QPen(QtGui.QColor(0, 255, 0, 0))
+        #     rect = QtCore.QRectF(0, i, 0.02, 1)
+        #     rectItem = QtGui.QGraphicsRectItem(rect, self.legend)
+        #     rectItem.setBrush(brush)
+        #     rectItem.setPen(pen)
+        #     self.brushes += [brush]
 
         self.legend.setPos(1.1, 0)
         self.legend.setZValue(2)

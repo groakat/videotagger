@@ -39,7 +39,7 @@ class MouseFilterObj(QtCore.QObject):
 
 
 class AnnotationSelector(QtGui.QScrollArea):
-    def __init__(self, scanLabelFileCb,
+    def __init__(self,
                  annotator=None,
                  anno=None,
                  annotationSettingsList=None,
@@ -49,7 +49,6 @@ class AnnotationSelector(QtGui.QScrollArea):
         self.anno = anno
         self.annotators = []
         self.labels = []
-        self.scanLabelFileCb = scanLabelFileCb
         self.classColor = dict()
         self.eventFilters = dict()
 
@@ -89,7 +88,8 @@ class AnnotationSelector(QtGui.QScrollArea):
             self.annotators = sorted(set(zip(*annotationFilters)[0]) - \
                          {'automatic placeholder'} | \
                          {self.annotator})
-            self.labels = sorted(set(zip(*annotationFilters)[1]))
+            self.labels = sorted(set(zip(*annotationFilters)[1]) - \
+                                {'video length'})
         else:
             self.annotators = [self.annotator]
             self.labels = []
@@ -100,6 +100,7 @@ class AnnotationSelector(QtGui.QScrollArea):
         try:
             self.anno = A.Annotation()
             self.anno.loadFromFile(filename)
+            self.scanLabelFile()
         except IOError:
             self.anno = None
 
