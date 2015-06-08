@@ -231,9 +231,10 @@ class VideoHandler(QtCore.QObject):
 
     def generateFullResolutionVideoPath(self):
         # split _small.avi / _small.mp4
-        corePath = self.posPath[:-10]
+        corePath = self.posPath[:-(len(self.videoEnding)+6)]
         # append _full.avi / _full.mp4
-        fullResPath = corePath + '_full.{suf}'.format(suf=self.posPath[-3:])
+        fullResPath = corePath + '_full.{suf}'.format(
+                        suf=self.posPath[-(len(self.videoEnding)-1):])
         return fullResPath
 
     def getFullResolutionFrame(self):
@@ -1447,7 +1448,7 @@ class VideoHandler(QtCore.QObject):
 
 
             excess_copy = excess
-            while excess_copy > 0:
+            while excess_copy > 0 and curKey >= 0:
                 if rngs[curKey][0] == 0:
                     curKey = sorted(self.annoDict.keys()).index(curKey) - 1
                     if curKey < 0:
