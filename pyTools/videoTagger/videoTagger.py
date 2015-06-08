@@ -207,6 +207,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.postLabelQuery = False
         self.videoExtension = videoExtension
 
+        self.unsavedChanges = False
+
 
         self.bgImgArray = 0
 
@@ -378,7 +380,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         self.firstLoop = True
 
-        self.unsavedChanges = False
+
 
 
         self.exportSettings()
@@ -554,12 +556,20 @@ class VideoTagger(QtGui.QMainWindow):
             selectedVial = None
 
         croppedVideo = self.setupDialog.cb_croppedVideo.isChecked()
-        videoExtension = 'avi'
+        videoExtension = 'mp4'
         runningIndeces = False #self.setupDialog.le_filesRunningIdx.isChecked()
         fdvtPathRel = self.setupDialog.le_FDV.text()
         videoListPath = self.setupDialog.le_bhvrCache.text()
         behaviourFolder = self.setupDialog.le_bhvrFolder.text()
         patchesFolder = self.setupDialog.le_patchesFolder.text()
+
+        annotations = []
+
+        for anno in self.annotations:
+            annotations += [Annotation.AnnotationFilter(vials=None,
+                                                        annotators=[anno['annot']],
+                                                        behaviours=[anno['behav']])]
+
 
         if len(self.fileList) == 1 and not croppedVideo:
             config = PFFVP.prepareFolder(path,
@@ -970,7 +980,18 @@ class VideoTagger(QtGui.QMainWindow):
 
         return af
 
-        
+
+    def convertVideoToBehaviourFileList(self, videolist):
+        out = []
+        for f in videolist:
+            root = os.path.dirname(f)[:-len(self.patchesFolder)]
+            bhvrfolder = os.path.join(root, self.bhvrFolder)
+            bhvrfile = os.path.basename(f)[:-len(self.videoExtension)] + 'csv'
+
+            out += [os.path.join(bhvrfolder, bhvrfile)]
+
+        return out
+
     def setupFrameView(self):
         cfg.log.info("before init frameview")
         self.frameView = GFDV.GraphicsViewFDV(self)
@@ -993,11 +1014,11 @@ class VideoTagger(QtGui.QMainWindow):
 
             if  self.fdvt is None or self.fdvt.meta['not-initialized']:
                 self.fdvt = FDV.FrameDataVisualizationTreeBehaviour(self.fdvtPath)
-                self.fdvt.importAnnotationsFromFile(self.convertFileList(self.fileList,
-                                                                 '.csv'),
-                                            self.fileList,
-                                            self.getAnnotationFilters(),
-                                            self.getSelectedVial())
+                self.fdvt.importAnnotationsFromFile(
+                    self.convertVideoToBehaviourFileList(self.fileList),
+                    self.fileList,
+                    self.getAnnotationFilters(),
+                    self.getSelectedVial())
 
         if self.fdvtPath is None or self.fdvt is None:
             if self.fdvtPath is None:
@@ -2086,6 +2107,9 @@ class VideoTagger(QtGui.QMainWindow):
         pixmap = QtGui.QPixmap()
         px = QtGui.QPixmap.fromImage(background)
 
+        if type(self.bgImg) == QtGui.QListWidgetItem:
+            1/0
+
         self.videoScene.removeItem(self.bgImg)
         self.bgImg = QtGui.QGraphicsPixmapItem(px)
         self.videoScene.addItem(self.bgImg)
@@ -2999,6 +3023,7 @@ class VideoTagger(QtGui.QMainWindow):
         cfgDict['Video']['videoPath'] = self.path
 
         cfgDict['Video']['maxAnnotationSpeed'] = self.maxAnnotationSpeed
+        cfgDict['Video']['videoExtension'] = self.videoExtension
 
         try:
             if self.filterObjArgs['stepSize']:
