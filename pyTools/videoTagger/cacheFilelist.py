@@ -74,6 +74,7 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
                   videoListPath, fdvtPathRel, annotations, runningIndeces,
                   patchesFolder, behaviourFolder):
 
+
     if videoPath.endswith(('avi', "mpeg", "mp4")):
         videoPath = os.path.dirname(videoPath)
 
@@ -93,11 +94,14 @@ def cacheFilelist(videoPath, croppedVideo, selectedVial, videoExtension,
     backgroundList = systemMisc.providePosList(videoPath, ending='png')
     posList = systemMisc.providePosList(videoPath, ending=posExtension)
 
-    if len(videoList) == 3:
+    if len(videoList) == 3 or len(videoList) == 2:
         core = '.'.join(sorted(videoList)[0].split('.')[:-1])
+        if '_full' in core:
+            core = core[:-5]
+
         if core + '_full' + videoExtension in videoList \
-        and core + '_small' + videoExtension in videoList \
-        and core + videoExtension in videoList:
+        and core + '_small' + videoExtension in videoList:
+        # and core + videoExtension in videoList:
             videoList = [core + '_small' + videoExtension]
 
     videoListPath, videoListPathRel = generateVideoListPath(videoPath,
