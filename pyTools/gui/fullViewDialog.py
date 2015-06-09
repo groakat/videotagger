@@ -336,12 +336,17 @@ class FullViewDialog(QtGui.QMainWindow):
 
     def closeEvent(self, event):
         if self.parent().unsavedChanges:
-            ret = QtGui.QMessageBox.question(self, "Unsaved Changes", "Do you want to quit and loose unsaved changes?",
-                                QtGui.QMessageBox.Yes|QtGui.QMessageBox.No)
-            if ret:
+            ret = QtGui.QMessageBox.question(self, "Unsaved Changes", "Do you want to save your recent changes?",
+                                QtGui.QMessageBox.SaveAll|QtGui.QMessageBox.Discard|QtGui.QMessageBox.Abort)
+
+            if ret.name == "SaveAll":
+                self.parent().saveAll()
+
+            if ret.name == "SaveAll" \
+            or ret.name == "Discard":
                 event.accept()
             else:
-                event.ignore
+                event.ignore()
         else:
             event.accept()
 
