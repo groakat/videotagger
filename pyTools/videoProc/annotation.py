@@ -443,6 +443,110 @@ def loadAnnotation(filename):
     return df
 
 
+def checkVideoLenghtsInAnnotations(root_folder, pos_folder, anno_folder,
+                                   video_extension='mp4'):
+    import pyTools.system.videoExplorer as VE
+    import numpy as np
+
+    vE = VE.videoExplorer()
+    anno = Annotation()
+
+    unequalFiles = []
+
+    for root, dirs, files in sorted(os.walk(root_folder)):
+        for filename in sorted(files):
+            if filename.endswith(video_extension):
+                anno_filename = filename[:-len(video_extension)] + 'csv'
+                pos_filename = filename[:-len(video_extension)] + 'pos.npy'
+
+                af = os.path.join(os.path.dirname(root),
+                                  anno_folder,
+                                  anno_filename)
+
+                pf = os.path.join(os.path.dirname(root),
+                                  pos_folder,
+                                  pos_filename)
+
+                videoLength = vE.retrieveVideoLength(os.path.join(root,
+                                                                  filename))
+
+                try:
+                    posLength = len(np.load(pf))
+                except IOError:
+                    print "No posfile for {}".format(pf)
+                    continue
+
+                if posLength != videoLength:
+                    print "pos fuck:\nfile: {}\nvL: {}\npL: {}".format(filename,
+                                                            videoLength,
+                                                            posLength)
+
+                try:
+                    anno.loadFromFile(af)
+                except IOError:
+                    continue
+
+                annoLength = anno.getLength()
+
+                if annoLength != videoLength:
+                    # print "anno fuck:\nfile: {}\nvL: {}\naL: {}".format(filename,
+                    #                                         videoLength,
+                    #                                         annoLength)
+
+                    unequalFiles += [filename]
+
+    with open('~/Desktop/files.json', 'w') as f:
+        json.dump(unequalFiles)
+
+
+
+
+def copyToNewFolder(root_folder, dst_root, dst_bhvr):
+    import shutil
+    for root, dirs, files in os.walk(root_folder):
+        for filename in files:
+            if filename.endswith('.csv'):
+                day = ''.join(filename.split('.')[0].split('-'))
+                hour = filename.split('.')[1].split('-')[0]
+
+                dst_folder = os.path.join(dst_root,
+                                          day,
+                                          hour,
+                                          dst_bhvr)
+
+                if not os.path.exists(dst_folder):
+                    os.makedirs(dst_folder)
+
+                print 'copy {} to {}'.format(os.path.join(root,
+                                             filename),
+                                            os.path.join(dst_folder,
+                                                         filename))
+
+                shutil.copyfile(os.path.join(root,
+                                             filename),
+                                os.path.join(dst_folder,
+                                             filename))
+
+
+
+
+def convertProjectFolder(folder):
+    for root, dirs, files in os.walk(folder):
+        for filename in files:
+            if filename.endswith('.bhvr'):
+                with open(os.path.join(root, filename), 'r') as f:
+                    frameList = json.load(f)
+
+                df = convertFrameListToDataframe(frameList)
+                anno = Annotation(empty=True)
+                anno.setDataframe(df)
+
+                outFilename = os.path.join(root, filename[:-4] + 'csv')
+                anno.saveToFile(outFilename)
+
+
+
+
 def convertFrameListToDataframe(frameList):
 #     print frameList[:10]
     dataList = []
