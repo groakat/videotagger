@@ -91,7 +91,7 @@ def generateSmallVideo(videoPath, ext='mp4'):
                                                           targetPath=targetFullPath)
     else:
         ffmpegStr = ('ffmpeg -i "{orgPath}" -y -an ' +\
-                    ' -c:v libx264 -crf 18 -g 1 -r 30 -vf scale={width}:{height} "{targetPath}"').format(
+                ' -c:v libx264 -crf 18 -g 1 -r 30 -vf scale={width}:{height} "{targetPath}"').format(
                                                     orgPath=videoPath,
                                                     targetPath=targetFullPath,
                                                     width=width,
