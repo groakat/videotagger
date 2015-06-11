@@ -69,6 +69,9 @@ class Annotation():
     def getLength(self):
         return self.dataFrame.iloc[-1].name[0]
 
+    def setLength(self, length):
+        self.dataFrame.iloc[-1].name[0] = length
+
     def saveToFile(self, filename):
         if not os.path.exists(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
@@ -443,15 +446,78 @@ def loadAnnotation(filename):
     return df
 
 
-def checkVideoLenghtsInAnnotations(root_folder, pos_folder, anno_folder,
+def alignVideoLengthToRest(root_folder, pos_folder, anno_folder,
                                    video_extension='mp4'):
     import pyTools.system.videoExplorer as VE
     import numpy as np
+    import yaml
 
     vE = VE.videoExplorer()
     anno = Annotation()
 
-    unequalFiles = []
+    for root, dirs, files in sorted(os.walk(root_folder)):
+        for filename in sorted(files):
+            if filename.endswith(video_extension):
+                anno_filename = filename[:-len(video_extension)] + 'csv'
+                pos_filename = filename[:-len(video_extension)] + 'pos.npy'
+
+                af = os.path.join(os.path.dirname(root),
+                                  anno_folder,
+                                  anno_filename)
+
+                pf = os.path.join(os.path.dirname(root),
+                                  pos_folder,
+                                  pos_filename)
+
+                videoLength = vE.retrieveVideoLength(os.path.join(root,
+                                                                  filename))
+
+
+                try:
+                    pos = np.load(pf)
+                    posLength = len(pos)
+                    if posLength != (videoLength):
+                        newPos = pos[:videoLength, :]
+                        np.save(pf, newPos)
+                except IOError:
+                    print "No posfile for {}".format(pf)
+                    continue
+
+
+                try:
+                    anno.loadFromFile(af)
+
+                    annoLength = anno.getLength()
+
+                    if annoLength != videoLength:
+                        print "anno fuck:\nfile: {}\nvL: {}\naL: {}".format(filename,
+                                                                videoLength,
+                                                                annoLength)
+
+                        anno.removeAnnotation(vial=None,
+                                              frames=annoLength,
+                                              annotator='automatic placeholder',
+                                              behaviour='video length')
+                        anno.addAnnotation(vial=None,
+                                           frames=[videoLength],
+                                           annotator='automatic placeholder',
+                                           behaviour='video length')
+                        anno.saveToFile(af)
+
+                except IOError:
+                    continue
+
+
+def checkVideoLenghtsInAnnotations(root_folder, pos_folder, anno_folder,
+                                   video_extension='mp4'):
+    import pyTools.system.videoExplorer as VE
+    import numpy as np
+    import yaml
+
+    vE = VE.videoExplorer()
+    anno = Annotation()
+
+    unequalFiles = {}
 
     for root, dirs, files in sorted(os.walk(root_folder)):
         for filename in sorted(files):
@@ -476,7 +542,7 @@ def checkVideoLenghtsInAnnotations(root_folder, pos_folder, anno_folder,
                     print "No posfile for {}".format(pf)
                     continue
 
-                if posLength != videoLength:
+                if posLength != (videoLength):
                     print "pos fuck:\nfile: {}\nvL: {}\npL: {}".format(filename,
                                                             videoLength,
                                                             posLength)
@@ -489,14 +555,19 @@ def checkVideoLenghtsInAnnotations(root_folder, pos_folder, anno_folder,
                 annoLength = anno.getLength()
 
                 if annoLength != videoLength:
-                    # print "anno fuck:\nfile: {}\nvL: {}\naL: {}".format(filename,
-                    #                                         videoLength,
-                    #                                         annoLength)
+                    print "anno fuck:\nfile: {}\nvL: {}\naL: {}".format(filename,
+                                                            videoLength,
+                                                            annoLength)
 
-                    unequalFiles += [filename]
+                    unequalFiles[filename] = [videoLength, posLength, annoLength]
+
+    yamlStr = yaml.dump(unequalFiles, default_flow_style=False,
+                        encoding=('utf-8'))
+
+
 
     with open('~/Desktop/files.json', 'w') as f:
-        json.dump(unequalFiles)
+        f.writelines(yamlStr)
 
 
 
