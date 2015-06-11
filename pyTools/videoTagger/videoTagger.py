@@ -1006,13 +1006,16 @@ class VideoTagger(QtGui.QMainWindow):
         
         colors = [a['color'] for a in self.annotations]
         cfg.log.info("before setColors frameview")
-        self.frameView.setColors(colors)
+        # self.frameView.setColors(colors)
         self.frameView.setVideoTagger(self)
+        cfg.log.info("setVideoTagger")
         
         if self.fdvtPath is not None:
+            cfg.log.info("fdvtPath is not None")
             self.fdvt = FDV.loadFDVT(self.fdvtPath)
 
-            if  self.fdvt is None or self.fdvt.meta['not-initialized']:
+            if self.fdvt is None or self.fdvt.meta['not-initialized']:
+                cfg.log.info("not-init")
                 self.fdvt = FDV.FrameDataVisualizationTreeBehaviour(self.fdvtPath)
                 self.fdvt.importAnnotationsFromFile(
                     self.convertVideoToBehaviourFileList(self.fileList),
@@ -1020,19 +1023,25 @@ class VideoTagger(QtGui.QMainWindow):
                     self.getAnnotationFilters(),
                     self.getSelectedVial())
 
+            cfg.log.info("fdvtPath is not None --- finished")
+
         if self.fdvtPath is None or self.fdvt is None:
+            cfg.log.info("self.fdvt is None is None --- begin")
             if self.fdvtPath is None:
                 raise ValueError("we need to make the user specify a FDVT path in the setup dialog. Because there is no way of launching a FDVT without saving path")
 
+            cfg.log.info("self.fdvt is None is None --- init")
             self.fdvt = FDV.FrameDataVisualizationTreeBehaviour(self.fdvtPath)
+            cfg.log.info("self.fdvt is None is None --- before import")
             self.fdvt.importAnnotationsFromFile(self.convertFileList(self.fileList,
                                                              '.csv'),
                                         self.fileList,
                                         self.getAnnotationFilters(),
                                         self.getSelectedVial())
+            cfg.log.info("self.fdvt is None is None --- after import")
 
         cfg.log.info("before loading fdvt")
-        self.frameView.addFDVT(self.fdvt)
+        self.frameView.addFDVT(self.fdvt, colors)
         self.frameView.loadFDVT(self.fdvt)
 
         cfg.log.info("end")
@@ -2757,7 +2766,7 @@ class VideoTagger(QtGui.QMainWindow):
                 if dv[1] is None:
                     self.fdvt.addNewClass(filt)
                     colors = [a['color'] for a in self.annotations]
-                    self.frameView.setColors(colors)
+                    self.frameView.updateColors(colors)
                     dv = self.fdvt.getDeltaValue(key, frame, filt, increment)
                 deltaVector += [dv]
 

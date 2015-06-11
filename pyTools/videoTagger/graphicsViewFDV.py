@@ -121,6 +121,8 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.frame = None
 
 
+        self.overviewSceneDict = {}
+        self.overviewRectDict = {}
         self.rectsDict = {}
         self.subPlotDict = {}
         self.clickRectsDict = {}
@@ -133,10 +135,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.legendDict = {}
         self.colorsDict = {}
         self.colormapDict = {}
-        self.axes = {'days': None,
-                      'hours': None,
-                      'minutes': None,
-                      'frames': None}
+        self.polysDict = {}
 
 
 
@@ -158,7 +157,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         # self.fdvt.load('/media/peter/8e632f24-2998-4bd2-8881-232779708cd0/xav/data/clfrFDVT-burgos_rf_200k_weight-v3.npy')
 
         cfg.log.info("initDataPlots")
-        self.setupGV()
+        # self.setupGV()
         # self.initDataPlots()
         cfg.log.info("setColors")
         # self.setColors(reload=False)
@@ -334,6 +333,7 @@ class GraphicsViewFDV(QtGui.QWidget):
                 geo.setHeight(0)
                 barLet.setRect(geo)
 
+
     def filterListToString(self, fdvt):
         s = ''
         for filt in fdvt.meta['filtList']:
@@ -393,6 +393,8 @@ class GraphicsViewFDV(QtGui.QWidget):
         ts = time.time()
         self.fdvts += [fdvt]
         # self.colors += [colors]
+
+        self.setupGV(fdvt)
         t1 = time.time()
         self.initDataPlots(fdvt)
         t2 = time.time()
@@ -413,47 +415,51 @@ class GraphicsViewFDV(QtGui.QWidget):
                                                                           te - ts))
 
     def unloadFDVTVizStructures(self):
-        for k, sp in self.subPlot.items():
-            sp.setVisible(False)
-
-        for k, sp in self.clickSubPlot.items():
-            sp.setVisible(False)
-
-        # self.axes.setVisible(False)
-        # self.subPlotScales.setVisible(False)
-        self.legend.setVisible(False)
-        # self.colors.setVisible(False)
-
-            # self.overviewScene.removeItem(sp)
-
-        # self.overviewScene.removeItem(self.legend)
+        pass
+        # for k, sp in self.subPlot.items():
+        #     sp.setVisible(False)
+        #
+        # for k, sp in self.clickSubPlot.items():
+        #     sp.setVisible(False)
+        #
+        # # self.axes.setVisible(False)
+        # # self.subPlotScales.setVisible(False)
+        # self.legend.setVisible(False)
+        # # self.colors.setVisible(False)
+        #
+        #     # self.overviewScene.removeItem(sp)
+        #
+        # # self.overviewScene.removeItem(self.legend)
 
     def loadFDVTVizStructures(self):
-        self.rects = self.rectsDict[self.fdvt]
-        self.subPlot = self.subPlotDict[self.fdvt]
-        self.clickRects = self.clickRectsDict[self.fdvt]
-        self.clickSubPlot = self.clickSubPlotDict[self.fdvt]
-        self.axes = self.axesDict[self.fdvt]
-        # self.subPlotScales = self.subPlotScalesDict[self.fdvt]
-        self.rangeTemplate = self.rangeTemplateDict[self.fdvt]
-        self.subPlot = self.subPlotDict[self.fdvt]
-        self.legend = self.legendDict[self.fdvt]
+
+        self.gv_center.setScene(self.overviewSceneDict[self.fdvt])
+        #
+        # self.rects = self.rectsDict[self.fdvt]
+        # self.subPlot = self.subPlotDict[self.fdvt]
+        # self.clickRects = self.clickRectsDict[self.fdvt]
+        # self.clickSubPlot = self.clickSubPlotDict[self.fdvt]
+        # self.axes = self.axesDict[self.fdvt]
+        # # self.subPlotScales = self.subPlotScalesDict[self.fdvt]
+        # self.rangeTemplate = self.rangeTemplateDict[self.fdvt]
+        # self.subPlot = self.subPlotDict[self.fdvt]
+        # self.legend = self.legendDict[self.fdvt]
         self.colors = self.colorsDict[self.fdvt]
-
-        for k, sp in self.subPlot.items():
-            sp.setVisible(True)
-
-        for k, sp in self.clickSubPlot.items():
-            sp.setVisible(True)
-
-        # self.axes.setVisible(True)
-        # self.subPlotScales.setVisible(True)
-        self.legend.setVisible(True)
-        # self.colors.setVisible(True)
-
-        # self.overviewScene.addItem(self.legend)
+        #
         # for k, sp in self.subPlot.items():
-        #     self.overviewScene.addItem(sp)
+        #     sp.setVisible(True)
+        #
+        # for k, sp in self.clickSubPlot.items():
+        #     sp.setVisible(True)
+        #
+        # # self.axes.setVisible(True)
+        # # self.subPlotScales.setVisible(True)
+        # self.legend.setVisible(True)
+        # # self.colors.setVisible(True)
+        #
+        # # self.overviewScene.addItem(self.legend)
+        # # for k, sp in self.subPlot.items():
+        # #     self.overviewScene.addItem(sp)
 
 
 
@@ -596,23 +602,24 @@ class GraphicsViewFDV(QtGui.QWidget):
 
         fdvt = FDV.loadFDVT(os.path.dirname(fn[0]))
         self.addFDVT(fdvt)
+        self.loadFDVT(fdvt)
 
     def resizeEvent(self, event):
         super(GraphicsViewFDV, self).resizeEvent(event)
         # self.gv_center.fitInView(-0.1, -10, 1.1, 6,QtCore.Qt.IgnoreAspectRatio)
-        self.gv_center.fitInView(self.overviewRect)
+        self.gv_center.fitInView(self.overviewRectDict[self.fdvt])
 
     def showEvent(self, event):
         super(GraphicsViewFDV, self).showEvent(event)
         # self.gv_center.fitInView(-0.1, -1, 1.1, 6,QtCore.Qt.IgnoreAspectRatio)
-        self.gv_center.fitInView(self.overviewRect)
+        self.gv_center.fitInView(self.overviewRectDict[self.fdvt])
 
 
-    def setupGV(self):
-        self.overviewScene = QtGui.QGraphicsScene(self)
+    def setupGV(self, fdvt):
+        self.overviewSceneDict[fdvt] = QtGui.QGraphicsScene(self)
         # self.overviewScene.setSceneRect(0, -0.5, 1, 7)
 
-        self.gv_center.setScene(self.overviewScene)
+        self.gv_center.setScene(self.overviewSceneDict[fdvt])
         # self.gv_center.fitInView(0, -0.5, 1, 7)
         self.gv_center.setMouseTracking(True)
         self.gv_center.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -623,59 +630,60 @@ class GraphicsViewFDV(QtGui.QWidget):
         # self.createAxis('minutes')#, 1.5)#, range(1, 66, 5))
         # self.createAxis('frames')#, 0)#, range(1, 1800 / self.frameResolution + 1, self.frameResolution))
 
-        self.createTitle(4.5, "days")
-        self.createTitle(3, "hours")
-        self.createTitle(1.5, "minutes")
-        self.createTitle(0, "frames")
+        self.createTitle(4.5, "days", fdvt)
+        self.createTitle(3, "hours", fdvt)
+        self.createTitle(1.5, "minutes", fdvt)
+        self.createTitle(0, "frames", fdvt)
 
-        self.initPositionPointers()
+        self.initPositionPointers(fdvt)
 
-        self.overviewRect = self.overviewScene.addRect(-0.01, -1, 1.2, 7)
-        # self.overviewRect = self.overviewScene.addRect(-0.01, -1, 2, 7)
-        self.gv_center.fitInView(self.overviewRect)
+        self.overviewRectDict[fdvt] = self.overviewSceneDict[fdvt].addRect(-0.01, -1, 1.2, 7)
+        # overviewRect = self.overviewSceneDict[fdvt].addRect(-0.01, -1, 2, 7)
+        self.gv_center.fitInView(self.overviewRectDict[fdvt])
 
 
     def initSubPlots(self, fdvt):
-        self.subPlotDict[fdvt] = {'days': self.overviewScene.addRect(0, 0, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
-                      'hours': self.overviewScene.addRect(0, 0, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
-                      'minutes': self.overviewScene.addRect(0,0, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
-                      'frames': self.overviewScene.addRect(0, 0, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0)))}
+        self.subPlotDict[fdvt] = {'days': self.overviewSceneDict[fdvt].addRect(0, 0, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
+                      'hours': self.overviewSceneDict[fdvt].addRect(0, 0, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
+                      'minutes': self.overviewSceneDict[fdvt].addRect(0,0, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
+                      'frames': self.overviewSceneDict[fdvt].addRect(0, 0, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0)))}
 
         self.subPlotDict[fdvt]['days'].translate(0, 4.5)
         self.subPlotDict[fdvt]['hours'].translate(0, 3)
         self.subPlotDict[fdvt]['minutes'].translate(0, 1.5)
 
-        self.clickSubPlotDict[fdvt] = {'days': self.overviewScene.addRect(0, 4.5, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
-                      'hours': self.overviewScene.addRect(0, 3, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
-                      'minutes': self.overviewScene.addRect(0, 1.5, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
-                      'frames': self.overviewScene.addRect(0, 0, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0)))}
+        self.clickSubPlotDict[fdvt] = {'days': self.overviewSceneDict[fdvt].addRect(0, 4.5, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
+                      'hours': self.overviewSceneDict[fdvt].addRect(0, 3, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
+                      'minutes': self.overviewSceneDict[fdvt].addRect(0, 1.5, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0))),
+                      'frames': self.overviewSceneDict[fdvt].addRect(0, 0, 1, 1, QtGui.QPen(QtGui.QColor(0, 255, 0, 0)))}
 
 
 
-    def createPositionPointer(self, y):
+    def createPositionPointer(self, y, fdvt):
         poly = QtGui.QPolygonF([QtCore.QPointF(0,-0.2 + y),
                                 QtCore.QPointF(0.01,-0.15 + y),
                                 QtCore.QPointF(0.02,-0.2 + y)])
 
         penCol = QtGui.QColor(0, y * 30, 0)
         brushCol = QtGui.QColor(0, y * 30, 0)
-        return self.overviewScene.addPolygon(poly, QtGui.QPen(penCol), QtGui.QBrush(brushCol))
+        return self.overviewSceneDict[fdvt].addPolygon(poly, QtGui.QPen(penCol), QtGui.QBrush(brushCol))
 
-    def initPositionPointers(self):
-        self.polys['days'] = self.createPositionPointer(4.5)
-        self.polys['hours'] = self.createPositionPointer(3)
-        self.polys['minutes'] = self.createPositionPointer(1.5)
-        self.polys['frames'] = self.createPositionPointer(0)
+    def initPositionPointers(self, fdvt):
+        self.polysDict[fdvt] = {}
+        self.polysDict[fdvt]['days'] = self.createPositionPointer(4.5, fdvt)
+        self.polysDict[fdvt]['hours'] = self.createPositionPointer(3, fdvt)
+        self.polysDict[fdvt]['minutes'] = self.createPositionPointer(1.5, fdvt)
+        self.polysDict[fdvt]['frames'] = self.createPositionPointer(0, fdvt)
 
 
-    def createAxisTicks(self, i, t, l, spacing, rectKey, pen):
+    def createAxisTicks(self, i, t, l, spacing, rectKey, pen, fdvt):
         x = i * spacing / l + 1 / (2 * l)
-        line = QtGui.QGraphicsLineItem(x, -0.01, x, -0.05,  self.axes[rectKey])
+        line = QtGui.QGraphicsLineItem(x, -0.01, x, -0.05,  self.axesDict[fdvt][rectKey])
         line.setPen(pen)
 
         font = QtGui.QFont("Helvetica")
         font.setPointSize(5)
-        text = QtGui.QGraphicsTextItem(str(t), self.axes[rectKey])
+        text = QtGui.QGraphicsTextItem(str(t), self.axesDict[fdvt][rectKey])
         text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
         text.setFont(font)
         # text.scale(0.002, -0.005)
@@ -713,35 +721,35 @@ class GraphicsViewFDV(QtGui.QWidget):
         #         return False
 
     def getTemplateLabel(self, level, instance):
-        if self.rangeTemplate[level] is None:
+        if self.rangeTemplateDict[self.fdvt][level] is None:
             return self.getFdvtLabel(level, instance)
         else:
-            return self.rangeTemplate[level][instance]
+            return self.rangeTemplateDict[self.fdvt][level][instance]
 
-    def createAxis(self, rectKey):
+    def createAxis(self, rectKey, fdvt):
         spacing = self.axisSpacing[rectKey]
 
-        if self.axes[rectKey]:
-            self.overviewScene.removeItem(self.axes[rectKey])
+        if self.axesDict[fdvt][rectKey]:
+            self.overviewSceneDict[fdvt].removeItem(self.axesDict[fdvt][rectKey])
 
-        self.axes[rectKey] = QtGui.QGraphicsRectItem()
+        self.axesDict[fdvt][rectKey] = QtGui.QGraphicsRectItem()
 
-        line = QtGui.QGraphicsLineItem(0, -0.01, 1, -0.01, self.axes[rectKey])
+        line = QtGui.QGraphicsLineItem(0, -0.01, 1, -0.01, self.axesDict[fdvt][rectKey])
         pen = QtGui.QPen(QtGui.QColor(0, 0, 0))
         line.setPen(pen)
 
-        l = float(len(self.rects[rectKey]))
+        l = float(len(self.rectsDict[self.fdvt][rectKey]))
         if l:
             for i, t in enumerate(range(0, int(l), spacing)):
                 lbl = self.getTemplateLabel(rectKey, t)
-                self.createAxisTicks(i, lbl, l, spacing, rectKey, pen)
+                self.createAxisTicks(i, lbl, l, spacing, rectKey, pen, fdvt)
 
-        self.overviewScene.addItem(self.axes[rectKey])
-        self.axes[rectKey].setPos(0, self.axisY[rectKey])
+        self.overviewSceneDict[fdvt].addItem(self.axesDict[fdvt][rectKey])
+        self.axesDict[fdvt][rectKey].setPos(0, self.axisY[rectKey])
 
-    def createTitle(self, y, title):
+    def createTitle(self, y, title, fdvt):
         font = QtGui.QFont("Helvetica")
-        text = self.overviewScene.addText(str(title), font)
+        text = self.overviewSceneDict[fdvt].addText(str(title), font)
         text.setFlag(QtGui.QGraphicsItem.ItemIgnoresTransformations)
         # text.scale(0.002, -0.005)
         pw = text.boundingRect().width() * 0.002
@@ -752,7 +760,7 @@ class GraphicsViewFDV(QtGui.QWidget):
 
 
     def createStackLegend(self, fdvt, colors=None):
-        self.legendDict[fdvt] = QtGui.QGraphicsRectItem(None, self.overviewScene)
+        self.legendDict[fdvt] = QtGui.QGraphicsRectItem(None, self.overviewSceneDict[fdvt])
         filtList = fdvt.meta['filtList']
 
         # colors = None
@@ -844,12 +852,12 @@ class GraphicsViewFDV(QtGui.QWidget):
         text.setPos(-0.05, 2.4)
 
 
-        self.overviewScene.addItem(axes)
+        self.overviewSceneDict[fdvt].addItem(axes)
         axes.setPos(1.07, 3)
         self.legendDict[fdvt].setPos(1.05, 3)
 
-    def createFloatLegend(self):
-        self.legend = QtGui.QGraphicsRectItem(None, self.overviewScene)
+    def createFloatLegend(self, fdvt):
+        self.legend = QtGui.QGraphicsRectItem(None, self.overviewSceneDict[fdvt])
         for i, brush in enumerate(self.colormap):
             pen = QtGui.QPen(QtGui.QColor(0, 255, 0, 0))
             rect = QtCore.QRectF(0, i, 0.02, 1)
@@ -895,7 +903,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         text.setPos(-0.05, 2.4)
 
 
-        self.overviewScene.addItem(axes)
+        self.overviewSceneDict[fdvt].addItem(axes)
         axes.setPos(1.07, 3)
         self.legend.setPos(1.05, 3)
 
@@ -941,7 +949,7 @@ class GraphicsViewFDV(QtGui.QWidget):
 
     def createStackedBar(self, rectKey, instance, fdvt=None):
         if fdvt is None:
-            sp = self.subPlot[rectKey]
+            sp = self.subPlotDict[self.fdvt][rectKey]
             colormap = self.colormap
         else:
             sp = self.subPlotDict[fdvt][rectKey]
@@ -963,7 +971,7 @@ class GraphicsViewFDV(QtGui.QWidget):
 
     def createFloatBar(self, rectKey, instance, fdvt=None):
         if fdvt is None:
-            sp = self.subPlot[rectKey]
+            sp = self.subPlotDict[self.fdvt][rectKey]
         else:
             sp = self.subPlotDict[fdvt][rectKey]
 
@@ -984,8 +992,8 @@ class GraphicsViewFDV(QtGui.QWidget):
     def addElement(self, rectKey, y, stacked=True, fdvt=None):
         cfg.log.debug("{0}, {1}".format(rectKey, y))
         if fdvt is None:
-            rects = self.rects[rectKey]
-            clickRects = self.clickRects[rectKey]
+            rects = self.rectsDict[self.fdvt][rectKey]
+            clickRects = self.clickRectsDict[self.fdvt][rectKey]
         else:
             rects = self.rectsDict[fdvt][rectKey]
             clickRects = self.clickRectsDict[fdvt][rectKey]
@@ -1067,7 +1075,7 @@ class GraphicsViewFDV(QtGui.QWidget):
     def getKeyIndexInFDVT(self, level, idx):
         if level != 'frames':
             try:
-                return self.rangeTemplate[level].index(
+                return self.rangeTemplateDict[self.fdvt][level].index(
                                     self.getFdvtLabel(level, idx))
             except ValueError:
                 return 0
@@ -1078,13 +1086,13 @@ class GraphicsViewFDV(QtGui.QWidget):
 
     def updateBarsStack(self, plotData, rectKey, y):
         data = plotData['data']
-        rects = self.rects[rectKey]
+        rects = self.rectsDict[self.fdvt][rectKey]
         maxHeight = 0
         maxCum = np.max(np.sum(data, axis=1))
         minBarHeight =  maxCum * 0.05
 
         for i, d in enumerate(data):
-            if self.rangeTemplate[rectKey] is not None:
+            if self.rangeTemplateDict[self.fdvt][rectKey] is not None:
                 idx = self.getKeyIndexInFDVT(rectKey, i)
             else:
                 idx = i
@@ -1128,13 +1136,13 @@ class GraphicsViewFDV(QtGui.QWidget):
         data = plotData['data']
         weight = plotData['weight']
 
-        rects = self.rects[rectKey]
+        rects = self.rectsDict[self.fdvt][rectKey]
         maxHeight = 0
         maxCum = np.max(data)
         minBarHeight =  maxCum * 0.05
 
         for i, d in enumerate(data):
-            if self.rangeTemplate[rectKey] is not None:
+            if self.rangeTemplateDict[self.fdvt][rectKey] is not None:
                 idx = self.getKeyIndexInFDVT(rectKey, i)
             else:
                 idx = i
@@ -1167,15 +1175,15 @@ class GraphicsViewFDV(QtGui.QWidget):
         return rects, maxHeight
 
     def drawMissingValues(self, rectKey, rects, y):
-        if self.rangeTemplate[rectKey] is not None\
+        if self.rangeTemplateDict[self.fdvt][rectKey] is not None\
         and rectKey != 'frames':
-            missingValues = set(self.rangeTemplate[rectKey]).difference(self.getFdvtLabel(rectKey, slice(None, None)))
+            missingValues = set(self.rangeTemplateDict[self.fdvt][rectKey]).difference(self.getFdvtLabel(rectKey, slice(None, None)))
             for val in missingValues:
-                idx = self.rangeTemplate[rectKey].index(val)
+                idx = self.rangeTemplateDict[self.fdvt][rectKey].index(val)
 
                 while idx >= len(rects):
                     self.addElement(rectKey, y)
-                self.clickRects[rectKey][idx].setBrush(self.missingValueBrush)
+                self.clickRectsDict[self.fdvt][rectKey][idx].setBrush(self.missingValueBrush)
                 r = rects[idx]
 
                 accH = 0
@@ -1189,7 +1197,7 @@ class GraphicsViewFDV(QtGui.QWidget):
 
 
     def drawBars(self, data, rectKey, y):
-        for clickRect in self.clickRects[rectKey]:
+        for clickRect in self.clickRectsDict[self.fdvt][rectKey]:
             clickRect.setBrush(self.clickBrush)
 
         dataPresent = False
@@ -1205,26 +1213,26 @@ class GraphicsViewFDV(QtGui.QWidget):
 
                 self.drawMissingValues(rectKey, rects, y)
 
-
-                self.normalizeSubplot(self.subPlot[rectKey], maxHeight, y)
+                cfg.log.info("rectKey {}, maxHeight {}".format(rectKey, maxHeight))
+                self.normalizeSubplot(self.subPlotDict[self.fdvt][rectKey], maxHeight, y)
             else:
                 rects, maxHeight = self.updateBarsFloat(data, rectKey, y)
 
-                self.normalizeSubplot(self.subPlot[rectKey], maxHeight, y)
+                self.normalizeSubplot(self.subPlotDict[self.fdvt][rectKey], maxHeight, y)
 
 
-
-        self.overviewScene.update()
+        self.gv_center.setScene(self.overviewSceneDict[self.fdvt])
+        self.overviewSceneDict[self.fdvt].update()
         self.gv_center.update()
 
 
     def setPolyPosition(self, key, idx):
-        l = float(len(self.rects[key]))
-        pw = self.polys[key].boundingRect().width()
+        l = float(len(self.rectsDict[self.fdvt][key]))
+        pw = self.polysDict[self.fdvt][key].boundingRect().width()
         if key == 'frames':
             idx /= float(self.frameResolution)
 
-        self.polys[key].setPos(idx / l  - (pw / 2.0) + 1 / (2 *l), 0)
+        self.polysDict[self.fdvt][key].setPos(idx / l  - (pw / 2.0) + 1 / (2 *l), 0)
 
 
     def plotDays(self, fdvt, dayIdx):
@@ -1234,28 +1242,28 @@ class GraphicsViewFDV(QtGui.QWidget):
         # print data
         self.drawBars(data, 'days', 4.5)
         self.setPolyPosition('days', dayIdx)
-        self.createAxis('days')
+        self.createAxis('days', fdvt)
 
     def plotHours(self,  fdvt, hourIdx):
         data = fdvt.plotData['hours']
         # data = np.random.rand(24,4)
         self.drawBars(data, 'hours', 3)
         self.setPolyPosition('hours', hourIdx)
-        self.createAxis('hours')
+        self.createAxis('hours', fdvt)
 
     def plotMinutes(self,  fdvt, minuteIdx):
         data = fdvt.plotData['minutes']
         # data = np.random.rand(60,4)
         self.drawBars(data, 'minutes', 1.5)
         self.setPolyPosition('minutes', minuteIdx)
-        self.createAxis('minutes')
+        self.createAxis('minutes', fdvt)
 
     def plotFrames(self, fdvt, frameIdx):
         data = fdvt.plotData['frames']
         # data = np.random.rand(1764/self.frameResolution,4)
         self.drawBars(data,'frames', 0)
         self.setPolyPosition('frames', frameIdx)
-        self.createAxis('frames')
+        self.createAxis('frames', fdvt)
 
 
     def plotData(self, day, hour, minute, frame, debug=False):
@@ -1275,14 +1283,18 @@ class GraphicsViewFDV(QtGui.QWidget):
         try:
             dayIdx = sorted(self.fdvt.meta['rangeTemplate']['days']).index(day)
         except ValueError:
-            return
+            # self.overviewSceneDict[self.fdvt].update()
+            dayIdx = 0
+            # return
 
         self.plotDays(self.fdvt, dayIdx)
 
         try:
             hourIdx = sorted(self.fdvt.meta['rangeTemplate']['hours']).index(hour)
         except ValueError:
-            return
+            # self.overviewSceneDict[self.fdvt].update()
+            # return
+            hourIdx = 0
 
         self.plotHours(self.fdvt, hourIdx)
 
@@ -1290,7 +1302,9 @@ class GraphicsViewFDV(QtGui.QWidget):
             minuteIdx = sorted(self.fdvt.meta['rangeTemplate']['minutes']).index(minute)
         except ValueError:
             cfg.log.info("value error")
-            return
+            # self.overviewSceneDict[self.fdvt].update()
+            # return
+            minuteIdx = 0
 
         self.plotMinutes(self.fdvt, minuteIdx)
         #
@@ -1304,7 +1318,7 @@ class GraphicsViewFDV(QtGui.QWidget):
             pass
 
         self.debugCnt += 1
-        self.overviewScene.update()
+        self.overviewSceneDict[self.fdvt].update()
 
         cfg.log.info("{0} {1} {2} {3} {4}".format(day, hour, minute, frame,
                                                 self.frameResolution))
@@ -1378,7 +1392,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         font = painter.font()
         font.setPointSize(font.pointSize() * 10)
         painter.setFont(font)
-        self.overviewScene.render(painter, soure=self.overviewScene.sceneRect())
+        self.overviewSceneDict[self.fdvt].render(painter, soure=self.overviewSceneDict[self.fdvt].sceneRect())
         painter.end()
 
 
