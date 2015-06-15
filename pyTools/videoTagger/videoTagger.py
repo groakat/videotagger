@@ -1373,7 +1373,9 @@ class VideoTagger(QtGui.QMainWindow):
             self.resizeCropRectangle(x, y)
         else:
             self.setCropCenter(x, y, increment = self.cropIncrement)
-            self.updatePreviewLabels()
+            if self.increment == 0:
+                cfg.log.info("update preview from move")
+                self.updatePreviewLabels()
 
     def mouseWheelInScene(self, delta):
         self.cropIncrement -= delta
@@ -2766,7 +2768,8 @@ class VideoTagger(QtGui.QMainWindow):
                 if dv[1] is None:
                     self.fdvt.addNewClass(filt)
                     colors = [a['color'] for a in self.annotations]
-                    self.frameView.updateColors(colors)
+                    # self.frameView.updateColors(colors)
+                    self.createLegend(self.fdvt, colors)
                     dv = self.fdvt.getDeltaValue(key, frame, filt, increment)
                 deltaVector += [dv]
 
