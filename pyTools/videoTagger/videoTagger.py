@@ -1860,7 +1860,7 @@ class VideoTagger(QtGui.QMainWindow):
 
 
         te = time.time()
-        cfg.log.debug("total time: {}\nt1: {}\nt2: {} \nt3: {} \nt4: {}".format(te - ts,
+        cfg.log.info("total time: {}\nt1: {}\nt2: {} \nt3: {} \nt4: {}".format(te - ts,
                                                                        t1 - t0,
                                                                        t2 - t1,
                                                                        t3 - t2,
@@ -2729,16 +2729,21 @@ class VideoTagger(QtGui.QMainWindow):
             labelledFrames (output from vh.addAnnotation or vh.eraseAnnotation
 
         """
+        ts = time.time()
+
         if not self.fdvt:
             cfg.log.info("before setup frameview")
             self.setupFrameView()
             self.frameView.hide()
             cfg.log.info("after setup frameview")
 
+        t1 = time.time()
+
         frames = labelledFrames[0]
         filt = labelledFrames[1]
 
         filt = self.removeIDFromBehaviour(filt)
+        t2 = time.time()
 
         increment = labelledFrames[2]
 
@@ -2773,16 +2778,27 @@ class VideoTagger(QtGui.QMainWindow):
                     dv = self.fdvt.getDeltaValue(key, frame, filt, increment)
                 deltaVector += [dv]
 
+        t3 = time.time()
+
         if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
             cfg.log.info("delta vector: {0}".format(deltaVector))
             self.fdvt.insertDeltaVector(deltaVector)
             # self.frameView.updateDisplay(useCurrentPos=True)
 
+        t4 = time.time()
 
         if self.rpcIH:
             self.rpcIH.sendReply([deltaVector])
             self.isLabelingSingleFrame = False
             self.jumpToBookmark()
+
+        te = time.time()
+
+        cfg.log.info('t1: {}\nt2: {}\nt3: {}\nt4: {}\ntotal: {}\n'.format(t1 - ts,
+                                                                           t2 - t1,
+                                                                           t3 - t2,
+                                                                           t4 - t3,
+                                                                           te - ts))
 
     def getAnnotator(self):
         if self.annotator:
@@ -2867,9 +2883,10 @@ class VideoTagger(QtGui.QMainWindow):
                 if elem['behav'] == selectedBehaviour:
                     newAnnotator = elem['annot']
                     newBehaviour = elem['behav']
+                    t1 = time.time()
                     self.editAnnoLabel(self.getAnnotator(), "unknown",
                                        newAnnotator, newBehaviour)
-
+                    cfg.log.info("edit time: {}s".format(time.time() - t1))
                     self.lastLabel = selectedBehaviour
                     return selectedBehaviour
 
@@ -2886,9 +2903,11 @@ class VideoTagger(QtGui.QMainWindow):
                 return self.queryForLabel()
             else:
                 self.addNewBehaviourClass(selectedBehaviour, color)
+                t1 = time.time()
                 self.editAnnoLabel(self.getAnnotator(), "unknown",
                                    self.getAnnotator(),
                                    selectedBehaviour)
+                cfg.log.info("edit time: {}s".format(time.time() - t1))
 
         self.lastLabel = selectedBehaviour
 
@@ -2908,9 +2927,12 @@ class VideoTagger(QtGui.QMainWindow):
             self.confidence = confidence
             self.queryPreviews = []
 
+        ts = time.time()
+
         labelledFrames = self.vh.addAnnotation(self.getSelectedVial(), annotator, 
                               behaviour, metadata=self.getMetadata())
-            
+
+        t1 = time.time()
         if oneClickAnnotation:                
             labelledFrames = self.vh.addAnnotation(self.getSelectedVial(), annotator, 
                               behaviour, metadata=self.getMetadata())
@@ -2931,7 +2953,10 @@ class VideoTagger(QtGui.QMainWindow):
             penCol = QtGui.QColor()
             penCol.setHsv(50, 255, 255, 255)
             self.cropRect.setPen(QtGui.QPen(penCol, 1, QtCore.Qt.SolidLine))
-        
+
+        t2 = time.time()
+        t3 = 0
+        t4 = 0
         if not (labelledFrames == (None, None)
                 or labelledFrames[1].behaviours == [None]):
             if self.postLabelQuery:
@@ -2946,7 +2971,17 @@ class VideoTagger(QtGui.QMainWindow):
             else:
                 labelledFrames = (labelledFrames[0], labelledFrames[1], 1)
 
+            t3 = time.time()
             self.convertLabelListAndReply(labelledFrames)
+            t4 = time.time()
+
+        te = time.time()
+
+        cfg.log.info('t1: {}\nt2: {}\nt3: {}\nt4: {}\ntotal: {}\n'.format(t1 - ts,
+                                                                           t2 - t1,
+                                                                           t3 - t2,
+                                                                           t4 - t3,
+                                                                           te - ts))
 
         self.showNextFrame(0)
 

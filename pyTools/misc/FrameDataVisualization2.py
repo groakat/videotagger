@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import time
 import warnings
 import pyTools.misc.basic as bsc
 import pandas as pd
@@ -415,16 +416,23 @@ class FrameDataVisualizationTreeBase(object):
     #     self.addedNewData = True
 
     def insertSample(self, day, hour, minute, new_df, dontSave=False):
+        ts = time.time()
         self.verifyStructureExists(day, hour, minute)
+        t1 = time.time()
 
         df = self.getValues(day, hour, minute)
 
+        t2 = time.time()
         oldFrameAmount = len(df.index.levels[0])
         df = df.add(new_df, fill_value=0)
-        # remove negative values that could arise with negative increments in
-        # new_df
-        df = df.drop(df[df['amount'] <= 0].index)
+        if new_df.min()['amount'] < 0:
+            # remove negative values that could arise with negative increments in
+            # new_df
+            df = df.drop(df[df['amount'] <= 0].index)
+
+        t3 = time.time()
         self.updateValues(day, hour, minute, df)
+        t4 = time.time()
 
         frameAmountInc = len(df.index.levels[0]) - oldFrameAmount
         self.meta['totalNoFrames'] += frameAmountInc
@@ -433,10 +441,20 @@ class FrameDataVisualizationTreeBase(object):
             self.updateMax(day, hour, minute)
             self.updateMean(day, hour, minute)
 
+        t5 = time.time()
         self.addedNewData = True
 
         if not dontSave:
             self.saveValues(day, hour, minute)
+        te = time.time()
+
+        cfg.log.info("total time: {}\nt1: {}\nt2: {} \nt3: {} \nt4: {}\nt5: {}".format(te - ts,
+                                                                       t1 - ts,
+                                                                       t2 - t1,
+                                                                       t3 - t2,
+                                                                       t4 - t3,
+                                                                       t5 - t4))
+
 
     def getIndexFromFramesAndClass(self, day, hour, minute, frames, classID):
         df = self.cache.getItem(self.getFramesFilename(day, hour, minute))
@@ -946,11 +964,24 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         classID = deltaValue[1]
         increment = deltaValue[2]
 
+        ts = time.time()
+
         df = pd.DataFrame([[frame, classID, increment]], columns=('frames', 'classID', 'amount'))
+        t1 = time.time()
         df.set_index(['frames', 'classID'], inplace=True)
+        t2 = time.time()
         df.sortlevel(inplace=True)
+        t3 = time.time()
 
         self.insertSample(day, hour, minute, df)
+
+        t4 = time.time()
+        te = time.time()
+        cfg.log.info("total time: {}\nt1: {}\nt2: {} \nt3: {} \nt4: {}".format(te - ts,
+                                                                       t1 - ts,
+                                                                       t2 - t1,
+                                                                       t3 - t2,
+                                                                       t4 - t3))
         # increment = deltaValue[2]
         #
         #
