@@ -208,7 +208,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.videoExtension = videoExtension
 
         self.unsavedChanges = False
-
+        self.lastLabel = None
 
         self.bgImgArray = 0
 
@@ -2837,7 +2837,15 @@ class VideoTagger(QtGui.QMainWindow):
         # cfg.log.info("---------- {0}".format( self.mapFromGlobal(QtGui.QCursor.pos())))
         # self.requestLabelMenu.exec_(self.mapFromGlobal(QtGui.QCursor.pos()))
 
-        strList = [x['behav'] for x in self.annotations]
+        if self.lastLabel is not None:
+            strList = [self.lastLabel]
+        else:
+            strList = []
+
+        cfg.log.info('lastLabel: {}'.format(self.lastLabel))
+
+        strList += [x['behav'] for x in self.annotations if x['behav'] != self.lastLabel]
+        cfg.log.info('strList: {}'.format(strList))
 
 
         self.dialogShortCutFilter.deactivateShortcuts()
@@ -2862,6 +2870,7 @@ class VideoTagger(QtGui.QMainWindow):
                     self.editAnnoLabel(self.getAnnotator(), "unknown",
                                        newAnnotator, newBehaviour)
 
+                    self.lastLabel = selectedBehaviour
                     return selectedBehaviour
 
             color = OD.ColorRequestDialog.getColor(
@@ -2880,6 +2889,8 @@ class VideoTagger(QtGui.QMainWindow):
                 self.editAnnoLabel(self.getAnnotator(), "unknown",
                                    self.getAnnotator(),
                                    selectedBehaviour)
+
+        self.lastLabel = selectedBehaviour
 
         return selectedBehaviour
 
