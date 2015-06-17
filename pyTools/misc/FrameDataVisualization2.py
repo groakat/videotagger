@@ -123,6 +123,8 @@ class FrameDataVisualizationTreeBase(object):
         self.resetAllSamples()
 
         self.addedNewData = True
+        self.integrityEnsured = True
+        self.possibleCorrupted = set()
         # self.ranges = dict()
 
 
@@ -151,6 +153,8 @@ class FrameDataVisualizationTreeBase(object):
         self.meta['maxMinute'] = 0
 
         self.addedNewData = True
+        self.integrityEnsured = True
+        self.possibleCorrupted = set()
         # self.ranges = dict()
 
 
@@ -415,7 +419,19 @@ class FrameDataVisualizationTreeBase(object):
     #
     #     self.addedNewData = True
 
-    def insertSample(self, day, hour, minute, new_df, dontSave=False):
+    def restoreIntegrity(self):
+        if self.integrityEnsured:
+            return
+
+        for day, hour, minute in list(self.possibleCorrupted):
+            df = self.getValues(day, hour, minute)
+            # remove negative values that could arise with negative increments in
+            # new_df
+            df.drop(df[df['amount'] <= 0].index, inplace=True)
+
+        self.integrityEnsured = True
+
+    def insertSample(self, day, hour, minute, new_df, dontSave=False, checkIntegrity=True):
         ts = time.time()
         self.verifyStructureExists(day, hour, minute)
         t1 = time.time()
@@ -425,10 +441,14 @@ class FrameDataVisualizationTreeBase(object):
         t2 = time.time()
         oldFrameAmount = len(df.index.levels[0])
         df = df.add(new_df, fill_value=0)
-        if new_df.min()['amount'] < 0:
-            # remove negative values that could arise with negative increments in
-            # new_df
-            df = df.drop(df[df['amount'] <= 0].index)
+        if checkIntegrity:
+            if new_df.min()['amount'] < 0:
+                # remove negative values that could arise with negative increments in
+                # new_df
+                df = df.drop(df[df['amount'] <= 0].index)
+        else:
+            self.integrityEnsured = False
+            self.possibleCorrupted |= {(day, hour, minute)}
 
         t3 = time.time()
         self.updateValues(day, hour, minute, df)
@@ -755,8 +775,56 @@ class FrameDataVisualizationTreeBase(object):
             deltaVector (list of delta values)
                 deltaValue ([idx, data])
         """
+        # for deltaValue in deltaVector:
+        #     self.insertDeltaValue(deltaValue,
+        #                           checkIntegrity=False)
+
+        ts = time.time()
+        d = {}
         for deltaValue in deltaVector:
-            self.insertDeltaValue(deltaValue)
+            day, hour, minute, frame = deltaValue[0]
+            classID = deltaValue[1]
+            increment = deltaValue[2]
+
+            if (day, hour, minute) not in d:
+                d[(day, hour, minute)] = []
+
+            d[(day, hour, minute)] += [[frame, classID, increment]]
+
+        t1 = time.time()
+        for (day, hour, minute), lst in d.items():
+            df = pd.DataFrame(lst, columns=('frames', 'classID', 'amount'))
+            # t1 = time.time()
+            df.set_index(['frames', 'classID'], inplace=True)
+            # t2 = time.time()
+            # df.sortlevel(inplace=True)
+            # t3 = time.time()
+
+            self.insertSample(day, hour, minute, df, checkIntegrity=True)
+
+
+        # day, hour, minute, frame = deltaValue[0]
+        # classID = deltaValue[1]
+        # increment = deltaValue[2]
+        #
+        # ts = time.time()
+        #
+        # df = pd.DataFrame([[frame, classID, increment]], columns=('frames', 'classID', 'amount'))
+        # t1 = time.time()
+        # df.set_index(['frames', 'classID'], inplace=True)
+        # t2 = time.time()
+        # # df.sortlevel(inplace=True)
+        # t3 = time.time()
+        #
+        # self.insertSample(day, hour, minute, df, checkIntegrity=checkIntegrity)
+
+        # t4 = time.time()
+        te = time.time()
+        cfg.log.info("total time: {}\nt1: {}\nt2: {}".format(te - ts,
+                                                             t1 - ts,
+                                                             te - t1))
+
+        # self.restoreIntegrity()
 
     #
     # def updateValue(self, day, hour, minute, frame, data):
@@ -944,11 +1012,12 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         self.propagateStack(day, hour, minute, -oldStack)
         self.propagateStack(day, hour, minute, stack)
 
-    def insertSample(self, day, hour, minute, new_df):
+    def insertSample(self, day, hour, minute, new_df, checkIntegrity=True):
         super(FrameDataVisualizationTreeBehaviour, self).insertSample(day,
                                                                       hour,
                                                                       minute,
-                                                                      new_df)
+                                                                      new_df,
+                                                checkIntegrity=checkIntegrity)
         self.updateStack(day, hour, minute)
 
     def removeSample(self, day, hour, minute, index, dontSave=False):
@@ -959,7 +1028,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                                                                       dontSave)
         self.updateStack(day, hour, minute)
 
-    def insertDeltaValue(self, deltaValue):
+    def insertDeltaValue(self, deltaValue, checkIntegrity=True):
         day, hour, minute, frame = deltaValue[0]
         classID = deltaValue[1]
         increment = deltaValue[2]
@@ -970,10 +1039,10 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         t1 = time.time()
         df.set_index(['frames', 'classID'], inplace=True)
         t2 = time.time()
-        df.sortlevel(inplace=True)
+        # df.sortlevel(inplace=True)
         t3 = time.time()
 
-        self.insertSample(day, hour, minute, df)
+        self.insertSample(day, hour, minute, df, checkIntegrity=checkIntegrity)
 
         t4 = time.time()
         te = time.time()
