@@ -1483,14 +1483,18 @@ class VideoTagger(QtGui.QMainWindow):
 
             crop = img[prevYCrop, prevXCrop]
             if np.prod(crop.shape) != 0:
-                img = scim.imresize(crop, (self.prevSize,self.prevSize))
+                # img = scim.imresize(crop, (self.prevSize,self.prevSize))
+                img = crop
             else:
-                img = scim.imresize(img, (self.prevSize,self.prevSize))
+                # img = scim.imresize(img, (self.prevSize,self.prevSize))
+                pass
         else:
             img = scim.imresize(img, (self.prevSize,self.prevSize))
             
         
         qi = qim2np.array2qimage(img)
+
+        qi = qi.scaled(self.prevSize,self.prevSize)
         
         cfg.log.debug("creating pixmap")
         pixmap = QtGui.QPixmap()
