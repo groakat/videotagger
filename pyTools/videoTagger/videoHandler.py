@@ -347,10 +347,12 @@ class VideoHandler(QtCore.QObject):
         try:
             if increment > 0:
                 frame = self.getNextFrame(increment, doBufferCheck=False,
-                                          emitFileChange=False, posOnly=posOnly)
+                                          emitFileChange=False, posOnly=posOnly,
+                                          frameOnly=True)
             else:
                 frame = self.getPrevFrame(-increment, doBufferCheck=False,
-                                          emitFileChange=False, posOnly=posOnly)
+                                          emitFileChange=False, posOnly=posOnly,
+                                          frameOnly=True)
         except KeyError:
             cfg.log.warning("KeyError: something went wrong during the fetching procedure")
             frame = self.getCurrentFrameNull()
@@ -391,9 +393,7 @@ class VideoHandler(QtCore.QObject):
 
     @cfg.logClassFunction
     def getCurrentFrame(self, doBufferCheck=True, updateAnnotationViews=True,
-                        posOnly=False):
-
-        t1 = time.time()
+                        posOnly=False, frameOnly=False):
         frameList = []
         
         # get position
@@ -402,13 +402,14 @@ class VideoHandler(QtCore.QObject):
 #         
 #         pos = self.posCache.getItem(posKey)[self.idx]
 #         self.getPositionArray(self.posPath)[self.idx]
-        pos = self.getPosition(self.posPath, self.idx)
-        
-        frameList += [pos]
-        
-        if posOnly:
-            # cfg.log.info("{0} sec in getCurrentFrame posOnly".format(time.time() - t1))
-            return frameList
+        if not frameOnly:
+            pos = self.getPosition(self.posPath, self.idx)
+
+            frameList += [pos]
+
+            if posOnly:
+                # cfg.log.info("{0} sec in getCurrentFrame posOnly".format(time.time() - t1))
+                return frameList
 
         while self.videoDict[self.posPath] is None:
             cfg.log.info("waiting for videopath")
@@ -433,7 +434,7 @@ class VideoHandler(QtCore.QObject):
 #             self.fetchVideo(self.posPath)
             frame = self.getCurrentFrameUnbuffered(doBufferCheck, 
                                                    updateAnnotationViews)
-                    
+
         except AttributeError:
             cfg.log.warning("accessing video out of scope, fetching...")
             frame = [np.zeros((64,64,3))] * (self.maxOfSelectedVials() + 1)
@@ -441,6 +442,9 @@ class VideoHandler(QtCore.QObject):
 #                                                    updateAnnotationViews)
 #             print pos, posOnly
 #             print frameList
+
+        if frameOnly:
+            return [None, frame, None, None]
 
         if doBufferCheck:
             self.checkBuffer(updateAnnotationViews)
@@ -451,14 +455,18 @@ class VideoHandler(QtCore.QObject):
                                      "idx":self.idx}))
 
         annotation = self.getCurrentAnnotation()
-
         background = self.getCurrentBackground()
-
         frameList += [frame]
-            
         frameList += [annotation]
 
-
+        # cfg.log.info('\nt1: {}\nt2: {}\nt3: {}\nt4: {}\nt5: {}\nt6: {}\nt7: {}\ntotal: {}'.format(t1 - ts,
+        #                                                                                           t2 - t1,
+        #                                                                                           t3 - t2,
+        #                                                                                           t4 - t3,
+        #                                                                                           t5 - t4,
+        #                                                                                           t6 - t5,
+        #                                                                                           t7 - t6,
+        #                                                                                           te - ts))
         return [pos, frame, annotation, background]
     
 
@@ -581,11 +589,10 @@ class VideoHandler(QtCore.QObject):
                 
     @cfg.logClassFunction
     def getNextFrame(self, increment=1, doBufferCheck=True, emitFileChange=True,
-                     unbuffered=False,  posOnly=False):
+                     unbuffered=False,  posOnly=False, frameOnly=False):
 
 #         if self.videoLengths[self.posPath] is None:
 #             return self.getCurrentFrameNull()
-            
         cfg.log.debug("self.idx: {2}, increment: {0}, doBufferCheck: {1}".format(increment, doBufferCheck, self.idx))
         self.idx += increment
 
@@ -618,17 +625,17 @@ class VideoHandler(QtCore.QObject):
                         
             if changedFile and emitFileChange:
                 self.fileChangeCB(self.posPath)  
-                        
+
         if not unbuffered:
             return self.getCurrentFrame(doBufferCheck=doBufferCheck,
-                                        posOnly=posOnly)
+                                        posOnly=posOnly, frameOnly=frameOnly)
         else:
             return self.getCurrentFrameUnbuffered(doBufferCheck=doBufferCheck,
                                                   posOnly=posOnly)
         
     @cfg.logClassFunction
     def getPrevFrame(self, decrement=1, doBufferCheck=True, emitFileChange=True,
-                     unbuffered=False, posOnly=False):
+                     unbuffered=False, posOnly=False, frameOnly=False):
         
 #         if self.videoLengths[self.posPath] is None:
 #             return self.getCurrentFrameNull()
@@ -663,7 +670,7 @@ class VideoHandler(QtCore.QObject):
                         
         if not unbuffered:
             return self.getCurrentFrame(doBufferCheck=doBufferCheck, 
-                                        posOnly=posOnly)
+                                        posOnly=posOnly, frameOnly=frameOnly)
         else:
             return self.getCurrentFrameUnbuffered(doBufferCheck=doBufferCheck, 
                                                   posOnly=posOnly)

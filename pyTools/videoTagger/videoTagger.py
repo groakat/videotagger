@@ -1554,22 +1554,25 @@ class VideoTagger(QtGui.QMainWindow):
 
             if not self.inEditMode:
                 anRect.deactivate()
-            
+
         usedRoi = 0
         
-        cfg.log.debug("Rois: {0}".format(rois))
-        for i in range(len(rois)):        
+        # cfg.log.debug("Rois: {0}".format(rois))
+
+        tsp0 = time.time()
+        for i in range(len(rois)):
             x1, y1, x2, y2 = rois[i][0]
             color = rois[i][1]['color']
             lbl = rois[i][2]
-            
+
             width = x2 - x1
             height = y2 - y1
-            
+
             cfg.log.debug("setting rect to: {0} {1} {2} {3}".format(x1,
                                                                    y1,
                                                                    width ,
                                                                    height))
+
             self.annotationRoiLabels[i].rectChangedCallback = None
             self.annotationRoiLabels[i].setRect(0,0, width, height)
             self.annotationRoiLabels[i].setPos(x1, y1)
@@ -1581,18 +1584,16 @@ class VideoTagger(QtGui.QMainWindow):
                                                            lbl)
             self.annotationRoiLabels[i].rectChangedCallback = \
                                                     self.labelRectChangedSlot
-             
-            cfg.log.debug("set rect to: {0}".format(self.annotationRoiLabels[i].rect()))
+        #
+        #     cfg.log.debug("set rect to: {0}".format(self.annotationRoiLabels[i].rect()))
             usedRoi = i + 1
-            
-            
+
         # move unused rects out of sight
         for k in range(usedRoi, len(self.annotationRoiLabels)):
             self.annotationRoiLabels[k].rectChangedCallback = None
-            self.annotationRoiLabels[k].setRect(0,0, 0, 0)
+            self.annotationRoiLabels[k].setRect(0, 0, 0, 0)
             self.annotationRoiLabels[k].setPos(-10, -10)
-            
-        
+
     
     @cfg.logClassFunction
     def showTempFrame(self, increment):
@@ -1720,7 +1721,11 @@ class VideoTagger(QtGui.QMainWindow):
 
                 rois += [[b, self.annotations[i], label]]
 
+            t1 = time.time()
             self.positionAnnotationRoi(rois)
+            t2 = time.time()
+
+            cfg.log.info("positionAnnotationRoi: {}s".format(t2 - t1))
 
 
 
@@ -1838,18 +1843,20 @@ class VideoTagger(QtGui.QMainWindow):
 
         self.displayTrajectory(increment, sv, offset)
 
+        t4 = time.time()
 
         # showing previews #
         if np.abs(increment) <= 10:
             self.updatePreviewLabels(frameSwitch=(increment != 0))
 
+        t5 = time.time()
         self.vh.updateAnnotationProperties(self.getMetadata())
 
         frameNo = self.vh.getCurrentFrameNo()
         # self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
 
 
-        t4 = time.time()
+        t6 = time.time()
 
         self.updateHUD()
         if self.fullVideoDialog is not None:
@@ -1860,11 +1867,13 @@ class VideoTagger(QtGui.QMainWindow):
 
 
         te = time.time()
-        cfg.log.info("total time: {}\nt1: {}\nt2: {} \nt3: {} \nt4: {}".format(te - ts,
+        cfg.log.info("total time: {}\nt1: {}\nt2: {} \nt3: {} \nt4: {}\nt5: {}\nt6: {}".format(te - ts,
                                                                        t1 - t0,
                                                                        t2 - t1,
                                                                        t3 - t2,
-                                                                       te - t3))
+                                                                       t4 - t3,
+                                                                       t5 - t4,
+                                                                       te - t5))
 
 
         
@@ -2205,15 +2214,16 @@ class VideoTagger(QtGui.QMainWindow):
         # fmt.setOverlay(True)
         # fmt.setDoubleBuffer(True);
         # fmt.setDirectRendering(True);
+        # #
+        # #
+        # self.glw = QtOpenGL.QGLWidget(fmt)
+        # # self.glw = QtGui.QWidget(self)#QtOpenGL.QGLWidget(fmt)
+        # # self.glw.setFixedHeight(h + 50)
         #
         #
-        self.glw = QtGui.QWidget(self)#QtOpenGL.QGLWidget(fmt)
-        # self.glw.setFixedHeight(h + 50)
+        # self.glw.setMouseTracking(True)
         
-        
-#         glw.setMouseTracking(True)
-        
-#         self.videoView.setViewport(self.glw)
+        # self.videoView.setViewport(self.glw)
 #         self.videoView.viewport().setCursor(QtCore.Qt.BlankCursor)
 #         self.videoView.setGeometry(QtCore.QRect(0, 0, w + 200, h+ 50))#1920/2, 1080/2))
 #         self.videoView.show()
