@@ -984,7 +984,11 @@ class VideoTagger(QtGui.QMainWindow):
     def convertVideoToBehaviourFileList(self, videolist):
         out = []
         for f in videolist:
-            root = os.path.dirname(f)[:-len(self.patchesFolder)]
+            if len(self.patchesFolder):
+                root = os.path.dirname(f)[:-len(self.patchesFolder)]
+            else:
+                root = os.path.dirname(f)
+
             bhvrfolder = os.path.join(root, self.bhvrFolder)
             bhvrfile = os.path.basename(f)[:-len(self.videoExtension)] + 'csv'
 
@@ -1046,6 +1050,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         cfg.log.info("end")
         self.fdvt = self.frameView.fdvt
+        self.fdvt.save()
             
             
     def createPrevFrames(self, xPos, yPos):
@@ -1458,44 +1463,68 @@ class VideoTagger(QtGui.QMainWindow):
                 if self.prevYCrop.start:
                     ystart = int(self.prevYCrop.start * multiplier)
                 else:
-                    ystart = None
+                    ystart = 0
 
                 if self.prevYCrop.stop:
                     ystop = int(self.prevYCrop.stop * multiplier)
                 else:
-                    ystop = None
+                    ystop = img.shape[0]
 
                 if self.prevXCrop.start:
                     xstart = int(self.prevXCrop.start * multiplier)
                 else:
-                    xstart = None
+                    xstart = 0
 
                 if self.prevXCrop.stop:
                     xstop = int(self.prevXCrop.stop * multiplier)
                 else:
-                    xstop = None
+                    xstop = img.shape[1]
 
-                prevYCrop = slice(ystart, ystop)
-                prevXCrop = slice(xstart, xstop)
+                prevYCrop = slice(ystart, ystop, np.ceil((ystop - ystart) * multiplier / self.prevSize))
+                prevXCrop = slice(xstart, xstop, np.ceil((xstop - xstart) * multiplier / self.prevSize))
             else:
                 prevYCrop = self.prevYCrop
                 prevXCrop = self.prevXCrop
 
             crop = img[prevYCrop, prevXCrop]
             if np.prod(crop.shape) != 0:
-                # img = scim.imresize(crop, (self.prevSize,self.prevSize))
-                img = crop
+                t1 = time.time()
+                # # img = scim.imresize(crop, (self.prevSize,self.prevSize))
+                # if crop.shape[0] > self.prevSize:
+                #     slcR = slice(0, None, int(np.ceil(crop.shape[0] / self.prevSize)) + 1)
+                #     # crop = crop[slc,:]
+                #     cfg.log.info('fucking first dim')
+                # else:
+                #     slcR = slice(0, None)
+                #     cfg.log.info('predender1 {}'.format(crop.shape[0]))
+                #
+                # if crop.shape[1] > self.prevSize:
+                #     slcC = slice(0, None, int(np.ceil(crop.shape[1] / self.prevSize)) + 1)
+                #     # crop = crop[:, slc]
+                #     cfg.log.info('fucking 2nd dim')
+                # else:
+                #     slcC = slice(0, None)
+                #     cfg.log.info('predender2 {}'.format(crop.shape[1]))
+
+                img = crop#crop[slcR, slcC]
+
+                cfg.log.info('sizze {}, prevSize: {}'.format(img.shape, self.prevSize))
+                t2 = time.time()
+
+                cfg.log.info('t2: {}'.format(t2 - t1))
             else:
                 # img = scim.imresize(img, (self.prevSize,self.prevSize))
                 pass
         else:
             img = scim.imresize(img, (self.prevSize,self.prevSize))
             
-        
+        t3 = time.time()
         qi = qim2np.array2qimage(img)
-
+        t4 = time.time()
         qi = qi.scaled(self.prevSize,self.prevSize)
-        
+        t5 = time.time()
+        cfg.log.info('t4: {}, t5: {}'.format(t4 - t3, t5 - t4))
+
         cfg.log.debug("creating pixmap")
         pixmap = QtGui.QPixmap()
         

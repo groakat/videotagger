@@ -717,6 +717,7 @@ class FrameDataVisualizationTreeBase(object):
             self.plotData['frames']['tick'] += [tmpKeys]
 
 
+
     def createFDVTTemplateFromHierarchy(self):
         """
         It is recommended to use `createFDVTTemplateFromVideoList`
@@ -1167,7 +1168,8 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
         for filterTuple in filtList:
             filtAnno = anno.filterFrameList(filterTuple,
-                                            frameRange=frameSlc)
+                                            frameRange=frameSlc,
+                                            exactMatch=False)
 
             if not filtAnno.dataFrame.empty:
                 # make sure that every minute starts with frame 0
@@ -1315,8 +1317,10 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             frameSlc = slice(i, k)
             df = self.convertFrameListToDataframe(annotation, frameSlc,
                                                 self.meta['filtList'])
+
             self.insertSample(day, hour, minute, df)
             day, hour, minute = self.incrementTime(day, hour, minute)
+
             i = k
 
             self.meta['not-initialized'] = False

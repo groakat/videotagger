@@ -607,12 +607,19 @@ class GraphicsViewFDV(QtGui.QWidget):
     def resizeEvent(self, event):
         super(GraphicsViewFDV, self).resizeEvent(event)
         # self.gv_center.fitInView(-0.1, -10, 1.1, 6,QtCore.Qt.IgnoreAspectRatio)
-        self.gv_center.fitInView(self.overviewRectDict[self.fdvt])
+        try:
+            self.gv_center.fitInView(self.overviewRectDict[self.fdvt])
+        except KeyError:
+            self.gv_center.fitInView(-0.1, -10, 1.1, 6,QtCore.Qt.IgnoreAspectRatio)
+
 
     def showEvent(self, event):
         super(GraphicsViewFDV, self).showEvent(event)
         # self.gv_center.fitInView(-0.1, -1, 1.1, 6,QtCore.Qt.IgnoreAspectRatio)
-        self.gv_center.fitInView(self.overviewRectDict[self.fdvt])
+        try:
+            self.gv_center.fitInView(self.overviewRectDict[self.fdvt])
+        except KeyError:
+            self.gv_center.fitInView(-0.1, -10, 1.1, 6,QtCore.Qt.IgnoreAspectRatio)
 
 
     def setupGV(self, fdvt):
