@@ -340,19 +340,22 @@ class VideoHandler(QtCore.QObject):
         
         
     @cfg.logClassFunction
-    def getTempFrame(self, increment, posOnly=False):      
+    def getTempFrame(self, increment, posOnly=False, frameOnly=True):
         idx = self.idx
         path = self.posPath
+
+        if posOnly:
+            frameOnly=False
         
         try:
             if increment > 0:
                 frame = self.getNextFrame(increment, doBufferCheck=False,
                                           emitFileChange=False, posOnly=posOnly,
-                                          frameOnly=True)
+                                          frameOnly=frameOnly)
             else:
                 frame = self.getPrevFrame(-increment, doBufferCheck=False,
                                           emitFileChange=False, posOnly=posOnly,
-                                          frameOnly=True)
+                                          frameOnly=frameOnly)
         except KeyError:
             cfg.log.warning("KeyError: something went wrong during the fetching procedure")
             frame = self.getCurrentFrameNull()
