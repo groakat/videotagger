@@ -1488,42 +1488,15 @@ class VideoTagger(QtGui.QMainWindow):
 
             crop = img[prevYCrop, prevXCrop]
             if np.prod(crop.shape) != 0:
-                t1 = time.time()
-                # # img = scim.imresize(crop, (self.prevSize,self.prevSize))
-                # if crop.shape[0] > self.prevSize:
-                #     slcR = slice(0, None, int(np.ceil(crop.shape[0] / self.prevSize)) + 1)
-                #     # crop = crop[slc,:]
-                #     cfg.log.info('fucking first dim')
-                # else:
-                #     slcR = slice(0, None)
-                #     cfg.log.info('predender1 {}'.format(crop.shape[0]))
-                #
-                # if crop.shape[1] > self.prevSize:
-                #     slcC = slice(0, None, int(np.ceil(crop.shape[1] / self.prevSize)) + 1)
-                #     # crop = crop[:, slc]
-                #     cfg.log.info('fucking 2nd dim')
-                # else:
-                #     slcC = slice(0, None)
-                #     cfg.log.info('predender2 {}'.format(crop.shape[1]))
-
-                img = crop#crop[slcR, slcC]
-
-                cfg.log.info('sizze {}, prevSize: {}'.format(img.shape, self.prevSize))
-                t2 = time.time()
-
-                cfg.log.info('t2: {}'.format(t2 - t1))
+                img = crop
             else:
                 # img = scim.imresize(img, (self.prevSize,self.prevSize))
                 pass
         else:
             img = scim.imresize(img, (self.prevSize,self.prevSize))
-            
-        t3 = time.time()
+
         qi = qim2np.array2qimage(img)
-        t4 = time.time()
         qi = qi.scaled(self.prevSize,self.prevSize)
-        t5 = time.time()
-        cfg.log.info('t4: {}, t5: {}'.format(t4 - t3, t5 - t4))
 
         cfg.log.debug("creating pixmap")
         pixmap = QtGui.QPixmap()
@@ -1536,7 +1509,7 @@ class VideoTagger(QtGui.QMainWindow):
         lbl.setPixmap(px)
                 
         cfg.log.debug("update label")
-        lbl.update()
+        # lbl.update()
 
         if addToQueryPreviews:
             self.queryPreviews += [copy.copy(img)]
@@ -2817,7 +2790,7 @@ class VideoTagger(QtGui.QMainWindow):
                     self.fdvt.addNewClass(filt)
                     colors = [a['color'] for a in self.annotations]
                     # self.frameView.updateColors(colors)
-                    self.createLegend(self.fdvt, colors)
+                    self.frameView.createLegend(self.fdvt, colors)
                     dv = self.fdvt.getDeltaValue(key, frame, filt, increment)
                 deltaVector += [dv]
 
