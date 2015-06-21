@@ -981,12 +981,16 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         self.addedNewData = True
 
     def addFrameArrayToStumpStack(self, stump, stack):
-        if stump['meta']['stack'].shape[0] != self.meta['maxClass']:
-            tmp = np.zeros(self.meta['maxClass'])
-            tmp[:stump['meta']['stack'].shape[0]] = stump['meta']['stack']
-            stump['meta']['stack'] = tmp
+        if stump['meta']['stack'].shape[0] == stack.shape[0]:
+            # needed to allow removing stack even if new class was added
+            stump['meta']['stack'] += stack
+        else:
+            if stump['meta']['stack'].shape[0] != self.meta['maxClass']:
+                tmp = np.zeros(self.meta['maxClass'])
+                tmp[:stump['meta']['stack'].shape[0]] = stump['meta']['stack']
+                stump['meta']['stack'] = tmp
 
-        stump['meta']['stack'] += stack
+            stump['meta']['stack'] += stack
 
     def propagateStack(self, day, hour, minute, stack):
         self.addFrameArrayToStumpStack(self.hier[day][hour][minute], stack)
