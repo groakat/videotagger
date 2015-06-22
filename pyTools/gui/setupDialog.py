@@ -83,6 +83,7 @@ class AnnotationSelector(QtGui.QScrollArea):
             self.annoLayout.itemAtPosition(i, 1).widget().setModel(labels)
 
     def scanLabelFile(self):
+        selections = self.getUserSelection()
         if self.anno is not None:
             annotationFilters = self.anno.extractAllFilterTuples()
             self.annotators = sorted(set(zip(*annotationFilters)[0]) - \
@@ -94,7 +95,8 @@ class AnnotationSelector(QtGui.QScrollArea):
             self.annotators = [self.annotator]
             self.labels = []
 
-        self.setAnnotationLabelSelection(self.annotators, self.labels)
+        # self.setAnnotationLabelSelection(self.annotators, self.labels)
+        self.setUserSelection(selections=selections)
 
     def setAnnotationFile(self, filename):
         try:
@@ -337,6 +339,8 @@ class SetupDialog(QtGui.QWidget):
         self.annotations_button.load(os.path.join(
                             FVD.SVGButton.getIconFolder(),
                             "users_font_awesome.svg"))
+
+
 
     def activateCroppedButton(self):
         self.cropped_button.load(os.path.join(
@@ -678,6 +682,7 @@ class SetupDialog(QtGui.QWidget):
         self.annoSelector.setAnnotationFile(annotationFilename)
 
         if annotationFilters is not None:
+            self.annotationsSelections = annotationFilters
             self.annoSelector.setUserSelection(annotationFilters)
 
     def setFormValues(self,
@@ -758,7 +763,7 @@ class SetupDialog(QtGui.QWidget):
         startFrame = int(self.le_startFrame.text())
         maxAnnotationSpeed = int(self.le_maxAnnotationSpeed.text())
 
-        annotationsSelections = self.annoSelector.getUserSelection()
+        self.annotationsSelections = self.annoSelector.getUserSelection()
 
         return  path,               \
                 annotator,          \
@@ -775,7 +780,7 @@ class SetupDialog(QtGui.QWidget):
                 startVideoName,     \
                 startFrame,         \
                 maxAnnotationSpeed, \
-                annotationsSelections
+                self.annotationsSelections
 
     def launchVideoTagger(self):
         self.videoTagger.submitForm()
