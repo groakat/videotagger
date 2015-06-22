@@ -355,6 +355,23 @@ class FullViewGraphicsView(QtGui.QGraphicsView):
     def __init__(self, *args, **kwargs):
         super(FullViewGraphicsView, self).__init__(*args, **kwargs)
 
+        #
+        # fmt = QtOpenGL.QGLFormat()
+        # fmt.setAlpha(True)
+        # fmt.setOverlay(True)
+        # fmt.setDoubleBuffer(True);
+        # fmt.setDirectRendering(True);
+        # #
+        # #
+        # self.glw = QtOpenGL.QGLWidget(fmt)
+        # # self.glw = QtGui.QWidget(self)#QtOpenGL.QGLWidget(fmt)
+        # # self.glw.setFixedHeight(h + 50)
+        #
+        #
+        # self.glw.setMouseTracking(True)
+        #
+        # self.setViewport(self.glw)
+
 
     def resizeEvent(self, event):
         ret = super(FullViewGraphicsView, self).resizeEvent(event)

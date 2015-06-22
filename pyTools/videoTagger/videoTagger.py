@@ -208,7 +208,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.videoExtension = videoExtension
 
         self.unsavedChanges = False
-
+        self.lastLabel = None
 
         self.bgImgArray = 0
 
@@ -984,7 +984,11 @@ class VideoTagger(QtGui.QMainWindow):
     def convertVideoToBehaviourFileList(self, videolist):
         out = []
         for f in videolist:
-            root = os.path.dirname(f)[:-len(self.patchesFolder)]
+            if len(self.patchesFolder):
+                root = os.path.dirname(f)[:-len(self.patchesFolder)]
+            else:
+                root = os.path.dirname(f)
+
             bhvrfolder = os.path.join(root, self.bhvrFolder)
             bhvrfile = os.path.basename(f)[:-len(self.videoExtension)] + 'csv'
 
@@ -1046,6 +1050,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         cfg.log.info("end")
         self.fdvt = self.frameView.fdvt
+        self.fdvt.save()
             
             
     def createPrevFrames(self, xPos, yPos):
@@ -1458,40 +1463,41 @@ class VideoTagger(QtGui.QMainWindow):
                 if self.prevYCrop.start:
                     ystart = int(self.prevYCrop.start * multiplier)
                 else:
-                    ystart = None
+                    ystart = 0
 
                 if self.prevYCrop.stop:
                     ystop = int(self.prevYCrop.stop * multiplier)
                 else:
-                    ystop = None
+                    ystop = img.shape[0]
 
                 if self.prevXCrop.start:
                     xstart = int(self.prevXCrop.start * multiplier)
                 else:
-                    xstart = None
+                    xstart = 0
 
                 if self.prevXCrop.stop:
                     xstop = int(self.prevXCrop.stop * multiplier)
                 else:
-                    xstop = None
+                    xstop = img.shape[1]
 
-                prevYCrop = slice(ystart, ystop)
-                prevXCrop = slice(xstart, xstop)
+                prevYCrop = slice(ystart, ystop, np.ceil((ystop - ystart) * multiplier / self.prevSize))
+                prevXCrop = slice(xstart, xstop, np.ceil((xstop - xstart) * multiplier / self.prevSize))
             else:
                 prevYCrop = self.prevYCrop
                 prevXCrop = self.prevXCrop
 
             crop = img[prevYCrop, prevXCrop]
             if np.prod(crop.shape) != 0:
-                img = scim.imresize(crop, (self.prevSize,self.prevSize))
+                img = crop
             else:
-                img = scim.imresize(img, (self.prevSize,self.prevSize))
+                # img = scim.imresize(img, (self.prevSize,self.prevSize))
+                pass
         else:
             img = scim.imresize(img, (self.prevSize,self.prevSize))
-            
-        
+
         qi = qim2np.array2qimage(img)
-        
+        qi = qi.scaled(self.prevSize,self.prevSize)
+
         cfg.log.debug("creating pixmap")
         pixmap = QtGui.QPixmap()
         
@@ -1503,7 +1509,7 @@ class VideoTagger(QtGui.QMainWindow):
         lbl.setPixmap(px)
                 
         cfg.log.debug("update label")
-        lbl.update()
+        # lbl.update()
 
         if addToQueryPreviews:
             self.queryPreviews += [copy.copy(img)]
@@ -1554,22 +1560,25 @@ class VideoTagger(QtGui.QMainWindow):
 
             if not self.inEditMode:
                 anRect.deactivate()
-            
+
         usedRoi = 0
         
-        cfg.log.debug("Rois: {0}".format(rois))
-        for i in range(len(rois)):        
+        # cfg.log.debug("Rois: {0}".format(rois))
+
+        tsp0 = time.time()
+        for i in range(len(rois)):
             x1, y1, x2, y2 = rois[i][0]
             color = rois[i][1]['color']
             lbl = rois[i][2]
-            
+
             width = x2 - x1
             height = y2 - y1
-            
+
             cfg.log.debug("setting rect to: {0} {1} {2} {3}".format(x1,
                                                                    y1,
                                                                    width ,
                                                                    height))
+
             self.annotationRoiLabels[i].rectChangedCallback = None
             self.annotationRoiLabels[i].setRect(0,0, width, height)
             self.annotationRoiLabels[i].setPos(x1, y1)
@@ -1581,18 +1590,16 @@ class VideoTagger(QtGui.QMainWindow):
                                                            lbl)
             self.annotationRoiLabels[i].rectChangedCallback = \
                                                     self.labelRectChangedSlot
-             
-            cfg.log.debug("set rect to: {0}".format(self.annotationRoiLabels[i].rect()))
+        #
+        #     cfg.log.debug("set rect to: {0}".format(self.annotationRoiLabels[i].rect()))
             usedRoi = i + 1
-            
-            
+
         # move unused rects out of sight
         for k in range(usedRoi, len(self.annotationRoiLabels)):
             self.annotationRoiLabels[k].rectChangedCallback = None
-            self.annotationRoiLabels[k].setRect(0,0, 0, 0)
+            self.annotationRoiLabels[k].setRect(0, 0, 0, 0)
             self.annotationRoiLabels[k].setPos(-10, -10)
-            
-        
+
     
     @cfg.logClassFunction
     def showTempFrame(self, increment):
@@ -1720,7 +1727,11 @@ class VideoTagger(QtGui.QMainWindow):
 
                 rois += [[b, self.annotations[i], label]]
 
+            t1 = time.time()
             self.positionAnnotationRoi(rois)
+            t2 = time.time()
+
+            cfg.log.info("positionAnnotationRoi: {}s".format(t2 - t1))
 
 
 
@@ -1838,18 +1849,20 @@ class VideoTagger(QtGui.QMainWindow):
 
         self.displayTrajectory(increment, sv, offset)
 
+        t4 = time.time()
 
         # showing previews #
         if np.abs(increment) <= 10:
             self.updatePreviewLabels(frameSwitch=(increment != 0))
 
+        t5 = time.time()
         self.vh.updateAnnotationProperties(self.getMetadata())
 
         frameNo = self.vh.getCurrentFrameNo()
         # self.ui.lbl_v1.setText("<b> frame no</b>: {0}".format(frameNo))
 
 
-        t4 = time.time()
+        t6 = time.time()
 
         self.updateHUD()
         if self.fullVideoDialog is not None:
@@ -1860,11 +1873,13 @@ class VideoTagger(QtGui.QMainWindow):
 
 
         te = time.time()
-        cfg.log.debug("total time: {}\nt1: {}\nt2: {} \nt3: {} \nt4: {}".format(te - ts,
+        cfg.log.info("total time: {}\nt1: {}\nt2: {} \nt3: {} \nt4: {}\nt5: {}\nt6: {}".format(te - ts,
                                                                        t1 - t0,
                                                                        t2 - t1,
                                                                        t3 - t2,
-                                                                       te - t3))
+                                                                       t4 - t3,
+                                                                       t5 - t4,
+                                                                       te - t5))
 
 
         
@@ -2205,15 +2220,16 @@ class VideoTagger(QtGui.QMainWindow):
         # fmt.setOverlay(True)
         # fmt.setDoubleBuffer(True);
         # fmt.setDirectRendering(True);
+        # #
+        # #
+        # self.glw = QtOpenGL.QGLWidget(fmt)
+        # # self.glw = QtGui.QWidget(self)#QtOpenGL.QGLWidget(fmt)
+        # # self.glw.setFixedHeight(h + 50)
         #
         #
-        self.glw = QtGui.QWidget(self)#QtOpenGL.QGLWidget(fmt)
-        # self.glw.setFixedHeight(h + 50)
+        # self.glw.setMouseTracking(True)
         
-        
-#         glw.setMouseTracking(True)
-        
-#         self.videoView.setViewport(self.glw)
+        # self.videoView.setViewport(self.glw)
 #         self.videoView.viewport().setCursor(QtCore.Qt.BlankCursor)
 #         self.videoView.setGeometry(QtCore.QRect(0, 0, w + 200, h+ 50))#1920/2, 1080/2))
 #         self.videoView.show()
@@ -2729,16 +2745,21 @@ class VideoTagger(QtGui.QMainWindow):
             labelledFrames (output from vh.addAnnotation or vh.eraseAnnotation
 
         """
+        ts = time.time()
+
         if not self.fdvt:
             cfg.log.info("before setup frameview")
             self.setupFrameView()
             self.frameView.hide()
             cfg.log.info("after setup frameview")
 
+        t1 = time.time()
+
         frames = labelledFrames[0]
         filt = labelledFrames[1]
 
         filt = self.removeIDFromBehaviour(filt)
+        t2 = time.time()
 
         increment = labelledFrames[2]
 
@@ -2769,20 +2790,31 @@ class VideoTagger(QtGui.QMainWindow):
                     self.fdvt.addNewClass(filt)
                     colors = [a['color'] for a in self.annotations]
                     # self.frameView.updateColors(colors)
-                    self.createLegend(self.fdvt, colors)
+                    self.frameView.createLegend(self.fdvt, colors)
                     dv = self.fdvt.getDeltaValue(key, frame, filt, increment)
                 deltaVector += [dv]
+
+        t3 = time.time()
 
         if type(self.fdvt) == FDV.FrameDataVisualizationTreeBehaviour:
             cfg.log.info("delta vector: {0}".format(deltaVector))
             self.fdvt.insertDeltaVector(deltaVector)
             # self.frameView.updateDisplay(useCurrentPos=True)
 
+        t4 = time.time()
 
         if self.rpcIH:
             self.rpcIH.sendReply([deltaVector])
             self.isLabelingSingleFrame = False
             self.jumpToBookmark()
+
+        te = time.time()
+
+        cfg.log.info('t1: {}\nt2: {}\nt3: {}\nt4: {}\ntotal: {}\n'.format(t1 - ts,
+                                                                           t2 - t1,
+                                                                           t3 - t2,
+                                                                           t4 - t3,
+                                                                           te - ts))
 
     def getAnnotator(self):
         if self.annotator:
@@ -2837,7 +2869,15 @@ class VideoTagger(QtGui.QMainWindow):
         # cfg.log.info("---------- {0}".format( self.mapFromGlobal(QtGui.QCursor.pos())))
         # self.requestLabelMenu.exec_(self.mapFromGlobal(QtGui.QCursor.pos()))
 
-        strList = [x['behav'] for x in self.annotations]
+        if self.lastLabel is not None:
+            strList = [self.lastLabel]
+        else:
+            strList = []
+
+        cfg.log.info('lastLabel: {}'.format(self.lastLabel))
+
+        strList += [x['behav'] for x in self.annotations if x['behav'] != self.lastLabel]
+        cfg.log.info('strList: {}'.format(strList))
 
 
         self.dialogShortCutFilter.deactivateShortcuts()
@@ -2859,9 +2899,11 @@ class VideoTagger(QtGui.QMainWindow):
                 if elem['behav'] == selectedBehaviour:
                     newAnnotator = elem['annot']
                     newBehaviour = elem['behav']
+                    t1 = time.time()
                     self.editAnnoLabel(self.getAnnotator(), "unknown",
                                        newAnnotator, newBehaviour)
-
+                    cfg.log.info("edit time: {}s".format(time.time() - t1))
+                    self.lastLabel = selectedBehaviour
                     return selectedBehaviour
 
             color = OD.ColorRequestDialog.getColor(
@@ -2877,9 +2919,13 @@ class VideoTagger(QtGui.QMainWindow):
                 return self.queryForLabel()
             else:
                 self.addNewBehaviourClass(selectedBehaviour, color)
+                t1 = time.time()
                 self.editAnnoLabel(self.getAnnotator(), "unknown",
                                    self.getAnnotator(),
                                    selectedBehaviour)
+                cfg.log.info("edit time: {}s".format(time.time() - t1))
+
+        self.lastLabel = selectedBehaviour
 
         return selectedBehaviour
 
@@ -2897,9 +2943,12 @@ class VideoTagger(QtGui.QMainWindow):
             self.confidence = confidence
             self.queryPreviews = []
 
+        ts = time.time()
+
         labelledFrames = self.vh.addAnnotation(self.getSelectedVial(), annotator, 
                               behaviour, metadata=self.getMetadata())
-            
+
+        t1 = time.time()
         if oneClickAnnotation:                
             labelledFrames = self.vh.addAnnotation(self.getSelectedVial(), annotator, 
                               behaviour, metadata=self.getMetadata())
@@ -2920,7 +2969,10 @@ class VideoTagger(QtGui.QMainWindow):
             penCol = QtGui.QColor()
             penCol.setHsv(50, 255, 255, 255)
             self.cropRect.setPen(QtGui.QPen(penCol, 1, QtCore.Qt.SolidLine))
-        
+
+        t2 = time.time()
+        t3 = 0
+        t4 = 0
         if not (labelledFrames == (None, None)
                 or labelledFrames[1].behaviours == [None]):
             if self.postLabelQuery:
@@ -2935,7 +2987,17 @@ class VideoTagger(QtGui.QMainWindow):
             else:
                 labelledFrames = (labelledFrames[0], labelledFrames[1], 1)
 
+            t3 = time.time()
             self.convertLabelListAndReply(labelledFrames)
+            t4 = time.time()
+
+        te = time.time()
+
+        cfg.log.info('t1: {}\nt2: {}\nt3: {}\nt4: {}\ntotal: {}\n'.format(t1 - ts,
+                                                                           t2 - t1,
+                                                                           t3 - t2,
+                                                                           t4 - t3,
+                                                                           te - ts))
 
         self.showNextFrame(0)
 

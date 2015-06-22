@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import time
 import warnings
 import pyTools.misc.basic as bsc
 import pandas as pd
@@ -122,6 +123,8 @@ class FrameDataVisualizationTreeBase(object):
         self.resetAllSamples()
 
         self.addedNewData = True
+        self.integrityEnsured = True
+        self.possibleCorrupted = set()
         # self.ranges = dict()
 
 
@@ -150,6 +153,8 @@ class FrameDataVisualizationTreeBase(object):
         self.meta['maxMinute'] = 0
 
         self.addedNewData = True
+        self.integrityEnsured = True
+        self.possibleCorrupted = set()
         # self.ranges = dict()
 
 
@@ -414,17 +419,40 @@ class FrameDataVisualizationTreeBase(object):
     #
     #     self.addedNewData = True
 
-    def insertSample(self, day, hour, minute, new_df, dontSave=False):
+    def restoreIntegrity(self):
+        if self.integrityEnsured:
+            return
+
+        for day, hour, minute in list(self.possibleCorrupted):
+            df = self.getValues(day, hour, minute)
+            # remove negative values that could arise with negative increments in
+            # new_df
+            df.drop(df[df['amount'] <= 0].index, inplace=True)
+
+        self.integrityEnsured = True
+
+    def insertSample(self, day, hour, minute, new_df, dontSave=False, checkIntegrity=True):
+        ts = time.time()
         self.verifyStructureExists(day, hour, minute)
+        t1 = time.time()
 
         df = self.getValues(day, hour, minute)
 
+        t2 = time.time()
         oldFrameAmount = len(df.index.levels[0])
         df = df.add(new_df, fill_value=0)
-        # remove negative values that could arise with negative increments in
-        # new_df
-        df = df.drop(df[df['amount'] <= 0].index)
+        if checkIntegrity:
+            if new_df.min()['amount'] < 0:
+                # remove negative values that could arise with negative increments in
+                # new_df
+                df = df.drop(df[df['amount'] <= 0].index)
+        else:
+            self.integrityEnsured = False
+            self.possibleCorrupted |= {(day, hour, minute)}
+
+        t3 = time.time()
         self.updateValues(day, hour, minute, df)
+        t4 = time.time()
 
         frameAmountInc = len(df.index.levels[0]) - oldFrameAmount
         self.meta['totalNoFrames'] += frameAmountInc
@@ -433,10 +461,20 @@ class FrameDataVisualizationTreeBase(object):
             self.updateMax(day, hour, minute)
             self.updateMean(day, hour, minute)
 
+        t5 = time.time()
         self.addedNewData = True
 
         if not dontSave:
             self.saveValues(day, hour, minute)
+        te = time.time()
+
+        cfg.log.info("total time: {}\nt1: {}\nt2: {} \nt3: {} \nt4: {}\nt5: {}".format(te - ts,
+                                                                       t1 - ts,
+                                                                       t2 - t1,
+                                                                       t3 - t2,
+                                                                       t4 - t3,
+                                                                       t5 - t4))
+
 
     def getIndexFromFramesAndClass(self, day, hour, minute, frames, classID):
         df = self.cache.getItem(self.getFramesFilename(day, hour, minute))
@@ -679,6 +717,7 @@ class FrameDataVisualizationTreeBase(object):
             self.plotData['frames']['tick'] += [tmpKeys]
 
 
+
     def createFDVTTemplateFromHierarchy(self):
         """
         It is recommended to use `createFDVTTemplateFromVideoList`
@@ -737,8 +776,56 @@ class FrameDataVisualizationTreeBase(object):
             deltaVector (list of delta values)
                 deltaValue ([idx, data])
         """
+        # for deltaValue in deltaVector:
+        #     self.insertDeltaValue(deltaValue,
+        #                           checkIntegrity=False)
+
+        ts = time.time()
+        d = {}
         for deltaValue in deltaVector:
-            self.insertDeltaValue(deltaValue)
+            day, hour, minute, frame = deltaValue[0]
+            classID = deltaValue[1]
+            increment = deltaValue[2]
+
+            if (day, hour, minute) not in d:
+                d[(day, hour, minute)] = []
+
+            d[(day, hour, minute)] += [[frame, classID, increment]]
+
+        t1 = time.time()
+        for (day, hour, minute), lst in d.items():
+            df = pd.DataFrame(lst, columns=('frames', 'classID', 'amount'))
+            # t1 = time.time()
+            df.set_index(['frames', 'classID'], inplace=True)
+            # t2 = time.time()
+            # df.sortlevel(inplace=True)
+            # t3 = time.time()
+
+            self.insertSample(day, hour, minute, df, checkIntegrity=True)
+
+
+        # day, hour, minute, frame = deltaValue[0]
+        # classID = deltaValue[1]
+        # increment = deltaValue[2]
+        #
+        # ts = time.time()
+        #
+        # df = pd.DataFrame([[frame, classID, increment]], columns=('frames', 'classID', 'amount'))
+        # t1 = time.time()
+        # df.set_index(['frames', 'classID'], inplace=True)
+        # t2 = time.time()
+        # # df.sortlevel(inplace=True)
+        # t3 = time.time()
+        #
+        # self.insertSample(day, hour, minute, df, checkIntegrity=checkIntegrity)
+
+        # t4 = time.time()
+        te = time.time()
+        cfg.log.info("total time: {}\nt1: {}\nt2: {}".format(te - ts,
+                                                             t1 - ts,
+                                                             te - t1))
+
+        # self.restoreIntegrity()
 
     #
     # def updateValue(self, day, hour, minute, frame, data):
@@ -894,12 +981,16 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         self.addedNewData = True
 
     def addFrameArrayToStumpStack(self, stump, stack):
-        if stump['meta']['stack'].shape[0] != self.meta['maxClass']:
-            tmp = np.zeros(self.meta['maxClass'])
-            tmp[:stump['meta']['stack'].shape[0]] = stump['meta']['stack']
-            stump['meta']['stack'] = tmp
+        if stump['meta']['stack'].shape[0] == stack.shape[0]:
+            # needed to allow removing stack even if new class was added
+            stump['meta']['stack'] += stack
+        else:
+            if stump['meta']['stack'].shape[0] != self.meta['maxClass']:
+                tmp = np.zeros(self.meta['maxClass'])
+                tmp[:stump['meta']['stack'].shape[0]] = stump['meta']['stack']
+                stump['meta']['stack'] = tmp
 
-        stump['meta']['stack'] += stack
+            stump['meta']['stack'] += stack
 
     def propagateStack(self, day, hour, minute, stack):
         self.addFrameArrayToStumpStack(self.hier[day][hour][minute], stack)
@@ -926,11 +1017,12 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
         self.propagateStack(day, hour, minute, -oldStack)
         self.propagateStack(day, hour, minute, stack)
 
-    def insertSample(self, day, hour, minute, new_df):
+    def insertSample(self, day, hour, minute, new_df, checkIntegrity=True):
         super(FrameDataVisualizationTreeBehaviour, self).insertSample(day,
                                                                       hour,
                                                                       minute,
-                                                                      new_df)
+                                                                      new_df,
+                                                checkIntegrity=checkIntegrity)
         self.updateStack(day, hour, minute)
 
     def removeSample(self, day, hour, minute, index, dontSave=False):
@@ -941,16 +1033,29 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                                                                       dontSave)
         self.updateStack(day, hour, minute)
 
-    def insertDeltaValue(self, deltaValue):
+    def insertDeltaValue(self, deltaValue, checkIntegrity=True):
         day, hour, minute, frame = deltaValue[0]
         classID = deltaValue[1]
         increment = deltaValue[2]
 
-        df = pd.DataFrame([[frame, classID, increment]], columns=('frames', 'classID', 'amount'))
-        df.set_index(['frames', 'classID'], inplace=True)
-        df.sortlevel(inplace=True)
+        ts = time.time()
 
-        self.insertSample(day, hour, minute, df)
+        df = pd.DataFrame([[frame, classID, increment]], columns=('frames', 'classID', 'amount'))
+        t1 = time.time()
+        df.set_index(['frames', 'classID'], inplace=True)
+        t2 = time.time()
+        # df.sortlevel(inplace=True)
+        t3 = time.time()
+
+        self.insertSample(day, hour, minute, df, checkIntegrity=checkIntegrity)
+
+        t4 = time.time()
+        te = time.time()
+        cfg.log.info("total time: {}\nt1: {}\nt2: {} \nt3: {} \nt4: {}".format(te - ts,
+                                                                       t1 - ts,
+                                                                       t2 - t1,
+                                                                       t3 - t2,
+                                                                       t4 - t3))
         # increment = deltaValue[2]
         #
         #
@@ -1067,7 +1172,8 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
         for filterTuple in filtList:
             filtAnno = anno.filterFrameList(filterTuple,
-                                            frameRange=frameSlc)
+                                            frameRange=frameSlc,
+                                            exactMatch=False)
 
             if not filtAnno.dataFrame.empty:
                 # make sure that every minute starts with frame 0
@@ -1215,8 +1321,10 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             frameSlc = slice(i, k)
             df = self.convertFrameListToDataframe(annotation, frameSlc,
                                                 self.meta['filtList'])
+
             self.insertSample(day, hour, minute, df)
             day, hour, minute = self.incrementTime(day, hour, minute)
+
             i = k
 
             self.meta['not-initialized'] = False
