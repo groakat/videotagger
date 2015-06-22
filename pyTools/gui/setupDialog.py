@@ -79,8 +79,16 @@ class AnnotationSelector(QtGui.QScrollArea):
 
     def setAnnotationLabelSelection(self, annotators, labels):
         for i in range(1, self.annoLayout.rowCount() - 1):
+            anno = self.annoLayout.itemAtPosition(i, 0).widget().currentText()
+            lbl = self.annoLayout.itemAtPosition(i, 1).widget().currentText()
+
             self.annoLayout.itemAtPosition(i, 0).widget().setModel(annotators)
             self.annoLayout.itemAtPosition(i, 1).widget().setModel(labels)
+
+            if anno in annotators:
+                self.annoLayout.itemAtPosition(i, 0).widget().setCurrentText(anno)
+            if lbl in labels:
+                self.annoLayout.itemAtPosition(i, 1).widget().setCurrentText(lbl)
 
     def scanLabelFile(self):
         selections = self.getUserSelection()
@@ -96,7 +104,7 @@ class AnnotationSelector(QtGui.QScrollArea):
             self.labels = []
 
         # self.setAnnotationLabelSelection(self.annotators, self.labels)
-        self.setUserSelection(selections=selections)
+        # self.setUserSelection(selections=selections)
 
     def setAnnotationFile(self, filename):
         try:
@@ -285,6 +293,9 @@ class AnnotationSelector(QtGui.QScrollArea):
 
         if annotationSettingsList is not None:
             for annotator, behaviour, color in annotationSettingsList:
+                cfg.log.info('anno: {}, lbl: {}, clr: {}'.format(annotator,
+                                                                 behaviour,
+                                                                 color))
                 self.createNewAnnotationLine(annotator, behaviour, color)
 
 
@@ -385,7 +396,11 @@ class SetupDialog(QtGui.QWidget):
         self.loadWidget(self.filesWidget)
 
     def openAnnotationWidget(self):
-        self.updateAnnotationSelector()
+        # remove focus from self.le_videoPath to make sure it is not triggered
+        # when a annotation or label selection combobox is selected (would
+        # cause seg fault
+        self.le_videoPath.clearFocus()
+        # self.updateAnnotationSelector()
         self.deactivateFileWidgetButton()
         self.activateAnnotationButton()
         self.deactivateCroppedButton()
