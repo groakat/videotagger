@@ -382,12 +382,10 @@ class GraphicsViewFDV(QtGui.QWidget):
             button.setToolTip(descString)
 
     def saveFDVT(self, fdvt):
-        fn = QtGui.QFileDialog.getSaveFileName(self,
+        fn = QtGui.QFileDialog.getExistingDirectory(self,
                                                "Save FDVT",
-                                               '.',
-                                               '*.npy')
-
-        fdvt.save(fn[0])
+                                               '.')
+        fdvt.save(fn)
 
     def addFDVT(self, fdvt, colors=None):
         ts = time.time()

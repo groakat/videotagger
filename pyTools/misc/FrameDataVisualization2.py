@@ -56,6 +56,17 @@ def provideFileList(baseFolder, featFolder, vial, ending='.pos.npy'):
     print("scaning files done")
     return fileList
 
+
+def copytree(src, dst, symlinks=False, ignore=None):
+    import shutil
+    for item in os.listdir(src):
+        s = os.path.join(src, item)
+        d = os.path.join(dst, item)
+        if os.path.isdir(s):
+            shutil.copytree(s, d, symlinks, ignore)
+        else:
+            shutil.copy2(s, d)
+
 def loadFDVT(folder):
     """
     Dynamically determines the type of the FDVT and returns the correct type
@@ -158,9 +169,22 @@ class FrameDataVisualizationTreeBase(object):
         # self.ranges = dict()
 
 
-    def save(self):
-        if not os.path.exists(self.root):
-            os.makedirs(self.root)
+    def save(self, dst_folder=None):
+        if dst_folder is None:
+            dst_folder = self.root
+
+        if dst_folder is not self.root:
+            src_folder = self.root
+
+            if not os.path.exists(dst_folder):
+                os.makedirs(dst_folder)
+
+            copytree(src_folder, dst_folder)
+
+            self.root = dst_folder
+        else:
+            if not os.path.exists(self.root):
+                os.makedirs(self.root)
 
         np.save(os.path.join(self.root,
                              'fdvt.npy'), np.asarray(self.FDVT))

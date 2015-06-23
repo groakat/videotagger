@@ -508,6 +508,146 @@ def alignVideoLengthToRest(root_folder, pos_folder, anno_folder,
                     continue
 
 
+def findInteruptions(root_folder, pos_folder, anno_folder,
+                                   video_extension='mp4'):
+    import pyTools.system.videoExplorer as VE
+    import numpy as np
+    import yaml
+
+    vE = VE.videoExplorer()
+    anno = Annotation()
+
+    unequalFiles = {}
+
+    day = 1
+    month = 2
+
+    minute = 0
+    vial = 0
+
+    def incrementTime(day, month, minute, vial):
+        vial += 1
+
+        if vial > 3:
+            vial = 0
+
+            minute += 1
+            if minute > 59:
+                minute = 0
+                day += 1
+
+                if month == 2 and day > 28:
+                    day = 0
+                    month = 3
+                if month == 3 and day > 31:
+                    day = 0
+                    month = 4
+
+        return day, month, minute, vial
+
+
+    for root, dirs, files in sorted(os.walk(root_folder)):
+        for filename in sorted(files):
+            if not filename.endswith(video_extension):
+                continue
+
+            bn = os.path.basename(filename)
+
+            date = bn.split('.')[0]
+            cur_day = int(date.split('-')[2])
+            cur_month = int(date.split('-')[1])
+
+            time = bn.split('.')[1]
+            cur_minute = int(time.split('-')[1])
+
+            cur_vial = int(bn.split('.')[2][1])
+
+            printed = False
+            cnt = 0
+            while day != cur_day \
+            or month != cur_month \
+            or minute != cur_minute \
+            or vial != cur_vial:
+                if not printed:
+                    printed = True
+
+                # print day, month, minute, vial
+                cnt += 1
+                day, month, minute, vial = incrementTime(day, month, minute, vial)
+
+            if printed:
+                print filename, 'and next', cnt / 4, 'minutes'
+
+            day, month, minute, vial = incrementTime(day, month, minute, vial)
+
+
+
+
+
+
+def findOverlongVideos(root_folder, pos_folder, anno_folder,
+                                   video_extension='mp4'):
+    import pyTools.system.videoExplorer as VE
+    import numpy as np
+    import yaml
+
+    vE = VE.videoExplorer()
+    anno = Annotation()
+
+    unequalFiles = {}
+
+    for root, dirs, files in sorted(os.walk(root_folder)):
+        for filename in sorted(files):
+            if filename.endswith(video_extension):
+                anno_filename = filename[:-len(video_extension)] + 'csv'
+                pos_filename = filename[:-len(video_extension)] + 'pos.npy'
+
+                af = os.path.join(os.path.dirname(root),
+                                  anno_folder,
+                                  anno_filename)
+
+                pf = os.path.join(os.path.dirname(root),
+                                  pos_folder,
+                                  pos_filename)
+
+                videoLength = vE.retrieveVideoLength(os.path.join(root,
+                                                                  filename))
+
+                try:
+                    posLength = len(np.load(pf))
+                except IOError:
+                    print "No posfile for {}".format(pf)
+                    # continue
+                if videoLength > 1800:
+                #
+                # if posLength != (videoLength):
+                #     print "pos fuck:\nfile: {}\nvL: {}\npL: {}".format(filename,
+                #                                             videoLength,
+                #                                             posLength)
+                #
+                # try:
+                #     anno.loadFromFile(af)
+                # except IOError:
+                #     continue
+                #
+                # annoLength = anno.getLength()
+                #
+                # if annoLength != videoLength:
+                #     print "anno fuck:\nfile: {}\nvL: {}".format(filename,
+                #                                             videoLength)
+
+
+                    unequalFiles[filename] = [videoLength]#, posLength, annoLength]
+
+    yamlStr = yaml.dump(unequalFiles, default_flow_style=False,
+                        encoding=('utf-8'))
+
+
+
+    with open('/Users/peter/Desktop/files.json', 'w') as f:
+        f.writelines(yamlStr)
+
+
 def checkVideoLenghtsInAnnotations(root_folder, pos_folder, anno_folder,
                                    video_extension='mp4'):
     import pyTools.system.videoExplorer as VE
