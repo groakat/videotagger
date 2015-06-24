@@ -70,6 +70,8 @@ class FullViewDialog(QtGui.QMainWindow):
             prevLayout = QtGui.QHBoxLayout(prevDummyWidget)
             prevLayout.addWidget(self.previewWidget)
 
+
+        self.annoViewScrollArea = QtGui.QScrollArea()
         self.centeringAnnoViewWidget  = QtGui.QWidget()
         self.centeringAnnoViewLayout = QtGui.QHBoxLayout(self.centeringAnnoViewWidget)
         self.annoViewWidget = QtGui.QWidget()
@@ -82,14 +84,16 @@ class FullViewDialog(QtGui.QMainWindow):
 
         self.centeringAnnoViewLayout.insertStretch(0)
         self.centeringAnnoViewLayout.insertStretch(-1)
-        self.annoViewWidget.hide()
+        self.annoViewScrollArea.setWidget(self.centeringAnnoViewWidget)
+        self.annoViewScrollArea.setWidgetResizable(True)
+        self.annoViewScrollArea.hide()
         
         self.graphicsView = FullViewGraphicsView()
         self.graphicsView.setObjectName("graphicsView")
         self.graphicsView.setMouseTracking(True)
 
         self.splitter.addWidget(prevDummyWidget)
-        self.splitter.addWidget(self.centeringAnnoViewWidget)
+        self.splitter.addWidget(self.annoViewScrollArea)
         self.splitter.addWidget(self.graphicsView)
 
         self.setGeometry(QtCore.QRect(100,100,800, 600))
@@ -319,10 +323,10 @@ class FullViewDialog(QtGui.QMainWindow):
     def toggleTimeline(self):
         self.annoViewOpen = not self.annoViewOpen
         if self.annoViewOpen:
-            self.annoViewWidget.show()
+            self.annoViewScrollArea.show()
             self.timelineButton.load(self.iconFolder + '/Align_justify_font_awesome_invert.svg')
         else:
-            self.annoViewWidget.hide()
+            self.annoViewScrollArea.hide()
             self.timelineButton.load(self.iconFolder + '/Align_justify_font_awesome.svg')
 
     def togglePlugins(self):
@@ -333,6 +337,9 @@ class FullViewDialog(QtGui.QMainWindow):
         else:
             self.pluginView.hide()
             self.pluginButton.load(self.iconFolder + '/Magic_font_awesome.svg')
+
+    def isPreviewFramesOpen(self):
+        return self.splitter.sizes()[0] != 0
 
     def closeEvent(self, event):
         if self.parent().unsavedChanges:

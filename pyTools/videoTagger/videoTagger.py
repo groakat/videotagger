@@ -1811,13 +1811,19 @@ class VideoTagger(QtGui.QMainWindow):
         cfg.log.debug("increment: {0}, checkBuffer: {1}".format(increment, checkBuffer))
 
         t0 = time.time()
+        if self.fullVideoDialog:
+            updateAnnotationViews = self.fullVideoDialog.annoViewOpen
+        else:
+            updateAnnotationViews = True
 
         if increment >= 0:
             self.frames += [self.vh.getNextFrame(increment, doBufferCheck=checkBuffer,
-                                                 unbuffered=False)]
+                                                 unbuffered=False,
+                                                 updateAnnotationViews=updateAnnotationViews)]
         elif increment < 0:
             self.frames += [self.vh.getPrevFrame(-increment, doBufferCheck=checkBuffer,
-                                                 unbuffered=False)]
+                                                 unbuffered=False,
+                                                 updateAnnotationViews=updateAnnotationViews)]
         else:
             self.frames += [self.vh.getCurrentFrame()]
             increment = 8
@@ -1853,7 +1859,9 @@ class VideoTagger(QtGui.QMainWindow):
 
         # showing previews #
         if np.abs(increment) <= 10:
-            self.updatePreviewLabels(frameSwitch=(increment != 0))
+            if self.fullVideoDialog:
+                if self.fullVideoDialog.isPreviewFramesOpen():
+                    self.updatePreviewLabels(frameSwitch=(increment != 0))
 
         t5 = time.time()
         self.vh.updateAnnotationProperties(self.getMetadata())

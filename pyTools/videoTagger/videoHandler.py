@@ -592,7 +592,8 @@ class VideoHandler(QtCore.QObject):
                 
     @cfg.logClassFunction
     def getNextFrame(self, increment=1, doBufferCheck=True, emitFileChange=True,
-                     unbuffered=False,  posOnly=False, frameOnly=False):
+                     unbuffered=False,  posOnly=False, frameOnly=False,
+                     updateAnnotationViews=True):
 
 #         if self.videoLengths[self.posPath] is None:
 #             return self.getCurrentFrameNull()
@@ -631,14 +632,16 @@ class VideoHandler(QtCore.QObject):
 
         if not unbuffered:
             return self.getCurrentFrame(doBufferCheck=doBufferCheck,
-                                        posOnly=posOnly, frameOnly=frameOnly)
+                                        posOnly=posOnly, frameOnly=frameOnly,
+                                        updateAnnotationViews=updateAnnotationViews)
         else:
             return self.getCurrentFrameUnbuffered(doBufferCheck=doBufferCheck,
                                                   posOnly=posOnly)
         
     @cfg.logClassFunction
     def getPrevFrame(self, decrement=1, doBufferCheck=True, emitFileChange=True,
-                     unbuffered=False, posOnly=False, frameOnly=False):
+                     unbuffered=False, posOnly=False, frameOnly=False,
+                     updateAnnotationViews=True):
         
 #         if self.videoLengths[self.posPath] is None:
 #             return self.getCurrentFrameNull()
@@ -673,7 +676,8 @@ class VideoHandler(QtCore.QObject):
                         
         if not unbuffered:
             return self.getCurrentFrame(doBufferCheck=doBufferCheck, 
-                                        posOnly=posOnly, frameOnly=frameOnly)
+                                        posOnly=posOnly, frameOnly=frameOnly,
+                                        updateAnnotationViews=updateAnnotationViews)
         else:
             return self.getCurrentFrameUnbuffered(doBufferCheck=doBufferCheck, 
                                                   posOnly=posOnly)
