@@ -3,6 +3,7 @@ import os
 import shutil
 import pyTools.videoTagger.prepareFolderForVideoProcessing as PFFVP
 import yaml
+from PySide import QtGui, QtCore
 
 def getRelativeFolder(root, subfolder):
     """
@@ -24,7 +25,19 @@ def getRelativeFolder(root, subfolder):
 def prepareVideoSeries(sourceFolder, destinationFolder):
     projects = []
     project_cfg_path = os.path.join(destinationFolder, 'projects.yaml')
-    for root, dirs, filenames in os.walk(sourceFolder):
+
+
+    folderWalk = list(os.walk(sourceFolder))
+
+    # progress = QtGui.QProgressDialog("Copying files...", "Abort Copy", 0,
+    #                                  sum([len(f) for r, d, f in folderWalk]), QtGui.QApplication.activeWindow())
+    #
+    # progress.setWindowModality(QtCore.Qt.WindowModal)
+    # progress.setValue(0)
+    # QtGui.QApplication.processEvents()
+
+    cnt = 0
+    for root, dirs, filenames in folderWalk:
         rel_folder = getRelativeFolder(sourceFolder, root)
         for filename in filenames:
             if filename.endswith(('.avi', '.mp4', '.mpeg')):
@@ -45,9 +58,42 @@ def prepareVideoSeries(sourceFolder, destinationFolder):
                 shutil.copy(os.path.join(root, filename), tmp_dest)
                 PFFVP.prepareFolder(tmp_dest, projectCFGPath=tmp_project_cfg_path)
 
+                cnt += 1
+            # progress.setValue(cnt)
+
     yamlString = yaml.dump(sorted(projects), default_flow_style=False)
+
     with open(project_cfg_path, 'w') as f:
         f.writelines(yamlString)
+
+
+def copySettingsIntoProject(project_cfg_path, settings_file):
+        stream = file(settings_file, 'r')
+        cfg_template = yaml.load(stream)
+        if 'Project' not in cfg_template:
+            cfg_template['Project'] = {}
+
+        cfg_template["Project"]['project_path'] = project_cfg_path
+
+        stream = file(project_cfg_path, 'r')
+        projects = yaml.load(stream)
+        root_folder = os.path.dirname(project_cfg_path)
+        config_file = 'videoTaggerConfig.yaml'
+
+        for rel_folder in projects:
+            filename = os.path.join(root_folder,
+                                    rel_folder,
+                                    config_file)
+            stream = file(filename, 'r')
+            current_cfg_file = yaml.load(stream)
+
+            cfg_template['Video']['videoPath'] = current_cfg_file['Video']['videoPath']
+            cfg_template['Video']['videoExtension'] = current_cfg_file['Video']['videoExtension']
+
+
+            yamlString = yaml.dump(cfg_template, default_flow_style=False)
+            with open(filename, 'w') as f:
+                f.writelines(yamlString)
 
 
 def main():

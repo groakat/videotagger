@@ -320,6 +320,7 @@ class SetupDialog(QtGui.QWidget):
 
 
     def connectSignals(self):
+        self.project_button.clicked.connect(self.openProjectWidget)
         self.files_button.clicked.connect(self.openFileWidget)
         self.annotations_button.clicked.connect(self.openAnnotationWidget)
         self.cropped_button.clicked.connect(self.openCroppedWidget)
@@ -330,11 +331,21 @@ class SetupDialog(QtGui.QWidget):
         self.pb_videoPath.clicked.connect(self.selectVideoPathFolder)
         self.btn_videoSelection.clicked.connect(self.cacheFileList)
         self.cb_croppedVideo.stateChanged.connect(self.swapCroppedVideoState)
+        self.pb_srcPath.clicked.connect(self.selectSrcFolder)
+        self.pb_dstPath.clicked.connect(self.selectDstFolder)
+        self.pb_createProject.clicked.connect(self.createProect)
+
+    def activateProjectWidgetButton(self):
+        self.window().setWindowTitle('Create a new Project')
+
+    def deactivateProjectWidgetButton(self):
+        pass
 
     def activateFileWidgetButton(self):
         self.files_button.load(os.path.join(
                             FVD.SVGButton.getIconFolder(),
                             "folder_font_awesome_invert.svg"))
+        self.window().setWindowTitle('Current Project - File Settings')
 
     def deactivateFileWidgetButton(self):
         self.files_button.load(os.path.join(
@@ -345,6 +356,7 @@ class SetupDialog(QtGui.QWidget):
         self.annotations_button.load(os.path.join(
                             FVD.SVGButton.getIconFolder(),
                             "users_font_awesome_invert.svg"))
+        self.window().setWindowTitle('Current Project - Annotation Settings')
 
     def deactivateAnnotationButton(self):
         self.annotations_button.load(os.path.join(
@@ -357,6 +369,7 @@ class SetupDialog(QtGui.QWidget):
         self.cropped_button.load(os.path.join(
                             FVD.SVGButton.getIconFolder(),
                             "crop_font_awesome_invert.svg"))
+        self.window().setWindowTitle('Current Project - Paste-in Mode Settings')
 
     def deactivateCroppedButton(self):
         if self.cb_croppedVideo.isChecked():
@@ -373,6 +386,7 @@ class SetupDialog(QtGui.QWidget):
         self.expert_button.load(os.path.join(
                             FVD.SVGButton.getIconFolder(),
                             "flask_font_awesome_invert.svg"))
+        self.window().setWindowTitle('Current Project - Expert Settings')
 
     def deactivateExpertButton(self):
         self.expert_button.load(os.path.join(
@@ -380,6 +394,7 @@ class SetupDialog(QtGui.QWidget):
                             "flask_font_awesome.svg"))
 
     def loadWidget(self, widget):
+        self.projectWidget.hide()
         self.filesWidget.hide()
         self.annotationWidget.hide()
         self.croppedVideoWidget.hide()
@@ -387,7 +402,17 @@ class SetupDialog(QtGui.QWidget):
 
         widget.show()
 
+    def openProjectWidget(self):
+        self.activateProjectWidgetButton()
+        self.deactivateFileWidgetButton()
+        self.deactivateAnnotationButton()
+        self.deactivateCroppedButton()
+        self.deactivateExpertButton()
+
+        self.loadWidget(self.projectWidget)
+
     def openFileWidget(self):
+        self.deactivateProjectWidgetButton()
         self.activateFileWidgetButton()
         self.deactivateAnnotationButton()
         self.deactivateCroppedButton()
@@ -401,6 +426,7 @@ class SetupDialog(QtGui.QWidget):
         # cause seg fault
         self.le_videoPath.clearFocus()
         # self.updateAnnotationSelector()
+        self.deactivateProjectWidgetButton()
         self.deactivateFileWidgetButton()
         self.activateAnnotationButton()
         self.deactivateCroppedButton()
@@ -410,6 +436,7 @@ class SetupDialog(QtGui.QWidget):
 
     def openCroppedWidget(self):
         if self.cb_croppedVideo.isChecked():
+            self.deactivateProjectWidgetButton()
             self.deactivateFileWidgetButton()
             self.deactivateAnnotationButton()
             self.activateCroppedButton()
@@ -418,6 +445,7 @@ class SetupDialog(QtGui.QWidget):
             self.loadWidget(self.croppedVideoWidget)
 
     def openExpertWidget(self):
+        self.deactivateProjectWidgetButton()
         self.deactivateFileWidgetButton()
         self.deactivateAnnotationButton()
         self.deactivateCroppedButton()
@@ -427,6 +455,52 @@ class SetupDialog(QtGui.QWidget):
 
     def swapCroppedVideoState(self, state):
         self.deactivateCroppedButton()
+
+    def createProjectWidget(self):
+        widget = QtGui.QWidget()
+        layout = QtGui.QGridLayout()
+
+        self.lbl_srcPath = QtGui.QLabel()
+        self.lbl_srcPath.setText("Source Path Containing Videos")
+        self.le_srcPath = QtGui.QLineEdit()
+        self.pb_srcPath = QtGui.QPushButton()
+        self.pb_srcPath.setText("Select Folder")
+
+        layout.addWidget(self.lbl_srcPath, 0, 0)
+        layout.addWidget(self.le_srcPath, 0, 1)
+        layout.addWidget(self.pb_srcPath, 0, 2)
+
+        self.lbl_dstPath = QtGui.QLabel()
+        self.lbl_dstPath.setText("Destination Path")
+        self.le_dstPath = QtGui.QLineEdit()
+        self.pb_dstPath = QtGui.QPushButton()
+        self.pb_dstPath.setText("Select Folder")
+
+        layout.addWidget(self.lbl_dstPath, 1, 0)
+        layout.addWidget(self.le_dstPath, 1, 1)
+        layout.addWidget(self.pb_dstPath, 1, 2)
+
+        self.lbl_copySettings = QtGui.QLabel()
+        self.lbl_copySettings.setText("Copy Current Settings?")
+        self.cb_copySettings = QtGui.QCheckBox()
+
+        layout.addWidget(self.lbl_copySettings, 2, 0)
+        layout.addWidget(self.cb_copySettings, 2, 1, 1, 2)
+
+        self.pb_createProject = QtGui.QPushButton()
+        self.pb_createProject.setText("Create Project (might take some time)")
+        layout.addWidget(self.pb_createProject, 3, 0, 1, 3)
+
+        spacer = QtGui.QLabel()
+        spacer.setSizePolicy(QtGui.QSizePolicy.Ignored,
+                                 QtGui.QSizePolicy.MinimumExpanding)
+
+        layout.addWidget(spacer, 4, 0, 1, 3)
+        layout.setRowStretch(4, 10)
+
+        widget.setLayout(layout)
+
+        return widget
 
     def createFilesWidget(self):
         widget = QtGui.QWidget()
@@ -611,6 +685,11 @@ class SetupDialog(QtGui.QWidget):
 
         iconFolder = FVD.SVGButton.getIconFolder()
 
+        self.project_button = FVD.SVGButton(os.path.join(iconFolder,
+                                            "fa-sitemap.svg"))
+        self.project_button.setFixedSize(20, 20)
+        self.project_button.setToolTip("Create New Project")
+
         self.files_button = FVD.SVGButton(os.path.join(iconFolder,
                                             "folder_font_awesome_invert.svg"))
         self.files_button.setFixedSize(20, 20)
@@ -638,8 +717,9 @@ class SetupDialog(QtGui.QWidget):
         self.run_button.setToolTip("Run")
 
         layout = QtGui.QHBoxLayout()
+        layout.addWidget(self.project_button)
         layout.addStretch()
-        layout.addSpacing(40)
+        # layout.addSpacing(40)
         layout.addWidget(self.files_button)
         layout.addSpacing(10)
         layout.addWidget(self.annotations_button)
@@ -656,6 +736,7 @@ class SetupDialog(QtGui.QWidget):
 
 
     def setupWidget(self):
+        self.projectWidget = self.createProjectWidget()
         self.filesWidget = self.createFilesWidget()
         self.annotationWidget = self.createAnnotationWidget()
         self.croppedVideoWidget = self.createCroppedVideoWidget()
@@ -663,11 +744,13 @@ class SetupDialog(QtGui.QWidget):
         self.buttonWidget = self.createButtonWidget()
 
         self.layout = QtGui.QVBoxLayout()
+        self.layout.addWidget(self.projectWidget)
         self.layout.addWidget(self.filesWidget)
         self.layout.addWidget(self.annotationWidget)
         self.layout.addWidget(self.croppedVideoWidget)
         self.layout.addWidget(self.expertSettingsWidget)
 
+        self.projectWidget.hide()
         self.annotationWidget.hide()
         self.croppedVideoWidget.hide()
         self.expertSettingsWidget.hide()
@@ -808,6 +891,31 @@ class SetupDialog(QtGui.QWidget):
 
     def cacheFileList(self):
         self.videoTagger.cacheFileList()
+
+    def selectSrcFolder(self):
+        folder = QtGui.QFileDialog.getExistingDirectory(self,
+                                                        "Open Source Folder",
+                                                        self.le_videoPath.text())
+        self.le_srcPath.setText(folder)
+
+    def selectDstFolder(self):
+        folder = QtGui.QFileDialog.getExistingDirectory(self,
+                                                        "Open Destination Folder",
+                                                        self.le_videoPath.text())
+        self.le_dstPath.setText(folder)
+
+    def createProect(self):
+        import pyTools.videoTagger.batch as B
+
+        B.prepareVideoSeries(self.le_srcPath.text(),
+                             self.le_dstPath.text())
+
+        if self.cb_copySettings.isChecked():
+            folder = self.le_videoPath.text()
+            B.copySettingsIntoProject(os.path.join(self.le_dstPath.text(),
+                                                   'projects.yaml'),
+                                      os.path.join(folder,
+                                                   'videoTaggerConfig.yaml'))
 
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)

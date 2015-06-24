@@ -54,7 +54,6 @@ Video:
   vial: 0
   vialROI: '[[350, 660], [661, 960], [971, 1260], [1290, 1590]]'
   videoPath: {videoPath}
-  videoExtension: {videoExt}
   patches-folder: {patches}
   position-folder: {positions}
   maxAnnotationSpeed: 1
