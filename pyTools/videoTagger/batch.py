@@ -29,12 +29,12 @@ def prepareVideoSeries(sourceFolder, destinationFolder):
 
     folderWalk = list(os.walk(sourceFolder))
 
-    # progress = QtGui.QProgressDialog("Copying files...", "Abort Copy", 0,
-    #                                  sum([len(f) for r, d, f in folderWalk]), QtGui.QApplication.activeWindow())
-    #
-    # progress.setWindowModality(QtCore.Qt.WindowModal)
-    # progress.setValue(0)
-    # QtGui.QApplication.processEvents()
+    progress = QtGui.QProgressDialog("Copying files...", "Abort Copy", 0,
+                                     sum([len(f) for r, d, f in folderWalk]), QtGui.QApplication.activeWindow())
+
+    progress.setWindowModality(QtCore.Qt.WindowModal)
+    progress.setValue(0)
+    QtGui.QApplication.processEvents()
 
     cnt = 0
     for root, dirs, filenames in folderWalk:
@@ -59,7 +59,7 @@ def prepareVideoSeries(sourceFolder, destinationFolder):
                 PFFVP.prepareFolder(tmp_dest, projectCFGPath=tmp_project_cfg_path)
 
                 cnt += 1
-            # progress.setValue(cnt)
+            progress.setValue(cnt)
 
     yamlString = yaml.dump(sorted(projects), default_flow_style=False)
 
