@@ -22,25 +22,64 @@ def getRelativeFolder(root, subfolder):
         raise ValueError("subfolder must start with root path")
 
 
+class Worker(QtCore.QObject):
+    done_signal = QtCore.Signal()
+
+    def __init__(self, root, filename,
+                 tmp_dest, tmp_project_cfg_path, parent = None):
+        QtCore.QObject.__init__(self, parent)
+
+        self.root = root
+        self.filename = filename
+        self.tmp_dest = tmp_dest
+        self.tmp_project_cfg_path = tmp_project_cfg_path
+
+    @QtCore.Slot()
+    def start_processing(self):
+        shutil.copy(os.path.join(self.root, self.filename), self.tmp_dest)
+        PFFVP.prepareFolder(self.tmp_dest, projectCFGPath=self.tmp_project_cfg_path)
+
+        self.done_signal.emit()
+
+
+
+
 def prepareVideoSeries(sourceFolder, destinationFolder):
+    progress = QtGui.QProgressDialog("Scanning files...", "Abort Copy", 0,
+                                     100, QtGui.QApplication.activeWindow())
+
+    progress.setWindowModality(QtCore.Qt.WindowModal)
+    progress.setValue(0)
+    progress.forceShow()
+
     projects = []
     project_cfg_path = os.path.join(destinationFolder, 'projects.yaml')
 
 
     folderWalk = list(os.walk(sourceFolder))
 
-    progress = QtGui.QProgressDialog("Copying files...", "Abort Copy", 0,
-                                     sum([len(f) for r, d, f in folderWalk]), QtGui.QApplication.activeWindow())
+    progress.setRange(0, sum([len(f) for r, d, f in folderWalk]))
 
-    progress.setWindowModality(QtCore.Qt.WindowModal)
-    progress.setValue(0)
-    QtGui.QApplication.processEvents()
+
+    work_thread = QtCore.QThread()
 
     cnt = 0
     for root, dirs, filenames in folderWalk:
+        if progress.wasCanceled():
+            break
+
         rel_folder = getRelativeFolder(sourceFolder, root)
         for filename in filenames:
+            if progress.wasCanceled():
+                break
+
             if filename.endswith(('.avi', '.mp4', '.mpeg')):
+                progress.setLabelText("Copying files...\n Processing {}\n({} / {})".format(filename,
+                                                                                           cnt,
+                                                                                           sum([len(f) for r, d, f in folderWalk])))
+                progress.setValue(cnt)
+
+
                 if len(filenames) > 1:
                     bn = os.path.basename(filename).split('.')[0]
                     tmp_dest = os.path.join(destinationFolder, rel_folder, bn)
@@ -55,16 +94,32 @@ def prepareVideoSeries(sourceFolder, destinationFolder):
                 if not os.path.exists(tmp_dest):
                     os.makedirs(tmp_dest)
 
-                shutil.copy(os.path.join(root, filename), tmp_dest)
-                PFFVP.prepareFolder(tmp_dest, projectCFGPath=tmp_project_cfg_path)
+                work_thread = QtCore.QThread()
+                worker = Worker(root, filename, tmp_dest, tmp_project_cfg_path)
+
+                worker.moveToThread(work_thread)
+                work_thread.started.connect(worker.start_processing)
+                progress.canceled.connect(work_thread.quit)
+
+                eventloop = QtCore.QEventLoop()
+                worker.done_signal.connect(eventloop.exit)
+
+                work_thread.start()
+                eventloop.exec_()
+
+                # shutil.copy(os.path.join(root, filename), tmp_dest)
+                # PFFVP.prepareFolder(tmp_dest, projectCFGPath=tmp_project_cfg_path)
 
                 cnt += 1
-            progress.setValue(cnt)
 
-    yamlString = yaml.dump(sorted(projects), default_flow_style=False)
+    work_thread.quit()
+    work_thread.wait()
 
-    with open(project_cfg_path, 'w') as f:
-        f.writelines(yamlString)
+    if not progress.wasCanceled():
+        yamlString = yaml.dump(sorted(projects), default_flow_style=False)
+
+        with open(project_cfg_path, 'w') as f:
+            f.writelines(yamlString)
 
 
 def copySettingsIntoProject(project_cfg_path, settings_file):

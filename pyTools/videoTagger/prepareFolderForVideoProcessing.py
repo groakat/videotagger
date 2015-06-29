@@ -3,24 +3,6 @@ import pyTools.videoTagger.cacheFilelist as CF
 import os
 import shutil
 import subprocess
-from PySide import QtCore, QtGui
-
-import sys
-from subprocess import PIPE, Popen
-from threading  import Thread
-
-try:
-    from Queue import Queue, Empty
-except ImportError:
-    from queue import Queue, Empty  # python 3.x
-
-ON_POSIX = 'posix' in sys.builtin_module_names
-
-def enqueue_output(out, queue):
-    for line in iter(out.readline, b''):
-        queue.put(line)
-    out.close()
-
 
 def scanForVideoFiles(folder):
     fileList = []
@@ -83,43 +65,10 @@ def generateSmallVideo(videoPath, ext='mp4'):
                                                low_res_w=low_res_w,
                                                low_res_h=low_res_h)
 
-    # print ffmpegStr
+    print ffmpegStr
 
-    # p = subprocess.Popen(ffmpegStr, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    # output = p.communicate()[0]
-
-    p = Popen([ffmpegStr], stdout=PIPE, shell=True, stderr=subprocess.STDOUT, bufsize=1, close_fds=ON_POSIX)
-    q = Queue()
-    t = Thread(target=enqueue_output, args=(p.stdout, q))
-    t.daemon = True # thread dies with the program
-    t.start()
-
-    def checkThread(t, timer):
-        # ... do other things here
-
-        QtGui.QApplication.processEvents()
-        if t.is_alive():
-            # read line without blocking
-            try:
-                line = q.get_nowait() # or q.get(timeout=.1)
-            except Empty:
-                pass
-                # print('no output yet')
-            else: # got line
-                # ... do something with line
-                print line
-            # print(output)
-        else:
-            timer.stop()
-
-    timer = QtCore.QTimer()
-    timer.timeout.connect(lambda: checkThread(t, timer))
-    timer.start(0)
-
-    loop = QtCore.QEventLoop()
-    timer.timeout.connect(loop.quit)
-    # connect(&t, SIGNAL(timeout()), &loop, SLOT(quit()));
-    loop.exec_();
+    p = subprocess.Popen(ffmpegStr, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    output = p.communicate()[0]
 
 
     targetFullBasename = basename_wo_ext + "_full" + os.path.extsep + ext
