@@ -332,6 +332,19 @@ if __name__ == "__main__":
     import argparse
     import os
 
+
+    def dequote(s):
+        """
+        If a string has single or double quotes around it, remove them.
+        Make sure the pair of quotes match.
+        If a matching pair of quotes is not found, return the string unchanged.
+        
+        from http://stackoverflow.com/a/20577580
+        """
+        if (s[0] == s[-1]) and s.startswith(("'", '"')):
+            return s[1:-1]
+        return s
+
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('videoFolder', metavar='v',
                        help='folder containing the video files')
@@ -352,16 +365,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    videoFolder = args.videoFolder
-    backgroundFolder = args.backgroundFolder
-    patchFolder = args.patchFolder
-    flyClassifierPath = args.flyClassifierPath
-    noveltyClassfyPath = args.noveltyClassfyPath
+    videoFolder = os.path.realpath(dequote(args.videoFolder))
+    backgroundFolder = os.path.realpath(dequote(args.backgroundFolder))
+    patchFolder = os.path.realpath(dequote(args.patchFolder))
+    flyClassifierPath = os.path.realpath(dequote(args.flyClassifierPath))    
+    noveltyClassfyPath = os.path.realpath(dequote(args.noveltyClassfyPath))     
     recIdx = args.recIdx
     runIdx = args.runIdx
     minPerRun = args.minPerRun
 
 
-    fe = FlyExtractor(videoFolder, backgroundFolder, backgroundFolder, flyClassifierPath, noveltyClassfyPath,
+    fe = FlyExtractor(videoFolder, backgroundFolder, patchFolder, flyClassifierPath, noveltyClassfyPath,
                       recIdx=recIdx, runIdx=runIdx, minPerRun=minPerRun, ffmpegpath='ffmpeg')
     fe.extractPatches()
