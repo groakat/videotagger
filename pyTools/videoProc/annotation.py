@@ -73,8 +73,8 @@ class Annotation():
         self.dataFrame.iloc[-1].name[0] = length
 
     def saveToFile(self, filename):
-        if not os.path.exists(os.path.dirname(filename)):
-            os.makedirs(os.path.dirname(filename))
+        if not os.path.exists(os.path.realpath(os.path.dirname(filename))):
+            os.makedirs(os.path.realpath(os.path.dirname(filename)))
 
         saveAnnotation(self.dataFrame, filename)
         self.hasChanged = False
@@ -224,7 +224,7 @@ class Annotation():
 
         return out
 
-    def filterFrameListBool(self, filterTuple, frameRange=None, exactMatch=True): #vialNo=None, behaviourName=None, annotator=None):
+    def filterFrameListBool(self, filterTuples, frameRange=None, exactMatch=True): #vialNo=None, behaviourName=None, annotator=None):
         """
         Returns a new annotation object that contains only annotations that
         satisfy all filter criteria.
@@ -263,81 +263,23 @@ class Annotation():
         Returns:
             new annotator object satisfying the filter criteria
         """
-        1/0
+        try:
+            out = filterFrameListBool(self.dataFrame,
+                               frames=frameRange,
+                               annotator=[ft.annotators[0]
+                                          for ft in filterTuples] +
+                                             ["automatic placeholder"],
+                               label=[ft.behaviours[0] for ft in filterTuples] +
+                                             ["video length"],
+                               exact_match=exactMatch)
+            return out[:-1]
 
-        vialNo = filterTuple.vials
-        behaviourName = filterTuple.behaviours
-        annotator = filterTuple.annotators
+        except ValueError:
+            out = Annotation(frameNo=self.getLength())
+        except KeyError:
+            out = Annotation(frameNo=self.getLength())
 
-        if vialNo is None\
-        or vialNo == [None]:
-            vials = range(len(self.frameList[0]))
-        elif type(vialNo) == int:
-            vials = [vialNo]
-        else:
-            # asuming vialNo to be a list
-            vials = vialNo
-
-        if frameRange is None:
-            frameRange = range(len(self.frameList))
-
-        filteredList = np.zeros((max(frameRange) + 1,), dtype=np.bool)
-        for frameNo in frameRange:
-            behaviourPresent = False
-            newVials = []
-
-            for vIdx in vials:
-                v = self.frameList[frameNo][vIdx]
-
-                vNew = dict()
-
-                if "behaviour" in v:
-                    bNew = dict()
-
-                    if behaviourName == None:
-                        bhvrList = v["behaviour"].keys()
-                    else:
-                        bhvrList = behaviourName
-
-                    for bhvrName in bhvrList:
-                        matchList = self.behaviourMatch(bhvrName, v["behaviour"].keys(),
-                                               exactMatch=exactMatch)
-
-                        for bhvrMatch in matchList:
-                        # if bhvrName in v["behaviour"]:
-                            bhvr = v["behaviour"][bhvrMatch]
-                            an = dict()
-
-                            if annotator is None:
-                                anList = bhvr.keys()
-                            else:
-                                anList = annotator
-
-                            for anName in anList:
-                                if anName in bhvr:
-                                    an[anName] = bhvr[anName]
-
-                            if an:
-                                bNew[bhvrMatch] = an
-
-                    if bNew:
-                        if "name" in v:
-                            vNew['name'] = v['name']
-
-                        vNew['behaviour'] = bNew
-                        newVials += [vNew]
-                        behaviourPresent = True
-                    else:
-                        newVials += [None]
-                else:
-                    newVials += [None]
-
-            if behaviourPresent:
-                filteredList[frameNo] = True
-            else:
-                filteredList[frameNo] = False
-
-        return filteredList
+        return out
 
     def addAnnotation(self, vial, frames, annotator, behaviour, metadata=None):
         """
@@ -431,6 +373,8 @@ class Annotation():
 
 import itertools
 import pandas as pd
+
+
 
 def saveAnnotation(df, filename):
     df.to_csv(filename)
@@ -619,22 +563,22 @@ def findOverlongVideos(root_folder, pos_folder, anno_folder,
                     print "No posfile for {}".format(pf)
                     # continue
                 if videoLength > 1800:
-                #
-                # if posLength != (videoLength):
-                #     print "pos fuck:\nfile: {}\nvL: {}\npL: {}".format(filename,
-                #                                             videoLength,
-                #                                             posLength)
-                #
-                # try:
-                #     anno.loadFromFile(af)
-                # except IOError:
-                #     continue
-                #
-                # annoLength = anno.getLength()
-                #
-                # if annoLength != videoLength:
-                #     print "anno fuck:\nfile: {}\nvL: {}".format(filename,
-                #                                             videoLength)
+
+                    if posLength != (videoLength):
+                        print "pos fuck:\nfile: {}\nvL: {}\npL: {}".format(filename,
+                                                                videoLength,
+                                                                posLength)
+
+                    try:
+                        anno.loadFromFile(af)
+                    except IOError:
+                        continue
+
+                    annoLength = anno.getLength()
+
+                    if annoLength != videoLength:
+                        print "anno fuck:\nfile: {}\nvL: {}".format(filename,
+                                                                videoLength)
 
 
                     unequalFiles[filename] = [videoLength]#, posLength, annoLength]
@@ -684,6 +628,10 @@ def checkVideoLenghtsInAnnotations(root_folder, pos_folder, anno_folder,
 
                 if posLength != (videoLength):
                     print "pos fuck:\nfile: {}\nvL: {}\npL: {}".format(filename,
+                                                            videoLength,
+                                                            posLength)
+                else:
+                    print "pos good:\nfile: {}\nvL: {}\npL: {}".format(filename,
                                                             videoLength,
                                                             posLength)
 
@@ -909,6 +857,21 @@ def filterDataframe(df, frames=None, annotator=None, label=None,
 
 
     return out
+
+
+def filterFrameListBool(df, frames=None, annotator=None, label=None,
+                        exact_match=True, update_behaviour_indeces=False):
+
+    df = filterDataframe(df, frames=frames, annotator=annotator, label=label,
+                         exact_match=exact_match,
+                         update_behaviour_indeces=update_behaviour_indeces)
+
+    cnt = countAnnotationsPerFrame(df).astype(np.bool)
+
+    return cnt
+
+
+
 
 def concatenateDataframes(dfs):
     out = pd.concat([df[:-1] for df in dfs])

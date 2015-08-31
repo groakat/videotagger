@@ -38,7 +38,7 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
 
 
     def convertVideoToAnnoFilename(self, videoFile):
-        bn = os.path.basename(videoFile)[:-4] + '.bhvr'
+        bn = os.path.basename(videoFile)[:-4] + '.csv'
         baseFolder = os.path.dirname(videoFile)[:-len(self.videoFolder)]
         annoFile = os.path.join(baseFolder,
                                 self.annotationFolder,
@@ -46,7 +46,7 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
         return annoFile
 
     def convertAnnoToVideoFilename(self, annoFile):
-        bn = os.path.basename(annoFile)[:-5] + self.videoListRel[0][-4:]
+        bn = os.path.basename(annoFile)[:-4] + self.videoListRel[0][-4:]
         baseFolder = os.path.dirname(annoFile)[:-len(self.annotationFolder)]
         videoFile = os.path.join(baseFolder,
                                 self.videoFolder,
@@ -55,7 +55,7 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
         return videoFile
 
     def convertAnnoToFeatFilename(self, annoFile):
-        bn = os.path.basename(annoFile)[:-5] + '.histogram.npy'
+        bn = os.path.basename(annoFile)[:-4] + '.histogram.npy'
         baseFolder = os.path.dirname(annoFile)[:-len(self.annotationFolder)]
         featFile = os.path.join(baseFolder,
                                 self.featureFolder,
@@ -108,7 +108,7 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
             annotationList = anno.filterFrameLists(self.annotationFilters)
             for frame in vE:
                 feat += [self.extractFeatureFromFrame(frame,
-                                                      annotationList[i])]
+                                                      None)]
                 if len(self.videoListRel) == 1:
                     self.incrementStatus()
 
@@ -135,7 +135,7 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
                 anno = A.Annotation()
                 anno.loadFromFile(self.rel2absFile(annoFile))
                 for i, annoFilter in enumerate(self.annotationFilters):
-                    filtAnno = anno.filterFrameListBool(annoFilter)
+                    filtAnno = anno.filterFrameListBool([annoFilter])
                     if i == 0:
                         annotationArrays[annoFile] = np.zeros(
                                                     (filtAnno.shape[0],
@@ -166,7 +166,7 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
         """
         maxClass = len(self.annotationFilters)
         filtered = classMatrix[select]
-        classMask = np.arange(maxClass) + 1
+        classMask = np.arange(maxClass) # + 1
         return np.max(filtered * classMask, axis=1)
 
     def sampleNegatives(self, negativeSelects, N):
@@ -267,12 +267,12 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
             progressSteps = VE.videoExplorer.retrieveVideoLength(
                             self.rel2absFile(self.videoListRel[0]),
                             100000)
-            self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
-            self.fdvt.meta['singleFileMode'] = True
+            # self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+            # self.fdvt.meta['singleFileMode'] = True
         else:
             progressSteps = len(self.videoListRel)
-            self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
-            self.fdvt.meta['singleFileMode'] = False
+            # self.fdvt = FDV.FrameDataVisualizationTreeBehaviour()
+            # self.fdvt.meta['singleFileMode'] = False
 
         self.setStatus("classifying...", progressSteps)
 
@@ -284,12 +284,18 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
         # self.fdvt.addNewClass(filt)
         # filters += [filt]
 
+        clfy_res = []
+
         for af in self.annotationFilters:
             filt = A.AnnotationFilter(annotators=["SimpleHistogramPlugin"],
                                       behaviours=af.behaviours,
                                       vials=af.vials)
-            self.fdvt.addNewClass(filt)
+            # self.fdvt.addNewClass(filt)
             filters += [filt]
+
+
+            clfy_res += [{'frames': [],
+                         'meta': {}}]
 
         for i, videoPathRel in enumerate(self.videoListRel):
             feat = np.load(self.generateFeatureSavePath(videoPathRel))
@@ -297,22 +303,42 @@ class SimpleHistogramPlugin(P.ClassificationPluginBase):
             for k in range(0, feat.shape[0], 100):
                 f = feat[k:k+100]
                 prediction = self.classifier.predict(f)
-                for i, p in enumerate(prediction) :
+                for j, p in enumerate(prediction):
                     # p-1 because tehre is no negative class!!!
-                    dv += [self.fdvt.getDeltaValue(videoPathRel, k + i,
-                                               filters[int(p-1)])]
+                    # dv += [self.fdvt.getDeltaValue(videoPathRel, k + j,
+                    #                            filters[int(p-1)])]
+
+                    # UPDATE ANNOTATIONS
+                    clfy_res[p]['frames'] += [k + j]
+                    clfy_res[p]['meta'][k + j] = {"confidence": 1,
+                                                  "boundingBox":[None, None, None, None]}
 
 
                 if len(self.videoListRel) == 1:
                     self.incrementStatus(100)
 
 
-            self.fdvt.insertDeltaVector(dv)
+            # SAVE RESULT IN ANNOTATIONS
+            resAnno = A.Annotation(frameNo=feat.shape[0])
+            for i, af in enumerate(self.annotationFilters):
+                annotator = af.annotators[0]
+                label = af.behaviours[0]
+
+                if clfy_res[i]['frames']:
+                    resAnno.addAnnotation(vial=None,
+                                          frames=clfy_res[i]['frames'],
+                                          annotator='SimpleHistogramPlugin',
+                                          behaviour=label,
+                                          metadata=clfy_res[i]['meta'])
+
+
+            # self.fdvt.insertDeltaVector(dv)
+
+            resAnno.saveToFile(self.generateFeatureSavePath(videoPathRel) + 'hist.csv')
 
             if len(self.videoListRel) > 1:
                 self.incrementStatus()
-
-        self.fdvt.save("/Volumes/Seagate Backup Plus Drive/tmp/stackFdvt.npy")
+        # self.fdvt.save("/Volumes/Seagate Backup Plus Drive/tmp/stackFdvt.npy")
 
 
     def generateFDVT(self):
