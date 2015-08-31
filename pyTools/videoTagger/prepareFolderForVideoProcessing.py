@@ -7,7 +7,7 @@ import subprocess
 def scanForVideoFiles(folder):
     fileList = []
 
-    for ending in ['.mp4', '.avi', 'mpeg']:
+    for ending in ['.mp4', '.avi', '.mpeg']:
         fileList += systemMisc.providePosList(folder, ending=ending)
 
     return fileList
@@ -38,7 +38,9 @@ def generateSmallVideo(videoPath, ext='mp4'):
                          shell=True,  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     output = p.communicate()[0]
-    width, height, fps = output.split()
+    width = output.split()[0]
+    height = output.split()[1]
+    fps = output.split()[1]
 
     width = int(width)
     height = int(height)

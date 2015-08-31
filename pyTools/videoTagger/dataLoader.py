@@ -15,27 +15,27 @@ import os
 
 
 
-class BaseThread(QtCore.QThread):
-    @cfg.logClassFunction
-    def __init__(self, name):
-        super(BaseThread, self).__init__()
-        self.setObjectName(name)
-        self.exiting = False
-
-    @cfg.logClassFunction
-    def __del__(self):        
-        cfg.log.debug("deleting")
-        self.exiting = True
-        self.wait()
-        
-    def run(self):
-        self.exec_()
-        
-    @cfg.logClassFunction
-    def delay(self, secs):
-        dieTime = QtCore.QTime.currentTime().addSecs(secs)
-        while(QtCore.QTime.currentTime() < dieTime ):
-            self.processEvents(QtCore.QEventLoop.AllEvents, 100)
+# class BaseThread(QtCore.QThread):
+#     @cfg.logClassFunction
+#     def __init__(self, name):
+#         super(BaseThread, self).__init__()
+#         self.setObjectName(name)
+#         self.exiting = False
+#
+#     @cfg.logClassFunction
+#     def __del__(self):
+#         cfg.log.debug("deleting")
+#         self.exiting = True
+#         self.wait()
+#
+#     def run(self):
+#         self.exec_()
+#
+#     @cfg.logClassFunction
+#     def delay(self, secs):
+#         dieTime = QtCore.QTime.currentTime().addSecs(secs)
+#         while(QtCore.QTime.currentTime() < dieTime ):
+#             self.processEvents(QtCore.QEventLoop.AllEvents, 100)
         
 from IPython.parallel import Client, dependent
 # Subclassing QObject and using moveToThread

@@ -2141,11 +2141,15 @@ class VideoTagger(QtGui.QMainWindow):
         pixmap = QtGui.QPixmap()
         px = QtGui.QPixmap.fromImage(background)
 
-        if type(self.bgImg) == QtGui.QListWidgetItem:
+        if type(self.videoScene) == QtGui.QListWidgetItem:
             1/0
 
         self.videoScene.removeItem(self.bgImg)
         self.bgImg = QtGui.QGraphicsPixmapItem(px)
+
+        if type(self.videoScene) == QtGui.QListWidgetItem:
+            1/0
+
         self.videoScene.addItem(self.bgImg)
 
 
