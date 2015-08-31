@@ -142,7 +142,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.axisSpacing = {'days': 1,
                           'hours': 1,
                           'minutes': 5,
-                          'frames': 100}
+                          'frames': 20}
 
         self.axisY = {'days': 4.5,
                           'hours': 3,
@@ -204,7 +204,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.rangeTemplateDict[fdvt] =  {'days': None,
                                        'hours':['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23'],
                                        'minutes':['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58', '59'],
-                                       'frames': list(np.arange(np.floor(1800 / self.frameResolution), dtype=float))}
+                                       'frames': list(np.arange(0, 1800, self.frameResolution, dtype=int))} #np.floor(1800 / self.frameResolution)
 
 
         self.initSubPlots(fdvt)
@@ -293,7 +293,7 @@ class GraphicsViewFDV(QtGui.QWidget):
                                                                   te - ts))
 
     def createFDVTTemplate(self, fdvt):
-        frames = list(np.arange(np.floor(1800 / self.frameResolution), dtype=float))
+        frames = list(np.arange(0, 1800, self.frameResolution, dtype=int))
 
         self.rangeTemplateDict[fdvt] = fdvt.meta['rangeTemplate']
 
@@ -729,6 +729,8 @@ class GraphicsViewFDV(QtGui.QWidget):
         if self.rangeTemplateDict[self.fdvt][level] is None:
             return self.getFdvtLabel(level, instance)
         else:
+            if level == "frames":
+                return instance * self.frameResolution
             return self.rangeTemplateDict[self.fdvt][level][instance]
 
     def createAxis(self, rectKey, fdvt):
