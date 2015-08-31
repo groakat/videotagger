@@ -518,7 +518,10 @@ class SetupDialog(QtGui.QWidget):
 
         self.lbl_videoSelection = QtGui.QLabel()
         self.lbl_videoSelection.setText("Start Video")
-        self.cb_videoSelection = QtGui.QComboBox()
+        # self.cb_videoSelection = QtGui.QComboBox()
+        self.cb_videoSelection = MR.AutoCompleteComboBox()
+        self.cb_videoSelection.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,
+                              QtGui.QSizePolicy.Minimum)
         self.btn_videoSelection = QtGui.QPushButton()
         self.btn_videoSelection.setText("Scan")
 
@@ -812,7 +815,10 @@ class SetupDialog(QtGui.QWidget):
 
         self.cb_videoSelection.clear()
         print fileListRel
-        self.cb_videoSelection.addItems(fileListRel)
+        # self.cb_videoSelection.addItems(fileListRel)
+        self.cb_videoSelection.setModel(fileListRel)
+        if fileListRel:
+            self.cb_videoSelection.setCurrentText(fileListRel[0])
 
         self.le_annotatorName.setText(annotator)
         self.annoSelector.setAnnotator(annotator)
