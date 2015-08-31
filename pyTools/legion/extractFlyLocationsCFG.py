@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     import pyTools.legion.extractFlyLocations as FL
 
-    fe = FL.FlyExtractor(videoFolder, backgroundFolder, backgroundFolder, flyClassifierPath, noveltyClassfyPath,
+    fe = FL.FlyExtractor(videoFolder, backgroundFolder, patchFolder, flyClassifierPath, noveltyClassfyPath,
                          recIdx=0, runIdx=0, minPerRun=minPerRun)
 
     fe.generateConfig(cfgSavePath)
