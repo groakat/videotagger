@@ -144,7 +144,7 @@ class backgroundImage(np.ndarray):
         """
         self.createBackgroundStack(self.fortranStyle, new=False)
         
-    def configureStackSubtraction(self, func):
+    def configureStackSubtraction(self, func, fortranStyle=None):
         """
             configures the backgroundImage object to call subtractStack function
             
@@ -179,8 +179,19 @@ class backgroundImage(np.ndarray):
                lambda img: self.backgroundSubtractionWeaverF(img, self.bgStackF)
                
         else:
-            raise ValueError("func is not a background subtraction function" + 
-                                "involving bgStack. Use help for more info")  
+            if fortranStyle is None:
+                raise ValueError("Please set fortranStyle to True or False to ensure proper array ordering " +
+                                 "and make sure func is a background subtraction function " +
+                                    "involving bgStack. Use help for more info")
+
+            if self.bgStackF == []:
+                self.createBackgroundStack(fortranStyle=True)
+                self.subtractStackFunc = lambda img: func(img, self.bgStackF)
+               # lambda img: self.backgroundSubtractionWeaverF(img, self.bgStackF)
+
+
+            # raise ValueError("func is not a background subtraction function" +
+            #                     "involving bgStack. Use help for more info")
     
     def configureStackSubtractionCustom(self, func, fortranStyle=False):
         """
@@ -500,7 +511,7 @@ class backgroundImage(np.ndarray):
             for x in rngX:
                 for y in rngY:
                     bgStack[cnt, :] = \
-                        bgModel.modelNight.alignImgPairPadding([x, y], 
+                        backgroundImage.alignImgPairPadding([x, y],
                                                                 bgImg, 
                                                                 bgImg)[1].flatten()
                     cnt += 1              
@@ -607,17 +618,22 @@ class backgroundImage(np.ndarray):
             }
         """
         diff = np.ones((img.shape[0], img.shape[1]), dtype=bgStack[0].dtype) * \
-                                                np.iinfo(bgStack[0].dtype).min
+                                                np.info(bgStack[0].dtype).min
         imLen = img.shape[0] * img.shape[1]
         bgn = bg0.shape[0]
         bgx = bg1.shape[1]
-        weave.inline(subtractionCode, 
+        # weave.inline(subtractionCode,
+        #                         ['diff', 'bg0', 'bg1', 'bg2', 'im0',
+        #                          'im1', 'im2', 'imLen', 'bgn', 'bgx'],
+        #                          extra_compile_args=['-march=corei7',
+        #                                              '-O3', '-fopenmp'],
+        #                          headers=['<omp.h>'],
+        #                          extra_link_args=['-lgomp'],
+        #                          compiler='gcc')
+        weave.inline(subtractionCode,
                                 ['diff', 'bg0', 'bg1', 'bg2', 'im0',
                                  'im1', 'im2', 'imLen', 'bgn', 'bgx'],
-                                 extra_compile_args=['-march=corei7', 
-                                                     '-O3', '-fopenmp'], 
-                                 headers=['<omp.h>'],
-                                 extra_link_args=['-lgomp'], 
+                                 extra_compile_args=['-O3'],
                                  compiler='gcc')
         
         if test:
@@ -653,7 +669,8 @@ class backgroundImage(np.ndarray):
         Returns:
             difference image
         """
-                
+
+        print vSkip, hSkip
         im0 = img[:,:,0].flatten()
         im1 = img[:,:,1].flatten()
         im2 = img[:,:,2].flatten()
@@ -676,7 +693,7 @@ class backgroundImage(np.ndarray):
             if (k % 1920 == 0){
         """
         subtractionCode += \
-                "k += 1920 * {0};".format(vSkip+1)
+                "k += 1920 * {0};".format(vSkip)
         subtractionCode += \
         """
             }
@@ -702,11 +719,16 @@ class backgroundImage(np.ndarray):
         }
         """
         diff = np.zeros((img.shape[0], img.shape[1]), dtype=bgStackF[0].dtype)
-        weave.inline(subtractionCode, 
-                    ['diff', 'bg0', 'bg1', 'bg2', 'im0', 'im1', 'im2'], 
-                    extra_compile_args=['-march=corei7', '-O3', '-fopenmp'],
-                    headers=['<omp.h>'],
-                    extra_link_args=['-lgomp'], 
+        # weave.inline(subtractionCode,
+        #             ['diff', 'bg0', 'bg1', 'bg2', 'im0', 'im1', 'im2'],
+        #             extra_compile_args=['-march=corei7', '-O3', '-fopenmp'],
+        #             headers=['<omp.h>'],
+        #             extra_link_args=['-lgomp'],
+        #             compiler='gcc')
+
+        weave.inline(subtractionCode,
+                    ['diff', 'bg0', 'bg1', 'bg2', 'im0', 'im1', 'im2'],
+                    extra_compile_args=['-O3'],
                     compiler='gcc')
 
             
