@@ -2548,6 +2548,7 @@ class VideoTagger(QtGui.QMainWindow):
         
         self.increment = 0 
         self.showNextFrame(0)
+        self.play = True
         # self.startLoop.emit()
         
     @cfg.logClassFunctionInfo
@@ -2575,7 +2576,6 @@ class VideoTagger(QtGui.QMainWindow):
             idx = idx[0]
 
         self.selectVideo(idx, frame)
-        self.showNextFrame(0)
 
     def selectVideoKeyIdx(self, key, idx):
         keyidx = self.lm.listdata.index(key)
