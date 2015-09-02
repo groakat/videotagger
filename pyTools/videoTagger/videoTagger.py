@@ -13,7 +13,7 @@ from PySide import QtOpenGL
 
 from pyTools.gui.videoPlayer_auto import Ui_Form
 
-from pyTools.gui.fullViewDialog import FullViewDialog as FVD
+import pyTools.gui.fullViewDialog as FVD
 
 import pyTools.videoTagger.videoHandler as VH
 import pyTools.videoTagger.dataLoader as DL
@@ -895,12 +895,12 @@ class VideoTagger(QtGui.QMainWindow):
         w = QtGui.QWidget(self)
         
         # AnnoView
-        av = AV.AnnoView(self, w, vialNo=self.getSelectedVial(), 
-                                       annotator=[self.annotations[idx]["annot"]],
-                                       behaviourName=[self.annotations[idx]["behav"]],
-                                       color = self.annotations[idx]["color"],
-                                       geo=QtCore.QRect(10, 5, width, 
-                                                       height))        
+        av = AV.AnnoView(self, w, vialNo=self.getSelectedVial(),
+                                   annotator=[self.annotations[idx]["annot"]],
+                                   behaviourName=[self.annotations[idx]["behav"]],
+                                   color = self.annotations[idx]["color"],
+                                   geo=QtCore.QRect(10, 5, width,
+                                                   height))
         av.show()
         # av.move(15, 5)
         self.annoViewList += [av]
@@ -910,7 +910,7 @@ class VideoTagger(QtGui.QMainWindow):
         lbl.setText("{0}: {1}".format(\
                                             self.annotations[idx]["annot"],
                                             self.annotations[idx]["behav"]))
-        lbl.move(width + 30, 0)     
+        lbl.move(width + 50, 2)
         lbl.setStyleSheet("""
         QLabel {{ 
         border-bottom-color: {0};
@@ -921,14 +921,32 @@ class VideoTagger(QtGui.QMainWindow):
         border-style:inset; }}""".format(self.annotations[idx]["color"].name()))  
         lbl.adjustSize()           
         self.annoViewLabel += [lbl]
-        
+
+
+        iconFolder = FVD.SVGButton.getIconFolder()
+        btn_skip_forward = FVD.SVGButton(os.path.join(iconFolder,
+                                            "angle-double-right_font_awesone.svg"), parent=w)
+
+        btn_skip_forward.setFixedSize(15, 15)
+        btn_skip_forward.setToolTip("Skip forward to next instance of this class")
+        btn_skip_forward.clicked.connect(lambda: self.skipToNextAnnotation(idx))
+        btn_skip_forward.move(width + 30, 2)
+
+        btn_skip_backward = FVD.SVGButton(os.path.join(iconFolder,
+                                            "angle-double-left_font_awesome.svg"), parent=w)
+
+        btn_skip_backward.setFixedSize(15, 15)
+        btn_skip_backward.setToolTip("Skip backward to next instance of this class")
+        btn_skip_backward.clicked.connect(lambda: self.skipToPrevAnnotation(idx))
+        btn_skip_backward.move(0, 2)
+
         # layout        
-#         lay = QtGui.QHBoxLayout()
-#         lay.addWidget(av, alignment=QtCore.Qt.AlignHCenter)
-#         lay.addWidget(lbl,  alignment=QtCore.Qt.AlignHCenter)
-#         
-#         w.setLayout(lay)
-#
+        # lay = QtGui.QHBoxLayout()
+        # lay.addWidget(av, alignment=QtCore.Qt.AlignHCenter)
+        # lay.addWidget(lbl,  alignment=QtCore.Qt.AlignHCenter)
+        #
+        # w.setLayout(lay)
+
         # hack!!
         w.setFixedHeight(height + 10)
         w.setFixedWidth(width + lbl.width() + 50)
@@ -1624,7 +1642,7 @@ class VideoTagger(QtGui.QMainWindow):
         if self.fullVideoDialog is None:
             # self.fullVideoDialog = FVD(self, self.prevFramesWidget)
             print "displayFullResolutionFrame", "enter"
-            self.fullVideoDialog = FVD(self, self.createPrevFrames(0, 0))
+            self.fullVideoDialog = FVD.FullViewDialog(self, self.createPrevFrames(0, 0))
             print "displayFullResolutionFrame", "created"
             self.fullVideoDialog.setScene(self.videoScene)
             print "displayFullResolutionFrame", "setScene"
@@ -2150,7 +2168,10 @@ class VideoTagger(QtGui.QMainWindow):
         if type(self.videoScene) == QtGui.QListWidgetItem:
             1/0
 
-        self.videoScene.addItem(self.bgImg)
+        try:
+            self.videoScene.addItem(self.bgImg)
+        except AttributeError:
+            cfg.log.warn('QtGui.QListWidgetItem problem occurred')
 
 
         self.bgImg.setZValue(-1)
@@ -2554,6 +2575,7 @@ class VideoTagger(QtGui.QMainWindow):
             idx = idx[0]
 
         self.selectVideo(idx, frame)
+        self.showNextFrame(0)
 
     def selectVideoKeyIdx(self, key, idx):
         keyidx = self.lm.listdata.index(key)
@@ -2586,6 +2608,62 @@ class VideoTagger(QtGui.QMainWindow):
     # @cfg.logClassFunction
     # def loadNewVideo(self):
     #     self.videoList[self.fileList[0]] = DL.VideoLoader(self.fileList[0])
+
+
+    def skipToNextAnnotation(self, annotationIdx):
+        fps = 30
+        frame = self.vh.getCurrentFrameNo()
+        if not self.croppedVideo:
+            minutes = frame / (60 * fps)
+            day, hour, minute, second = FDV.minutes2Time(minutes)
+        else:
+            curr_file = os.path.basename(self.vh.posPath)
+
+            day, time_part = curr_file.split('.')[:2]
+
+            hour, minute, second = [int(x) for x in time_part.split('-')]
+
+        cfg.log.info("================== current location: {} {} {} {}".format(day, hour, minute, frame))
+
+        res = self.fdvt.findNextAnnotation(annotationIdx,
+                                           day,
+                                           hour,
+                                           minute,
+                                           frame)
+
+        if res is None:
+            cfg.log.info('No more annotations ahead')
+        else:
+            day, hour, minute, next_frame = res
+            self.selectVideoTime(day, hour, minute, next_frame)
+
+    def skipToPrevAnnotation(self, annotationIdx):
+        fps = 30
+        frame = self.vh.getCurrentFrameNo()
+        if not self.croppedVideo:
+            minutes = frame / (60 * fps)
+            day, hour, minute, second = FDV.minutes2Time(minutes)
+        else:
+            curr_file = os.path.basename(self.vh.posPath)
+
+            day, time_part = curr_file.split('.')[:2]
+
+            hour, minute, second = [int(x) for x in time_part.split('-')]
+
+        cfg.log.info("================== current location: {} {} {} {}".format(day, hour, minute, frame))
+
+        res = self.fdvt.findPrevAnnotation(annotationIdx,
+                                           day,
+                                           hour,
+                                           minute,
+                                           frame)
+
+        if res is None:
+            cfg.log.info('No more annotations ahead')
+        else:
+            day, hour, minute, next_frame = res
+            self.selectVideoTime(day, hour, minute, next_frame)
+
         
     @cfg.logClassFunction
     def showTrajectories(self, state):

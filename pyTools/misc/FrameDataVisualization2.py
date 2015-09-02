@@ -1584,3 +1584,300 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                         occurranceList += [[day, hour, minute, idces[0][i]]]
 
         return occurranceList
+
+
+    ### functions to find next annotation occurrence
+
+    def getFirstKey(self, stump):
+        keys = [x for x in stump.keys() if x != 'meta']
+        return sorted(keys)[0]
+
+
+    def getLastKey(self, stump):
+        keys = [x for x in stump.keys() if x != 'meta']
+        return sorted(keys)[-1]
+
+
+    def findNextMinuteWithAnnotationInStump(self, anno_id, stump, start_token, ge=False):
+        for t in sorted(stump):
+            if t == 'meta':
+                continue
+
+            if ge:
+                if t >= start_token:
+                    if stump[t]['meta']['stack'][anno_id] > 0:
+                        return t
+            else:
+                if t > start_token:
+                    if stump[t]['meta']['stack'][anno_id] > 0:
+                        return t
+        return None
+
+
+    def findPrevMinuteWithAnnotationInStump(self, anno_id, stump, start_token, le=False):
+        for t in sorted(stump, reverse=True):
+            if t == 'meta':
+                continue
+
+            if le:
+                if t <= start_token:
+                    if stump[t]['meta']['stack'][anno_id] > 0:
+                        return t
+            else:
+                if t < start_token:
+                    if stump[t]['meta']['stack'][anno_id] > 0:
+                        return t
+        return None
+
+
+    def findNextMinuteWithAnnotation(self, anno_id, day, hour, minute):
+        try:
+            next_min = self.findNextMinuteWithAnnotationInStump(
+                                                        anno_id,
+                                                        self.hier[day][hour],
+                                                        minute)
+        except KeyError:
+            next_min = None
+
+        if next_min is None:
+            next_hour = self.findNextMinuteWithAnnotationInStump(
+                                                            anno_id,
+                                                            self.hier[day],
+                                                            hour)
+            print next_hour
+            if next_hour is None:
+                next_day = self.findNextMinuteWithAnnotationInStump(
+                                                               anno_id,
+                                                               self.hier,
+                                                               day)
+                if next_day is None:
+                    return None
+
+                next_hour = self.findNextMinuteWithAnnotationInStump(
+                                        anno_id,
+                                        self.hier[next_day],
+                                        self.getFirstKey(self.hier[next_day]),
+                                        ge=True)
+            else:
+                next_day = day
+
+            next_min = self.findNextMinuteWithAnnotationInStump(
+                                        anno_id,
+                                        self.hier[next_day][next_hour],
+                                        self.getFirstKey(
+                                            self.hier[next_day][next_hour]),
+                                        ge=True)
+        else:
+            next_hour = hour
+            next_day = day
+
+        return next_day, next_hour, next_min
+
+
+    def findPrevMinuteWithAnnotation(self, anno_id, day, hour, minute):
+        try:
+            prev_min = self.findPrevMinuteWithAnnotationInStump(
+                                                       anno_id,
+                                                       self.hier[day][hour],
+                                                       minute)
+        except KeyError:
+            prev_min = None
+
+        if prev_min is None:
+            prev_hour = self.findPrevMinuteWithAnnotationInStump(
+                                                            anno_id,
+                                                            self.hier[day],
+                                                            hour)
+            if prev_hour is None:
+                prev_day = self.findPrevMinuteWithAnnotationInStump(
+                                                               anno_id,
+                                                               self.hier,
+                                                               day)
+                if prev_day is None:
+                    return None
+
+                prev_hour = self.findPrevMinuteWithAnnotationInStump(
+                                            anno_id,
+                                            self.hier[prev_day],
+                                            self.getLastKey(
+                                                        self.hier[prev_day]),
+                                            le=True)
+            else:
+                prev_day = day
+
+
+            prev_min = self.findPrevMinuteWithAnnotationInStump(
+                                        anno_id,
+                                        self.hier[prev_day][prev_hour],
+                                        self.getLastKey(
+                                            self.hier[prev_day][prev_hour]),
+                                        le=True)
+        else:
+            prev_hour = hour
+            prev_day = day
+
+        return prev_day, prev_hour, prev_min
+
+
+    def getRangeSections(self, rng):
+        """
+        using
+        http://stackoverflow.com/a/7353335
+        and
+        http://stackoverflow.com/questions/7088625/what-is-the-most-efficient-way-to-check-if-a-value-exists-in-a-numpy-array
+        """
+
+        return np.array_split(rng, np.where(np.diff(rng)!=1)[0]+1)
+
+
+    def findNextFrameWithAnnotation(self, anno_id, day, hour, minute, frame):
+        df = self.getValues(day, hour, minute)
+
+        locations = np.where(self.df2minuteArray(df)[:, anno_id])[0]
+        sections = self.getRangeSections(locations)
+
+        if sections[0].size == 0:
+            return None
+
+        for section in sections:
+            if frame in section:
+                continue
+
+            if np.all(section > frame):
+                return section[0]
+
+        return None
+
+
+    def findPrevFrameWithAnnotation(self, anno_id, day, hour, minute, frame):
+        df = self.getValues(day, hour, minute)
+
+        locations = np.where(self.df2minuteArray(df)[:, anno_id])[0]
+        sections = self.getRangeSections(locations)
+
+        if sections[0].size == 0:
+            return None
+
+        for section in reversed(sections):
+            if frame in section:
+                continue
+
+            if np.all(section < frame):
+                return section[-1]
+
+        return None
+
+
+    def incrementTimeUsingTemplate(self, day, hour, minute):
+        new_hour = hour
+        new_day = day
+
+        minute_idx = sorted(self.meta['rangeTemplate']['minutes']).index(minute)
+        if minute_idx == len(self.meta['rangeTemplate']['minutes']) - 1:
+            new_minute = sorted(self.meta['rangeTemplate']['minutes'])[0]
+
+            hour_idx = sorted(self.meta['rangeTemplate']['hours']).index(hour)
+
+            if hour_idx == len(self.meta['rangeTemplate']['hours']) - 1:
+                new_hour = sorted(self.meta['rangeTemplate']['hours'])[0]
+                day_idx = sorted(self.meta['rangeTemplate']['days']).index(day)
+
+                if day_idx == len(self.meta['rangeTemplate']['days']) - 1:
+                    return None, None, None
+                else:
+                    new_day = sorted(self.meta['rangeTemplate']['days'])[day_idx + 1]
+            else:
+                new_hour = sorted(self.meta['rangeTemplate']['hours'])[hour_idx + 1]
+        else:
+            new_minute = sorted(self.meta['rangeTemplate']['minutes'])[minute_idx + 1]
+
+        return new_day, new_hour, new_minute
+
+
+    def decrementTimeUsingTemplate(self, day, hour, minute):
+        new_hour = hour
+        new_day = day
+
+        minute_idx = sorted(self.meta['rangeTemplate']['minutes']).index(minute)
+        if minute_idx == 0:
+            new_minute = sorted(self.meta['rangeTemplate']['minutes'])[-1]
+
+            hour_idx = sorted(self.meta['rangeTemplate']['hours']).index(hour)
+
+            if hour_idx == 0:
+                new_hour = sorted(self.meta['rangeTemplate']['hours'])[-1]
+                day_idx = sorted(self.meta['rangeTemplate']['days']).index(day)
+
+                if day_idx == 0:
+                    return None, None, None
+                else:
+                    new_day = sorted(self.meta['rangeTemplate']['days'])[day_idx - 1]
+            else:
+                new_hour = sorted(self.meta['rangeTemplate']['hours'])[hour_idx - 1]
+        else:
+            new_minute = sorted(self.meta['rangeTemplate']['minutes'])[minute_idx - 1]
+
+        return new_day, new_hour, new_minute
+
+
+    def findNextAnnotation(self, anno_id, day, hour, minute, frame):
+        next_frame = self.findNextFrameWithAnnotation(anno_id, day, hour,
+                                                      minute, frame)
+
+        if next_frame is None:
+            next_day, next_hour, next_minute = \
+                                    self.incrementTimeUsingTemplate(day,
+                                                                    hour,
+                                                                    minute)
+
+            if next_day is None:
+                return None
+
+            res = self.findNextMinuteWithAnnotation(anno_id, next_day,
+                                                    next_hour, next_minute)
+
+            if res is None:
+                return None
+
+            day, hour, minute = res
+
+            res = self.findNextFrameWithAnnotation(anno_id, day,
+                                                   hour, minute, -1)
+
+            if res is None:
+                return None
+            else:
+                return day, hour, minute, res
+
+        return day, hour, minute, next_frame
+
+
+    def findPrevAnnotation(self, anno_id, day, hour, minute, frame):
+        prev_frame = self.findPrevFrameWithAnnotation(anno_id, day,
+                                                      hour, minute, frame)
+
+        if prev_frame is None:
+            prev_day, prev_hour, prev_minute = \
+                                    self.decrementTimeUsingTemplate(day,
+                                                                    hour,
+                                                                    minute)
+            if prev_day is None:
+                return None
+
+            res = self.findPrevMinuteWithAnnotation(anno_id, prev_day,
+                                                    prev_hour, prev_minute)
+
+            if res is None:
+                return None
+
+            day, hour, minute = res
+
+            res = self.findPrevFrameWithAnnotation(anno_id, day, hour, minute,
+                          sorted(self.meta['rangeTemplate']['frames'])[-1] + 1)
+
+            if res is None:
+                return None
+            else:
+                return day, hour, minute, res
+
+        return day, hour, minute, prev_frame
