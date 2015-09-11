@@ -1899,7 +1899,7 @@ class VideoTagger(QtGui.QMainWindow):
 
 
         te = time.time()
-        cfg.log.info("total time: {}\nt1: {}\nt2: {} \nt3: {} \nt4: {}\nt5: {}\nt6: {}".format(te - ts,
+        cfg.log.debug("total time: {}\nt1: {}\nt2: {} \nt3: {} \nt4: {}\nt5: {}\nt6: {}".format(te - ts,
                                                                        t1 - t0,
                                                                        t2 - t1,
                                                                        t3 - t2,
@@ -2162,19 +2162,17 @@ class VideoTagger(QtGui.QMainWindow):
         if type(self.videoScene) == QtGui.QListWidgetItem:
             1/0
 
-        self.videoScene.removeItem(self.bgImg)
-        self.bgImg = QtGui.QGraphicsPixmapItem(px)
-
-        if type(self.videoScene) == QtGui.QListWidgetItem:
-            1/0
-
         try:
+            self.videoScene.removeItem(self.bgImg)
+            self.bgImg = QtGui.QGraphicsPixmapItem(px)
+
+
             self.videoScene.addItem(self.bgImg)
+            self.bgImg.setZValue(-1)
         except AttributeError:
             cfg.log.warn('QtGui.QListWidgetItem problem occurred')
 
 
-        self.bgImg.setZValue(-1)
 
 
     @cfg.logClassFunction
@@ -2438,7 +2436,10 @@ class VideoTagger(QtGui.QMainWindow):
             if(QtCore.QTime.currentTime() < dieTime) or (skipCnt > 10):
                 skipCnt = 0
 #                 cfg.log.debug("processEvents() - begin")
-                QtGui.QApplication.processEvents(QtCore.QEventLoop.AllEvents, QtCore.QTime.currentTime().msecsTo(dieTime))
+                try:
+                    QtGui.QApplication.processEvents(QtCore.QEventLoop.AllEvents, QtCore.QTime.currentTime().msecsTo(dieTime))
+                except AttributeError:
+                    cfg.log.warn("itemChange error!!")
 #                 cfg.log.debug("processEvents() - end")
 
                  
@@ -2564,7 +2565,7 @@ class VideoTagger(QtGui.QMainWindow):
             idx = day * (24 * 60) + hour * 60 + minute
             idx -= 1
         else:
-            dataStr = "{day}.{hour}-{minute}".format(day=day, hour=hour, 
+            dataStr = "{day}.{hour:02d}-{minute:02d}".format(day=day, hour=hour,
                                                      minute=minute)
             idx = [idx for idx in range(len(self.fileList))  
                             if dataStr in self.fileList[idx]]
@@ -3174,7 +3175,7 @@ class VideoTagger(QtGui.QMainWindow):
 
         cfgDict['Video']['rewind-on-click'] = self.rewindOnClick
         startVideoIdx, startFrame = self.getCurrentKey_idx()
-        cfgDict['Video']['start-frame'] = startFrame
+        cfgDict['Video']['start-frame'] = int(startFrame)
         cfgDict['Video']['start-video'] = self.fileListRel[startVideoIdx]
         if self.selectedVial is None or type(self.selectedVial) == int:
             cfgDict['Video']['vial'] = self.selectedVial
