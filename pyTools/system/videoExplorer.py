@@ -34,6 +34,7 @@ class videoExplorer(object):
         self.verbose = verbose
         self.vs = None
         self.frameMode = None
+        self.frame = None
 
     def setTimeRange(self,  start,  end):
         """
@@ -353,12 +354,20 @@ class videoExplorer(object):
         if self.verbose:
             print "processing frame {0} of video {1}".format(frameNo,  file)
 
+        if not self.frame is None:
+            del self.frame
+
+        if not self.vs is None:
+            del self.vs
+
+
         self.vs = VideoStream(file, frame_mode=frameMode, exact_seek=True)
         self.frameMode = frameMode
         
     def __iter__(self):
         # rewind ffvideo thingy
-        self.vs.__iter__()
+        if self.vs is not None:
+            self.vs.__iter__()
         
         return self
     
