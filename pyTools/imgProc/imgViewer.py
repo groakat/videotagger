@@ -110,13 +110,14 @@ class imgViewer(object):
         
         cax = fig.add_axes([0.4 + offsetX, 1, 0.02, 0.4])
         plt.colorbar(im, cax=cax)
-        
+
+
     @staticmethod
-    def extractPatch(img, center, patchSize):
+    def extractPatch(img, center, patchSize, ensureCorrectSize=False):
         """
-        Extracts savely a patch from an image. The patch is centered around 
+        Extracts savely a patch from an image. The patch is centered around
         center and has height/ width as specified in patchSize
-        
+
         Args:
             img (ndarray):
                                 image
@@ -124,15 +125,70 @@ class imgViewer(object):
                                 center position of patch
             patchSize ([int, int]):
                                 size of patch
-                                
+            ensureCorrectSize (bool):
+                                makes sure that returned image has
+                                exactly patchSize. If the patch
+                                would be cropped because it is
+                                partially outside of img, it will
+                                be zero-padded (with RGB 0, 0, 255)
+                                to get the desired dimensions
+
         Returns:
             patch (ndarray):
                                 extracted patch
         """
-        
-        rngX, rngY = imgViewer.getValidPatchRange(img, center, patchSize)
-        
-        return img[rngX, rngY]
+
+        if np.all(center == (np.ones((2,)) * -1)):
+            if img.ndim == 3:
+                return np.zeros((patchSize[0], patchSize[1], img.shape[2]),
+                                dtype=img.dtype)
+            else:
+                return np.zeros((patchSize[0], patchSize[1]))
+        else:
+            rngX, rngY = imgViewer.getValidPatchRange(img, center, patchSize)
+
+            ret = img[rngX, rngY]
+
+            if not ensureCorrectSize or  \
+               (ret.shape[0] == patchSize[0] and ret.shape[1] == patchSize[1]):
+                return ret
+
+            else:
+                startX = 0
+                startY = 0
+
+                stopX = patchSize[0]
+                stopY = patchSize[1]
+
+                if rngX.start == 0:
+                    startX = patchSize[0] - ret.shape[0]
+
+                if rngX.stop == img.shape[0]:
+                    stopX = ret.shape[0]
+
+                if rngY.start == 0:
+                    startY = patchSize[1] - ret.shape[1]
+
+                if rngY.stop == img.shape[1]:
+                    stopY = ret.shape[1]
+
+                if img.ndim == 3:
+                    frame = np.zeros((patchSize[0], patchSize[1], img.shape[2]),
+                                    dtype=img.dtype)
+
+                    if issubclass(img.dtype.type, np.integer):
+                        frame[:, :, 2] += 255
+                    else:
+                        frame[:, :, 2] += 1
+                else:
+                    frame = np.zeros((patchSize[0], patchSize[1]),
+                                     dtype=img.dtype)
+
+
+                frame[startX:stopX, startY:stopY] = ret
+
+                return frame
+
     
     @staticmethod
     def getValidPatchRange(img, center, patchSize):      
