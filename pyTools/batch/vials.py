@@ -988,7 +988,7 @@ class Vials(object):
             
             # render images as mp4 for very fast playback
             # ffmpeg -y -f image2 -r 29.97 -i 2013-02-19.00-00-00.v0.%05d.tif -c:v libx264 -preset faster -qp 0 test.mp4
-            ffmpegCmd = '{ffmpeg} -y -r {2} -i "{3}.v{1}.%05d.tif" -c:v libx264 -preset faster -qp 0 -r {2} "{0}.v{1}.mp4"'
+            ffmpegCmd = '{ffmpeg} -y -r {2} -i "{3}.v{1}.%05d.tif" -c:v libx264 -preset veryslow -qp 0 -r {2} "{0}.v{1}.mp4"'
             for patchNo in range(len(pos)):
                 p = subprocess.Popen(ffmpegCmd.format(baseName, patchNo, fps, tmpBaseName,ffmpeg=ffmpegpath),
                                     shell=True, stdout=subprocess.PIPE,
