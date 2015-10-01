@@ -1881,3 +1881,83 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
                 return day, hour, minute, res
 
         return day, hour, minute, prev_frame
+
+    def findEndOfAnnotation(self, anno_id, day, hour, minute, frame):
+        df = self.getValues(day, hour, minute)
+
+        locations = np.where(self.df2minuteArray(df)[:, anno_id])[0]
+        sections = self.getRangeSections(locations)
+
+        if sections[0].size == 0:
+            return None
+
+        for section in sections:
+            if frame in section:
+                if section[-1] != sorted(self.meta['rangeTemplate']['frames'])[-1]:
+                    return day, hour, minute, section[-1]
+                else:
+                    next_day, next_hour, next_minute = \
+                                            self.incrementTimeUsingTemplate(day,
+                                                                            hour,
+                                                                            minute)
+                    res = self.findEndOfAnnotation(anno_id, next_day, next_hour,
+                                               next_minute, 0)
+
+                    if res is None:
+                        return day, hour, minute, section[-1]
+                    else:
+                        return res
+
+        return None
+
+    def findStartOfAnnotation(self, anno_id, day, hour, minute, frame):
+        df = self.getValues(day, hour, minute)
+
+        locations = np.where(self.df2minuteArray(df)[:, anno_id])[0]
+        sections = self.getRangeSections(locations)
+
+        if sections[0].size == 0:
+            return None
+
+        for section in sections:
+            if frame in section:
+                if section[0] != 0:
+                    return day, hour, minute, section[0]
+                else:
+                    next_day, next_hour, next_minute = \
+                                            self.decrementTimeUsingTemplate(day,
+                                                                        hour,
+                                                                        minute)
+                    res = self.findEndOfAnnotation(anno_id, next_day, next_hour,
+                                               next_minute,
+                            sorted(self.meta['rangeTemplate']['frames'])[-1])
+
+                    if res is None:
+                        return day, hour, minute, section[-1]
+                    else:
+                        return res
+
+        return None
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
