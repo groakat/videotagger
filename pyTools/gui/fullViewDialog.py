@@ -357,6 +357,8 @@ class FullViewDialog(QtGui.QMainWindow):
         else:
             event.accept()
 
+        self.parent().exportSettings()
+
 class FullViewGraphicsView(QtGui.QGraphicsView):
 
     def __init__(self, *args, **kwargs):

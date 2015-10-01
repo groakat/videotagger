@@ -97,6 +97,7 @@ class MyListModel(QtCore.QAbstractListModel):
 class VideoTagger(QtGui.QMainWindow):
     quit = QtCore.Signal()
     startLoop = QtCore.Signal()
+    videoRunningMutex = QtCore.QMutex()
      
     def __init__(self, *args, **kwargs):
         """
@@ -899,10 +900,10 @@ class VideoTagger(QtGui.QMainWindow):
                                    annotator=[self.annotations[idx]["annot"]],
                                    behaviourName=[self.annotations[idx]["behav"]],
                                    color = self.annotations[idx]["color"],
-                                   geo=QtCore.QRect(10, 5, width,
+                                   geo=QtCore.QRect(15, 5, width,
                                                    height))
         av.show()
-        # av.move(15, 5)
+        # av.move(10, 0)
         self.annoViewList += [av]
         
         # label        
@@ -910,7 +911,7 @@ class VideoTagger(QtGui.QMainWindow):
         lbl.setText("{0}: {1}".format(\
                                             self.annotations[idx]["annot"],
                                             self.annotations[idx]["behav"]))
-        lbl.move(width + 50, 2)
+        lbl.move(width + 55, 2)
         lbl.setStyleSheet("""
         QLabel {{ 
         border-bottom-color: {0};
@@ -930,7 +931,23 @@ class VideoTagger(QtGui.QMainWindow):
         btn_skip_forward.setFixedSize(15, 15)
         btn_skip_forward.setToolTip("Skip forward to next instance of this class")
         btn_skip_forward.clicked.connect(lambda: self.skipToNextAnnotation(idx))
-        btn_skip_forward.move(width + 30, 2)
+        btn_skip_forward.move(width + 40, 2)
+
+        btn_skip_end = FVD.SVGButton(os.path.join(iconFolder,
+                                            "fa-step-forward.svg"), parent=w)
+
+        btn_skip_end.setFixedSize(10, 10)
+        btn_skip_end.setToolTip("Skip forward to next instance of this class")
+        btn_skip_end.clicked.connect(lambda: self.skipToAnnotationEnd(idx))
+        btn_skip_end.move(width + 30, 5)
+
+        btn_skip_start = FVD.SVGButton(os.path.join(iconFolder,
+                                            "fa-step-backward.svg"), parent=w)
+
+        btn_skip_start.setFixedSize(10, 10)
+        btn_skip_start.setToolTip("Skip backward to next instance of this class")
+        btn_skip_start.clicked.connect(lambda: self.skipToAnnotationStart(idx))
+        btn_skip_start.move(15, 5)
 
         btn_skip_backward = FVD.SVGButton(os.path.join(iconFolder,
                                             "angle-double-left_font_awesome.svg"), parent=w)
@@ -1749,7 +1766,7 @@ class VideoTagger(QtGui.QMainWindow):
             self.positionAnnotationRoi(rois)
             t2 = time.time()
 
-            cfg.log.info("positionAnnotationRoi: {}s".format(t2 - t1))
+            # cfg.log.info("positionAnnotationRoi: {}s".format(t2 - t1))
 
 
 
@@ -1894,8 +1911,8 @@ class VideoTagger(QtGui.QMainWindow):
         if self.fullVideoDialog is not None:
             self.fullVideoDialog.graphicsView.viewport().update()
 
-        if background is not None:
-            self.updateBackground(background)
+        # if background is not None:
+        #     self.updateBackground(background)
 
 
         te = time.time()
@@ -2156,6 +2173,7 @@ class VideoTagger(QtGui.QMainWindow):
         self.cropRect = self.videoScene.addRect(geo, QtGui.QPen(penCol))
 
     def updateBackground(self, background):
+        1/0
         pixmap = QtGui.QPixmap()
         px = QtGui.QPixmap.fromImage(background)
 
@@ -2384,6 +2402,9 @@ class VideoTagger(QtGui.QMainWindow):
 
     @QtCore.Slot()
     def startVideo(self):
+        if not self.videoRunningMutex.tryLock(5):
+            return
+
         self.play = True
 
         
@@ -2411,6 +2432,11 @@ class VideoTagger(QtGui.QMainWindow):
                 self.updateProgress()
 #                 if self.increment == 0:
 #                     self.play = False
+            else:
+                if self.fullVideoDialog:
+                    if self.fullVideoDialog.isPreviewFramesOpen():
+                        self.updatePreviewLabels(frameSwitch=True)
+
 
 
             if not(QtCore.QTime.currentTime() < dieTime):
@@ -2437,7 +2463,7 @@ class VideoTagger(QtGui.QMainWindow):
                 skipCnt = 0
 #                 cfg.log.debug("processEvents() - begin")
                 try:
-                    QtGui.QApplication.processEvents(QtCore.QEventLoop.AllEvents, QtCore.QTime.currentTime().msecsTo(dieTime))
+                    QtGui.QApplication.processEvents(QtCore.QEventLoop.AllEvents)#, QtCore.QTime.currentTime().msecsTo(dieTime))
                 except AttributeError:
                     cfg.log.warn("itemChange error!!")
 #                 cfg.log.debug("processEvents() - end")
@@ -2459,7 +2485,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.vh.loadProgressive = False
         cfg.logGUI.info('"--------- stopped mainloop ------------"')
         cfg.log.info('"--------- stopped mainloop ------------"')
-        
+
+        self.videoRunningMutex.unlock()
 #     @cfg.logClassFunction
 #     def providePosList(self, path, ending=None):
 #         if not ending:
@@ -2508,6 +2535,13 @@ class VideoTagger(QtGui.QMainWindow):
             self.vh.loadProgressive = False
         except AttributeError:
             pass
+
+        # # wait for video-loop to finish
+        # cfg.log.info("waiting to lock videoRunningMutex")
+        # self.videoRunningMutex.tryLock()
+        #
+        # cfg.log.info("unlocking videoRunningMutex")
+        # self.videoRunningMutex.unlock()
         
     @cfg.logClassFunction
     def generatePatchVideoPath(self, posPath, vialNo):
@@ -2552,11 +2586,11 @@ class VideoTagger(QtGui.QMainWindow):
         self.play = True
         # self.startLoop.emit()
         
-    @cfg.logClassFunctionInfo
+    @cfg.logClassFunction
     def selectVideoTime(self, day, hour, minute, frame, data=None):
         
-        print "selectVideoTime: clicked on day {0}, hour {1}, minute {2}, frame {3}, data {4}".format(
-                                                    day, hour, minute, frame, data)
+        cfg.log.info("selectVideoTime: clicked on day {0}, hour {1}, minute {2}, frame {3}, data {4}".format(
+                                                    day, hour, minute, frame, data))
         if len(self.fileList) == 1:
             idx = 0
             minutes = day * (24 * 60) + hour * 60  + minute
@@ -2665,7 +2699,62 @@ class VideoTagger(QtGui.QMainWindow):
             day, hour, minute, next_frame = res
             self.selectVideoTime(day, hour, minute, next_frame)
 
-        
+    def skipToAnnotationEnd(self, annotationIdx):
+        fps = 30
+        frame = self.vh.getCurrentFrameNo()
+        if not self.croppedVideo:
+            minutes = frame / (60 * fps)
+            day, hour, minute, second = FDV.minutes2Time(minutes)
+        else:
+            curr_file = os.path.basename(self.vh.posPath)
+
+            day, time_part = curr_file.split('.')[:2]
+
+            hour, minute, second = [int(x) for x in time_part.split('-')]
+
+        cfg.log.info("================== current location: {} {} {} {}".format(day, hour, minute, frame))
+
+        res = self.fdvt.findEndOfAnnotation(annotationIdx,
+                                           day,
+                                           hour,
+                                           minute,
+                                           frame)
+
+        if res is None:
+            cfg.log.info('No end found?!')
+        else:
+            day, hour, minute, next_frame = res
+            self.selectVideoTime(day, hour, minute, next_frame)
+
+
+    def skipToAnnotationStart(self, annotationIdx):
+        fps = 30
+        frame = self.vh.getCurrentFrameNo()
+        if not self.croppedVideo:
+            minutes = frame / (60 * fps)
+            day, hour, minute, second = FDV.minutes2Time(minutes)
+        else:
+            curr_file = os.path.basename(self.vh.posPath)
+
+            day, time_part = curr_file.split('.')[:2]
+
+            hour, minute, second = [int(x) for x in time_part.split('-')]
+
+        cfg.log.info("================== current location: {} {} {} {}".format(day, hour, minute, frame))
+
+        res = self.fdvt.findStartOfAnnotation(annotationIdx,
+                                           day,
+                                           hour,
+                                           minute,
+                                           frame)
+
+        if res is None:
+            cfg.log.info('No start found?!')
+        else:
+            day, hour, minute, next_frame = res
+            self.selectVideoTime(day, hour, minute, next_frame)
+
+
     @cfg.logClassFunction
     def showTrajectories(self, state):
         self.showTraject = bool(state)        
@@ -3066,6 +3155,8 @@ class VideoTagger(QtGui.QMainWindow):
         t4 = 0
         if not (labelledFrames == (None, None)
                 or labelledFrames[1].behaviours == [None]):
+            self.play = False
+
             if self.postLabelQuery:
                 newBehaviour = self.queryForLabel()
                 if not newBehaviour:
@@ -3081,6 +3172,8 @@ class VideoTagger(QtGui.QMainWindow):
             t3 = time.time()
             self.convertLabelListAndReply(labelledFrames)
             t4 = time.time()
+
+            self.play = True
 
         te = time.time()
 

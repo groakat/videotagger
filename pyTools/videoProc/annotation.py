@@ -739,6 +739,22 @@ def convertFrameListToDataframe(frameList):
 
     return df
 
+def insert_lost_frames(df, lost_idxs):
+    in_index = df.index.tolist()
+    in_frames = np.asarray(zip(*in_index)[0])
+
+    lost_idxs = np.asarray(lost_idxs)
+
+    prepared_in_frames = np.repeat(in_frames, lost_idxs.shape[0], axis=0)
+    prepared_in_frames = prepared_in_frames.reshape(-1, lost_idxs.shape[0])
+    lost_per_frame = np.sum(prepared_in_frames > lost_idxs, axis=1)
+
+    out_frames = in_frames + lost_per_frame
+    out_index = zip(*[out_frames.tolist()] + zip(*in_index)[1:])
+
+    df.index = pd.MultiIndex.from_tuples(out_index,
+                                         names=df.index.names)
+
 
 def convertDataframeToFrameList(df):
     ar = np.asarray(df)

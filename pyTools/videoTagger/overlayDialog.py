@@ -2,6 +2,7 @@ from PySide import QtGui, QtCore
 import pyTools.videoTagger.modifyableRect as MR
 import warnings
 import qimage2ndarray as qim2np
+import pyTools.misc.config as cfg
 
 from collections import OrderedDict
 
@@ -194,11 +195,15 @@ class OverlayDialogWidgetBase(OverlayDialogBase):
 
 class ClassSelectDialog(OverlayDialogBase):
     def __init__(self, parent, stringList=None, previews=None, *args, **kwargs):
+        cfg.log.info("before super ClassSelectDialog..")
         super(ClassSelectDialog, self).__init__(parent=parent, *args, **kwargs)
         self.previews = previews
 
+        cfg.log.info("setupContent..")
         self.setupContent()
+        cfg.log.info("setupLayout..")
         self.setupLayout()
+        cfg.log.info("connectSignals..")
         self.connectSignals()
 
         if stringList is not None:
@@ -212,16 +217,22 @@ class ClassSelectDialog(OverlayDialogBase):
         self.autoCompleteBox.setModel(stringList)
 
     def loadImgInPreviewLabel(self, lbl, img):
+        cfg.log.info("01")
         qi = qim2np.array2qimage(img)
+        cfg.log.info("02")
 
         pixmap = QtGui.QPixmap()
+        cfg.log.info("03")
 
         px = QtGui.QPixmap.fromImage(qi)
+        cfg.log.info("04")
 
         lbl.setScaledContents(False)
         lbl.setPixmap(px)
+        cfg.log.info("05")
 
         lbl.update()
+        cfg.log.info("06")
 
     def generatePreviewLabels(self):
         w = QtGui.QWidget(self)
@@ -231,19 +242,25 @@ class ClassSelectDialog(OverlayDialogBase):
         yPos = 0
 
         size = 128
-
+        cfg.log.info("generatePreviewLabels begin")
         if self.previews is not None:
+            cfg.log.info("inside loop")
             self.noPrevFrames = len(self.previews)
             self.prevFrameLbls = []
     #         self.prevConnectHooks = []
 
+            cfg.log.info("generatePreviewLabels before loop")
             for img in self.previews:
                 lbl = QtGui.QLabel(w)
+
+                cfg.log.info("generatePreviewLabels before adding Widget {}".format(lbl))
                 layout.addWidget(lbl)
+                cfg.log.info("generatePreviewLabels after adding Widget")
                 self.prevFrameLbls += [lbl]
                 self.loadImgInPreviewLabel(lbl,
                                            img)
 
+        cfg.log.info("generatePreviewLabels after loop")
         scrollArea = QtGui.QScrollArea(self)
         scrollArea.setWidget(w)
         scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
@@ -259,11 +276,15 @@ class ClassSelectDialog(OverlayDialogBase):
         self.messageLabel.setText("Which class do you want to assign to this label?")
         self.autoCompleteBox = MR.AutoCompleteComboBox(self.content)
 
-        self.previewWidget = self.generatePreviewLabels()
+        # self.previewWidget = self.generatePreviewLabels()
 
+        cfg.log.info("messageLabel..")
         self.contentLayout.addWidget(self.messageLabel)
-        self.contentLayout.addWidget(self.previewWidget)
+        cfg.log.info("previewWidget..")
+        # self.contentLayout.addWidget(self.previewWidget)
+        cfg.log.info("autoCompleteBox..")
         self.contentLayout.addWidget(self.autoCompleteBox)
+        cfg.log.info("button..")
         self.contentLayout.addWidget(self.button)
 
         self.content.setLayout(self.contentLayout)

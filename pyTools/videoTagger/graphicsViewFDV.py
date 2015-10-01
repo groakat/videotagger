@@ -492,37 +492,48 @@ class GraphicsViewFDV(QtGui.QWidget):
         # self.updateDisplay()
 
     def setupUi(self):
+        cfg.log.info("enter")
         self.layout = QtGui.QHBoxLayout()
         self.centerLayout = QtGui.QVBoxLayout()
+        cfg.log.info("0")
         self.gv_center = QtGui.QGraphicsView(self)
         # self.gv_center.setGeometry(QtCore.QRect(100, 60, 561, 150))
         self.gv_center.setObjectName("gv_center")
+        cfg.log.info("0.5")
         self.gv_center.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.gv_center.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
+        cfg.log.info("0.8")
         self.centerLayout.addWidget(self.gv_center)
 
+        cfg.log.info("0.9")
         self.rightLayout = QtGui.QVBoxLayout()
 
+        cfg.log.info("1")
         self.selectionArea = QtGui.QScrollArea(self)
         self.selectionListWidget = QtGui.QWidget(self)
         self.selectionLayout = QtGui.QVBoxLayout(self)
         self.selectionLayout.addStretch()
 
+        cfg.log.info("1.2")
         self.selectionListWidget.setLayout(self.selectionLayout)
         self.selectionArea.setWidget(self.selectionListWidget)
         self.selectionArea.setWidgetResizable(True)
 
+        cfg.log.info("1.5")
 
         self.buttonLayout = QtGui.QHBoxLayout()
         self.pb_savePlot = QtGui.QPushButton(self)
         self.pb_savePlot.setText("save\n plot")
         self.pb_savePlot.clicked.connect(lambda : self.exportToPDF(r'/Volumes/Seagate Backup Plus Drive/tmp/test.pdf'))
 
+        cfg.log.info("1.7")
+
         self.pb_newFDVT = QtGui.QPushButton(self)
         self.pb_newFDVT.setText("new from\n annotation")
         self.pb_newFDVT.clicked.connect(self.createNewFDVT)
 
+        cfg.log.info("2")
         self.pb_loadFDVT = QtGui.QPushButton(self)
         self.pb_loadFDVT.setText("load from\n file")
         self.pb_loadFDVT.clicked.connect(self.loadNewFDVT)
@@ -535,6 +546,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         self.rightLayout.addLayout(self.buttonLayout)
 
 
+        cfg.log.info("3")
 
         splitter = QtGui.QSplitter(QtCore.Qt.Horizontal, self)
         centerWidget = QtGui.QWidget()
@@ -552,6 +564,7 @@ class GraphicsViewFDV(QtGui.QWidget):
         # self.layout.addLayout(self.rightLayout)
 
         self.setLayout(self.layout)
+        cfg.log.info("4")
 
     def createNewFDVT(self):
         fn = QtGui.QFileDialog.getOpenFileName(self,

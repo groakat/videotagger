@@ -414,22 +414,37 @@ class videoExplorer(object):
         Finds video length by accessing it bruteforce
 
         """
-        idx = 0
+        idx = initialStepSize
         modi = initialStepSize
         vE = videoExplorer()
+
+        reached_end = False
 
         while modi > 0:
             while True:
                 try:
                     vE.getFrame(filename, frameNo=idx, frameMode='RGB')
-                except StopIteration:
+                except ffvideo.FFVideoError:
+                    if modi == 1:
+                        idx -= modi
+
+                    reached_end = True
                     break
+                except StopIteration:
+                    if modi == 1:
+                        idx -= modi
+
+                    reached_end = True
+                    break
+
+                if reached_end and modi > 1:
+                    modi /= 2
 
                 idx += modi
 
+            modi /= 2
             idx -= modi
 
-            modi /= 2
 
 
         return idx + 1 # + 1 to make it the same behaviour as len()

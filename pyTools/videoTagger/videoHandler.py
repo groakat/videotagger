@@ -1409,9 +1409,11 @@ class VideoHandler(QtCore.QObject):
         if direction == 'both' or direction == 'right':
             while rngs[curKey][-1] == \
                     self.annoDict[curKey].annotation.getLength():
-                curKey = sorted(self.annoDict.keys()).index(curKey) + 1
-                if curKey >= len(self.annoDict.keys()):
+                curKeyIdx = sorted(self.annoDict.keys()).index(curKey) + 1
+                if curKeyIdx >= len(self.annoDict.keys()):
                     break
+
+                curKey = sorted(self.annoDict.keys())[curKeyIdx]
 
                 a = self.annoDict[curKey].annotation.filterFrameList(
                                                             filterTuple,
@@ -1421,7 +1423,7 @@ class VideoHandler(QtCore.QObject):
                     rngs[curKey] = list(self.annoDict[curKey].annotation.\
                          findConsequtiveAnnotationFrames(filterTuple,
                                                          0,
-                                                         direction=direction))
+                                                         direction='right'))
                 else:
                     break
 
@@ -1429,12 +1431,14 @@ class VideoHandler(QtCore.QObject):
             while excess_copy > 0:
                 if (rngs[curKey][-1] + 1) == \
                         self.annoDict[curKey].annotation.getLength():
-                    curKey = sorted(self.annoDict.keys()).index(curKey) + 1
+                    curKeyIdx = sorted(self.annoDict.keys()).index(curKey) + 1
                     if curKey >= len(self.annoDict.keys()):
                         break
                     else:
+                        curKey = sorted(self.annoDict.keys())[curKeyIdx]
                         rngs[curKey] = [0]
                 else:
+                    # curKey = sorted(self.annoDict.keys())[curKeyIdx]
                     rngs[curKey] = list(np.append(rngs[curKey],
                                                   rngs[curKey][-1] + 1))
 
@@ -1445,18 +1449,22 @@ class VideoHandler(QtCore.QObject):
         curKey = posKey
         if direction == 'both' or direction == 'left':
             while rngs[curKey][0] == 0:
-                curKey = sorted(self.annoDict.keys()).index(curKey) - 1
+                curKeyIdx = sorted(self.annoDict.keys()).index(curKey) - 1
                 if curKey < 0:
                     break
+
+                curKey = sorted(self.annoDict.keys())[curKeyIdx]
 
                 l = self.annoDict[curKey].annotation.getLength()
                 a = self.annoDict[curKey].annotation.filterFrameList(
                                                             filterTuple,
-                                                            [l],
+                                                            [l - 1],
                                                             exactMatch=True)
                 if a.getLength():
                     rngs[curKey] = list(self.annoDict[curKey].annotation.\
-                         findConsequtiveAnnotationFrames(filterTuple, 0))
+                                findConsequtiveAnnotationFrames(filterTuple,
+                                                                l - 1,
+                                                                direction='left'))
                 else:
                     break
 
@@ -1464,12 +1472,14 @@ class VideoHandler(QtCore.QObject):
             excess_copy = excess
             while excess_copy > 0 and curKey >= 0:
                 if rngs[curKey][0] == 0:
-                    curKey = sorted(self.annoDict.keys()).index(curKey) - 1
+                    curKeyIdx = sorted(self.annoDict.keys()).index(curKey) - 1
                     if curKey < 0:
                         break
                     else:
+                        curKey = sorted(self.annoDict.keys())[curKeyIdx]
                         rngs[curKey] = [self.annoDict[curKey].annotation.getLength() - 1]
                 else:
+                    # curKey = sorted(self.annoDict.keys())[curKeyIdx]
                     rngs[curKey] = list(np.append(rngs[curKey][0] - 1, rngs[curKey]))
 
                 excess_copy -= 1

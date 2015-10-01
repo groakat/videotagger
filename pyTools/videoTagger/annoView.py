@@ -227,6 +227,7 @@ class AnnoView(QtGui.QWidget):
         
             
     def centerAt(self, avItem):
+        cfg.log.info("centerAt")
         for i in range(len(self.frames)):
             if avItem is self.frames[i]:
                 mid = (self.frameAmount + 1) / 2                

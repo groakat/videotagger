@@ -191,7 +191,7 @@ class VideoLoader(QtCore.QObject):
                                      2))
         
         
-        cfg.log.info("finished loading, emiting signal {0} {1} {2}".format(self.posPath, self.videoLength, self.idxSlice))
+        cfg.log.debug("finished loading, emiting signal {0} {1} {2}".format(self.posPath, self.videoLength, self.idxSlice))
 # 
         
         
@@ -693,24 +693,27 @@ def retrieveVideoLength(filename, initialStepSize=10000):
     Finds video length by accessing it bruteforce
 
     """
-    idx = 0
-    modi = initialStepSize
-    vE = VE.videoExplorer()
+    # idx = 0
+    # modi = initialStepSize
+    # vE = VE.videoExplorer()
+    #
+    # while modi > 0:
+    #     while True:
+    #         try:
+    #             vE.getFrame(filename, frameNo=idx, frameMode='RGB')
+    #         except StopIteration:
+    #             break
+    #
+    #         idx += modi
+    #
+    #     idx -= modi
+    #     modi /= 2
+    #
+    #
+    # return idx + 1 # + 1 to make it the same behaviour as len()
 
-    while modi > 0:
-        while True:
-            try:
-                vE.getFrame(filename, frameNo=idx, frameMode='RGB')
-            except StopIteration:
-                break
+    return VE.videoExplorer.retrieveVideoLength(filename, initialStepSize)
 
-            idx += modi
-
-        idx -= modi
-        modi /= 2
-
-
-    return idx + 1 # + 1 to make it the same behaviour as len()
         
         
 class MyThread(QtCore.QThread):    
