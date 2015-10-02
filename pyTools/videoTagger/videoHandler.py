@@ -1450,7 +1450,7 @@ class VideoHandler(QtCore.QObject):
         if direction == 'both' or direction == 'left':
             while rngs[curKey][0] == 0:
                 curKeyIdx = sorted(self.annoDict.keys()).index(curKey) - 1
-                if curKey < 0:
+                if curKeyIdx < 0:
                     break
 
                 curKey = sorted(self.annoDict.keys())[curKeyIdx]
