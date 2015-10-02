@@ -10,9 +10,6 @@ from PySide import QtGui
 from PySide import QtCore
 from PySide import QtOpenGL
 
-
-from pyTools.gui.videoPlayer_auto import Ui_Form
-
 import pyTools.gui.fullViewDialog as FVD
 
 import pyTools.videoTagger.videoHandler as VH
@@ -1515,13 +1512,20 @@ class VideoTagger(QtGui.QMainWindow):
                 else:
                     xstop = img.shape[1]
 
-                prevYCrop = slice(ystart, ystop, np.ceil((ystop - ystart) * multiplier / self.prevSize))
-                prevXCrop = slice(xstart, xstop, np.ceil((xstop - xstart) * multiplier / self.prevSize))
+                prevYCrop = slice(ystart, ystop, 
+                                  np.ceil((ystop - ystart) * multiplier / self.prevSize)
+                                  if (ystop - ystart) != 0 else 1)
+                prevXCrop = slice(xstart, xstop, 
+                                  np.ceil((xstop - xstart) * multiplier / self.prevSize)
+                                  if (xstop - xstart) != 0 else 1)
             else:
                 prevYCrop = self.prevYCrop
                 prevXCrop = self.prevXCrop
-
-            crop = img[prevYCrop, prevXCrop]
+            
+            try:
+                 crop = img[prevYCrop, prevXCrop]
+            except ValueError:
+                 crop = np.zeros((self.prevSize,self.prevSize), dtype=np.uint8)
             if np.prod(crop.shape) != 0:
                 img = crop
             else:
