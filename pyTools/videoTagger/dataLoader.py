@@ -37,7 +37,7 @@ import os
 #         while(QtCore.QTime.currentTime() < dieTime ):
 #             self.processEvents(QtCore.QEventLoop.AllEvents, 100)
         
-from IPython.parallel import Client, dependent
+# from IPython.parallel import Client, dependent
 # Subclassing QObject and using moveToThread
 # http://labs.qt.nokia.com/2007/07/05/qthreads-no-longer-abstract/
 class VideoLoader(QtCore.QObject):        
