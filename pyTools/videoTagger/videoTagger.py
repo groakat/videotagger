@@ -1,20 +1,8 @@
 import sys
 import os
-import itertools as iter
-
-
-sys.path.append(os.path.abspath('../../'))
-# from OpenGL import GL
-# from OpenGL import GLU
 from PySide import QtGui
 from PySide import QtCore
-from PySide import QtOpenGL
-
-
-from pyTools.gui.videoPlayer_auto import Ui_Form
-
 import pyTools.gui.fullViewDialog as FVD
-
 import pyTools.videoTagger.videoHandler as VH
 import pyTools.videoTagger.dataLoader as DL
 import pyTools.videoTagger.annoView as AV
@@ -28,31 +16,26 @@ import pyTools.videoTagger.eventFilter as EF
 import pyTools.videoTagger.hud as HUD
 if sys.platform != "win32":
     import pyTools.videoTagger.RPCController as RPC
-
 import pyTools.misc.FrameDataVisualization2 as FDV
 import pyTools.videoTagger.graphicsViewFDV as GFDV
 import pyTools.gui.collapseContainer as CC
 import pyTools.gui.setupDialog as SD
 import pyTools.videoTagger.prepareFolderForVideoProcessing as PFFVP
-
 import pyTools.system.plugins as P
-
 import numpy as np
 import scipy.misc as scim
 import pylab as plt
 import time
 import copy
-
 import qimage2ndarray as qim2np
 import json
 import logging, logging.handlers
 import yaml
 import re
-
 from collections import OrderedDict
+import numpy as np
 
 def np2qimage(a):
-    import numpy as np  
     a = a.astype(np.uint32)  
     
     data = (np.uint32(255) << 24 | a[:,:,0] << 16 | a[:,:,1] << 8 | a[:,:,2]).flatten()

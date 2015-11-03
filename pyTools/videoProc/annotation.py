@@ -3,6 +3,7 @@ import copy
 import os
 from collections import namedtuple
 import numpy as np
+import pyTools.misc.config as cfg
 
 AnnotationFilter = \
         namedtuple("AnnotationFilter", ["vials", "annotators", "behaviours"])
@@ -36,6 +37,7 @@ class Annotation():
         # self.behaviours = []
         # self.children = []
         self.hasChanged = True
+        self.filename = None
 
 
     def setDataframe(self, df):
@@ -70,7 +72,10 @@ class Annotation():
         return self.dataFrame.iloc[-1].name[0]
 
     def setLength(self, length):
-        self.dataFrame.iloc[-1].name[0] = length
+        1/0
+        self.removeAnnotation(None, None, 'automatic placeholder', 'video length ')
+        self.addAnnotation(None, [length], 'automatic placeholder', 'video length ')
+        # self.dataFrame.iloc[-1].name[0] = length
 
     def saveToFile(self, filename):
         if not os.path.exists(os.path.realpath(os.path.dirname(filename))):
@@ -87,6 +92,11 @@ class Annotation():
         
     def loadFromFile(self, filename):
         self.dataFrame = loadAnnotation(filename)
+        if self.dataFrame.empty:
+            1/0
+
+        self.filename = filename
+
         self.hasChanged = False
     
     def getFramesWithBehaviour(self, behaviourName):
@@ -367,6 +377,10 @@ class Annotation():
 
         return cnt
 
+    def convert_to_matlab(self, folder, angled_rect=False, skip_incomplete=False):
+        convert_to_matlab(self.dataFrame, folder,
+                          angled_rect=angled_rect,
+                          skip_incomplete=skip_incomplete)
 
 # pandas functions
 
@@ -760,6 +774,10 @@ def convertDataframeToFrameList(df):
     ar = np.asarray(df)
 
 
+# def convertDataframeToMatlabCSV(df):
+
+
+
 def getPropertiesFromDataframe(df, properties):
     """
     properties: single string or list of strings of the headers in the dataframe
@@ -839,6 +857,10 @@ def filterLabelFromDataframe(df, filterLabel, exact_match=True, indexer=None):
 
 def filterDataframe(df, frames=None, annotator=None, label=None,
                     exact_match=True, update_behaviour_indeces=True):
+
+    if len(df) == 0:
+        return df
+
     indexer = [slice(None)]*len(df.index.names)
 
     idx_lvls = list(df.index.levels)
@@ -862,7 +884,11 @@ def filterDataframe(df, frames=None, annotator=None, label=None,
         if update_behaviour_indeces:
             idx_lvls[2] = labels
 
-    out = df.loc[tuple(indexer),:]
+    try:
+        out = df.loc[tuple(indexer), :]
+    except TypeError, e:
+        cfg.log.error("probably reduce error in df: {}".format(e))
+        return df
 
     if update_behaviour_indeces:
         # out.index.set_levels(idx_lvls, inplace=True)
@@ -1006,6 +1032,13 @@ def getPropertyFromFrameAnno(df, metaKey):
                              'boundingbox x2', "boundingbox y2"]], dtype=np.float)
 
 
+def split_into_continuous_ranges(df):
+    ar = np.sort(np.asarray(df.index.tolist())[:,0].astype(int))
+    ranges = np.array_split(ar, np.where(np.diff(ar)!=1)[0]+1)
+
+    return ranges
+
+
 def findConsequtiveAnnotationFrames(df, annotator, label, frameIdx,
                                         exactMatch=True, direction='both'):
     """
@@ -1020,8 +1053,9 @@ def findConsequtiveAnnotationFrames(df, annotator, label, frameIdx,
                                     label=label, exact_match=exactMatch)
 
     # split frames into continuous ranges
-    ar = np.sort(np.asarray(prefilteredDF.index.tolist())[:,0].astype(int))
-    ranges = np.array_split(ar, np.where(np.diff(ar)!=1)[0]+1)
+    # ar = np.sort(np.asarray(prefilteredDF.index.tolist())[:,0].astype(int))
+    # ranges = np.array_split(ar, np.where(np.diff(ar)!=1)[0]+1)
+    ranges = split_into_continuous_ranges(prefilteredDF)
 
     # search in which range the frameIdx is locsted
     for rng in ranges:
@@ -1159,6 +1193,80 @@ def empty_multiindex(names):
     taken from http://stackoverflow.com/q/28289440/2156909
     """
     return pd.MultiIndex.from_tuples(tuples=[(None,) * len(names)], names=names)
+
+def extract_matlab_bb(df):
+    out_df = pd.DataFrame(columns=['boundingbox x1', 'boundingbox y1', 'boundingbox w', 'boundingbox h'])
+    out_df['boundingbox x1'] = df['boundingbox x1']
+    out_df['boundingbox y1'] = df['boundingbox y1']
+    out_df['boundingbox w'] = df['boundingbox x2'] - df['boundingbox x1']
+    out_df['boundingbox h'] = df['boundingbox y2'] - df['boundingbox y1']
+
+    return out_df.astype(pd.np.int)
+
+def extract_matlab_bb_angled(df):
+    out_df = pd.DataFrame(columns=['boundingbox x1', 'boundingbox y1',
+                                   'boundingbox x2', 'boundingbox y2',
+                                   'boundingbox x3', 'boundingbox y3',
+                                   'boundingbox x4', 'boundingbox y4'])
+
+    out_df['boundingbox x1'] = df['boundingbox x1']
+    out_df['boundingbox y1'] = df['boundingbox y1']
+
+    out_df['boundingbox x2'] = df['boundingbox x2']
+    out_df['boundingbox y2'] = df['boundingbox y1']
+
+    out_df['boundingbox x3'] = df['boundingbox x2']
+    out_df['boundingbox y3'] = df['boundingbox y2']
+
+    out_df['boundingbox x4'] = df['boundingbox x1']
+    out_df['boundingbox y4'] = df['boundingbox y2']
+
+    return out_df.astype(pd.np.int)
+
+
+def convert_lbl_to_matlab(df, lbl, angled_rect=False, skip_incomplete=False):
+    filt_df = filterDataframe(df, None, None, lbl)
+
+    if skip_incomplete:
+        ranges = split_into_continuous_ranges(filt_df)
+        if ranges[0][0] != 0 and ranges[0][-1] < 350:
+            out_df = pd.DataFrame()
+            return out_df
+
+    if angled_rect:
+        out_df = extract_matlab_bb_angled(filt_df)
+    else:
+        out_df = extract_matlab_bb(filt_df)
+
+    return out_df
+
+
+def convert_to_matlab(df, folder, angled_rect=False, skip_incomplete=False):
+    lbls = [lbl for lbl in getExactBehavioursFromFrameAnno(df)
+            if lbl != 'video length']
+
+    converted_dfs = []
+    for lbl in lbls:
+        converted_dfs += [convert_lbl_to_matlab(df,
+                                                lbl,
+                                                angled_rect=angled_rect,
+                                                skip_incomplete=skip_incomplete)]
+
+    for lbl, converted_df in zip(lbls, converted_dfs):
+        if converted_df.empty:
+            continue
+
+        sub_folder = os.path.join(folder, lbl)
+        if not os.path.exists(sub_folder):
+            os.makedirs(sub_folder)
+
+        fn = os.path.join(sub_folder, lbl + '_gt.txt')
+        converted_df.to_csv(fn, header=False, index=False)
+
+        s = '1,{}'.format(len(converted_df) + 1)
+        with open(os.path.join(sub_folder, lbl + '_frames.txt'), 'w') as f:
+            f.writelines(s)
+
 
 
 # end pandas functions

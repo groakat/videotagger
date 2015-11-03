@@ -1,6 +1,4 @@
-from PySide import QtCore, QtGui, QtSvg, QtOpenGL
-from pyTools.gui import fullViewDialog_auto
-from pyTools.gui.fullViewDialog_auto import Ui_Dialog
+from PySide import QtCore, QtGui, QtSvg
 import pyTools.videoTagger.hud as HUD
 import pyTools.videoTagger.overlayDialog as OD
 
