@@ -72,9 +72,8 @@ class Annotation():
         return self.dataFrame.iloc[-1].name[0]
 
     def setLength(self, length):
-        1/0
-        self.removeAnnotation(None, None, 'automatic placeholder', 'video length ')
-        self.addAnnotation(None, [length], 'automatic placeholder', 'video length ')
+        self.removeAnnotation(None, None, 'automatic placeholder', 'video length')
+        self.addAnnotation(None, [length], 'automatic placeholder', 'video length')
         # self.dataFrame.iloc[-1].name[0] = length
 
     def saveToFile(self, filename):
@@ -92,9 +91,6 @@ class Annotation():
         
     def loadFromFile(self, filename):
         self.dataFrame = loadAnnotation(filename)
-        if self.dataFrame.empty:
-            1/0
-
         self.filename = filename
 
         self.hasChanged = False
