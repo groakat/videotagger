@@ -603,7 +603,8 @@ def findOverlongVideos(root_folder, pos_folder, anno_folder,
 
 
 def checkVideoLenghtsInAnnotations(root_folder, pos_folder, anno_folder,
-                                   video_extension='mp4'):
+                                   video_extension='mp4',
+                                   correct_video_length=False):
     import pyTools.system.videoExplorer as VE
     import numpy as np
     import yaml
@@ -648,6 +649,7 @@ def checkVideoLenghtsInAnnotations(root_folder, pos_folder, anno_folder,
                 try:
                     anno.loadFromFile(af)
                 except IOError:
+                    print "No annofile for {}".format(af)
                     continue
 
                 annoLength = anno.getLength()
@@ -656,6 +658,10 @@ def checkVideoLenghtsInAnnotations(root_folder, pos_folder, anno_folder,
                     print "anno fuck:\nfile: {}\nvL: {}\naL: {}".format(filename,
                                                             videoLength,
                                                             annoLength)
+
+                    if correct_video_length:
+                        anno.setLength(videoLength)
+                        anno.saveToFile(af)
 
                     unequalFiles[filename] = [videoLength, posLength, annoLength]
 
@@ -883,8 +889,13 @@ def filterDataframe(df, frames=None, annotator=None, label=None,
     try:
         out = df.loc[tuple(indexer), :]
     except TypeError, e:
-        cfg.log.error("probably reduce error in df: {}".format(e))
-        return df
+        # cfg.log.error("probably reduce error in df: {}".format(e))
+        out = pd.DataFrame(data=[], columns=['frame', 'annotator', 'label',
+                                              'boundingbox x1',
+                                              'boundingbox y1',
+                                              'boundingbox x2',
+                                              'boundingbox y2',
+                                              'confidence'])
 
     if update_behaviour_indeces:
         # out.index.set_levels(idx_lvls, inplace=True)
@@ -1264,6 +1275,21 @@ def convert_to_matlab(df, folder, angled_rect=False, skip_incomplete=False):
             f.writelines(s)
 
 
+def fix_placeholder_space_bug(df):
+    test_df = filterDataframe(df,
+                               frames=None,
+                               annotator=["automatic placeholder"],
+                               label=["video length "],
+                               exact_match=True)
+
+    if not test_df.empty:
+        length = df.iloc[-1].name[0]
+        df = removeAnnotation(df, None, 'automatic placeholder', 'video length ')
+        df = addAnnotation(df, [length], 'automatic placeholder', 'video length')
+
+        return df
+    else:
+        return None
 
 # end pandas functions
 
