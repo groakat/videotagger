@@ -60,22 +60,22 @@ class AnnoViewItem(QtGui.QGraphicsRectItem):
         self.setRect(rect)
         self.setAcceptHoverEvents(True)
         self.annoView = annoView
-
-    def hoverEnterEvent(self, event):
-        pen = QtGui.QPen(QtCore.Qt.red)
-        self.setPen(pen)
-        self.annoView.centerAt(self)
-        return QtGui.QGraphicsRectItem.hoverEnterEvent(self, event)
-    
-    def hoverLeaveEvent(self, event):
-        pen = QtGui.QPen(QtGui.QColor(0,0,0,0))
-        self.setPen(pen)
-        self.annoView.centerAt(None)
-        return QtGui.QGraphicsRectItem.hoverLeaveEvent(self, event)
-        
-    def mousePressEvent(self, event):
-        self.annoView.alterAnnotation(self)
-        return QtGui.QGraphicsRectItem.mousePressEvent(self, event)
+    #
+    # def hoverEnterEvent(self, event):
+    #     pen = QtGui.QPen(QtCore.Qt.red)
+    #     self.setPen(pen)
+    #     self.annoView.centerAt(self)
+    #     return QtGui.QGraphicsRectItem.hoverEnterEvent(self, event)
+    #
+    # def hoverLeaveEvent(self, event):
+    #     pen = QtGui.QPen(QtGui.QColor(0,0,0,0))
+    #     self.setPen(pen)
+    #     self.annoView.centerAt(None)
+    #     return QtGui.QGraphicsRectItem.hoverLeaveEvent(self, event)
+    #
+    # def mousePressEvent(self, event):
+    #     self.annoView.alterAnnotation(self)
+    #     return QtGui.QGraphicsRectItem.mousePressEvent(self, event)
 
     
     
