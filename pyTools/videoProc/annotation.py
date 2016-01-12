@@ -69,7 +69,10 @@ class Annotation():
         return out
 
     def getLength(self):
-        return self.dataFrame.iloc[-1].name[0]
+        if self.dataFrame.empty:
+            return 0
+        else:
+            return self.dataFrame.iloc[-1].name[0]
 
     def setLength(self, length):
         self.removeAnnotation(None, None, 'automatic placeholder', 'video length')
