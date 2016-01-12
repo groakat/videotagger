@@ -1695,8 +1695,8 @@ class VideoTagger(QtGui.QMainWindow):
         self.fullVideoDialog.lblView.clear()
         self.fullVideoDialog.clearFullFrameAnnotations()
 
-    def addFullFrameAnnotationToDisplay(self, lbl, color):
-        self.fullVideoDialog.lblView.addItem(lbl, color)
+    def addFullFrameAnnotationToDisplay(self, annot, lbl, color):
+        self.fullVideoDialog.lblView.addItem(annot, lbl, color)
         self.fullVideoDialog.setFullFrameAnnotation(color)
 
 
@@ -1747,7 +1747,8 @@ class VideoTagger(QtGui.QMainWindow):
                 # anything
                 if True in np.isnan(b):
                     color = self.annotations[i]['color']
-                    self.addFullFrameAnnotationToDisplay(label, color)
+                    annot = self.annotations[i]['annot']
+                    self.addFullFrameAnnotationToDisplay(annot, label, color)
                     continue
 
                 rois += [[b, self.annotations[i], label]]

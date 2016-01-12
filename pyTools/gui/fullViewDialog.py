@@ -729,6 +729,7 @@ class fullFrameLabelView(QtGui.QWidget):
                             'icon')
 
         self.addingInProgress = False
+        self.stringMap = {}
 
         self.videoTagger = videoTagger
         self.fullViewDialog = fullViewDialog
@@ -775,9 +776,13 @@ class fullFrameLabelView(QtGui.QWidget):
     def clear(self):
         self.listView.clear()
 
-    def addItem(self, labelStr, color):
-        self.listView.addItem(labelStr)
+    def addItem(self, annotStr, labelStr, color):
+        s = annotStr + " : " + labelStr
+        self.stringMap[s] = [annotStr, labelStr]
+
+        self.listView.addItem(s)
         self.listView.item(self.listView.count() - 1).setForeground(color)
+
 
 
     # def addBookmark(self):
@@ -796,8 +801,9 @@ class fullFrameLabelView(QtGui.QWidget):
         pass
 
     def editLabel(self, mdl):
-        behaviour = self.listView.item(mdl.row()).data(0)
-        self.videoTagger.registerLastLabelInteraction(behaviour)
+        s = self.listView.item(mdl.row()).data(0)
+        annotator, behaviour = self.stringMap[s]
+        self.videoTagger.registerLastLabelInteraction(behaviour, annotator)
         self.videoTagger.menu.exec_(QtGui.QCursor.pos())
 
     def addButtonClick(self):
