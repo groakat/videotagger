@@ -55,11 +55,10 @@ class OverlayDialogBase(QtGui.QWidget):
         p.setColor(self.backgroundRole(), color)
         self.setPalette(p)
 
-
-    def _setReturnValue(self):
+    def _setReturnValue(self, *args, **kwargs):
         raise NotImplementedError()
 
-    def setReturnValue(self):
+    def setReturnValue(self, *args, **kwargs):
         self._setReturnValue()
         self.eventLoop.exit()
         self.returnValueSet = True
@@ -701,3 +700,72 @@ class KeySequenceEdit(QtGui.QLineEdit):
 
 
 
+
+class RenameLabelConfirmationDialog(OverlayDialogBase):
+    def __init__(self, parent, orig_lbl, new_lbl, *args, **kwargs):
+        cfg.log.info("before super ClassSelectDialog..")
+        super(RenameLabelConfirmationDialog, self).__init__(parent=parent, *args, **kwargs)
+        self.orig_lbl = orig_lbl
+        self.new_lbl = new_lbl
+
+        cfg.log.info("setupContent..")
+        self.setupContent()
+        cfg.log.info("setupLayout..")
+        self.setupLayout()
+        cfg.log.info("connectSignals..")
+        self.connectSignals()
+
+
+    def connectSignals(self):
+        self.pb_orig.clicked.connect(lambda: self.setReturnValue(1))
+        self.pb_new.clicked.connect(lambda: self.setReturnValue(2))
+
+    def _setReturnValue(self, choice):
+        if choice == 1:
+            self.ret = self.orig_lbl
+        else:
+            self.ret = self.new_lbl
+
+    def setReturnValue(self, choice):
+        self._setReturnValue(choice)
+        self.eventLoop.exit()
+        self.returnValueSet = True
+
+    def setupContent(self):
+        self.content = QtGui.QWidget(self)
+        self.contentLayout  = QtGui.QVBoxLayout()
+
+        # self.button = QtGui.QPushButton(self.content)
+        # self.button.setText("OK")
+        self.messageLabel = QtGui.QLabel(self.content)
+        self.messageLabel.setText("There is a potential conflict with annotations nearby. Do you want to use a save (unique) label?")
+
+        self.buttonLayoutWidget = QtGui.QWidget(self.content)
+        self.buttonLayout = QtGui.QHBoxLayout(self.buttonLayoutWidget)
+
+        self.pb_orig = QtGui.QPushButton(self.content)
+        self.pb_orig.setText("Use orignal label: {}".format(self.orig_lbl))
+
+        self.pb_new = QtGui.QPushButton(self.content)
+        self.pb_new.setText("Use unique label: {}".format(self.new_lbl))
+
+        self.buttonLayout.addWidget(self.pb_orig)
+        self.buttonLayout.addWidget(self.pb_new)
+        self.buttonLayoutWidget.setLayout(self.buttonLayout)
+
+        cfg.log.info("messageLabel..")
+        self.contentLayout.addWidget(self.messageLabel)
+        cfg.log.info("previewWidget..")
+        # self.contentLayout.addWidget(self.previewWidget)
+        cfg.log.info("autoCompleteBox..")
+        self.contentLayout.addWidget(self.buttonLayoutWidget)
+        cfg.log.info("button..")
+        # self.contentLayout.addWidget(self.button)
+
+        self.content.setLayout(self.contentLayout)
+
+    @staticmethod
+    def getLabel(parent, original_lbl, new_lbl):
+        od = RenameLabelConfirmationDialog(parent, original_lbl, new_lbl)
+        od.exec_()
+        return od.ret

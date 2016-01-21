@@ -1355,8 +1355,7 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
 
     # @profile
-    def importAnnotationsFromSingleFile(self, bhvrFile,
-                                        vials, runningIndeces=False, fps=30):
+    def importAnnotationsFromSingleFile(self, bhvrFile, runningIndeces=False, fps=30):
         # filtList = []
         # self.resetAllSamples()
 
@@ -1367,8 +1366,8 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
             self.importAnnotation(anno, fps)
 
 
-    def importAnnotationsFromFile(self, bhvrList, videoList, annoFilters=None, vials=None,
-                          runningIndeces=False, fps=30, singleFileMode=None):
+    def importAnnotationsFromFile(self, bhvrList, videoList, annoFilters=None, runningIndeces=False, fps=30,
+                                  singleFileMode=None):
 
         # filtList = []
         self.resetAllSamples()
@@ -1398,7 +1397,6 @@ class FrameDataVisualizationTreeBehaviour(FrameDataVisualizationTreeBase):
 
         if len(videoList) == 1:
             self.importAnnotationsFromSingleFile(bhvrList[0],
-                                                 vials,
                                                  runningIndeces=False, fps=30)
             return
 

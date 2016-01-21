@@ -1134,7 +1134,7 @@ class VideoHandler(QtCore.QObject):
 
     @cfg.logClassFunction
     def disambiguateDoubleBehaviourNames(self, vials, annotator, behaviour,
-                                         rng):
+                                         rng, label_disambiguate_dialog_fn=None):
 
         filt = Annotation.AnnotationFilter(vials, [annotator], [behaviour])
 
@@ -1159,7 +1159,12 @@ class VideoHandler(QtCore.QObject):
                 maxCounter = nMaxBehaviour
 
         if maxCounter > -1:
-            return "{bvhr}_{no}".format(bvhr=behaviour, no=maxCounter + 1)
+            if label_disambiguate_dialog_fn is not None:
+                behaviour = label_disambiguate_dialog_fn(behaviour,
+                                                         "{bvhr}_{no}".format(bvhr=behaviour,
+                                                                              no=maxCounter + 1))
+            else:
+                behaviour = "{bvhr}_{no}".format(bvhr=behaviour, no=maxCounter + 1)
 
         return behaviour
 
@@ -1248,7 +1253,7 @@ class VideoHandler(QtCore.QObject):
 
 
     @cfg.logClassFunction
-    def addAnnotation(self, vials, annotator, behaviour, metadata):
+    def addAnnotation(self, vials, annotator, behaviour, metadata, label_disambiguate_dialog_fn=None):
 
         # if vials == None:
         #     vials = [None]
@@ -1287,7 +1292,7 @@ class VideoHandler(QtCore.QObject):
                 lenFunc = lambda x: x.annotation.getLength()
                         
                 rng = bsc.generateRangeValuesFromKeys(self.annoAltStart, annoEnd, lenFunc=lenFunc)
-                behaviour = self.disambiguateDoubleBehaviourNames(vials, annotator, behaviour, rng)
+                behaviour = self.disambiguateDoubleBehaviourNames(vials, annotator, behaviour, rng, label_disambiguate_dialog_fn)
 
                 self.addAnnotationRange(rng, vials, annotator, behaviour)
                 
@@ -1429,6 +1434,9 @@ class VideoHandler(QtCore.QObject):
 
             excess_copy = excess
             while excess_copy > 0:
+                if curKey not in rngs.keys():
+                    break
+
                 if (rngs[curKey][-1] + 1) == \
                         self.annoDict[curKey].annotation.getLength():
                     curKeyIdx = sorted(self.annoDict.keys()).index(curKey) + 1
@@ -1471,6 +1479,9 @@ class VideoHandler(QtCore.QObject):
 
             excess_copy = excess
             while excess_copy > 0 and curKey >= 0:
+                if curKey not in rngs.keys():
+                    break
+
                 if rngs[curKey][0] == 0:
                     curKeyIdx = sorted(self.annoDict.keys()).index(curKey) - 1
                     if curKey < 0:
@@ -1494,7 +1505,8 @@ class VideoHandler(QtCore.QObject):
                                                     metaKey, newMetaValue)
 
     def editAnnotationLabel(self, vial, annotatorOld,
-                                behaviourOld, annotatorNew, behaviourNew):
+                            behaviourOld, annotatorNew, behaviourNew,
+                            label_disambiguate_dialog_fn):
         filtOld = Annotation.AnnotationFilter(vial, [annotatorOld],
                                               [behaviourOld])
 
@@ -1506,7 +1518,8 @@ class VideoHandler(QtCore.QObject):
         cfg.log.info("checking annotation in range {} {} {}".format(rngs, behaviourOld, behaviourNew))
 
         behaviourNew = self.disambiguateDoubleBehaviourNames(vial, annotatorNew,
-                                                             behaviourNew, rngs)
+                                                             behaviourNew, rngs,
+                                                             label_disambiguate_dialog_fn)
 
         vial = vial[0]
 

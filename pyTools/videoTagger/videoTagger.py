@@ -1042,8 +1042,7 @@ class VideoTagger(QtGui.QMainWindow):
                 self.fdvt.importAnnotationsFromFile(
                     self.convertVideoToBehaviourFileList(self.fileList),
                     self.fileList,
-                    self.getAnnotationFilters(),
-                    self.getSelectedVial())
+                    self.getAnnotationFilters())
 
             cfg.log.info("fdvtPath is not None --- finished")
 
@@ -1058,8 +1057,7 @@ class VideoTagger(QtGui.QMainWindow):
             self.fdvt.importAnnotationsFromFile(self.convertFileList(self.fileList,
                                                              '.csv'),
                                         self.fileList,
-                                        self.getAnnotationFilters(),
-                                        self.getSelectedVial())
+                                        self.getAnnotationFilters())
             cfg.log.info("self.fdvt is None is None --- after import")
 
         cfg.log.info("before loading fdvt")
@@ -3100,6 +3098,10 @@ class VideoTagger(QtGui.QMainWindow):
 
         return selectedBehaviour
 
+    def label_disambiguate_dialog(self, original_label, new_label):
+        return OD.RenameLabelConfirmationDialog.getLabel(
+                                        self.fullVideoDialog.centralWidget(),
+                                        original_label, new_label)
 
 #     @cfg.logClassFunction
     def addAnno(self, annotator="peter", behaviour="just testing",
@@ -3116,13 +3118,17 @@ class VideoTagger(QtGui.QMainWindow):
 
         ts = time.time()
 
-        labelledFrames = self.vh.addAnnotation(self.getSelectedVial(), annotator, 
-                              behaviour, metadata=self.getMetadata())
+        labelledFrames = self.vh.addAnnotation(None, annotator,
+                                               behaviour,
+                                               metadata=self.getMetadata(),
+                                               label_disambiguate_dialog_fn=self.label_disambiguate_dialog)
 
         t1 = time.time()
         if oneClickAnnotation:                
-            labelledFrames = self.vh.addAnnotation(self.getSelectedVial(), annotator, 
-                              behaviour, metadata=self.getMetadata())
+            labelledFrames = self.vh.addAnnotation(None, annotator,
+                                                   behaviour,
+                                                   metadata=self.getMetadata(),
+                                                   label_disambiguate_dialog_fn=self.label_disambiguate_dialog)
                 
         self.annoIsOpen = self.vh.annoAltStart is not None #not self.annoIsOpen
 
@@ -3203,8 +3209,10 @@ class VideoTagger(QtGui.QMainWindow):
         self.unsavedChanges = True
 
         cfg.log.info("--------- edit label ------------")
-        self.vh.editAnnotationLabel(self.getSelectedVial(), annotatorOld,
-                                behaviourOld, annotatorNew, behaviourNew)
+        self.vh.editAnnotationLabel(None,
+                                    annotatorOld, behaviourOld,
+                                    annotatorNew, behaviourNew,
+                                    self.label_disambiguate_dialog)
 
         if self.getSelectedVial() is None:
             sv = 0
