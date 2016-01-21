@@ -1954,7 +1954,7 @@ class VideoTagger(QtGui.QMainWindow):
         annotator = self.lastLabelRectContext['anno']
         behaviour = self.lastLabelRectContext['bhvr']
         behaviour = self.getRealBehaviourFromRect(behaviour)
-        labelledFrames = self.vh.eraseAnnotationSequence(self.getSelectedVial(),
+        labelledFrames = self.vh.eraseAnnotationSequence(None,
                                                          annotator,
                                                          behaviour,
                                                          direction='left')
@@ -1967,7 +1967,7 @@ class VideoTagger(QtGui.QMainWindow):
         annotator = self.lastLabelRectContext['anno']
         behaviour = self.lastLabelRectContext['bhvr']
         behaviour = self.getRealBehaviourFromRect(behaviour)
-        labelledFrames = self.vh.eraseAnnotationSequence(self.getSelectedVial(),
+        labelledFrames = self.vh.eraseAnnotationSequence(None,
                                                          annotator,
                                                          behaviour,
                                                          direction='right')
@@ -1980,7 +1980,7 @@ class VideoTagger(QtGui.QMainWindow):
         annotator = self.lastLabelRectContext['anno']
         behaviour = self.lastLabelRectContext['bhvr']
         behaviour = self.getRealBehaviourFromRect(behaviour)
-        labelledFrames = self.vh.eraseAnnotationSequence(self.getSelectedVial(),
+        labelledFrames = self.vh.eraseAnnotationSequence(None,
                                                          annotator,
                                                          behaviour,
                                                          direction='both')
@@ -1993,7 +1993,7 @@ class VideoTagger(QtGui.QMainWindow):
         annotator = self.lastLabelRectContext['anno']
         behaviour = self.lastLabelRectContext['bhvr']
         behaviour = self.getRealBehaviourFromRect(behaviour)
-        labelledFrames = self.vh.eraseAnnotationCurrentFrame(self.getSelectedVial(),
+        labelledFrames = self.vh.eraseAnnotationCurrentFrame(None,
                                                              annotator,
                                                              behaviour)
 
