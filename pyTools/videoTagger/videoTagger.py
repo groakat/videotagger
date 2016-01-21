@@ -3105,7 +3105,7 @@ class VideoTagger(QtGui.QMainWindow):
 
 #     @cfg.logClassFunction
     def addAnno(self, annotator="peter", behaviour="just testing",
-                confidence=1, oneClickAnnotation=False):        
+                confidence=1.0, oneClickAnnotation=False):
         cfg.logGUI.info(json.dumps({"annotator": annotator,
                                 "behaviour": behaviour,
                                 "confidence": confidence}))
