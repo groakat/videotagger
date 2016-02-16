@@ -72,7 +72,26 @@ class Annotation():
         if self.dataFrame.empty:
             return 0
         else:
-            return self.dataFrame.iloc[-1].name[0]
+            if self.dataFrame.iloc[-1].name[1] == 'automatic placeholder' and \
+               self.dataFrame.iloc[-1].name[2] == 'video length':
+                return self.dataFrame.iloc[-1].name[0]
+            else:
+                # if the videolength was not saved at the very end of the annotation
+                # dataframe, we have to filter it "manually"
+                try:
+                    df = filterDataframe(self.dataFrame,
+                                         frames=None,
+                                         annotator=["automatic placeholder"],
+                                         label=['video length'],
+                                         exact_match=True,
+                                         update_behaviour_indeces=False)
+                    length = df.iloc[-1].name[0]
+                except ValueError:
+                    length = 0
+                except KeyError:
+                    length = 0
+
+                return length
 
     def setLength(self, length):
         self.removeAnnotation(None, None, 'automatic placeholder', 'video length')
@@ -403,6 +422,41 @@ def loadAnnotation(filename):
     return df
 
 
+
+def enforeVideoLengthAsLastEntry(root_folder, anno_folder):
+    anno = Annotation()
+    for root, dirs, files in sorted(os.walk(root_folder)):
+        for filename in sorted(files):
+            if filename.endswith('.csv'):
+                anno.loadFromFile(os.path.join(root, filename))
+
+                if anno.dataFrame.empty:
+                    return 0
+                else:
+                    if anno.dataFrame.iloc[-1].name[1] == 'automatic placeholder' and \
+                       anno.dataFrame.iloc[-1].name[2] == 'video length':
+
+                        df = filterDataframe(anno.dataFrame,
+                                               frames=None,
+                                               annotator=["automatic placeholder"],
+                                               label=['video length'],
+                                               exact_match=True,
+                                               update_behaviour_indeces=True)
+                        if len(df) == 1:
+                            continue
+                            
+                    print "relocating video length for {}".format(filename)
+                    annoLength = anno.getLength()
+                    anno.removeAnnotation(vial=None,
+                                          frames=None,
+                                          annotator='automatic placeholder',
+                                          behaviour='video length')
+                    anno.addAnnotation(vial=None,
+                                       frames=[annoLength],
+                                       annotator='automatic placeholder',
+                                       behaviour='video length')
+
+
 def alignVideoLengthToRest(root_folder, pos_folder, anno_folder,
                                    video_extension='mp4'):
     import pyTools.system.videoExplorer as VE
@@ -462,6 +516,7 @@ def alignVideoLengthToRest(root_folder, pos_folder, anno_folder,
                         anno.saveToFile(af)
 
                 except IOError:
+                    print "no annotation file for: {}".format(filename)
                     continue
 
 
