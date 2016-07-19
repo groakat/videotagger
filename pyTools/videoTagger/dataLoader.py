@@ -257,7 +257,7 @@ class VideoLoader(QtCore.QObject):
             
     @cfg.logClassFunction
     def getPosList(self):
-        if not self.loading2:
+        if not self.loading:
             return self.pos
         else:
             raise RuntimeError("calling posList, before video finished loading")

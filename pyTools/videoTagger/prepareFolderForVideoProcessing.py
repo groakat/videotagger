@@ -61,7 +61,7 @@ def generateSmallVideo(videoPath, ext='mp4'):
     targetBasename = basename_wo_ext + "_small" + os.path.extsep + ext
     targetPath = os.path.join(folder, targetBasename)
 
-    ffmpegStr = ('ffmpeg -i "{orgPath}" -y -c:v libx264 -crf 18 -g 1 -r 30 -vf scale={low_res_w}:{low_res_h} ' + \
+    ffmpegStr = ('ffmpeg -i "{orgPath}" -y -c:v libx264 -crf 18 -g 1 -r 30 -vf scale={low_res_w}:{low_res_h} -an' + \
                 ' "{targetPath}"').format(orgPath=videoPath,
                                                targetPath=targetPath,
                                                low_res_w=low_res_w,
@@ -87,7 +87,7 @@ def generateSmallVideo(videoPath, ext='mp4'):
 
     if not rescale:
         ffmpegStr = ('ffmpeg -i "{orgPath}" -y -an ' +\
-                    ' -c:v libx264 -crf 18 -g 1 -r 30 "{targetPath}"').format(orgPath=videoPath,
+                    ' -c:v libx264 -crf 18 -g 1 -r 30 -an "{targetPath}"').format(orgPath=videoPath,
                                                           targetPath=targetFullPath)
     else:
         ffmpegStr = ('ffmpeg -i "{orgPath}" -y -an ' +\

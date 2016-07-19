@@ -62,8 +62,7 @@ class VideoHandler(QtCore.QObject):
                                     # buffer area on EITHER SIDE that are not
                                     # deleted immediately
         self.videoLengths = dict()  # lengths of each video chunk
-        
-        
+
         self.videoPathList = sorted(videoPathList)
         self.bgPathList = sorted(backgroundPathList)
         self.posList = sorted(positionPathList)
@@ -84,9 +83,10 @@ class VideoHandler(QtCore.QObject):
                                                       self.bufferJut * 2 + 3,
                                          standardFile=standardFile)
 
+
         self.videoLoaderLuncherThread = DL.MyThread("videoLuncher")
         self.vLL.moveToThread(self.videoLoaderLuncherThread)
-        
+
         self.videoLoaderLuncherThread.start()
         self.videoLoaderLuncherThread.wrapUp.connect(self.vLL.aboutToQuit)
 

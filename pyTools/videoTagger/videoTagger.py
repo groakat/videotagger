@@ -309,6 +309,7 @@ class VideoTagger(QtGui.QMainWindow):
         else:
             currentROI = None
 
+
         self.vh = VH.VideoHandler(self.fileList, self.bgList, self.posList,
                                   self.changeVideo,
                                self.getSelectedVial(), startIdx=self.idx,
@@ -319,11 +320,9 @@ class VideoTagger(QtGui.QMainWindow):
                                patchesFolder=self.patchesFolder,
                                behaviourFolder=behaviourFolder,
                                currentROI=currentROI)
-        
-        
+
+
         self.updateFrameList(range(2000))
-        
-        
         
         self.serverAddress = serverAddress
         self.connectedToServer = False
