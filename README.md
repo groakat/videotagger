@@ -1,9 +1,9 @@
-pyTools
-=======
+VideoTagger
+===========
 
 # Download:
 
-    git clone https://github.com/groakat/pyTools.git
+    git clone https://github.com/groakat/videotagger.git
 
 
 # Install
