@@ -33,8 +33,8 @@ def generateSmallVideo(videoPath, ext='mp4'):
     basename_wo_ext = os.path.extsep.join(basename.split(os.path.extsep)[:-1])
     folder = os.path.dirname(videoPath)
 
-    p = subprocess.Popen("ffprobe -v error -show_entries stream=width,height,avg_frame_rate " +
-                         "-of default=noprint_wrappers=1:nokey=1 '{}'".format(videoPath),
+    p = subprocess.Popen('ffprobe -v error -show_entries stream=width,height,avg_frame_rate ' +
+                         '-of default=noprint_wrappers=1:nokey=1 "{}"'.format(videoPath),
                          shell=True,  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     output = p.communicate()[0]
