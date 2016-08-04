@@ -110,8 +110,8 @@ def prepareVideoSeries(sourceFolder, destinationFolder):
                 # shutil.copy(os.path.join(root, filename), tmp_dest)
                 # PFFVP.prepareFolder(tmp_dest, projectCFGPath=tmp_project_cfg_path)
 
-                cnt += 1
-                progress.setValue(cnt)
+            cnt += 1
+            progress.setValue(cnt)
 
 
     work_thread.quit()
