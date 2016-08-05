@@ -12,7 +12,7 @@ KeyMap:
   bwd-3: !!python/unicode 'F3'
   bwd-4: !!python/unicode 'F2'
   bwd-5: !!python/unicode 'F1'
-  bwd-6: !!python/unicode 'Left'
+  bwd-6: !!python/unicode 'Down'
   erase-anno: !!python/unicode 'Q'
   escape: !!python/unicode 'Esc'
   fwd-1: !!python/unicode 'F8'
@@ -20,10 +20,10 @@ KeyMap:
   fwd-3: !!python/unicode 'F10'
   fwd-4: !!python/unicode 'F11'
   fwd-5: !!python/unicode 'F12'
-  fwd-6: !!python/unicode 'Right'
+  fwd-6: !!python/unicode 'Up'
   info: !!python/unicode 'I'
-  step-b: !!python/unicode 'F6'
-  step-f: !!python/unicode 'F7'
+  step-b: !!python/unicode 'Left'
+  step-f: !!python/unicode 'Right'
   stop: !!python/unicode 'Enter'
 StepSize:
   allow-steps: true
