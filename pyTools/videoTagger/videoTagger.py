@@ -1483,7 +1483,7 @@ class VideoTagger(QtGui.QMainWindow):
                 if self.prevYCrop.stop:
                     ystop = int(self.prevYCrop.stop * multiplier)
                 else:
-                    ystop = img.shape[0]
+                    ystop = int(img.shape[0])
 
                 if self.prevXCrop.start:
                     xstart = int(self.prevXCrop.start * multiplier)
@@ -1493,22 +1493,22 @@ class VideoTagger(QtGui.QMainWindow):
                 if self.prevXCrop.stop:
                     xstop = int(self.prevXCrop.stop * multiplier)
                 else:
-                    xstop = img.shape[1]
+                    xstop = int(img.shape[1])
 
                 prevYCrop = slice(ystart, ystop, 
-                                  np.ceil((ystop - ystart) * multiplier / self.prevSize)
+                                  int(np.ceil((ystop - ystart) * multiplier / self.prevSize))
                                   if (ystop - ystart) != 0 else 1)
                 prevXCrop = slice(xstart, xstop, 
-                                  np.ceil((xstop - xstart) * multiplier / self.prevSize)
+                                  int(np.ceil((xstop - xstart) * multiplier / self.prevSize))
                                   if (xstop - xstart) != 0 else 1)
             else:
                 prevYCrop = self.prevYCrop
                 prevXCrop = self.prevXCrop
             
             try:
-                 crop = img[prevYCrop, prevXCrop]
+                crop = img[prevYCrop, prevXCrop]
             except ValueError:
-                 crop = np.zeros((self.prevSize,self.prevSize), dtype=np.uint8)
+                crop = np.zeros((self.prevSize,self.prevSize), dtype=np.uint8)
             if np.prod(crop.shape) != 0:
                 img = crop
             else:
